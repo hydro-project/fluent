@@ -1,0 +1,31 @@
+monitoring:
+  mgmt_ip: 127.0.0.1
+  ip: 127.0.0.1
+routing:
+  monitoring: 
+      - 127.0.0.1
+  ip: 127.0.0.1
+user:
+  monitoring:
+      - 127.0.0.1
+  routing: 
+      - 127.0.0.1
+  ip: 127.0.0.1
+server:
+  monitoring:
+      - 127.0.0.1
+  routing: 
+      - 127.0.0.1
+  seed_ip: 127.0.0.1
+  ip: 127.0.0.1
+ebs: ./
+threads:
+  memory: 4
+  ebs: 4
+  routing: 4
+  benchmark: 4
+replication:
+  memory: 1
+  ebs: 0
+  minimum: 1
+  local: 1
