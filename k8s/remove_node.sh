@@ -20,7 +20,7 @@ if [[ -z "$1" ]] || [[ -z "$2" ]]; then
 fi
 
 get_prev_num() {
-  NUM_PREV=`kubectl get pods -l role=$1 | wc -l`
+  NUM_PREV=`kubectl get pods -l role=$1 | wc -l` > /dev/null 2>&1
 
   if [ $NUM_PREV -gt 0 ]; then
     ((NUM_PREV--))
