@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #  Copyright 2018 U.C. Berkeley RISE Lab
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,38 +14,59 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-#!/bin/bash
-
 if [[ -z "$1" ]] || [[ -z "$2" ]]; then
-  echo "Usage ./remove_node.sh <node-type> <node-id>"
+  echo "Usage ./remove_node.sh <node-id> <node-type>"
   exit 1
 fi
 
+get_prev_num() {
+  NUM_PREV=`kubectl get pods -l role=$1 | wc -l`
+
+  if [ $NUM_PREV -gt 0 ]; then
+    ((NUM_PREV--))
+  fi
+
+  echo $NUM_PREV
+}
+
+echo $2
+
 # convert from IP to a hostname
-EXTERNAL_IP=`kubectl get pods -o json | jq '.items[] | select(.status.podIP=="'$2'")' | jq '.status.hostIP' | cut -d'"' -f2`
+EXTERNAL_IP=`kubectl get pods -o json | jq '.items[] | select(.status.podIP=="'$1'")' | jq '.status.hostIP' | cut -d'"' -f2`
 IP=`echo $EXTERNAL_IP | sed "s|\.|-|g"`
 HN=ip-$IP.ec2.internal
+echo $EXTERNAL_IP
+echo $IP
+echo $HN
 
 # retrieve by host name and get the unique id
-LABEL=`kubectl get node -l kubernetes.io/hostname=$HN -o jsonpath='{.items[*].metadata.labels.role}' | cut -d- -f2`
+LABEL=`kubectl get node -l kubernetes.io/hostname=$HN -o jsonpath='{.items[*].metadata.labels.podid}' | cut -d'-' -f2`
 
-if [ "$1" = "m" ]; then
-  INST_NAME="memory-instance-$LABEL"
-elif [ "$1" = "e" ]; then
-  EBS_VOLS=`kubectl get pod ebs-instance-$LABEL -o jsonpath='{.spec.volumes[*].awsElasticBlockStore.volumeID}'`
-
-  INST_NAME="ebs-instance-$LABEL"
+if [ "$2" = "memory" ]; then
+  YML_FILE="yaml/igs/memory-ig.yml"
+elif [ "$2" = "ebs" ]; then
+  YML_FILE="yaml/igs/ebs-ig.yml"
+  EBS_VOLS=`kubectl get pod ebs-pod-$LABEL -o jsonpath='{.spec.volumes[*].awsElasticBlockStore.volumeID}'`
 else
   echo "Unrecognized node type: $1."
   exit 1
 fi
 
 # delete the pod and instance groups
-kubectl delete pod $INST_NAME
-kops delete instancegroup $INST_NAME --yes
+NUM_PREV=$(get_prev_num $2)
+((NUM_PREV--))
+sed "s|NUM_DUMMY|$NUM_PREV|g" $YML_FILE > tmp.yml
+sed -i "s|CLUSTER_NAME|$NAME|g"  tmp.yml
+echo $YML_FILE
+echo $NUM_PREV
+
+kubectl delete pod memory-pod-$LABEL
+kubectl delete node $HN
+kops replace -f tml.yml --force >> /dev/null 2>&1
+rm tmp.yml
 
 # if we're dropping an ebs instance, delete the volume
-if [ "$1" = "e" ]; then
+if [ "$1" = "ebs" ]; then
   for vol in $EBS_VOLS; do
     aws ec2 delete-volume --volume-id $vol
   done
