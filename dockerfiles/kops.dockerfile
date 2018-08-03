@@ -39,8 +39,9 @@ RUN mv ./kubectl /usr/local/bin/kubectl
 # can just provide a script to this generally, independent of running it here
 
 RUN git clone https://github.com/fluent-project/fluent
+COPY start_kops.sh /fluent/k8s/start_kops.sh
 
 # make kube root dir
 RUN mkdir /root/.kube
 
-CMD sh start_kops.sh
+CMD sh fluent/k8s/start_kops.sh

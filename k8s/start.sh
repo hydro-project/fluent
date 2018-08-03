@@ -30,16 +30,16 @@ gen_yml_list() {
   echo -e "$RESULT"
 }
 
-cd tiered-storage
+cd fluent
 mkdir -p conf
-IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'`
+IP=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1 }'`
 
 if [ "$1" = "mn" ]; then
   echo -e "monitoring:" > conf/config.yml
   echo -e "    mgmt_ip: $MGMT_IP" >> conf/config.yml
   echo -e "    ip: $IP" >> conf/config.yml
 
-  ./build/src/bedrock/monitoring
+  ./build/kvs/src/monitor/flmonitor
 elif [ "$1" = "r" ]; then
   echo -e "routing:" > conf/config.yml
   echo -e "    ip: $IP" >> conf/config.yml
@@ -48,7 +48,7 @@ elif [ "$1" = "r" ]; then
   echo -e "    monitoring:" >> conf/config.yml
   echo -e "$LST" >> conf/config.yml
 
-  ./build/src/bedrock/routing
+  ./build/kvs/src/route/flroute
 elif [ "$1" = "b" ]; then
   echo -e "user:" > conf/config.yml
   echo -e "    ip: $IP" >> conf conf/config.yml
@@ -61,7 +61,7 @@ elif [ "$1" = "b" ]; then
   echo -e "    routing:" >> conf/config.yml
   echo -e "$LST" >> conf/config.yml
 
-  ./build/src/bedrock/benchmark
+  ./build/kvs/src/benchmark/flbench
 else
   echo -e "server:" > conf/config.yml
   echo -e "    seed_ip: $SEED_IP" >> conf/config.yml
@@ -75,6 +75,6 @@ else
   echo -e "    routing:" >> conf/config.yml
   echo -e "$LST" >> conf/config.yml
 
-  ./build/src/bedrock/server
+  ./build/kvs/src/kvs/flkvs
 fi
 
