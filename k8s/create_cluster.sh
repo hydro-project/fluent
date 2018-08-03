@@ -69,12 +69,15 @@ done
 # copy kubecfg into the kops pod, so it can execute kops commands
 kubectl cp /home/ubuntu/.kube/config kops-pod:/root/.kube/config > /dev/null 2>&1
 
+echo "Adding monitoring nodes..."
 sed "s|MGMT_IP_DUMMY|$MGMT_IP|g" yaml/pods/monitoring-pod.yml > tmp.yml
 kubectl create -f tmp.yml > /dev/null 2>&1
 rm tmp.yml
 
+echo "Adding routing nodes..."
 ./add_nodes.sh 0 0 $3 0
 
+echo "Waiting for routing nodes to start..."
 # wait for all proxies to be ready
 ROUTING_IPS=`kubectl get pods -l role=routing -o jsonpath='{.items[*].status.podIP}'`
 ROUTING_IP_ARR=($ROUTING_IPS)
@@ -83,6 +86,7 @@ while [ ${#ROUTING_IP_ARR[@]} -ne $3 ]; do
   ROUTING_IP_ARR=($ROUTING_IPS)
 done
 
+echo "Starting all other kinds of nodes..."
 ./add_nodes.sh $1 $2 0 $4
 
 # copy the SSH key into the management node... doing this later because we need
