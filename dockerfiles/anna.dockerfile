@@ -25,7 +25,7 @@ RUN sudo apt-add-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trus
 RUN apt-get update
 
 # this uses --force-yes because of some disk space warning
-RUN sudo apt-get install clang-5.0 lldb-5.0 --force-yes
+RUN sudo apt-get install -y clang-5.0 lldb-5.0 --force-yes
 RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-5.0 1
 RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-5.0 1
 RUN apt-get install -y libc++-dev libc++abi-dev 
@@ -55,5 +55,6 @@ RUN rm -rf protobuf-3.5.1 protobuf-all-3.5.1.zip
 # build Bedrock
 RUN git clone https://github.com/fluent-project/fluent
 RUN cd fluent && bash scripts/build-all.sh -j4 -bRelease
+COPY start.sh /fluent/k8s/start.sh
 
 CMD bash fluent/k8s/start.sh $SERVER_TYPE
