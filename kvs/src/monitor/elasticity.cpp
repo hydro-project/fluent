@@ -30,9 +30,11 @@ void remove_node(std::shared_ptr<spdlog::logger> logger, ServerThread& node,
                  std::unordered_map<Address, unsigned>& departing_node_map,
                  MonitoringThread& mt) {
   auto connection_addr = node.get_self_depart_connect_addr();
-  departing_node_map[node.get_ip()] = kTierDataMap[1].thread_number_;
+  departing_node_map[node.get_private_ip()] = kTierDataMap[1].thread_number_;
   auto ack_addr = mt.get_depart_done_connect_addr();
-  logger->info("Removing {} node {}.", tier, node.get_ip());
+
+  logger->info("Removing node {}/{} from tier {}.", node.get_public_ip(),
+               node.get_private_ip(), tier);
   kZmqUtil->send_string(ack_addr, &pushers[connection_addr]);
   removing_flag = true;
 }

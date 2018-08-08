@@ -49,8 +49,8 @@ class ServerHandlerTest : public ::testing::Test {
   ServerHandlerTest() {
     kvs = new MemoryKVS();
     serializer = new MemorySerializer(kvs);
-    wt = ServerThread(ip, thread_id);
-    global_hash_ring_map[1].insert(ip, thread_id);
+    wt = ServerThread(ip, ip, thread_id);
+    global_hash_ring_map[1].insert(ip, ip, thread_id);
   }
 
   virtual ~ServerHandlerTest() {

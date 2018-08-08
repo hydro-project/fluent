@@ -15,7 +15,7 @@
 #include "kvs/kvs_handlers.hpp"
 
 void rep_factor_change_handler(
-    Address ip, unsigned thread_id, unsigned& seed,
+    Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
@@ -29,7 +29,7 @@ void rep_factor_change_handler(
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
       kZmqUtil->send_string(
           serialized,
-          &pushers[ServerThread(ip, tid)
+          &pushers[ServerThread(public_ip, private_ip, tid)
                        .get_replication_factor_change_connect_addr()]);
     }
   }

@@ -35,6 +35,6 @@ ServerThreadSet MockHashRingUtil::get_responsible_threads(
   ServerThreadSet threads;
   succeed = true;
 
-  threads.insert(ServerThread("127.0.0.1", 0));
+  threads.insert(ServerThread("127.0.0.1", "127.0.0.1", 0));
   return threads;
 }

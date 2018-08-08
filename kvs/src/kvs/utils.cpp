@@ -87,7 +87,7 @@ bool is_primary_replica(
     }
     auto global_pos = global_hash_ring_map[kSelfTierId].find(key);
     if (global_pos != global_hash_ring_map[kSelfTierId].end() &&
-        st.get_ip().compare(global_pos->second.get_ip()) == 0) {
+        st.get_private_ip().compare(global_pos->second.get_private_ip()) == 0) {
       auto local_pos = local_hash_ring_map[kSelfTierId].find(key);
       if (local_pos != local_hash_ring_map[kSelfTierId].end() &&
           st.get_tid() == local_pos->second.get_tid()) {

@@ -47,66 +47,79 @@ const unsigned kBenchmarkCommandBasePort = 6900;
 // TODO(vikram): All the return "tcp://" + ip_ should be made into one command
 // to reduce string addition
 class ServerThread {
-  Address ip_;
+  Address public_ip_;
+  Address private_ip_;
   unsigned tid_;
   unsigned virtual_num_;
 
  public:
   ServerThread() {}
-  ServerThread(Address ip, unsigned tid) : ip_(ip), tid_(tid) {}
-  ServerThread(Address ip, unsigned tid, unsigned virtual_num) :
-      ip_(ip),
+  ServerThread(Address public_ip, Address private_ip, unsigned tid) :
+      public_ip_(public_ip),
+      private_ip_(private_ip),
+      tid_(tid) {}
+  ServerThread(Address public_ip, Address private_ip, unsigned tid,
+               unsigned virtual_num) :
+      public_ip_(public_ip),
+      private_ip_(private_ip),
       tid_(tid),
       virtual_num_(virtual_num) {}
 
-  Address get_ip() const { return ip_; }
+  Address get_public_ip() const { return public_ip_; }
+  Address get_private_ip() const { return private_ip_; }
   unsigned get_tid() const { return tid_; }
   unsigned get_virtual_num() const { return virtual_num_; }
-  std::string get_id() const { return ip_ + ":" + std::to_string(tid_); }
+  std::string get_id() const {
+    return private_ip_ + ":" + std::to_string(tid_);
+  }
   std::string get_virtual_id() const {
-    return ip_ + ":" + std::to_string(tid_) + "_" +
+    return private_ip_ + ":" + std::to_string(tid_) + "_" +
            std::to_string(virtual_num_);
   }
   Address get_node_join_connect_addr() const {
-    return "tcp://" + ip_ + ":" + std::to_string(tid_ + kNodeJoinBasePort);
+    return "tcp://" + private_ip_ + ":" +
+           std::to_string(tid_ + kNodeJoinBasePort);
   }
   Address get_node_join_bind_addr() const {
     return "tcp://*:" + std::to_string(tid_ + kNodeJoinBasePort);
   }
   Address get_node_depart_connect_addr() const {
-    return "tcp://" + ip_ + ":" + std::to_string(tid_ + kNodeDepartBasePort);
+    return "tcp://" + private_ip_ + ":" +
+           std::to_string(tid_ + kNodeDepartBasePort);
   }
   Address get_node_depart_bind_addr() const {
     return "tcp://*:" + std::to_string(tid_ + kNodeDepartBasePort);
   }
   Address get_self_depart_connect_addr() const {
-    return "tcp://" + ip_ + ":" + std::to_string(tid_ + kSelfDepartBasePort);
+    return "tcp://" + private_ip_ + ":" +
+           std::to_string(tid_ + kSelfDepartBasePort);
   }
   Address get_self_depart_bind_addr() const {
     return "tcp://*:" + std::to_string(tid_ + kSelfDepartBasePort);
   }
   Address get_request_pulling_connect_addr() const {
-    return "tcp://" + ip_ + ":" +
+    return "tcp://" + public_ip_ + ":" +
            std::to_string(tid_ + kServerRequestPullingBasePort);
   }
   Address get_request_pulling_bind_addr() const {
     return "tcp://*:" + std::to_string(tid_ + kServerRequestPullingBasePort);
   }
   Address get_replication_factor_connect_addr() const {
-    return "tcp://" + ip_ + ":" +
+    return "tcp://" + private_ip_ + ":" +
            std::to_string(tid_ + kServerReplicationFactorBasePort);
   }
   Address get_replication_factor_bind_addr() const {
     return "tcp://*:" + std::to_string(tid_ + kServerReplicationFactorBasePort);
   }
   Address get_gossip_connect_addr() const {
-    return "tcp://" + ip_ + ":" + std::to_string(tid_ + kGossipBasePort);
+    return "tcp://" + private_ip_ + ":" +
+           std::to_string(tid_ + kGossipBasePort);
   }
   Address get_gossip_bind_addr() const {
     return "tcp://*:" + std::to_string(tid_ + kGossipBasePort);
   }
   Address get_replication_factor_change_connect_addr() const {
-    return "tcp://" + ip_ + ":" +
+    return "tcp://" + private_ip_ + ":" +
            std::to_string(tid_ + kServerReplicationFactorChangeBasePort);
   }
   Address get_replication_factor_change_bind_addr() const {

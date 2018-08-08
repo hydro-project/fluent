@@ -15,7 +15,7 @@
 #include "kvs/kvs_handlers.hpp"
 
 void node_join_handler(
-    unsigned thread_id, unsigned& seed, Address ip,
+    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
@@ -26,23 +26,26 @@ void node_join_handler(
   std::vector<std::string> v;
   split(serialized, ':', v);
   unsigned tier = stoi(v[0]);
-  Address new_server_ip = v[1];
+  Address new_server_public_ip = v[1];
+  Address new_server_private_ip = v[2];
 
   // update global hash ring
-  bool inserted = global_hash_ring_map[tier].insert(new_server_ip, 0);
+  bool inserted = global_hash_ring_map[tier].insert(new_server_public_ip,
+                                                    new_server_private_ip, 0);
 
   if (inserted) {
     logger->info("Received a node join for tier {}. New node is {}", tier,
-                 new_server_ip);
+                 new_server_public_ip);
 
     // only thread 0 communicates with other nodes and receives distributed
     // join messages; it communicates that information to non-0 threads on its
     // own machine
     if (thread_id == 0) {
       // send my IP to the new server node
-      kZmqUtil->send_string(std::to_string(kSelfTierId) + ":" + ip,
-                            &pushers[ServerThread(new_server_ip, 0)
-                                         .get_node_join_connect_addr()]);
+      kZmqUtil->send_string(
+          std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip,
+          &pushers[ServerThread(new_server_public_ip, new_server_private_ip, 0)
+                       .get_node_join_connect_addr()]);
 
       // gossip the new node address between server nodes to ensure consistency
       for (const auto& global_pair : global_hash_ring_map) {
@@ -51,9 +54,9 @@ void node_join_handler(
         for (const ServerThread& st : hash_ring.get_unique_servers()) {
           // if the node is not myself and not the newly joined node, send the
           // ip of the newly joined node in case of a race condition
-          std::string server_ip = st.get_ip();
-          if (server_ip.compare(ip) != 0 &&
-              server_ip.compare(new_server_ip) != 0) {
+          std::string server_ip = st.get_private_ip();
+          if (server_ip.compare(private_ip) != 0 &&
+              server_ip.compare(new_server_private_ip) != 0) {
             kZmqUtil->send_string(serialized,
                                   &pushers[st.get_node_join_connect_addr()]);
           }
@@ -66,9 +69,9 @@ void node_join_handler(
 
       // tell all worker threads about the new node join
       for (unsigned tid = 1; tid < kThreadNum; tid++) {
-        kZmqUtil->send_string(
-            serialized,
-            &pushers[ServerThread(ip, tid).get_node_join_connect_addr()]);
+        kZmqUtil->send_string(serialized,
+                              &pushers[ServerThread(public_ip, private_ip, tid)
+                                           .get_node_join_connect_addr()]);
       }
     }
 

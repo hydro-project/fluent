@@ -37,7 +37,7 @@ class RoutingHandlerTest : public ::testing::Test {
 
   RoutingHandlerTest() {
     rt = RoutingThread(ip, thread_id);
-    global_hash_ring_map[1].insert(ip, thread_id);
+    global_hash_ring_map[1].insert(ip, ip, thread_id);
   }
 
  public:

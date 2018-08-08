@@ -27,7 +27,7 @@ using StorageStat =
     std::unordered_map<Address,
                        std::unordered_map<unsigned, unsigned long long>>;
 
-using OccupancyStat = std::unordered_map<
+using OccupancyStats = std::unordered_map<
     Address, std::unordered_map<unsigned, std::pair<double, unsigned>>>;
 
 using AccessStat =

@@ -43,8 +43,8 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 HashRingUtil hash_ring_util;
 HashRingUtilInterface* kHashRingUtil = &hash_ring_util;
 
-void run(unsigned thread_id, Address ip, Address seed_ip,
-         std::vector<Address> routing_addresses,
+void run(unsigned thread_id, Address public_ip, Address private_ip,
+         Address seed_ip, std::vector<Address> routing_addresses,
          std::vector<Address> monitoring_addresses) {
   std::string log_file = "log_" + std::to_string(thread_id) + ".txt";
   std::string logger_name = "server_logger_" + std::to_string(thread_id);
@@ -52,7 +52,7 @@ void run(unsigned thread_id, Address ip, Address seed_ip,
   logger->flush_on(spdlog::level::info);
 
   // each thread has a handle to itself
-  ServerThread wt = ServerThread(ip, thread_id);
+  ServerThread wt = ServerThread(public_ip, private_ip, thread_id);
 
   unsigned seed = time(NULL);
   seed += thread_id;
@@ -94,18 +94,19 @@ void run(unsigned thread_id, Address ip, Address seed_ip,
 
   // populate addresses
   for (const auto& tier : membership.tiers()) {
-    for (const std::string& other_ip : tier.ips()) {
-      global_hash_ring_map[tier.tier_id()].insert(other_ip, 0);
+    for (const auto server : tier.servers()) {
+      global_hash_ring_map[tier.tier_id()].insert(server.public_ip(),
+                                                  server.private_ip(), 0);
     }
   }
 
   // add itself to global hash ring
-  global_hash_ring_map[kSelfTierId].insert(ip, 0);
+  global_hash_ring_map[kSelfTierId].insert(public_ip, private_ip, 0);
 
   // form local hash rings
   for (const auto& tier_pair : kTierDataMap) {
     for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(ip, tid);
+      local_hash_ring_map[tier_pair.first].insert(public_ip, private_ip, tid);
     }
   }
 
@@ -116,14 +117,16 @@ void run(unsigned thread_id, Address ip, Address seed_ip,
       GlobalHashRing hash_ring = global_pair.second;
 
       for (const ServerThread& st : hash_ring.get_unique_servers()) {
-        if (st.get_ip().compare(ip) != 0) {
-          kZmqUtil->send_string(std::to_string(kSelfTierId) + ":" + ip,
-                                &pushers[st.get_node_join_connect_addr()]);
+        if (st.get_private_ip().compare(private_ip) != 0) {
+          kZmqUtil->send_string(
+              std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip,
+              &pushers[st.get_node_join_connect_addr()]);
         }
       }
     }
 
-    std::string msg = "join:" + std::to_string(kSelfTierId) + ":" + ip;
+    std::string msg = "join:" + std::to_string(kSelfTierId) + ":" + public_ip +
+                      ":" + private_ip;
 
     // notify proxies that this node has joined
     for (const std::string& address : routing_addresses) {
@@ -218,9 +221,9 @@ void run(unsigned thread_id, Address ip, Address seed_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&join_puller);
-      node_join_handler(thread_id, seed, ip, logger, serialized,
-                        global_hash_ring_map, local_hash_ring_map, key_size_map,
-                        placement, join_remove_set, pushers, wt,
+      node_join_handler(thread_id, seed, public_ip, private_ip, logger,
+                        serialized, global_hash_ring_map, local_hash_ring_map,
+                        key_size_map, placement, join_remove_set, pushers, wt,
                         join_addr_keyset_map);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -234,8 +237,8 @@ void run(unsigned thread_id, Address ip, Address seed_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&depart_puller);
-      node_depart_handler(thread_id, ip, global_hash_ring_map, logger,
-                          serialized, pushers);
+      node_depart_handler(thread_id, public_ip, private_ip,
+                          global_hash_ring_map, logger, serialized, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -248,8 +251,8 @@ void run(unsigned thread_id, Address ip, Address seed_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&self_depart_puller);
-      self_depart_handler(thread_id, seed, ip, logger, serialized,
-                          global_hash_ring_map, local_hash_ring_map,
+      self_depart_handler(thread_id, seed, public_ip, private_ip, logger,
+                          serialized, global_hash_ring_map, local_hash_ring_map,
                           key_size_map, placement, routing_addresses,
                           monitoring_addresses, wt, pushers, serializer);
 
@@ -318,10 +321,10 @@ void run(unsigned thread_id, Address ip, Address seed_ip,
 
       std::string serialized =
           kZmqUtil->recv_string(&replication_factor_change_puller);
-      rep_factor_change_handler(ip, thread_id, seed, logger, serialized,
-                                global_hash_ring_map, local_hash_ring_map,
-                                placement, key_size_map, local_changeset, wt,
-                                serializer, pushers);
+      rep_factor_change_handler(public_ip, private_ip, thread_id, seed, logger,
+                                serialized, global_hash_ring_map,
+                                local_hash_ring_map, placement, key_size_map,
+                                local_changeset, wt, serializer, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -594,7 +597,8 @@ int main(int argc, char* argv[]) {
   kDefaultLocalReplication = replication["local"].as<unsigned>();
 
   YAML::Node server = conf["server"];
-  Address ip = server["ip"].as<std::string>();
+  Address public_ip = server["public_ip"].as<std::string>();
+  Address private_ip = server["private_ip"].as<std::string>();
 
   std::vector<Address> routing_addresses;
   std::vector<Address> monitoring_addresses;
@@ -621,9 +625,11 @@ int main(int argc, char* argv[]) {
   // start the initial threads based on kThreadNum
   std::vector<std::thread> worker_threads;
   for (unsigned thread_id = 1; thread_id < kThreadNum; thread_id++) {
-    worker_threads.push_back(std::thread(
-        run, thread_id, ip, seed_ip, routing_addresses, monitoring_addresses));
+    worker_threads.push_back(std::thread(run, thread_id, public_ip, private_ip,
+                                         seed_ip, routing_addresses,
+                                         monitoring_addresses));
   }
 
-  run(0, ip, seed_ip, routing_addresses, monitoring_addresses);
+  run(0, public_ip, private_ip, seed_ip, routing_addresses,
+      monitoring_addresses);
 }

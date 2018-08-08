@@ -23,28 +23,32 @@ void depart_done_handler(
   std::vector<std::string> tokens;
   split(serialized, '_', tokens);
 
-  Address departed_ip = tokens[0];
-  unsigned tier_id = stoi(tokens[1]);
+  Address departed_public_ip = tokens[0];
+  Address departed_private_ip = tokens[1];
+  unsigned tier_id = stoi(tokens[2]);
 
-  if (departing_node_map.find(departed_ip) != departing_node_map.end()) {
-    departing_node_map[departed_ip] -= 1;
+  if (departing_node_map.find(departed_private_ip) !=
+      departing_node_map.end()) {
+    departing_node_map[departed_private_ip] -= 1;
 
-    if (departing_node_map[departed_ip] == 0) {
+    if (departing_node_map[departed_private_ip] == 0) {
       if (tier_id == 1) {
-        logger->info("Removing memory node {}.", departed_ip);
+        logger->info("Removing memory node {}/{}.", departed_public_ip,
+                     departed_private_ip);
 
         std::string shell_command = "curl -X POST http://" +
                                     management_address + "/remove/memory/" +
-                                    departed_ip;
+                                    departed_private_ip;
         system(shell_command.c_str());
 
         removing_memory_node = false;
       } else {
-        logger->info("Removing ebs node {}", departed_ip);
+        logger->info("Removing EBS node {}/{}.", departed_public_ip,
+                     departed_private_ip);
 
         std::string shell_command = "curl -X POST http://" +
                                     management_address + "/remove/ebs/" +
-                                    departed_ip;
+                                    departed_private_ip;
         system(shell_command.c_str());
 
         removing_ebs_node = false;
@@ -52,7 +56,7 @@ void depart_done_handler(
 
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();
-      departing_node_map.erase(departed_ip);
+      departing_node_map.erase(departed_private_ip);
     }
   } else {
     logger->error("Missing entry in the depart done map.");

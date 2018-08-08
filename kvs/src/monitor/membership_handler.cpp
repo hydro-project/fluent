@@ -20,8 +20,8 @@ void membership_handler(
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
     std::chrono::time_point<std::chrono::system_clock>& grace_start,
     std::vector<Address>& routing_address, StorageStat& memory_tier_storage,
-    StorageStat& ebs_tier_storage, OccupancyStat& memory_tier_occupancy,
-    OccupancyStat& ebs_tier_occupancy,
+    StorageStat& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
+    OccupancyStats& ebs_tier_occupancy,
     std::unordered_map<Key, std::unordered_map<Address, unsigned>>&
         key_access_frequency) {
   std::vector<std::string> v;
@@ -29,13 +29,16 @@ void membership_handler(
   split(serialized, ':', v);
   std::string type = v[0];
   unsigned tier = stoi(v[1]);
-  Address new_server_ip = v[2];
+  Address new_server_public_ip = v[2];
+  Address new_server_private_ip = v[3];
 
   if (type == "join") {
-    logger->info("Received join from server {} in tier {}.", new_server_ip,
+    logger->info("Received join from server {}/{} in tier {}.",
+                 new_server_public_ip, new_server_private_ip,
                  std::to_string(tier));
     if (tier == 1) {
-      global_hash_ring_map[tier].insert(new_server_ip, 0);
+      global_hash_ring_map[tier].insert(new_server_public_ip,
+                                        new_server_private_ip, 0);
 
       if (adding_memory_node > 0) {
         adding_memory_node -= 1;
@@ -44,7 +47,8 @@ void membership_handler(
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();
     } else if (tier == 2) {
-      global_hash_ring_map[tier].insert(new_server_ip, 0);
+      global_hash_ring_map[tier].insert(new_server_public_ip,
+                                        new_server_private_ip, 0);
 
       if (adding_ebs_node > 0) {
         adding_ebs_node -= 1;
@@ -53,7 +57,7 @@ void membership_handler(
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();
     } else if (tier == 0) {
-      routing_address.push_back(new_server_ip);
+      routing_address.push_back(new_server_public_ip);
     } else {
       logger->error("Invalid tier: {}.", std::to_string(tier));
     }
@@ -64,29 +68,32 @@ void membership_handler(
                    std::to_string(global_pair.second.size()));
     }
   } else if (type == "depart") {
-    logger->info("Received depart from server {}.", new_server_ip);
+    logger->info("Received depart from server {}/{}.", new_server_public_ip,
+                 new_server_private_ip);
 
     // update hash ring
+    global_hash_ring_map[tier].remove(new_server_public_ip,
+                                      new_server_private_ip, 0);
     if (tier == 1) {
-      global_hash_ring_map[tier].remove(new_server_ip, 0);
-      memory_tier_storage.erase(new_server_ip);
-      memory_tier_occupancy.erase(new_server_ip);
+      memory_tier_storage.erase(new_server_private_ip);
+      memory_tier_occupancy.erase(new_server_private_ip);
 
       // NOTE: No const here because we are calling erase
       for (auto& key_access_pair : key_access_frequency) {
         for (unsigned i = 0; i < kMemoryThreadCount; i++) {
-          key_access_pair.second.erase(new_server_ip + ":" + std::to_string(i));
+          key_access_pair.second.erase(new_server_private_ip + ":" +
+                                       std::to_string(i));
         }
       }
     } else if (tier == 2) {
-      global_hash_ring_map[tier].remove(new_server_ip, 0);
-      ebs_tier_storage.erase(new_server_ip);
-      ebs_tier_occupancy.erase(new_server_ip);
+      ebs_tier_storage.erase(new_server_private_ip);
+      ebs_tier_occupancy.erase(new_server_private_ip);
 
       // NOTE: No const here because we are calling erase
       for (auto& key_access_pair : key_access_frequency) {
         for (unsigned i = 0; i < kEbsThreadCount; i++) {
-          key_access_pair.second.erase(new_server_ip + ":" + std::to_string(i));
+          key_access_pair.second.erase(new_server_private_ip + ":" +
+                                       std::to_string(i));
         }
       }
     } else {

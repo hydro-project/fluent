@@ -15,7 +15,7 @@
 #include "kvs/kvs_handlers.hpp"
 
 void node_depart_handler(
-    unsigned thread_id, Address ip,
+    unsigned thread_id, Address public_ip, Address private_ip,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     SocketCache& pushers) {
@@ -23,19 +23,21 @@ void node_depart_handler(
   split(serialized, ':', v);
 
   unsigned tier = stoi(v[0]);
-  Address departing_server_ip = v[1];
-  logger->info("Received departure for node {} on tier {}.",
-               departing_server_ip, tier);
+  Address departing_server_public_ip = v[1];
+  Address departing_server_private_ip = v[2];
+  logger->info("Received departure for node {}/{} on tier {}.",
+               departing_server_public_ip, departing_server_private_ip, tier);
 
   // update hash ring
-  global_hash_ring_map[tier].remove(departing_server_ip, 0);
+  global_hash_ring_map[tier].remove(departing_server_public_ip,
+                                    departing_server_private_ip, 0);
 
   if (thread_id == 0) {
     // tell all worker threads about the node departure
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
-      kZmqUtil->send_string(
-          serialized,
-          &pushers[ServerThread(ip, tid).get_node_depart_connect_addr()]);
+      kZmqUtil->send_string(serialized,
+                            &pushers[ServerThread(public_ip, private_ip, tid)
+                                         .get_node_depart_connect_addr()]);
     }
 
     for (const auto& pair : global_hash_ring_map) {

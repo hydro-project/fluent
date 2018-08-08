@@ -37,9 +37,10 @@ TEST_F(RoutingHandlerTest, Seed) {
   // check serialized tier size, tier_id, ip
   EXPECT_EQ(membership.tiers_size(), 1);
   for (const auto& tier : membership.tiers()) {
-    for (const std::string& other_ip : tier.ips()) {
+    for (const auto& other : tier.servers()) {
       EXPECT_EQ(tier.tier_id(), 1);
-      EXPECT_EQ(other_ip, ip);
+      EXPECT_EQ(other.private_ip(), ip);
+      EXPECT_EQ(other.public_ip(), ip);
     }
   }
 }

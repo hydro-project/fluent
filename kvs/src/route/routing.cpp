@@ -49,7 +49,8 @@ void run(unsigned thread_id, Address ip,
     // notify monitoring nodes
     for (const std::string &address : monitoring_addresses) {
       kZmqUtil->send_string(
-          "join:0:" + ip,
+          // add null because it expects two IPs from server nodes...
+          "join:0:" + ip + ":NULL",
           &pushers[MonitoringThread(address).get_notify_connect_addr()]);
     }
   }
@@ -64,7 +65,7 @@ void run(unsigned thread_id, Address ip,
   // form local hash rings
   for (const auto &tier_pair : kTierDataMap) {
     for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(ip, tid);
+      local_hash_ring_map[tier_pair.first].insert(ip, ip, tid);
     }
   }
 

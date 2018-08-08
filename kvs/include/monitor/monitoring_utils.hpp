@@ -65,7 +65,8 @@ struct SummaryStats {
     max_ebs_occupancy = 0;
     min_ebs_occupancy = 1;
     avg_ebs_occupancy = 0;
-    min_occupancy_memory_ip = Address();
+    min_occupancy_memory_public_ip = Address();
+    min_occupancy_memory_private_ip = Address();
     avg_latency = 0;
     total_throughput = 0;
   }
@@ -88,7 +89,8 @@ struct SummaryStats {
   double max_ebs_occupancy;
   double min_ebs_occupancy;
   double avg_ebs_occupancy;
-  Address min_occupancy_memory_ip;
+  Address min_occupancy_memory_public_ip;
+  Address min_occupancy_memory_private_ip;
   double avg_latency;
   double total_throughput;
 };
@@ -121,14 +123,14 @@ void collect_internal_stats(
         key_access_frequency,
     std::unordered_map<Key, unsigned>& key_size,
     StorageStat& memory_tier_storage, StorageStat& ebs_tier_storage,
-    OccupancyStat& memory_tier_occupancy, OccupancyStat& ebs_tier_occupancy,
+    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
     AccessStat& memory_tier_access, AccessStat& ebs_tier_access);
 
 void compute_summary_stats(
     std::unordered_map<Key, std::unordered_map<Address, unsigned>>&
         key_access_frequency,
     StorageStat& memory_tier_storage, StorageStat& ebs_tier_storage,
-    OccupancyStat& memory_tier_occupancy, OccupancyStat& ebs_tier_occupancy,
+    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
     AccessStat& memory_tier_access, AccessStat& ebs_tier_access,
     std::unordered_map<Key, unsigned>& key_access_summary, SummaryStats& ss,
     std::shared_ptr<spdlog::logger> logger, unsigned& server_monitoring_epoch);

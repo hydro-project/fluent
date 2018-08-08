@@ -37,8 +37,13 @@ message KeyAccessData {
 
 message TierMembership {
   message Tier {
+    message Server {
+      required string public_ip = 1;
+      required string private_ip = 2;
+    }
+ 
     required uint32 tier_id = 1;
-    repeated string ips = 2;
+    repeated Server servers = 2;
   }
 
   required uint64 start_time = 1;

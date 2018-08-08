@@ -24,8 +24,8 @@ void membership_handler(
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
     std::chrono::time_point<std::chrono::system_clock>& grace_start,
     std::vector<Address>& routing_address, StorageStat& memory_tier_storage,
-    StorageStat& ebs_tier_storage, OccupancyStat& memory_tier_occupancy,
-    OccupancyStat& ebs_tier_occupancy,
+    StorageStat& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
+    OccupancyStats& ebs_tier_occupancy,
     std::unordered_map<Key, std::unordered_map<Address, unsigned>>&
         key_access_frequency);
 
