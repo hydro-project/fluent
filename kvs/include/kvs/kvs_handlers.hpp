@@ -21,7 +21,7 @@
 #include "utils/server_utils.hpp"
 
 void node_join_handler(
-    unsigned thread_id, unsigned& seed, Address ip,
+    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
@@ -31,13 +31,13 @@ void node_join_handler(
     ServerThread& wt, AddressKeysetMap& join_addr_keyset_map);
 
 void node_depart_handler(
-    unsigned thread_id, Address ip,
+    unsigned thread_id, Address public_ip, Address private_ip,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     SocketCache& pushers);
 
 void self_depart_handler(
-    unsigned thread_id, unsigned& seed, Address ip,
+    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
@@ -88,7 +88,7 @@ void rep_factor_response_handler(
     Serializer* serializer, SocketCache& pushers);
 
 void rep_factor_change_handler(
-    Address ip, unsigned thread_id, unsigned& seed,
+    Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,

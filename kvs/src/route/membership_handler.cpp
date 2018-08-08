@@ -24,14 +24,17 @@ void membership_handler(
   split(serialized, ':', v);
   std::string type = v[0];
   unsigned tier = stoi(v[1]);
-  Address new_server_ip = v[2];
+  Address new_server_public_ip = v[2];
+  Address new_server_private_ip = v[3];
 
   if (type == "join") {
-    logger->info("Received join from server {} in tier {}.", new_server_ip,
+    logger->info("Received join from server {}/{} in tier {}.",
+                 new_server_public_ip, new_server_private_ip,
                  std::to_string(tier));
 
     // update hash ring
-    bool inserted = global_hash_ring_map[tier].insert(new_server_ip, 0);
+    bool inserted = global_hash_ring_map[tier].insert(new_server_public_ip,
+                                                      new_server_private_ip, 0);
 
     if (inserted) {
       if (thread_id == 0) {
@@ -44,8 +47,10 @@ void membership_handler(
           for (const ServerThread& st : hash_ring.get_unique_servers()) {
             // if the node is not the newly joined node, send the ip of the
             // newly joined node
-            if (st.get_ip().compare(new_server_ip) != 0) {
-              kZmqUtil->send_string(std::to_string(tier) + ":" + new_server_ip,
+            if (st.get_private_ip().compare(new_server_private_ip) != 0) {
+              kZmqUtil->send_string(std::to_string(tier) + ":" +
+                                        new_server_public_ip + ":" +
+                                        new_server_private_ip,
                                     &pushers[st.get_node_join_connect_addr()]);
             }
           }
@@ -66,8 +71,10 @@ void membership_handler(
                    std::to_string(global_pair.second.size()));
     }
   } else if (type == "depart") {
-    logger->info("Received depart from server {}.", new_server_ip);
-    global_hash_ring_map[tier].remove(new_server_ip, 0);
+    logger->info("Received depart from server {}/{}.", new_server_public_ip,
+                 new_server_private_ip, new_server_private_ip);
+    global_hash_ring_map[tier].remove(new_server_public_ip,
+                                      new_server_private_ip, 0);
 
     if (thread_id == 0) {
       // tell all worker threads about the message

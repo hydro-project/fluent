@@ -24,7 +24,7 @@ TEST_F(ServerHandlerTest, SelfDepart) {
 
   std::string serialized = "tcp://127.0.0.2:6560";
 
-  self_depart_handler(thread_id, seed, ip, logger, serialized,
+  self_depart_handler(thread_id, seed, ip, ip, logger, serialized,
                       global_hash_ring_map, local_hash_ring_map, key_size_map,
                       placement, routing_address, monitoring_address, wt,
                       pushers, serializer);
@@ -34,7 +34,7 @@ TEST_F(ServerHandlerTest, SelfDepart) {
 
   std::vector<std::string> zmq_messages = get_zmq_messages();
   EXPECT_EQ(zmq_messages.size(), 1);
-  EXPECT_EQ(zmq_messages[0], ip + "_" + std::to_string(kSelfTierId));
+  EXPECT_EQ(zmq_messages[0], ip + "_" + ip + "_" + std::to_string(kSelfTierId));
 }
 
 // TODO: test should add keys and make sure that they are gossiped elsewhere

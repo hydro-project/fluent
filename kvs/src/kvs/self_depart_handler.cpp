@@ -15,7 +15,7 @@
 #include "kvs/kvs_handlers.hpp"
 
 void self_depart_handler(
-    unsigned thread_id, unsigned& seed, Address ip,
+    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
@@ -25,12 +25,13 @@ void self_depart_handler(
     std::vector<Address>& monitoring_address, ServerThread& wt,
     SocketCache& pushers, Serializer* serializer) {
   logger->info("Node is departing.");
-  global_hash_ring_map[kSelfTierId].remove(ip, 0);
+  global_hash_ring_map[kSelfTierId].remove(public_ip, private_ip, 0);
 
   // thread 0 notifies other nodes in the cluster (of all types) that it is
   // leaving the cluster
   if (thread_id == 0) {
-    std::string msg = std::to_string(kSelfTierId) + ":" + ip;
+    std::string msg =
+        std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip;
 
     for (const auto& global_pair : global_hash_ring_map) {
       GlobalHashRing hash_ring = global_pair.second;
@@ -40,7 +41,8 @@ void self_depart_handler(
       }
     }
 
-    msg = "depart:" + std::to_string(kSelfTierId) + ":" + ip;
+    msg = "depart:" + std::to_string(kSelfTierId) + ":" + public_ip + ":" +
+          private_ip;
 
     // notify all routing nodes
     for (const std::string& address : routing_address) {
@@ -56,9 +58,9 @@ void self_depart_handler(
 
     // tell all worker threads about the self departure
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
-      kZmqUtil->send_string(
-          serialized,
-          &pushers[ServerThread(ip, tid).get_self_depart_connect_addr()]);
+      kZmqUtil->send_string(serialized,
+                            &pushers[ServerThread(public_ip, private_ip, tid)
+                                         .get_self_depart_connect_addr()]);
     }
   }
 
@@ -84,6 +86,7 @@ void self_depart_handler(
   }
 
   send_gossip(addr_keyset_map, pushers, serializer);
-  kZmqUtil->send_string(ip + "_" + std::to_string(kSelfTierId),
-                        &pushers[serialized]);
+  kZmqUtil->send_string(
+      public_ip + "_" + private_ip + "_" + std::to_string(kSelfTierId),
+      &pushers[serialized]);
 }

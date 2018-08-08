@@ -24,7 +24,7 @@ void collect_internal_stats(
         key_access_frequency,
     std::unordered_map<Key, unsigned>& key_size,
     StorageStat& memory_tier_storage, StorageStat& ebs_tier_storage,
-    OccupancyStat& memory_tier_occupancy, OccupancyStat& ebs_tier_occupancy,
+    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
     AccessStat& memory_tier_access, AccessStat& ebs_tier_access) {
   std::unordered_map<Address, KeyRequest> addr_request_map;
 
@@ -63,10 +63,10 @@ void collect_internal_stats(
         if (tuple.error() == 0) {
           std::vector<std::string> tokens = split_metadata_key(tuple.key());
 
-          Address ip = tokens[1];
-          unsigned tid = stoi(tokens[2]);
-          unsigned tier_id = stoi(tokens[3]);
-          std::string metadata_type = tokens[4];
+          Address ip_pair = tokens[1] + "/" + tokens[2];
+          unsigned tid = stoi(tokens[3]);
+          unsigned tier_id = stoi(tokens[4]);
+          std::string metadata_type = tokens[5];
 
           if (metadata_type == "stat") {
             // deserialized the value
@@ -74,15 +74,15 @@ void collect_internal_stats(
             stat.ParseFromString(tuple.value());
 
             if (tier_id == 1) {
-              memory_tier_storage[ip][tid] = stat.storage_consumption();
-              memory_tier_occupancy[ip][tid] =
+              memory_tier_storage[ip_pair][tid] = stat.storage_consumption();
+              memory_tier_occupancy[ip_pair][tid] =
                   std::pair<double, unsigned>(stat.occupancy(), stat.epoch());
-              memory_tier_access[ip][tid] = stat.total_accesses();
+              memory_tier_access[ip_pair][tid] = stat.total_accesses();
             } else {
-              ebs_tier_storage[ip][tid] = stat.storage_consumption();
-              ebs_tier_occupancy[ip][tid] =
+              ebs_tier_storage[ip_pair][tid] = stat.storage_consumption();
+              ebs_tier_occupancy[ip_pair][tid] =
                   std::pair<double, unsigned>(stat.occupancy(), stat.epoch());
-              ebs_tier_access[ip][tid] = stat.total_accesses();
+              ebs_tier_access[ip_pair][tid] = stat.total_accesses();
             }
           } else if (metadata_type == "access") {
             // deserialized the value
@@ -91,7 +91,7 @@ void collect_internal_stats(
 
             for (const auto& key_count : access.keys()) {
               Key key = key_count.key();
-              key_access_frequency[key][ip + ":" + std::to_string(tid)] =
+              key_access_frequency[key][ip_pair + ":" + std::to_string(tid)] =
                   key_count.access_count();
             }
           } else if (metadata_type == "size") {
@@ -121,7 +121,7 @@ void compute_summary_stats(
     std::unordered_map<Key, std::unordered_map<Address, unsigned>>&
         key_access_frequency,
     StorageStat& memory_tier_storage, StorageStat& ebs_tier_storage,
-    OccupancyStat& memory_tier_occupancy, OccupancyStat& ebs_tier_occupancy,
+    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
     AccessStat& memory_tier_access, AccessStat& ebs_tier_access,
     std::unordered_map<Key, unsigned>& key_access_summary, SummaryStats& ss,
     std::shared_ptr<spdlog::logger> logger, unsigned& server_monitoring_epoch) {
@@ -276,7 +276,10 @@ void compute_summary_stats(
 
     if (node_occupancy < ss.min_memory_occupancy) {
       ss.min_memory_occupancy = node_occupancy;
-      ss.min_occupancy_memory_ip = memory_occ.first;
+      std::vector<std::string> ips;
+      split(memory_occ.first, '/', ips);
+      ss.min_occupancy_memory_public_ip = ips[0];
+      ss.min_occupancy_memory_private_ip = ips[1];
     }
 
     count += 1;

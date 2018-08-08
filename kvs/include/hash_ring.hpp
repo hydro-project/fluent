@@ -32,11 +32,11 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
     return unique_servers;
   }
 
-  bool insert(Address ip, unsigned tid) {
+  bool insert(Address public_ip, Address private_ip, unsigned tid) {
     bool succeed;
     for (unsigned virtual_num = 0; virtual_num < kVirtualThreadNum;
          virtual_num++) {
-      ServerThread st = ServerThread(ip, tid, virtual_num);
+      ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num);
       succeed = ConsistentHashMap<ServerThread, H>::insert(st).second;
       if (succeed) {
         unique_servers.insert(st);
@@ -45,10 +45,10 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
     return succeed;
   }
 
-  void remove(Address ip, unsigned tid) {
+  void remove(Address public_ip, Address private_ip, unsigned tid) {
     for (unsigned virtual_num = 0; virtual_num < kVirtualThreadNum;
          virtual_num++) {
-      ServerThread st = ServerThread(ip, tid, virtual_num);
+      ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num);
       unique_servers.erase(st);
       ConsistentHashMap<ServerThread, H>::erase(st);
     }

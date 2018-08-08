@@ -30,7 +30,9 @@ std::string seed_handler(
     for (const ServerThread& st : hash_ring.get_unique_servers()) {
       TierMembership_Tier* tier = membership.add_tiers();
       tier->set_tier_id(tier_id);
-      tier->add_ips(st.get_ip());
+      auto server = tier->add_servers();
+      server->set_private_ip(st.get_private_ip());
+      server->set_public_ip(st.get_public_ip());
     }
   }
 

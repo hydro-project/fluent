@@ -103,8 +103,9 @@ void slo_policy(
   } else if (ss.min_memory_occupancy < 0.05 && !removing_memory_node &&
              memory_node_number > std::max(ss.required_memory_node,
                                            (unsigned)kMinMemoryTierSize)) {
-    logger->info("Node {} is severely underutilized.",
-                 ss.min_occupancy_memory_ip);
+    logger->info("Node {}/{} is severely underutilized.",
+                 ss.min_occupancy_memory_public_ip,
+                 ss.min_occupancy_memory_private_ip);
     auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                             std::chrono::system_clock::now() - grace_start)
                             .count();
@@ -137,7 +138,8 @@ void slo_policy(
                                 local_hash_ring_map, routing_address, placement,
                                 pushers, mt, response_puller, logger, rid);
 
-      ServerThread node = ServerThread(ss.min_occupancy_memory_ip, 0);
+      ServerThread node = ServerThread(ss.min_occupancy_memory_public_ip,
+                                       ss.min_occupancy_memory_private_ip, 0);
       remove_node(logger, node, "memory", removing_memory_node, pushers,
                   departing_node_map, mt);
     }

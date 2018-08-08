@@ -44,13 +44,14 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
             key, kMetadataReplicationFactor, global_hash_ring_map[tier_id]);
 
         for (const ServerThread& thread : threads) {
-          Address ip = thread.get_ip();
+          Address public_ip = thread.get_public_ip();
+          Address private_ip = thread.get_private_ip();
           std::unordered_set<unsigned> tids = responsible_local(
               key, placement[key].local_replication_map_[tier_id],
               local_hash_ring_map[tier_id]);
 
           for (const unsigned& tid : tids) {
-            result.insert(ServerThread(ip, tid));
+            result.insert(ServerThread(public_ip, private_ip, tid));
           }
         }
       }
@@ -122,12 +123,13 @@ ServerThreadSet HashRingUtilInterface::get_responsible_threads_metadata(
                                                global_memory_hash_ring);
 
   for (const ServerThread& thread : threads) {
-    Address ip = thread.get_ip();
+    Address public_ip = thread.get_public_ip();
+    Address private_ip = thread.get_private_ip();
     std::unordered_set<unsigned> tids = responsible_local(
         key, kDefaultLocalReplication, local_memory_hash_ring);
 
     for (const unsigned& tid : tids) {
-      threads.insert(ServerThread(ip, tid));
+      threads.insert(ServerThread(public_ip, private_ip, tid));
     }
   }
 

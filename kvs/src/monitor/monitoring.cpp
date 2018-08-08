@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
   // form local hash rings
   for (const auto &tier_pair : kTierDataMap) {
     for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(ip, tid);
+      local_hash_ring_map[tier_pair.first].insert(ip, ip, tid);
     }
   }
 
@@ -94,9 +94,9 @@ int main(int argc, char *argv[]) {
   // keep track of ebs tier storage consumption
   StorageStat ebs_tier_storage;
   // keep track of memory tier thread occupancy
-  OccupancyStat memory_tier_occupancy;
+  OccupancyStats memory_tier_occupancy;
   // keep track of ebs tier thread occupancy
-  OccupancyStat ebs_tier_occupancy;
+  OccupancyStats ebs_tier_occupancy;
   // keep track of memory tier hit
   AccessStat memory_tier_access;
   // keep track of ebs tier hit
