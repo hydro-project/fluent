@@ -30,7 +30,7 @@ export NAME=ucbrisebedrock.de
 export KOPS_STATE_STORE=s3://tiered-storage-state-store
 
 echo "Creating cluster object..."
-kops create cluster --zones us-east-1a --ssh-public-key ${SSH_KEY}.pub ${NAME} --networking kopeio-vxlan > /dev/null 2>&1
+kops create cluster --zones us-east-1a --ssh-public-key ${SSH_KEY}.pub ${NAME} --networking kube-router > /dev/null 2>&1
 # delete default instance group that we won't use
 kops delete ig nodes --name ${NAME} --yes > /dev/null 2>&1
 
@@ -93,5 +93,27 @@ echo "Starting all other kinds of nodes..."
 # to wait for the pod to come up
 kubectl cp $SSH_KEY kops-pod:/root/.ssh/id_rsa > /dev/null 2>&1
 kubectl cp ${SSH_KEY}.pub kops-pod:/root/.ssh/id_rsa.pub > /dev/null 2>&1
+
+# create the relevant services to expose the application
+kubectl create -f yaml/services/routing.yml > /dev/null 2>&1
+ELB_ADDRS=`kubectl get service routing-service -o jsonpath="{.status.loadBalancer.ingress[*].hostname}"`
+
+while [[ -z "$ELB_ADDRS" ]]; do
+  ELB_ADDRS=`kubectl get service routing-service -o jsonpath="{.status.loadBalancer.ingress[*].hostname}"`
+done
+
+echo "The following are the addresses which you should use to access the service."
+for addr in $ELB_ADDRS; do
+  echo "    - $addr"
+done
+
+# make relevant storage ports open to listen
+SGNAME="nodes.${NAME}"
+SGID=`aws ec2 describe-security-groups | jq -r ".SecurityGroups | map(select(.GroupName == \"$SGNAME\")) | .[0].GroupId"`
+
+aws ec2 authorize-security-group-ingress --group-id $SGID --protocol tcp --port 6200 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id $SGID --protocol tcp --port 6201 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id $SGID --protocol tcp --port 6202 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id $SGID --protocol tcp --port 6203 --cidr 0.0.0.0/0
 
 echo "Cluster is now ready for use!"
