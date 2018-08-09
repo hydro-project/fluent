@@ -19,6 +19,7 @@ metadata:
   labels: 
     role: memory
 spec:
+  hostNetwork: true
   containers:
   - name: memory-container
     image: vsreekanti/anna

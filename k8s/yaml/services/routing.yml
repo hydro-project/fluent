@@ -13,22 +13,23 @@
 #  limitations under the License.
 
 apiVersion: v1
-kind: Pod
+kind: Service
 metadata:
-  name: routing-pod-NUM_DUMMY
-  labels: 
-    role: routing
+  name: routing-service
 spec:
-  hostNetwork: true
-  containers:
-  - name: routing-container
-    image: vsreekanti/anna
-    env: 
-    - name: SERVER_TYPE
-      value: r
-    - name: MON_IPS
-      value: MON_IPS_DUMMY
-  nodeSelector:
+  type: LoadBalancer
+  ports:
+  - port: 6000
+    targetPort: 6450
+    name: routing-0
+  - port: 6001
+    targetPort: 6451
+    name: routing-1
+  - port: 6002
+    targetPort: 6452
+    name: routing-2
+  - port: 6003
+    targetPort: 6453
+    name: routing-3
+  selector:
     role: routing
-    podid: routing-NUM_DUMMY
-  restartPolicy: Never
