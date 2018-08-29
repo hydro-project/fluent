@@ -15,13 +15,14 @@
 #include "monitor/monitoring_utils.hpp"
 
 void add_node(std::shared_ptr<spdlog::logger> logger, std::string tier,
-              unsigned number, unsigned& adding,
+              unsigned number, unsigned& adding, SocketCache& pushers,
               const Address& management_address) {
-  logger->info("Adding {} {} node.", std::to_string(number), tier);
-  std::string shell_command = "curl -X POST http://" + management_address +
-                              "/add/" + tier + "/" + std::to_string(number) +
-                              " &";
-  system(shell_command.c_str());
+  logger->info("Adding {} node(s) in tier {}.", std::to_string(number), tier);
+
+  std::string mgmt_addr = "tcp://" + management_address + ":7000";
+  std::string message = "add:" + std::to_string(number) + ":" + tier;
+
+  kZmqUtil->send_string(message, &pushers[mgmt_addr]);
   adding = number;
 }
 
@@ -33,8 +34,6 @@ void remove_node(std::shared_ptr<spdlog::logger> logger, ServerThread& node,
   departing_node_map[node.get_private_ip()] = kTierDataMap[1].thread_number_;
   auto ack_addr = mt.get_depart_done_connect_addr();
 
-  logger->info("Removing node {}/{} from tier {}.", node.get_public_ip(),
-               node.get_private_ip(), tier);
   kZmqUtil->send_string(ack_addr, &pushers[connection_addr]);
   removing_flag = true;
 }

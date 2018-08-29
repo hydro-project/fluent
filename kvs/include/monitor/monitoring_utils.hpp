@@ -159,7 +159,7 @@ void change_replication_factor(
     std::shared_ptr<spdlog::logger> logger, unsigned& rid);
 
 void add_node(std::shared_ptr<spdlog::logger> logger, std::string tier,
-              unsigned number, unsigned& adding,
+              unsigned number, unsigned& adding, SocketCache& pushers,
               const Address& management_address);
 
 void remove_node(std::shared_ptr<spdlog::logger> logger, ServerThread& node,
