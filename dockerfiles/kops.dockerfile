@@ -22,6 +22,7 @@ USER root
 RUN apt-get update
 RUN apt-get install -y wget curl python3 python3-pip vim jq git
 RUN pip3 install awscli
+RUN pip3 install zmq
 
 # install kops
 RUN wget -O kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep -Po '"tag_name": "\K.*?(?=")')/kops-linux-amd64
