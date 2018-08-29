@@ -35,4 +35,3 @@ spec:
   nodeSelector:
     role: memory
     podid: memory-NUM_DUMMY
-  restartPolicy: Never

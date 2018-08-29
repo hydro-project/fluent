@@ -31,4 +31,3 @@ spec:
   nodeSelector:
     role: routing
     podid: routing-NUM_DUMMY
-  restartPolicy: Never
