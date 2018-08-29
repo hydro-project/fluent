@@ -56,6 +56,15 @@ def run():
             else:
                 logging.error('Unexpected error while removing node %s.' % (ip))
 
+        elif args[0] == 'restart':
+            ip = args[1]
+            count = subprocess.check_output(['./get_restart_count.sh', ip])
+            logging.info('Getting restart count for IP ' + ip + '.')
 
+            resp_socket = context.socket(zmq.PUSH)
+            resp_socket.connect('tcp://' + ip + ':7000')
+            resp_socket.send_string(count)
+        else:
+            logging.info('Unknown argument type: %s.' % (args[0]))
 
 run()
