@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
       std::string serialized = kZmqUtil->recv_string(&depart_done_puller);
       depart_done_handler(logger, serialized, departing_node_map,
                           management_address, removing_memory_node,
-                          removing_ebs_node, grace_start);
+                          removing_ebs_node, pushers, grace_start);
     }
 
     if (pollitems[2].revents & ZMQ_POLLIN) {

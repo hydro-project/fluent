@@ -33,7 +33,7 @@ void depart_done_handler(
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<Address, unsigned>& departing_node_map,
     Address management_address, bool& removing_memory_node,
-    bool& removing_ebs_node,
+    bool& removing_ebs_node, SocketCache& pushers,
     std::chrono::time_point<std::chrono::system_clock>& grace_start);
 
 void feedback_handler(std::string& serialized,

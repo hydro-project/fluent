@@ -18,7 +18,7 @@ void depart_done_handler(
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<Address, unsigned>& departing_node_map,
     Address management_address, bool& removing_memory_node,
-    bool& removing_ebs_node,
+    bool& removing_ebs_node, SocketCache& pushers,
     std::chrono::time_point<std::chrono::system_clock>& grace_start) {
   std::vector<std::string> tokens;
   split(serialized, '_', tokens);
@@ -32,27 +32,22 @@ void depart_done_handler(
     departing_node_map[departed_private_ip] -= 1;
 
     if (departing_node_map[departed_private_ip] == 0) {
+      std::string ntype;
       if (tier_id == 1) {
-        logger->info("Removing memory node {}/{}.", departed_public_ip,
-                     departed_private_ip);
-
-        std::string shell_command = "curl -X POST http://" +
-                                    management_address + "/remove/memory/" +
-                                    departed_private_ip;
-        system(shell_command.c_str());
-
+        ntype = "memory";
         removing_memory_node = false;
       } else {
-        logger->info("Removing EBS node {}/{}.", departed_public_ip,
-                     departed_private_ip);
-
-        std::string shell_command = "curl -X POST http://" +
-                                    management_address + "/remove/ebs/" +
-                                    departed_private_ip;
-        system(shell_command.c_str());
-
+        ntype = "ebs";
         removing_ebs_node = false;
       }
+
+      logger->info("Removing {} node {}/{}.", ntype, departed_public_ip,
+                   departed_private_ip);
+
+      std::string mgmt_addr = "tcp://" + management_address + ":7000";
+      std::string message = "remove:" + departed_private_ip + ":" + ntype;
+
+      kZmqUtil->send_string(message, &pushers[mgmt_addr]);
 
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();

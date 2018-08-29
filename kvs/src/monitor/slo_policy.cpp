@@ -45,7 +45,7 @@ void slo_policy(
                               std::chrono::system_clock::now() - grace_start)
                               .count();
       if (time_elapsed > kGracePeriod) {
-        add_node(logger, "memory", node_to_add, adding_memory_node,
+        add_node(logger, "memory", node_to_add, adding_memory_node, pushers,
                  management_address);
       }
     } else {  // hot key replication

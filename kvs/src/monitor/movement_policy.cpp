@@ -73,7 +73,7 @@ void movement_policy(
 
     if (total_memory_node_needed > memory_node_number) {
       unsigned node_to_add = (total_memory_node_needed - memory_node_number);
-      add_node(logger, "memory", node_to_add, adding_memory_node,
+      add_node(logger, "memory", node_to_add, adding_memory_node, pushers,
                management_address);
     }
   }
@@ -117,7 +117,8 @@ void movement_policy(
 
     if (total_ebs_node_needed > ebs_node_number) {
       unsigned node_to_add = (total_ebs_node_needed - ebs_node_number);
-      add_node(logger, "ebs", node_to_add, adding_ebs_node, management_address);
+      add_node(logger, "ebs", node_to_add, adding_ebs_node, pushers,
+               management_address);
     }
   }
 

@@ -31,7 +31,7 @@ void storage_policy(
                             .count();
     if (time_elapsed > kGracePeriod) {
       add_node(logger, "memory", kNodeAdditionBatchSize, adding_memory_node,
-               management_address);
+               pushers, management_address);
     }
   }
 
@@ -40,7 +40,7 @@ void storage_policy(
                             std::chrono::system_clock::now() - grace_start)
                             .count();
     if (time_elapsed > kGracePeriod) {
-      add_node(logger, "ebs", kNodeAdditionBatchSize, adding_ebs_node,
+      add_node(logger, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
                management_address);
     }
   }
