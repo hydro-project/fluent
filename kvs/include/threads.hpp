@@ -44,6 +44,9 @@ const unsigned kUserRequestBasePort = 6800;
 const unsigned kUserKeyAddressBasePort = 6850;
 const unsigned kBenchmarkCommandBasePort = 6900;
 
+// used by the management node
+const unsigned kKopsRestartCountBasePort = 7000;
+
 // TODO(vikram): All the return "tcp://" + ip_ should be made into one command
 // to reduce string addition
 class ServerThread {
@@ -285,5 +288,10 @@ class BenchmarkThread {
   Address ip_;
   unsigned tid_;
 };
+
+inline std::string get_join_count_req_address(std::string mgmt_address) {
+  return "tcp://" + mgmt_address + ":" +
+         std::to_string(kKopsRestartCountBasePort);
+}
 
 #endif  // SRC_INCLUDE_THREADS_HPP_

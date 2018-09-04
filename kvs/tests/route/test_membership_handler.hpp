@@ -18,7 +18,7 @@ TEST_F(RoutingHandlerTest, Membership) {
   EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
   EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 1);
 
-  std::string serialized = "join:1:127.0.0.2:127.0.0.2";
+  std::string serialized = "join:1:127.0.0.2:127.0.0.2:0";
   membership_handler(logger, serialized, pushers, global_hash_ring_map,
                      thread_id, ip);
 
