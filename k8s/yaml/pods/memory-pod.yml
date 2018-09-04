@@ -28,6 +28,8 @@ spec:
       value: "1"
     - name: ROUTING_IPS
       value: ROUTING_IPS_DUMMY
+    - name: MGMT_IP
+      value: MGMT_IP_DUMMY
     - name: SEED_IP
       value: SEED_IP_DUMMY
     - name: MON_IPS
