@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
   // form local hash rings
   for (const auto &tier_pair : kTierDataMap) {
     for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(ip, ip, tid);
+      local_hash_ring_map[tier_pair.first].insert(ip, ip, 0, tid);
     }
   }
 

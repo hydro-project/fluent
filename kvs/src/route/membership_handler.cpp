@@ -26,6 +26,7 @@ void membership_handler(
   unsigned tier = stoi(v[1]);
   Address new_server_public_ip = v[2];
   Address new_server_private_ip = v[3];
+  int join_count = stoi(v[4]);
 
   if (type == "join") {
     logger->info("Received join from server {}/{} in tier {}.",
@@ -33,8 +34,8 @@ void membership_handler(
                  std::to_string(tier));
 
     // update hash ring
-    bool inserted = global_hash_ring_map[tier].insert(new_server_public_ip,
-                                                      new_server_private_ip, 0);
+    bool inserted = global_hash_ring_map[tier].insert(
+        new_server_public_ip, new_server_private_ip, join_count, 0);
 
     if (inserted) {
       if (thread_id == 0) {
