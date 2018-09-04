@@ -93,6 +93,8 @@ add_pods() {
       SEED_IP=${ARR[$RANDOM % ${#ARR[@]}]}
     fi
 
+    MGMT_IP=`kubectl get pods -l role=kops -o jsonpath='{.items[*].status.podIP}' | tr -d '[:space:]'`
+
     FINAL_NUM=$(($NUM_PREV + $2))
     ((NUM_PREV++))
 
@@ -118,6 +120,7 @@ add_pods() {
       fi
 
       # set the IPs of other system components
+      sed -i "s|MGMT_IP_DUMMY|$MGMT_IP|g" yaml/pods/monitoring-pod.yml tmp.yml
       sed -i "s|ROUTING_IPS_DUMMY|\"$ROUTING_IPS\"|g" tmp.yml
       sed -i "s|MON_IPS_DUMMY|$MON_IPS|g" tmp.yml
       sed -i "s|SEED_IP_DUMMY|$SEED_IP|g" tmp.yml

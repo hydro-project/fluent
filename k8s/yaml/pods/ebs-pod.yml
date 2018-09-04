@@ -29,6 +29,8 @@ spec:
         value: ROUTING_IPS_DUMMY
       - name: SEED_IP
         value: SEED_IP_DUMMY
+      - name: MGMT_IP
+        value: MGMT_IP_DUMMY
       - name: MON_IPS
         value: MON_IPS_DUMMY
       volumeMounts:
