@@ -90,7 +90,12 @@ void node_join_handler(
             kSelfTierIdVector, succeed, seed);
 
         if (succeed) {
-          if (threads.find(wt) == threads.end()) {
+          // there are two situations in which we gossip data to the joining
+          // node:
+          // 1) if the node is a new node and I am no longer responsible for
+          // the key
+          // 2) if the node is rejoining the cluster
+          if ((join_count == 0 && threads.find(wt) == threads.end()) || join_count > 0) {
             join_remove_set.insert(key);
 
             for (const ServerThread& thread : threads) {
