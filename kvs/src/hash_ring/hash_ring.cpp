@@ -41,7 +41,8 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
     } else {
       for (const unsigned& tier_id : tier_ids) {
         ServerThreadSet threads = responsible_global(
-            key, kMetadataReplicationFactor, global_hash_ring_map[tier_id]);
+            key, placement[key].global_replication_map_[tier_id],
+            global_hash_ring_map[tier_id]);
 
         for (const ServerThread& thread : threads) {
           Address public_ip = thread.get_public_ip();
