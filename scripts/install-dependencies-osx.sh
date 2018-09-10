@@ -41,6 +41,10 @@ if [ -z "$(command -v cmake)" ]; then
 fi
 
 if [ -z "$(command -v lcov)" ]; then
+  LCOV_VERSION=1.13
+
+  echo "Installing lcov..."
+  echo "You might be asked for your password to install lcov..."
   wget http://downloads.sourceforge.net/ltp/lcov-${LCOV_VERSION}.tar.gz
   tar xvzf lcov-${LCOV_VERSION}.tar.gz > /dev/null 2>&1
   rm -rf lcov-${LCOV_VERSION}.tar.gz
