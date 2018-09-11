@@ -78,13 +78,15 @@ void user_request_handler(
         KeyTuple* tp = response.add_tuples();
         tp->set_key(key);
 
+        if (!is_metadata(key)) {
+          logger->info("Processing a {} request for key {}.", request_type, key);
+        }
+
         if (request_type == "GET") {
-          logger->info("Processing a GET request for key {}.", key);
           auto res = process_get(key, serializer);
           tp->set_value(res.first.reveal().value);
           tp->set_error(res.second);
         } else if (request_type == "PUT") {
-          logger->info("Processing a PUT request for key {} with value {}.", key, tuple.value());
           auto time_diff =
               std::chrono::duration_cast<std::chrono::milliseconds>(
                   std::chrono::system_clock::now() - start_time)

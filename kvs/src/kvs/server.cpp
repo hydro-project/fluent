@@ -92,11 +92,18 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   std::chrono::milliseconds dur(duration);
   std::chrono::system_clock::time_point start_time(dur);
 
-  // get join number from management node
-  zmq::socket_t join_count_requester(context, ZMQ_REQ);
-  join_count_requester.connect(get_join_count_req_address(mgmt_address));
-  kZmqUtil->send_string("restart:" + private_ip, &join_count_requester);
-  std::string count_str = kZmqUtil->recv_string(&join_count_requester);
+  // get join number from management node if we are running in Kubernetes
+  std::string count_str;
+
+  if (mgmt_address != "NULL" ) {
+    zmq::socket_t join_count_requester(context, ZMQ_REQ);
+    join_count_requester.connect(get_join_count_req_address(mgmt_address));
+    kZmqUtil->send_string("restart:" + private_ip, &join_count_requester);
+    count_str = kZmqUtil->recv_string(&join_count_requester);
+  } else {
+    count_str = "0";
+  }
+
   int self_join_count = stoi(count_str);
 
   // populate addresses
@@ -121,21 +128,21 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   // thread 0 notifies other servers that it has joined
   if (thread_id == 0) {
+    std::string msg = std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip + ":" + count_str;
+
     for (const auto& global_pair : global_hash_ring_map) {
       unsigned tier_id = global_pair.first;
       GlobalHashRing hash_ring = global_pair.second;
 
       for (const ServerThread& st : hash_ring.get_unique_servers()) {
         if (st.get_private_ip().compare(private_ip) != 0) {
-          kZmqUtil->send_string(std::to_string(kSelfTierId) + ":" + public_ip +
-                                    ":" + private_ip + ":" + count_str,
+          kZmqUtil->send_string(msg,
                                 &pushers[st.get_node_join_connect_addr()]);
         }
       }
     }
 
-    std::string msg = "join:" + std::to_string(kSelfTierId) + ":" + public_ip +
-                      ":" + private_ip + ":" + count_str;
+    msg = "join:" + msg;
 
     // notify proxies that this node has joined
     for (const std::string& address : routing_addresses) {
