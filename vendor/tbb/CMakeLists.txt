@@ -1,0 +1,24 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 3.6)
+
+INCLUDE(ExternalProject)
+
+SET(TBB_BUILD_PREFIX tbb_build)
+SET(TBB_BUILD make compiler=clang stdlib=libc++ std=c++11 tbb_build_prefix=${TBB_BUILD_PREFIX})
+
+EXTERNALPROJECT_ADD(tbb
+    URL "https://github.com/01org/tbb/archive/2018_U5.tar.gz"
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}
+    BUILD_IN_SOURCE 1
+    UPDATE_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ${TBB_BUILD}
+    INSTALL_COMMAND ""
+)
+
+SET(TBB_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/src/tbb/include PARENT_SCOPE)
+SET(TBB_LINK_DIRS
+  ${CMAKE_CURRENT_BINARY_DIR}/src/tbb/build/${TBB_BUILD_PREFIX}_release
+  PARENT_SCOPE)
+SET(TBB_LIBRARIES
+  ${CMAKE_CURRENT_BINARY_DIR}/src/tbb/build/${TBB_BUILD_PREFIX}_release/libtbb.so
+  PARENT_SCOPE)

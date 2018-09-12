@@ -27,6 +27,7 @@ SET(KV_LIBRARY_DEPENDENCIES
     zmq
     flzmq
     yaml-cpp
+    ${TBB_LIBRARIES}
 )
 
 ADD_SUBDIRECTORY(hash_ring)

@@ -43,6 +43,9 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 HashRingUtil hash_ring_util;
 HashRingUtilInterface* kHashRingUtil = &hash_ring_util;
 
+// only initialized for shared memory tier nodes
+SharedMemoryKVS* skvs;
+
 void run(unsigned thread_id, Address public_ip, Address private_ip,
          Address seed_ip, std::vector<Address> routing_addresses,
          std::vector<Address> monitoring_addresses, Address mgmt_address) {
@@ -164,9 +167,11 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   if (kSelfTierId == 1) {
     MemoryKVS* kvs = new MemoryKVS();
-    serializer = new MemorySerializer(kvs);
+    serializer = new MemorySerializer<MemoryKVS>(kvs);
   } else if (kSelfTierId == 2) {
     serializer = new EBSSerializer(thread_id);
+  } else if (kSelfTierId == 3) {
+    serializer = new MemorySerializer<SharedMemoryKVS>(skvs);
   } else {
     logger->info("Invalid node type");
     exit(1);
@@ -641,6 +646,10 @@ int main(int argc, char* argv[]) {
       TierData(kEbsThreadCount, kDefaultGlobalEbsReplication, kEbsNodeCapacity);
 
   kThreadNum = kTierDataMap[kSelfTierId].thread_number_;
+
+  if (kSelfTierId == 3) {
+    skvs = new SharedMemoryKVS();
+  }
 
   // start the initial threads based on kThreadNum
   std::vector<std::thread> worker_threads;

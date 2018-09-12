@@ -19,6 +19,7 @@
 #include <string>
 
 #include "../kvs/base_kv_store.hpp"
+#include "../kvs/shared_kv_store.hpp"
 #include "../kvs/rc_pair_lattice.hpp"
 #include "yaml-cpp/yaml.h"
 
@@ -33,6 +34,8 @@
 
 typedef KVStore<Key, ReadCommittedPairLattice<std::string>> MemoryKVS;
 
+typedef SharedKVStore<Key, ReadCommittedPairLattice<std::string>> SharedMemoryKVS;
+
 // a map that represents which keys should be sent to which IP-port combinations
 typedef std::unordered_map<Address, std::unordered_set<Key>> AddressKeysetMap;
 
@@ -46,11 +49,12 @@ class Serializer {
   virtual ~Serializer(){};
 };
 
+template <typename T>
 class MemorySerializer : public Serializer {
-  MemoryKVS* kvs_;
+  T* kvs_;
 
  public:
-  MemorySerializer(MemoryKVS* kvs) : kvs_(kvs) {}
+  MemorySerializer(T* kvs) : kvs_(kvs) {}
 
   ReadCommittedPairLattice<std::string> get(const Key& key,
                                             unsigned& err_number) {

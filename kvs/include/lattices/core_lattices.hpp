@@ -19,6 +19,7 @@
 #include <unordered_set>
 
 #include "base_lattices.hpp"
+#include "tbb/concurrent_unordered_map.h"
 
 class BoolLattice : public Lattice<bool> {
  protected:
@@ -118,28 +119,6 @@ class MapLattice : public Lattice<std::unordered_map<K, V>> {
       Lattice<std::unordered_map<K, V>>(m) {}
   MaxLattice<int> size() const { return this->element.size(); }
 
-  MapLattice<K, V> intersect(MapLattice<K, V> other) const {
-    MapLattice<K, V> res;
-    std::unordered_map<K, V> m = other.reveal();
-
-    for (const auto &pair : m) {
-      if (this->contains(pair.first).reveal()) {
-        res.insert_pair(pair.first, this->at(pair.first));
-        res.insert_pair(pair.first, pair.second);
-      }
-    }
-
-    return res;
-  }
-
-  MapLattice<K, V> project(bool (*f)(V)) const {
-    std::unordered_map<K, V> res;
-    for (const auto &pair : this->element) {
-      if (f(pair.second)) res.emplace(pair.first, pair.second);
-    }
-    return MapLattice<K, V>(res);
-  }
-
   BoolLattice contains(K k) const {
     auto it = this->element.find(k);
     if (it == this->element.end())
@@ -161,6 +140,59 @@ class MapLattice : public Lattice<std::unordered_map<K, V>> {
   void remove(K k) {
     auto it = this->element.find(k);
     if (it != this->element.end()) this->element.erase(k);
+  }
+};
+
+template <typename K, typename V>
+class AtomicMapLattice : public Lattice<tbb::concurrent_unordered_map<K, V>> {
+ protected:
+  void insert_pair(const K &k, const V &v) {
+    auto search = this->element.find(k);
+    if (search != this->element.end()) {
+      static_cast<V *>(&(search->second))->merge(v);
+    } else {
+      // need to copy v since we will be "growing" it within the lattice
+      V new_v = v;
+      // FIXME: it seems that there is a bug in tbb that fails to enable c++11 features with Clang on Linux. So we have to use insert instead of emplace for now...
+      // refer to https://software.intel.com/en-us/forums/intel-threading-building-blocks/topic/591305
+      this->element.insert({k, new_v});
+    }
+  }
+  void do_merge(const tbb::concurrent_unordered_map<K, V> &m) {
+    for (const auto &pair : m) {
+      this->insert_pair(pair.first, pair.second);
+    }
+  }
+ public:
+  AtomicMapLattice() : Lattice<tbb::concurrent_unordered_map<K, V>>() {}
+  AtomicMapLattice(const tbb::concurrent_unordered_map<K, V> &m) : Lattice<tbb::concurrent_unordered_map<K, V>>(m) {}
+  MaxLattice<int> size() const {
+    return this->element.size();
+  }
+
+  BoolLattice contains(K k) const {
+    auto it = this->element.find(k);
+    if (it == this->element.end())
+      return BoolLattice(false);
+    else
+      return BoolLattice(true);
+  }
+
+  SetLattice<K> key_set() const {
+    std::unordered_set<K> res;
+    for (const auto &pair : this->element) {
+      res.insert(pair.first);
+    }
+    return SetLattice<K>(res);
+  }
+
+  V &at(K k) {
+    return this->element[k];
+  }
+
+  void remove(K k) {
+    auto it = this->element.find(k);
+    if (it != this->element.end()) this->element.unsafe_erase(k);
   }
 };
 
