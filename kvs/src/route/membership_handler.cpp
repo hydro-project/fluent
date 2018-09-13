@@ -45,13 +45,15 @@ void membership_handler(
           unsigned tier_id = global_pair.first;
           auto hash_ring = global_pair.second;
 
+          // we send a message with everything but the join because that is
+          // what the server nodes expect
+          std::string msg = v[1] + ":" + v[2] + ":" + v[3] + ":" + v[4];
+
           for (const ServerThread& st : hash_ring.get_unique_servers()) {
             // if the node is not the newly joined node, send the ip of the
             // newly joined node
             if (st.get_private_ip().compare(new_server_private_ip) != 0) {
-              kZmqUtil->send_string(std::to_string(tier) + ":" +
-                                        new_server_public_ip + ":" +
-                                        new_server_private_ip,
+              kZmqUtil->send_string(msg,
                                     &pushers[st.get_node_join_connect_addr()]);
             }
           }

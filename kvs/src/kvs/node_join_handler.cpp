@@ -95,6 +95,10 @@ void node_join_handler(
           // 1) if the node is a new node and I am no longer responsible for
           // the key
           // 2) if the node is rejoining the cluster
+          // NOTE: This is currently inefficient because every server will
+          // gossip the key currently -- we might be able to hack around the
+          // has ring to do it more efficiently, but I'm leaving this here for
+          // now
           if ((join_count == 0 && threads.find(wt) == threads.end()) || join_count > 0) {
             join_remove_set.insert(key);
 
