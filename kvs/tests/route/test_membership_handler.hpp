@@ -25,7 +25,7 @@ TEST_F(RoutingHandlerTest, Membership) {
   std::vector<std::string> messages = get_zmq_messages();
 
   EXPECT_EQ(messages.size(), 1);
-  EXPECT_EQ(messages[0], "1:127.0.0.2:127.0.0.2");
+  EXPECT_EQ(messages[0], "1:127.0.0.2:127.0.0.2:0");
 
   EXPECT_EQ(global_hash_ring_map[1].size(), 6000);
   EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 2);

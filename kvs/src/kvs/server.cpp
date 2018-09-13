@@ -95,7 +95,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // get join number from management node if we are running in Kubernetes
   std::string count_str;
 
-  if (mgmt_address != "NULL" ) {
+  // if we are running the system outside of Kubernetes, we need to set the
+  // management address to NULL in the conf file, otherwise we will hang
+  // forever waiting to hear back about a restart count
+  if (mgmt_address != "NULL") {
     zmq::socket_t join_count_requester(context, ZMQ_REQ);
     join_count_requester.connect(get_join_count_req_address(mgmt_address));
     kZmqUtil->send_string("restart:" + private_ip, &join_count_requester);
@@ -107,16 +110,12 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   int self_join_count = stoi(count_str);
 
   // populate addresses
-  int count = 0;
   for (const auto& tier : membership.tiers()) {
     for (const auto server : tier.servers()) {
       global_hash_ring_map[tier.tier_id()].insert(server.public_ip(),
                                                   server.private_ip(), 0, 0);
     }
-    count++;
   }
-
-  logger->info("Populated {} addresses.", count);
 
   // add itself to global hash ring
   global_hash_ring_map[kSelfTierId].insert(public_ip, private_ip,
@@ -132,7 +131,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   // thread 0 notifies other servers that it has joined
   if (thread_id == 0) {
-    std::string msg = std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip + ":" + count_str;
+    std::string msg = std::to_string(kSelfTierId) + ":" + public_ip + ":" +
+                      private_ip + ":" + count_str;
 
     for (const auto& global_pair : global_hash_ring_map) {
       unsigned tier_id = global_pair.first;
@@ -140,8 +140,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       for (const ServerThread& st : hash_ring.get_unique_servers()) {
         if (st.get_private_ip().compare(private_ip) != 0) {
-          kZmqUtil->send_string(msg,
-                                &pushers[st.get_node_join_connect_addr()]);
+          kZmqUtil->send_string(msg, &pushers[st.get_node_join_connect_addr()]);
         }
       }
     }
