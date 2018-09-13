@@ -99,7 +99,8 @@ void node_join_handler(
           // gossip the key currently -- we might be able to hack around the
           // has ring to do it more efficiently, but I'm leaving this here for
           // now
-          if ((join_count == 0 && threads.find(wt) == threads.end()) || join_count > 0) {
+          if ((join_count == 0 && threads.find(wt) == threads.end()) ||
+              join_count > 0) {
             join_remove_set.insert(key);
 
             for (const ServerThread& thread : threads) {

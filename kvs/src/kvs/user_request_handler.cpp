@@ -79,7 +79,8 @@ void user_request_handler(
         tp->set_key(key);
 
         if (!is_metadata(key)) {
-          logger->info("Processing a {} request for key {}.", request_type, key);
+          logger->info("Processing a {} request for key {}.", request_type,
+                       key);
         }
 
         if (request_type == "GET") {

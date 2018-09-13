@@ -47,6 +47,8 @@ void membership_handler(
 
           // we send a message with everything but the join because that is
           // what the server nodes expect
+          // NOTE: this seems like a bit of a hack right now -- should we have
+          // a less ad-hoc way of doing message generation?
           std::string msg = v[1] + ":" + v[2] + ":" + v[3] + ":" + v[4];
 
           for (const ServerThread& st : hash_ring.get_unique_servers()) {
