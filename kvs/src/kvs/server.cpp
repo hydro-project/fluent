@@ -107,12 +107,16 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   int self_join_count = stoi(count_str);
 
   // populate addresses
+  int count = 0;
   for (const auto& tier : membership.tiers()) {
     for (const auto server : tier.servers()) {
       global_hash_ring_map[tier.tier_id()].insert(server.public_ip(),
                                                   server.private_ip(), 0, 0);
     }
+    count++;
   }
+
+  logger->info("Populated {} addresses.", count);
 
   // add itself to global hash ring
   global_hash_ring_map[kSelfTierId].insert(public_ip, private_ip,

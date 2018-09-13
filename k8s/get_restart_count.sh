@@ -14,5 +14,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+sleep 3
 PNAME=`kubectl get pods -o json | jq '.items[] | select(.status.podIP=="'$1'")' | jq '.metadata.name' | cut -d\" -f2`
 kubectl get pod $PNAME -o jsonpath='{.status.containerStatuses[*].restartCount}'

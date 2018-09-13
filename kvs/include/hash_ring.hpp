@@ -38,10 +38,15 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
     ServerThread new_thread = ServerThread(public_ip, private_ip, tid, 0);
 
     if (unique_servers.find(new_thread) !=
-        unique_servers.end()) {  // if we already have the server, only return
-                                 // true if it's rejoining
-      return server_join_count[private_ip] < join_count;
-    } else {  // otherwise, insert it into the hash ring for the first time
+        unique_servers.end()) {  
+      // if we already have the server, only return true if it's rejoining
+      if (server_join_count[private_ip] < join_count) {
+        server_join_count[private_ip] = join_count;
+        return true;
+      }
+
+      return false;
+    } else { // otherwise, insert it into the hash ring for the first time
       unique_servers.insert(new_thread);
       server_join_count[private_ip] = join_count;
 
