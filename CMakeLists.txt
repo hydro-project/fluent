@@ -27,16 +27,21 @@ IF(${BUILD_TEST})
   ENABLE_TESTING()
 ENDIF()
 
-SET(CMAKE_CXX_COMPILER /usr/bin/clang++)
-
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED on)
 
 SET(VENDOR_DIR vendor)
 
-SET(CMAKE_CXX_FLAGS_COMMON
-    "-std=c++11 \
-    -stdlib=libc++")
+IF(${CMAKE_CXX_COMPILER} STREQUAL "/usr/bin/clang++") 
+  SET(CMAKE_CXX_FLAGS_COMMON
+      "-std=c++11 \
+      -stdlib=libc++")
+ENDIF()
+
+IF(${CMAKE_CXX_COMPILER} STREQUAL "/usr/bin/g++") 
+  SET(CMAKE_CXX_FLAGS_COMMON
+      "-std=c++11")
+ENDIF()
 
 SET(CMAKE_CXX_FLAGS_DEBUG
     "${CMAKE_CXX_FLAGS_DEBUG} \

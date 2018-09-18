@@ -146,8 +146,9 @@ void HashRingUtilInterface::issue_replication_factor_request(
   auto threads = kHashRingUtil->get_responsible_threads_metadata(
       replication_key, global_memory_hash_ring, local_memory_hash_ring);
 
-  Address target_address = next(begin(threads), rand_r(&seed) % threads.size())
-                               ->get_request_pulling_connect_addr();
+  Address target_address =
+      std::next(begin(threads), rand_r(&seed) % threads.size())
+          ->get_request_pulling_connect_addr();
 
   KeyRequest key_request;
   key_request.set_type(get_request_type("GET"));
