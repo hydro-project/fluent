@@ -52,7 +52,7 @@ void user_request_handler(
     std::string value = tuple.has_value() ? tuple.value() : "";
 
     ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt, key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 

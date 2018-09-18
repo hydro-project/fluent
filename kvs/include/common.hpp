@@ -28,21 +28,21 @@
 #include "zmq/zmq_util.hpp"
 
 const std::string kMetadataIdentifier = "ANNA_METADATA";
+const std::string kSharedMemoryIdentifier = "ANNA_SHARED";
 
 const unsigned kMetadataReplicationFactor = 1;
 const unsigned kMetadataLocalReplicationFactor = 1;
 
 const unsigned kVirtualThreadNum = 3000;
 
-const unsigned kMinTier = 1;
-const unsigned kMaxTier = 2;
-const std::vector<unsigned> kAllTierIds = {1, 2};
+const std::vector<unsigned> kAllTierIds = {1, 2, 3};
 
 const unsigned kSloWorst = 3000;
 const unsigned SLO_BEST = 1500;
 
 const unsigned kMemoryNodeCapacity = 60000000;
 const unsigned kEbsNodeCapacity = 256000000;
+const unsigned kSharedMemoryNodeCapacity = 60000000;
 
 // run-time constants
 extern unsigned kSelfTierId;
@@ -52,11 +52,13 @@ extern std::vector<unsigned> kSelfTierIdVector;
 extern unsigned kThreadNum;
 extern unsigned kMemoryThreadCount;
 extern unsigned kEbsThreadCount;
+extern unsigned kSharedMemoryThreadCount;
 extern unsigned kRoutingThreadCount;
 
 extern unsigned kDefaultGlobalMemoryReplication;
 extern unsigned kDefaultGlobalEbsReplication;
 extern unsigned kDefaultLocalReplication;
+extern unsigned kDefaultSharedMemoryReplication;
 extern unsigned kMinimumReplicaNumber;
 
 inline void split(const std::string& s, char delim,

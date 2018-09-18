@@ -21,7 +21,7 @@
 // get all threads responsible for a key from the "node_type" tier
 // metadata flag = 0 means the key is  metadata; otherwise, it is  regular data
 ServerThreadSet HashRingUtil::get_responsible_threads(
-    Address response_address, const Key& key, bool metadata,
+    ServerThread& wt, const Key& key, bool metadata,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
     std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
@@ -35,7 +35,7 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
 
     if (placement.find(key) == placement.end()) {
       kHashRingUtil->issue_replication_factor_request(
-          response_address, key, global_hash_ring_map[1],
+          wt.get_replication_factor_connect_addr(), key, global_hash_ring_map[1],
           local_hash_ring_map[1], pushers, seed);
       succeed = false;
     } else {
@@ -47,11 +47,24 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
         for (const ServerThread& thread : threads) {
           Address public_ip = thread.get_public_ip();
           Address private_ip = thread.get_private_ip();
-          std::unordered_set<unsigned> tids = responsible_local(
-              key, placement[key].local_replication_map_[tier_id],
-              local_hash_ring_map[tier_id]);
+          if (tier_id != 3) {
+            std::unordered_set<unsigned> tids = responsible_local(
+                key, placement[key].local_replication_map_[tier_id],
+                local_hash_ring_map[tier_id]);
 
-          for (const unsigned& tid : tids) {
+            for (const unsigned& tid : tids) {
+              result.insert(ServerThread(public_ip, private_ip, tid));
+            }
+          } else {
+            // shared memory tier
+            unsigned tid;
+            if (thread.get_private_ip() == wt.get_private_ip()) {
+              // same node
+              tid = wt.get_tid();
+            } else {
+              // different node
+              tid = rand_r(&seed) % kSharedMemoryThreadCount;
+            }
             result.insert(ServerThread(public_ip, private_ip, tid));
           }
         }

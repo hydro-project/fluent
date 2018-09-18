@@ -50,7 +50,7 @@ void rep_factor_change_handler(
     // if this thread was responsible for the key before the change
     if (key_size_map.find(key) != key_size_map.end()) {
       ServerThreadSet orig_threads = kHashRingUtil->get_responsible_threads(
-          wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+          wt, key, is_metadata(key),
           global_hash_ring_map, local_hash_ring_map, placement, pushers,
           kAllTierIds, succeed, seed);
 
@@ -79,7 +79,7 @@ void rep_factor_change_handler(
         }
 
         ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-            wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+            wt, key, is_metadata(key),
             global_hash_ring_map, local_hash_ring_map, placement, pushers,
             kAllTierIds, succeed, seed);
 

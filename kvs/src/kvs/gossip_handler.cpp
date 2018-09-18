@@ -34,7 +34,7 @@ void gossip_handler(
     // first check if the thread is responsible for the key
     Key key = tuple.key();
     ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt, key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 

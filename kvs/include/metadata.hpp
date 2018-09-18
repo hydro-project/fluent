@@ -129,7 +129,9 @@ inline void init_replication(std::unordered_map<Key, KeyInfo>& placement,
   for (const unsigned& tier_id : kAllTierIds) {
     placement[key].global_replication_map_[tier_id] =
         kTierDataMap[tier_id].default_replication_;
-    placement[key].local_replication_map_[tier_id] = kDefaultLocalReplication;
+    if (tier_id != 3) {
+      placement[key].local_replication_map_[tier_id] = kDefaultLocalReplication;
+    }
   }
 }
 

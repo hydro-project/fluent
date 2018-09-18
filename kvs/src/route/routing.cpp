@@ -64,8 +64,10 @@ void run(unsigned thread_id, Address ip,
 
   // form local hash rings
   for (const auto &tier_pair : kTierDataMap) {
-    for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(ip, ip, 0, tid);
+    if (tier_pair.first != 3) {
+      for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
+        local_hash_ring_map[tier_pair.first].insert(ip, ip, tid);
+      }
     }
   }
 
@@ -158,12 +160,14 @@ int main(int argc, char *argv[]) {
   YAML::Node threads = conf["threads"];
   unsigned kMemoryThreadCount = threads["memory"].as<unsigned>();
   unsigned kEbsThreadCount = threads["ebs"].as<unsigned>();
+  unsigned kSharedMemoryThreadCount = threads["shared"].as<unsigned>();
   kRoutingThreadCount = threads["routing"].as<unsigned>();
 
   YAML::Node replication = conf["replication"];
   unsigned kDefaultGlobalMemoryReplication =
       replication["memory"].as<unsigned>();
   unsigned kDefaultGlobalEbsReplication = replication["ebs"].as<unsigned>();
+  unsigned kDefaultSharedMemoryReplication = replication["shared"].as<unsigned>();
   kDefaultLocalReplication = replication["local"].as<unsigned>();
 
   YAML::Node routing = conf["routing"];
@@ -179,6 +183,8 @@ int main(int argc, char *argv[]) {
       kMemoryThreadCount, kDefaultGlobalMemoryReplication, kMemoryNodeCapacity);
   kTierDataMap[2] =
       TierData(kEbsThreadCount, kDefaultGlobalEbsReplication, kEbsNodeCapacity);
+  kTierDataMap[3] =
+      TierData(kSharedMemoryThreadCount, kDefaultSharedMemoryReplication, kSharedMemoryNodeCapacity);
 
   std::vector<std::thread> routing_worker_threads;
 

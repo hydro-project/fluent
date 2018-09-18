@@ -76,7 +76,7 @@ void rep_factor_response_handler(
 
   if (pending_request_map.find(key) != pending_request_map.end()) {
     ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt, key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 
@@ -168,7 +168,7 @@ void rep_factor_response_handler(
 
   if (pending_gossip_map.find(key) != pending_gossip_map.end()) {
     ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt, key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 

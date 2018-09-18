@@ -30,10 +30,12 @@ std::vector<unsigned> kSelfTierIdVector;
 
 unsigned kMemoryThreadCount;
 unsigned kEbsThreadCount;
+unsigned kSharedMemoryThreadCount;
 
 unsigned kDefaultGlobalMemoryReplication;
 unsigned kDefaultGlobalEbsReplication;
 unsigned kDefaultLocalReplication;
+unsigned kDefaultSharedMemoryReplication;
 
 std::unordered_map<unsigned, TierData> kTierDataMap;
 
@@ -126,9 +128,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   // form local hash rings
   for (const auto& tier_pair : kTierDataMap) {
-    for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(public_ip, private_ip, 0,
-                                                  tid);
+    if (tier_pair.first != 3) {
+      for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
+        local_hash_ring_map[tier_pair.first].insert(public_ip, private_ip, tid);
+      }
     }
   }
 
@@ -370,7 +373,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         bool succeed;
         for (const Key& key : local_changeset) {
           ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-              wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+              wt, key, is_metadata(key),
               global_hash_ring_map, local_hash_ring_map, placement, pushers,
               kAllTierIds, succeed, seed);
 
@@ -614,11 +617,13 @@ int main(int argc, char* argv[]) {
   YAML::Node threads = conf["threads"];
   kMemoryThreadCount = threads["memory"].as<unsigned>();
   kEbsThreadCount = threads["ebs"].as<unsigned>();
+  kSharedMemoryThreadCount = threads["shared"].as<unsigned>();
 
   YAML::Node replication = conf["replication"];
   kDefaultGlobalMemoryReplication = replication["memory"].as<unsigned>();
   kDefaultGlobalEbsReplication = replication["ebs"].as<unsigned>();
   kDefaultLocalReplication = replication["local"].as<unsigned>();
+  kDefaultSharedMemoryReplication = replication["shared"].as<unsigned>();
 
   YAML::Node server = conf["server"];
   Address public_ip = server["public_ip"].as<std::string>();
@@ -644,10 +649,13 @@ int main(int argc, char* argv[]) {
       kMemoryThreadCount, kDefaultGlobalMemoryReplication, kMemoryNodeCapacity);
   kTierDataMap[2] =
       TierData(kEbsThreadCount, kDefaultGlobalEbsReplication, kEbsNodeCapacity);
+  kTierDataMap[3] =
+      TierData(kSharedMemoryThreadCount, kDefaultSharedMemoryReplication, kSharedMemoryNodeCapacity);
 
   kThreadNum = kTierDataMap[kSelfTierId].thread_number_;
 
   if (kSelfTierId == 3) {
+    // initialize the shared memory kvs
     skvs = new SharedMemoryKVS();
   }
 

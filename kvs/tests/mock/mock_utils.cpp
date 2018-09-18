@@ -27,7 +27,7 @@ int MockZmqUtil::poll(long timeout, std::vector<zmq::pollitem_t>* items) {
 // get all threads responsible for a key from the "node_type" tier
 // metadata flag = 0 means the key is  metadata; otherwise, it is  regular data
 ServerThreadSet MockHashRingUtil::get_responsible_threads(
-    Address respond_address, const Key& key, bool metadata,
+    ServerThread& wt, const Key& key, bool metadata,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
     std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,

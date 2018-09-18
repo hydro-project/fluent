@@ -70,7 +70,7 @@ void self_depart_handler(
   for (const auto& key_pair : key_size_map) {
     Key key = key_pair.first;
     ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt, key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
         kAllTierIds, succeed, seed);
 

@@ -80,7 +80,7 @@ typedef HashRing<LocalHasher> LocalHashRing;
 class HashRingUtilInterface {
  public:
   virtual ServerThreadSet get_responsible_threads(
-      Address respond_address, const Key& key, bool metadata,
+      ServerThread& wt, const Key& key, bool metadata,
       std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
       std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
       std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,

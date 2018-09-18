@@ -42,14 +42,14 @@ void address_handler(
     respond = true;
   } else {  // if there are servers, attempt to return the correct threads
     for (const Key& key : addr_request.keys()) {
-      unsigned tier_id = 1;
+      std::vector<unsigned> tier_ids = {1, 3};
       ServerThreadSet threads = {};
 
-      while (threads.size() == 0 && tier_id < kMaxTier) {
+      while (threads.size() == 0) {
         threads = kHashRingUtil->get_responsible_threads(
-            rt.get_replication_factor_connect_addr(), key, false,
+            rt, key, false,
             global_hash_ring_map, local_hash_ring_map, placement, pushers,
-            {tier_id}, succeed, seed);
+            tier_ids, succeed, seed);
 
         if (!succeed) {  // this means we don't have the replication factor for
                          // the key
@@ -59,7 +59,7 @@ void address_handler(
           return;
         }
 
-        tier_id++;
+        tier_ids = {2};
       }
 
       KeyAddressResponse_KeyAddress* tp = addr_response.add_addresses();
