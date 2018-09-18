@@ -94,13 +94,21 @@ void node_join_handler(
           // node:
           // 1) if the node is a new node and I am no longer responsible for
           // the key
-          // 2) if the node is rejoining the cluster
+          // 2) if the node is rejoining the cluster, and it is responsible for
+          // the key
           // NOTE: This is currently inefficient because every server will
           // gossip the key currently -- we might be able to hack around the
           // has ring to do it more efficiently, but I'm leaving this here for
           // now
-          if ((join_count == 0 && threads.find(wt) == threads.end()) ||
-              join_count > 0) {
+          bool rejoin_responsible = false;
+          if (join_count > 0) {
+            for (const ServerThread& thread : threads) {
+              if (thread.get_private_ip().compare(new_server_private_ip) == 0) {
+                join_addr_keyset_map[thread.get_gossip_connect_addr()].insert(
+                    key);
+              }
+            }
+          } else if ((join_count == 0 && threads.find(wt) == threads.end())) {
             join_remove_set.insert(key);
 
             for (const ServerThread& thread : threads) {

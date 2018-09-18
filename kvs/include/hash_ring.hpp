@@ -34,7 +34,6 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
 
   bool insert(Address public_ip, Address private_ip, int join_count,
               unsigned tid) {
-    bool succeed;
     ServerThread new_thread = ServerThread(public_ip, private_ip, tid, 0);
 
     if (unique_servers.find(new_thread) != unique_servers.end()) {
