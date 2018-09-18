@@ -22,7 +22,7 @@ Address prepare_metadata_request(
   auto threads = kHashRingUtil->get_responsible_threads_metadata(
       key, global_memory_hash_ring, local_memory_hash_ring);
   if (threads.size() != 0) {
-    Address target_address = next(begin(threads), rand() % threads.size())
+    Address target_address = std::next(begin(threads), rand() % threads.size())
                                  ->get_request_pulling_connect_addr();
     if (addr_request_map.find(target_address) == addr_request_map.end()) {
       addr_request_map[target_address].set_type(get_request_type(type));

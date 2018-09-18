@@ -442,7 +442,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
       if (threads.size() != 0) {
         Address target_address =
-            next(begin(threads), rand_r(&seed) % threads.size())
+            std::next(begin(threads), rand_r(&seed) % threads.size())
                 ->get_request_pulling_connect_addr();
         std::string serialized;
         req.SerializeToString(&serialized);
@@ -488,7 +488,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       if (threads.size() != 0) {
         Address target_address =
-            next(begin(threads), rand_r(&seed) % threads.size())
+            std::next(begin(threads), rand_r(&seed) % threads.size())
                 ->get_request_pulling_connect_addr();
         std::string serialized;
         req.SerializeToString(&serialized);
@@ -521,7 +521,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       if (threads.size() != 0) {
         Address target_address =
-            next(begin(threads), rand_r(&seed) % threads.size())
+            std::next(begin(threads), rand_r(&seed) % threads.size())
                 ->get_request_pulling_connect_addr();
         std::string serialized;
         req.SerializeToString(&serialized);
