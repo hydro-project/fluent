@@ -88,6 +88,7 @@ else
   echo -e "    seed_ip: $SEED_IP" >> conf/kvs-config.yml
   echo -e "    public_ip: $PUBLIC_IP" >> conf/kvs-config.yml
   echo -e "    private_ip: $PRIVATE_IP" >> conf/kvs-config.yml
+  echo -e "    mgmt_ip: $MGMT_IP" >> conf/kvs-config.yml
 
   LST=$(gen_yml_list "$MON_IPS")
   echo -e "    monitoring:" >> conf/kvs-config.yml

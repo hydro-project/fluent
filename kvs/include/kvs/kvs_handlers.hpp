@@ -28,7 +28,8 @@ void node_join_handler(
     std::unordered_map<Key, unsigned>& key_stat_map,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& join_remove_set, SocketCache& pushers,
-    ServerThread& wt, AddressKeysetMap& join_addr_keyset_map);
+    ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
+    int self_join_count);
 
 void node_depart_handler(
     unsigned thread_id, Address public_ip, Address private_ip,

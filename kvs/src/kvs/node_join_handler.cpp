@@ -22,28 +22,32 @@ void node_join_handler(
     std::unordered_map<Key, unsigned>& key_size_map,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& join_remove_set, SocketCache& pushers,
-    ServerThread& wt, AddressKeysetMap& join_addr_keyset_map) {
+    ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
+    int self_join_count) {
   std::vector<std::string> v;
   split(serialized, ':', v);
   unsigned tier = stoi(v[0]);
   Address new_server_public_ip = v[1];
   Address new_server_private_ip = v[2];
+  int join_count = stoi(v[3]);
 
   // update global hash ring
-  bool inserted = global_hash_ring_map[tier].insert(new_server_public_ip,
-                                                    new_server_private_ip, 0);
+  bool inserted = global_hash_ring_map[tier].insert(
+      new_server_public_ip, new_server_private_ip, join_count, 0);
 
   if (inserted) {
-    logger->info("Received a node join for tier {}. New node is {}", tier,
-                 new_server_public_ip);
+    logger->info(
+        "Received a node join for tier {}. New node is {}. It's join counter "
+        "is {}.",
+        tier, new_server_public_ip, join_count);
 
-    // only thread 0 communicates with other nodes and receives distributed
-    // join messages; it communicates that information to non-0 threads on its
-    // own machine
+    // only thread 0 communicates with other nodes and receives join messages
+    // and it communicates that information to non-0 threads on its own machine
     if (thread_id == 0) {
       // send my IP to the new server node
       kZmqUtil->send_string(
-          std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip,
+          std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip +
+              ":" + std::to_string(self_join_count),
           &pushers[ServerThread(new_server_public_ip, new_server_private_ip, 0)
                        .get_node_join_connect_addr()]);
 
@@ -86,7 +90,25 @@ void node_join_handler(
             kSelfTierIdVector, succeed, seed);
 
         if (succeed) {
-          if (threads.find(wt) == threads.end()) {
+          // there are two situations in which we gossip data to the joining
+          // node:
+          // 1) if the node is a new node and I am no longer responsible for
+          // the key
+          // 2) if the node is rejoining the cluster, and it is responsible for
+          // the key
+          // NOTE: This is currently inefficient because every server will
+          // gossip the key currently -- we might be able to hack around the
+          // has ring to do it more efficiently, but I'm leaving this here for
+          // now
+          bool rejoin_responsible = false;
+          if (join_count > 0) {
+            for (const ServerThread& thread : threads) {
+              if (thread.get_private_ip().compare(new_server_private_ip) == 0) {
+                join_addr_keyset_map[thread.get_gossip_connect_addr()].insert(
+                    key);
+              }
+            }
+          } else if ((join_count == 0 && threads.find(wt) == threads.end())) {
             join_remove_set.insert(key);
 
             for (const ServerThread& thread : threads) {

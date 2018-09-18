@@ -23,7 +23,7 @@ logging.basicConfig(filename='log.txt',level=logging.INFO)
 
 def run():
     context = zmq.Context(1)
-    request_pull_socket = context.socket(zmq.PULL)
+    request_pull_socket = context.socket(zmq.REP)
     request_pull_socket.bind('tcp://*:7000')
 
     while True:
@@ -44,7 +44,7 @@ def run():
                 logging.info('Successfully added %d %s nodes.' % (num, ntype))
             else:
                 logging.error('Unexpected error while adding nodes.')
-        elif args[0] = 'remove':
+        elif args[0] == 'remove':
             ip = args[1]
             ntype = args[2]
             logging.info('Removing %s node with IP %s.' % (ntype, ip))
@@ -56,6 +56,13 @@ def run():
             else:
                 logging.error('Unexpected error while removing node %s.' % (ip))
 
-
+        elif args[0] == 'restart':
+            ip = args[1]
+            count = subprocess.check_output('./get_restart_count.sh ' + ip,
+                    shell=True)
+            logging.info('Returning restart count ' + count + ' for IP ' + ip + '.')
+            request_pull_socket.send_string(str(count, 'utf-8'))
+        else:
+            logging.info('Unknown argument type: %s.' % (args[0]))
 
 run()

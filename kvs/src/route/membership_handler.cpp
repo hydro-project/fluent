@@ -26,6 +26,7 @@ void membership_handler(
   unsigned tier = stoi(v[1]);
   Address new_server_public_ip = v[2];
   Address new_server_private_ip = v[3];
+  int join_count = stoi(v[4]);
 
   if (type == "join") {
     logger->info("Received join from server {}/{} in tier {}.",
@@ -33,8 +34,8 @@ void membership_handler(
                  std::to_string(tier));
 
     // update hash ring
-    bool inserted = global_hash_ring_map[tier].insert(new_server_public_ip,
-                                                      new_server_private_ip, 0);
+    bool inserted = global_hash_ring_map[tier].insert(
+        new_server_public_ip, new_server_private_ip, join_count, 0);
 
     if (inserted) {
       if (thread_id == 0) {
@@ -44,13 +45,17 @@ void membership_handler(
           unsigned tier_id = global_pair.first;
           auto hash_ring = global_pair.second;
 
+          // we send a message with everything but the join because that is
+          // what the server nodes expect
+          // NOTE: this seems like a bit of a hack right now -- should we have
+          // a less ad-hoc way of doing message generation?
+          std::string msg = v[1] + ":" + v[2] + ":" + v[3] + ":" + v[4];
+
           for (const ServerThread& st : hash_ring.get_unique_servers()) {
             // if the node is not the newly joined node, send the ip of the
             // newly joined node
             if (st.get_private_ip().compare(new_server_private_ip) != 0) {
-              kZmqUtil->send_string(std::to_string(tier) + ":" +
-                                        new_server_public_ip + ":" +
-                                        new_server_private_ip,
+              kZmqUtil->send_string(msg,
                                     &pushers[st.get_node_join_connect_addr()]);
             }
           }

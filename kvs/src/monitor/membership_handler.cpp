@@ -38,7 +38,7 @@ void membership_handler(
                  std::to_string(tier));
     if (tier == 1) {
       global_hash_ring_map[tier].insert(new_server_public_ip,
-                                        new_server_private_ip, 0);
+                                        new_server_private_ip, 0, 0);
 
       if (adding_memory_node > 0) {
         adding_memory_node -= 1;
@@ -48,7 +48,7 @@ void membership_handler(
       grace_start = std::chrono::system_clock::now();
     } else if (tier == 2) {
       global_hash_ring_map[tier].insert(new_server_public_ip,
-                                        new_server_private_ip, 0);
+                                        new_server_private_ip, 0, 0);
 
       if (adding_ebs_node > 0) {
         adding_ebs_node -= 1;

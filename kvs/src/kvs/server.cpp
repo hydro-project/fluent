@@ -45,7 +45,7 @@ HashRingUtilInterface* kHashRingUtil = &hash_ring_util;
 
 void run(unsigned thread_id, Address public_ip, Address private_ip,
          Address seed_ip, std::vector<Address> routing_addresses,
-         std::vector<Address> monitoring_addresses) {
+         std::vector<Address> monitoring_addresses, Address mgmt_address) {
   std::string log_file = "log_" + std::to_string(thread_id) + ".txt";
   std::string logger_name = "server_logger_" + std::to_string(thread_id);
   auto logger = spdlog::basic_logger_mt(logger_name, log_file, true);
@@ -92,41 +92,60 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   std::chrono::milliseconds dur(duration);
   std::chrono::system_clock::time_point start_time(dur);
 
+  // get join number from management node if we are running in Kubernetes
+  std::string count_str;
+
+  // if we are running the system outside of Kubernetes, we need to set the
+  // management address to NULL in the conf file, otherwise we will hang
+  // forever waiting to hear back about a restart count
+  if (mgmt_address != "NULL") {
+    zmq::socket_t join_count_requester(context, ZMQ_REQ);
+    join_count_requester.connect(get_join_count_req_address(mgmt_address));
+    kZmqUtil->send_string("restart:" + private_ip, &join_count_requester);
+    count_str = kZmqUtil->recv_string(&join_count_requester);
+  } else {
+    count_str = "0";
+  }
+
+  int self_join_count = stoi(count_str);
+
   // populate addresses
   for (const auto& tier : membership.tiers()) {
     for (const auto server : tier.servers()) {
       global_hash_ring_map[tier.tier_id()].insert(server.public_ip(),
-                                                  server.private_ip(), 0);
+                                                  server.private_ip(), 0, 0);
     }
   }
 
   // add itself to global hash ring
-  global_hash_ring_map[kSelfTierId].insert(public_ip, private_ip, 0);
+  global_hash_ring_map[kSelfTierId].insert(public_ip, private_ip,
+                                           self_join_count, 0);
 
   // form local hash rings
   for (const auto& tier_pair : kTierDataMap) {
     for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(public_ip, private_ip, tid);
+      local_hash_ring_map[tier_pair.first].insert(public_ip, private_ip, 0,
+                                                  tid);
     }
   }
 
   // thread 0 notifies other servers that it has joined
   if (thread_id == 0) {
+    std::string msg = std::to_string(kSelfTierId) + ":" + public_ip + ":" +
+                      private_ip + ":" + count_str;
+
     for (const auto& global_pair : global_hash_ring_map) {
       unsigned tier_id = global_pair.first;
       GlobalHashRing hash_ring = global_pair.second;
 
       for (const ServerThread& st : hash_ring.get_unique_servers()) {
         if (st.get_private_ip().compare(private_ip) != 0) {
-          kZmqUtil->send_string(
-              std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip,
-              &pushers[st.get_node_join_connect_addr()]);
+          kZmqUtil->send_string(msg, &pushers[st.get_node_join_connect_addr()]);
         }
       }
     }
 
-    std::string msg = "join:" + std::to_string(kSelfTierId) + ":" + public_ip +
-                      ":" + private_ip;
+    msg = "join:" + msg;
 
     // notify proxies that this node has joined
     for (const std::string& address : routing_addresses) {
@@ -224,7 +243,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       node_join_handler(thread_id, seed, public_ip, private_ip, logger,
                         serialized, global_hash_ring_map, local_hash_ring_map,
                         key_size_map, placement, join_remove_set, pushers, wt,
-                        join_addr_keyset_map);
+                        join_addr_keyset_map, self_join_count);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -604,6 +623,7 @@ int main(int argc, char* argv[]) {
   std::vector<Address> monitoring_addresses;
 
   Address seed_ip = server["seed_ip"].as<std::string>();
+  Address mgmt_ip = server["mgmt_ip"].as<std::string>();
   YAML::Node monitoring = server["monitoring"];
   YAML::Node routing = server["routing"];
 
@@ -627,9 +647,9 @@ int main(int argc, char* argv[]) {
   for (unsigned thread_id = 1; thread_id < kThreadNum; thread_id++) {
     worker_threads.push_back(std::thread(run, thread_id, public_ip, private_ip,
                                          seed_ip, routing_addresses,
-                                         monitoring_addresses));
+                                         monitoring_addresses, mgmt_ip));
   }
 
   run(0, public_ip, private_ip, seed_ip, routing_addresses,
-      monitoring_addresses);
+      monitoring_addresses, mgmt_ip);
 }

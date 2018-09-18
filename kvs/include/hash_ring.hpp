@@ -32,30 +32,46 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
     return unique_servers;
   }
 
-  bool insert(Address public_ip, Address private_ip, unsigned tid) {
-    bool succeed;
-    for (unsigned virtual_num = 0; virtual_num < kVirtualThreadNum;
-         virtual_num++) {
-      ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num);
-      succeed = ConsistentHashMap<ServerThread, H>::insert(st).second;
-      if (succeed) {
-        unique_servers.insert(st);
+  bool insert(Address public_ip, Address private_ip, int join_count,
+              unsigned tid) {
+    ServerThread new_thread = ServerThread(public_ip, private_ip, tid, 0);
+
+    if (unique_servers.find(new_thread) != unique_servers.end()) {
+      // if we already have the server, only return true if it's rejoining
+      if (server_join_count[private_ip] < join_count) {
+        server_join_count[private_ip] = join_count;
+        return true;
       }
+
+      return false;
+    } else {  // otherwise, insert it into the hash ring for the first time
+      unique_servers.insert(new_thread);
+      server_join_count[private_ip] = join_count;
+
+      for (unsigned virtual_num = 0; virtual_num < kVirtualThreadNum;
+           virtual_num++) {
+        ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num);
+        ConsistentHashMap<ServerThread, H>::insert(st);
+      }
+
+      return true;
     }
-    return succeed;
   }
 
   void remove(Address public_ip, Address private_ip, unsigned tid) {
     for (unsigned virtual_num = 0; virtual_num < kVirtualThreadNum;
          virtual_num++) {
       ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num);
-      unique_servers.erase(st);
       ConsistentHashMap<ServerThread, H>::erase(st);
     }
+
+    unique_servers.erase(ServerThread(public_ip, private_ip, tid, 0));
+    server_join_count.erase(private_ip);
   }
 
  private:
   std::unordered_set<ServerThread, ThreadHash> unique_servers;
+  std::unordered_map<std::string, int> server_join_count;
 };
 
 typedef HashRing<GlobalHasher> GlobalHashRing;
