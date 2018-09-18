@@ -17,31 +17,79 @@
 PROTO_V=3.5.1
 LCOV_VERSION=1.13
 
-if [ -z "$(command -v clang++)" ]; then
+if [ ! -z "$(command -v apt-get)" ]; then
+  echo "Detected that this is a Debian-based distribution."
+  DIST="debian"
+  PKG_MGR=apt-get
+  sudo $PKG_MGR update -y > /dev/null 2>&1
+elif [ ! -z "$(command -v yum)" ]; then
+  echo "Detected that this is a Fedora-based distribution."
+  DIST="fedora"
+  PKG_MGR=yum
+  sudo $PKG_MGR update -y > /dev/null 2>&1
+else
+  echo "Unrecognized Linux distribution -- only Debian and Fedora are currently supported."
+  exit 1
+fi
+
+if [ -z "$1" ]; then
+  echo "No compiler is specified. Default compiler is clang++."
+  COMPILER=clang++
+else
+  if [ "$1" != "clang++" ] && [ "$1" != "g++" ]; then
+    echo "$1 is not a supported compiler. Valid options are clang++ or GNU g++."
+    exit 1
+  fi
+
+  echo "Setting compiler to $1..."
+  COMPILER=$1
+fi
+
+if [ "$DIST" = "fedora" ] && [ "$COMPILER" = "clang++" ]; then
+  echo "We currently are unable to support clang++ installation on Fedora distributions."
+  exit 1
+fi
+
+if [ "$COMPILER" = "clang++" ] && [ -z "$(command -v clang++)" ]; then
   echo "Installing clang..."
 
   sudo apt-add-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" > /dev/null
-  sudo apt-get update > /dev/null
-  sudo apt-get install -y --force-yes clang-5.0 lldb-5.0 clang-format-5.0
-  sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-5.0 1
-  sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-5.0 1
-  sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-5.0 1
+  sudo apt-get install -y --force-yes clang-5.0 lldb-5.0 clang-format-5.0 > /dev/null
+  sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-5.0 1 > /dev/null
+  sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-5.0 1 > /dev/null
+  sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-5.0 1 > /dev/null
 fi
 
-echo -e "Installing the following packages via apt-get:\n\t* autoconf\n\t* automake\n\t* libtool\n\t* build-essential \n\t* unzip \n\t* pkg-config\n\t* wget\n\t* make\n\t* libc++-dev\n\t* libc++abi-dev"
+if [ "$COMPILER" = "g++" ] && [ -z "$(command -v g++)" ]; then
+  echo "Installing g++..."
+  sudo $PKG_MGR install -y gcc g++ > /dev/null
 
-sudo apt-get install -y build-essential autoconf automake libtool make unzip pkg-config wget make libc++-dev libc++abi-dev > /dev/null
+  if [ "$DIST" = "fedora" ]; then
+    sudo $PKG_MGR install -y gcc-c++ > /dev/null
+  fi
+fi
+
+
+if [ "$DIST" = "debian" ]; then
+  echo -e "Installing the following packages via $PKG_MGR:\n\t* autoconf\n\t* automake\n\t* libtool\n\t* build-essential \n\t* unzip \n\t* pkg-config\n\t* wget\n\t* make\n\t* libc++-dev\n\t* libc++abi-dev"
+  sudo $PKG_MGR install -y build-essential autoconf automake libtool unzip pkg-config wget make libc++-dev libc++abi-dev > /dev/null
+elif [ "$DIST" = "fedora" ]; then
+  echo -e "Installing the following packages via $PKG_MGR:\n\t* autoconf\n\t* automake\n\t* libtool\n\t* build-essential \n\t* make"
+  sudo $PKG_MGR install -y build-essential autoconf automake libtool make > /dev/null
+else
+  exit 1
+fi
+
 
 if [ -z "$(command -v cmake)" ]; then
   echo "Installing cmake..."
   echo "You might be prompted for your password to add CMake to /usr/bin."
   wget https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.tar.gz
-  tar xvzf cmake-3.11.4-Linux-x86_64.tar.gz
+  tar xvzf cmake-3.11.4-Linux-x86_64.tar.gz > /dev/null 2>&1
 
-  sudo mkdir /usr/bin/cmake
-  sudo mv cmake-3.11.4-Linux-x86_64/* /usr/bin/cmake/
-  echo "export PATH=$PATH:/usr/bin/cmake/bin" >> ~/.bashrc
-  source ~/.bashrc
+  sudo mkdir /usr/cmake
+  sudo mv cmake-3.11.4-Linux-x86_64/* /usr/cmake/
+  sudo ln -s /usr/cmake/bin/cmake /usr/bin/cmake
 
   rm -rf cmake-3.11.4-Linux-x86_64*
 fi
@@ -56,9 +104,8 @@ if [ -z "$(command -v lcov)" ]; then
 
   LCOV_DIR="lcov-${LCOV_VERSION}"
 
-  cd $LCOV_DIR && sudo make install
-  which lcov
-  lcov -v
+  cd $LCOV_DIR
+  sudo make install > /dev/null
   cd .. && rm -rf $LCOV_DIR
 fi
 
@@ -69,9 +116,25 @@ if [ -z "$(command -v protoc)" ]; then
   wget https://github.com/google/protobuf/releases/download/v${PROTO_V}/protobuf-all-${PROTO_V}.zip > /dev/null
   unzip protobuf-all-${PROTO_V} > /dev/null
   cd protobuf-${PROTO_V}
-  ./autogen.sh && ./configure CXX=clang++ CXXFLAGS='-std=c++11 -stdlib=libc++ -O3 -g'
+  ./autogen.sh > /dev/null
+  if [ "$COMPILER" = "clang++" ]; then
+    ./configure CXX=clang++ CXXFLAGS='-std=c++11 -stdlib=libc++ -O3 -g' > /dev/null
+  else
+    ./configure CXX=g++ CXXFLAGS='-std=c++11 -O3 -g' > /dev/null
+  fi
 
-  make -j4 && sudo make install && sudo ldconfig
+  make -j4 > /dev/null
+  sudo make install > /dev/null
+  sudo ldconfig > /dev/null
+
+  if [ "$DIST" = "fedora " ]; then
+    # on Fedora, ldconfig doesn't seem to recognize libprotobuf.so for some
+    # reason
+    export LD_LIBRARY_PATH=/usr/local/lib
+    echo "export LD_LIBRARY_PATH=/usr/local/lib" >> ~/.bashrc
+    source ~/.bashrc
+  fi
+
   cd .. && rm -rf protobuf-3.5.1*
 fi
 
