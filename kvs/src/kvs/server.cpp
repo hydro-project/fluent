@@ -545,8 +545,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       for (const auto& join_pair : join_addr_keyset_map) {
         Address address = join_pair.first;
         std::unordered_set<Key> key_set = join_pair.second;
-        unsigned count = 0;
-
         // track all sent keys because we cannot modify the key_set while
         // iterating over it
         std::unordered_set<Key> sent_keys;
@@ -554,7 +552,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         for (const Key& key : key_set) {
           addr_keyset_map[address].insert(key);
           sent_keys.insert(key);
-          count++;
+          if (sent_keys.size() >= DATA_REDISTRIBUTE_THRESHOLD) {
+            break;
+          }
         }
 
         // remove the keys we just dealt with
