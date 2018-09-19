@@ -60,7 +60,7 @@ def run():
             ip = args[1]
             count = subprocess.check_output('./get_restart_count.sh ' + ip,
                     shell=True)
-            logging.info('Returning restart count ' + count + ' for IP ' + ip + '.')
+            logging.info('Returning restart count ' + str(count, 'utf-8') + ' for IP ' + ip + '.')
             request_pull_socket.send_string(str(count, 'utf-8'))
         else:
             logging.info('Unknown argument type: %s.' % (args[0]))
