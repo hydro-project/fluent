@@ -31,13 +31,14 @@ while [ "$MON_IPS" = "" ]; do
 done
 
 get_prev_num() {
-  NUM_PREV=`kubectl get pods -l role=$1 | wc -l` > /dev/null 2>&1
+  NUM_PODS=`kubectl get pods -l role=$1 | wc -l`
 
-  if [ $NUM_PREV -gt 0 ]; then
-    ((NUM_PREV--))
+  if [ $NUM_PODS -eq 0 ]; then
+    echo 0
+  else
+    NUM_PREV=`kubectl get pods -l role=$1 | cut -d' ' -f1 | cut -d'-' -f3 | grep -v NAME | sort -nr | head -n 1`
+    echo $NUM_PREV
   fi
-
-  echo $NUM_PREV
 }
 
 add_servers() {
@@ -120,7 +121,7 @@ add_pods() {
       fi
 
       # set the IPs of other system components
-      sed -i "s|MGMT_IP_DUMMY|$MGMT_IP|g" yaml/pods/monitoring-pod.yml tmp.yml
+      sed -i "s|MGMT_IP_DUMMY|$MGMT_IP|g" tmp.yml
       sed -i "s|ROUTING_IPS_DUMMY|\"$ROUTING_IPS\"|g" tmp.yml
       sed -i "s|MON_IPS_DUMMY|$MON_IPS|g" tmp.yml
       sed -i "s|SEED_IP_DUMMY|$SEED_IP|g" tmp.yml
