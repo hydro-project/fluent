@@ -21,28 +21,26 @@
 #include "utils/server_utils.hpp"
 
 void node_join_handler(
-    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
+    unsigned& seed, Address public_ip, Address private_ip,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, unsigned>& key_stat_map,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& join_remove_set, SocketCache& pushers,
     ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
-    int self_join_count);
+    int self_join_count, Serializer* serializer);
 
 void node_depart_handler(
-    unsigned thread_id, Address public_ip, Address private_ip,
+    ServerThread& wt, Address public_ip, Address private_ip,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     SocketCache& pushers);
 
 void self_depart_handler(
-    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
+    unsigned& seed, Address public_ip, Address private_ip,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, unsigned>& key_stat_map,
     std::unordered_map<Key, KeyInfo>& placement,
     std::vector<Address>& routing_address,
     std::vector<Address>& monitoring_address, ServerThread& wt,
@@ -54,7 +52,6 @@ void user_request_handler(
     std::shared_ptr<spdlog::logger> logger,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<std::string, unsigned>& key_size_map,
     PendingMap<PendingRequest>& pending_request_map,
     std::unordered_map<
         Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
@@ -67,7 +64,6 @@ void gossip_handler(
     unsigned& seed, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<std::string, unsigned>& key_size_map,
     PendingMap<PendingGossip>& pending_gossip_map,
     std::unordered_map<Key, KeyInfo>& placement, ServerThread& wt,
     Serializer* serializer, SocketCache& pushers);
@@ -84,17 +80,15 @@ void rep_factor_response_handler(
         Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
         key_access_timestamp,
     std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, unsigned>& key_size_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
     Serializer* serializer, SocketCache& pushers);
 
 void rep_factor_change_handler(
-    Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
+    Address public_ip, Address private_ip, unsigned& seed,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
     std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<std::string, unsigned>& key_size_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
     Serializer* serializer, SocketCache& pushers);
 
@@ -105,8 +99,7 @@ std::pair<ReadCommittedPairLattice<std::string>, unsigned> process_get(
     const Key& key, Serializer* serializer);
 
 void process_put(const Key& key, const unsigned long long& timestamp,
-                 const std::string& value, Serializer* serializer,
-                 std::unordered_map<std::string, unsigned>& key_size_map);
+                 const std::string& value, Serializer* serializer);
 
 bool is_primary_replica(
     const Key& key, std::unordered_map<Key, KeyInfo>& placement,

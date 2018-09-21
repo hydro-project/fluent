@@ -22,7 +22,6 @@ void user_request_handler(
     std::shared_ptr<spdlog::logger> logger,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, unsigned>& key_size_map,
     PendingMap<PendingRequest>& pending_request_map,
     std::unordered_map<
         Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
@@ -52,9 +51,9 @@ void user_request_handler(
     std::string value = tuple.has_value() ? tuple.value() : "";
 
     ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-        wt, key, is_metadata(key),
+        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
-        kSelfTierIdVector, succeed, seed);
+        kAllTierIds, succeed, seed, wt.get_tid(), wt.get_private_ip());
 
     if (succeed) {
       if (threads.find(wt) == threads.end()) {
@@ -72,7 +71,7 @@ void user_request_handler(
               global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
 
           pending_request_map[key].push_back(PendingRequest(
-              request_type, value, response_address, response_id));
+              request_type, value, response_address, response_id, tuple.address_cache_size()));
         }
       } else {  // if we know the responsible threads, we process the request
         KeyTuple* tp = response.add_tuples();
@@ -94,16 +93,20 @@ void user_request_handler(
                   .count();
           auto ts = generate_timestamp(time_diff, wt.get_tid());
 
-          process_put(key, ts, tuple.value(), serializer, key_size_map);
-          local_changeset.insert(key);
+          process_put(key, ts, tuple.value(), serializer);
+          if (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0)) {
+            local_changeset.insert(key);
+          } else {
+            logger->error("Only thread 0 in shared memory tier can process PUT. However, thread {} is processing PUT.",
+                          wt.get_tid());
+          }
           tp->set_error(0);
         } else {
           logger->error("Unknown request type {} in user request handler.",
                         request_type);
         }
 
-        if (tuple.has_address_cache_size() &&
-            tuple.address_cache_size() != threads.size()) {
+        if (tuple.address_cache_size() != threads.size()) {
           tp->set_invalidate(true);
         }
 
@@ -112,7 +115,7 @@ void user_request_handler(
       }
     } else {
       pending_request_map[key].push_back(
-          PendingRequest(request_type, value, response_address, response_id));
+          PendingRequest(request_type, value, response_address, response_id, tuple.address_cache_size()));
     }
   }
 

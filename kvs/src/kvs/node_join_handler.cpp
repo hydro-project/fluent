@@ -15,15 +15,14 @@
 #include "kvs/kvs_handlers.hpp"
 
 void node_join_handler(
-    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
+    unsigned& seed, Address public_ip, Address private_ip,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, unsigned>& key_size_map,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& join_remove_set, SocketCache& pushers,
     ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
-    int self_join_count) {
+    int self_join_count, Serializer* serializer) {
   std::vector<std::string> v;
   split(serialized, ':', v);
   unsigned tier = stoi(v[0]);
@@ -33,7 +32,7 @@ void node_join_handler(
 
   // update global hash ring
   bool inserted = global_hash_ring_map[tier].insert(
-      new_server_public_ip, new_server_private_ip, join_count, 0);
+      new_server_public_ip, new_server_private_ip, join_count, 0, tier);
 
   if (inserted) {
     logger->info(
@@ -43,12 +42,12 @@ void node_join_handler(
 
     // only thread 0 communicates with other nodes and receives join messages
     // and it communicates that information to non-0 threads on its own machine
-    if (thread_id == 0) {
+    if (wt.get_tid() == 0) {
       // send my IP to the new server node
       kZmqUtil->send_string(
           std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip +
               ":" + std::to_string(self_join_count),
-          &pushers[ServerThread(new_server_public_ip, new_server_private_ip, 0)
+          &pushers[ServerThread(new_server_public_ip, new_server_private_ip, 0, 0, kSelfTierId)
                        .get_node_join_connect_addr()]);
 
       // gossip the new node address between server nodes to ensure consistency
@@ -74,20 +73,20 @@ void node_join_handler(
       // tell all worker threads about the new node join
       for (unsigned tid = 1; tid < kThreadNum; tid++) {
         kZmqUtil->send_string(serialized,
-                              &pushers[ServerThread(public_ip, private_ip, tid)
+                              &pushers[ServerThread(public_ip, private_ip, tid, 0, kSelfTierId)
                                            .get_node_join_connect_addr()]);
       }
     }
 
-    if (tier == kSelfTierId) {
+    if (tier == kSelfTierId && (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0))) {
       bool succeed;
 
-      for (const auto& key_pair : key_size_map) {
-        Key key = key_pair.first;
+      std::unordered_set<Key> keys = serializer->get_key_set();
+      for (const auto& key : keys) {
         ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
             wt.get_replication_factor_connect_addr(), key, is_metadata(key),
             global_hash_ring_map, local_hash_ring_map, placement, pushers,
-            kSelfTierIdVector, succeed, seed);
+            kSelfTierIdVector, succeed, seed, wt.get_tid(), wt.get_private_ip());
 
         if (succeed) {
           // there are two situations in which we gossip data to the joining
@@ -100,7 +99,6 @@ void node_join_handler(
           // gossip the key currently -- we might be able to hack around the
           // has ring to do it more efficiently, but I'm leaving this here for
           // now
-          bool rejoin_responsible = false;
           if (join_count > 0) {
             for (const ServerThread& thread : threads) {
               if (thread.get_private_ip().compare(new_server_private_ip) == 0) {

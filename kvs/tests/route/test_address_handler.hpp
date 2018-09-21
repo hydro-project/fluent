@@ -45,8 +45,8 @@ TEST_F(RoutingHandlerTest, Address) {
   for (const KeyAddressResponse_KeyAddress& addr : resp.addresses()) {
     std::string key = addr.key();
     EXPECT_EQ(key, "key");
-    for (const std::string& ip : addr.ips()) {
-      EXPECT_EQ(ip, "tcp://127.0.0.1:6200");
+    for (const KeyAddressResponse_Thread& th : addr.threads()) {
+      EXPECT_EQ(th.ip(), "tcp://127.0.0.1:6200");
     }
   }
 }

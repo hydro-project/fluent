@@ -15,7 +15,7 @@
 #include "kvs/kvs_handlers.hpp"
 
 void node_depart_handler(
-    unsigned thread_id, Address public_ip, Address private_ip,
+    ServerThread& wt, Address public_ip, Address private_ip,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     SocketCache& pushers) {
@@ -30,13 +30,13 @@ void node_depart_handler(
 
   // update hash ring
   global_hash_ring_map[tier].remove(departing_server_public_ip,
-                                    departing_server_private_ip, 0);
+                                    departing_server_private_ip, 0, tier);
 
-  if (thread_id == 0) {
+  if (wt.get_tid() == 0) {
     // tell all worker threads about the node departure
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
       kZmqUtil->send_string(serialized,
-                            &pushers[ServerThread(public_ip, private_ip, tid)
+                            &pushers[ServerThread(public_ip, private_ip, tid, 0, kSelfTierId)
                                          .get_node_depart_connect_addr()]);
     }
 

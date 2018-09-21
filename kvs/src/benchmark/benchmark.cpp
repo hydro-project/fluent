@@ -75,10 +75,43 @@ int sample(int n, unsigned& seed, double base,
   return zipf_value;
 }
 
+unsigned get_total_address_size(std::unordered_map<unsigned, std::unordered_set<Address>>& addresses) {
+  unsigned count = 0;
+  for (const auto& tier_address_pair : addresses) {
+    count += tier_address_pair.second.size();
+  }
+  return count;
+}
+
+// For GET, first check shared memory, then memory, then EBS
+// For PUT, first check memory, then shared memory, then EBS
+Address pick_worker_address(std::string req_type,
+                            std::unordered_map<unsigned, std::unordered_set<Address>>& addresses,
+                            unsigned& seed) {
+  if (req_type == "GET") {
+    // TODO: randomly choose thread
+    if (addresses.find(3) != addresses.end() && addresses[3].size() > 0) {
+      return *(next(begin(addresses[3]), rand_r(&seed) % addresses[3].size()));
+    } else if (addresses.find(1) != addresses.end() && addresses[1].size() > 0) {
+      return *(next(begin(addresses[1]), rand_r(&seed) % addresses[1].size()));
+    } else {
+      return *(next(begin(addresses[2]), rand_r(&seed) % addresses[2].size()));
+    }
+  } else {
+    if (addresses.find(1) != addresses.end() && addresses[1].size() > 0) {
+      return *(next(begin(addresses[1]), rand_r(&seed) % addresses[1].size()));
+    } else if (addresses.find(3) != addresses.end() && addresses[3].size() > 0) {
+      return *(next(begin(addresses[3]), rand_r(&seed) % addresses[3].size()));
+    } else {
+      return *(next(begin(addresses[2]), rand_r(&seed) % addresses[2].size()));
+    }
+  }
+}
+
 void handle_request(
     Key key, std::string value, SocketCache& pushers,
     std::vector<Address>& routing_addresses,
-    std::unordered_map<Key, std::unordered_set<Address>>& key_address_cache,
+    std::unordered_map<Key, std::unordered_map<unsigned, std::unordered_set<Address>>>& key_address_cache,
     unsigned& seed, std::shared_ptr<spdlog::logger> logger, UserThread& ut,
     zmq::socket_t& response_puller, zmq::socket_t& key_address_puller,
     Address& ip, unsigned& thread_id, unsigned& rid, unsigned& trial) {
@@ -99,31 +132,25 @@ void handle_request(
             ->get_random_routing_thread(routing_addresses, seed,
                                         kRoutingThreadCount)
             .get_key_address_connect_addr();
-
     bool succeed;
-    std::vector<std::string> addresses =
-        kHashRingUtil->get_address_from_routing(
-            ut, key, pushers[target_routing_address], key_address_puller,
-            succeed, ip, thread_id, rid);
+    std::unordered_map<unsigned, std::unordered_set<Address>> addresses = kHashRingUtil->get_address_from_routing(
+        ut, key, pushers[target_routing_address], key_address_puller, succeed,
+        ip, thread_id, rid);
 
     if (succeed) {
-      for (const std::string& address : addresses) {
-        key_address_cache[key].insert(address);
+      for (const auto& tier_address_pair : addresses) {
+        key_address_cache[key][tier_address_pair.first] = tier_address_pair.second;
       }
-
-      worker_address = addresses[rand_r(&seed) % addresses.size()];
     } else {
       logger->error(
           "Request timed out when querying routing. This should never happen!");
       return;
     }
   } else {
-    if (key_address_cache[key].size() == 0) {
+    if (get_total_address_size(key_address_cache[key]) == 0) {
       logger->error("Address cache for key " + key + " has size 0.");
       return;
     }
-    worker_address = *(next(begin(key_address_cache[key]),
-                            rand_r(&seed) % key_address_cache[key].size()));
   }
 
   KeyRequest req;
@@ -133,19 +160,26 @@ void handle_request(
       ip + ":" + std::to_string(thread_id) + "_" + std::to_string(rid);
   req.set_request_id(req_id);
   rid += 1;
+
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
-  tp->set_address_cache_size(key_address_cache[key].size());
+  tp->set_address_cache_size(get_total_address_size(key_address_cache[key]));
+
+  std::string req_type;
 
   if (value == "") {
     // get request
     req.set_type(get_request_type("GET"));
+    req_type = "GET";
   } else {
     // put request
     req.set_type(get_request_type("PUT"));
     tp->set_value(value);
     tp->set_timestamp(0);
+    req_type = "PUT";
   }
+
+  worker_address = pick_worker_address(req_type, key_address_cache[key], seed);
 
   bool succeed;
   auto res = send_request<KeyRequest, KeyResponse>(req, pushers[worker_address],
@@ -157,14 +191,14 @@ void handle_request(
     if (tuple.error() == 2) {
       trial += 1;
       if (trial > 5) {
-        for (const auto& address : tuple.addresses()) {
+        /*for (const auto& address : tuple.addresses()) {
           logger->info("Server's return address for key {} is {}.", key,
                        address);
         }
 
         for (const std::string& address : key_address_cache[key]) {
           logger->info("My cached address for key {} is {}.", key, address);
-        }
+        }*/
       }
 
       // update cache and retry
@@ -191,12 +225,14 @@ void handle_request(
     std::unordered_set<Key> remove_set;
 
     for (const auto& key_pair : key_address_cache) {
-      for (const std::string& address : key_pair.second) {
-        std::vector<std::string> v;
-        split(address, ':', v);
+      for (const auto& addresses : key_pair.second) {
+        for (const std::string& address : addresses.second) {
+          std::vector<std::string> v;
+          split(address, ':', v);
 
-        if (v[1] == signature) {
-          remove_set.insert(key_pair.first);
+          if (v[1] == signature) {
+            remove_set.insert(key_pair.first);
+          }
         }
       }
     }
@@ -227,7 +263,7 @@ void run(unsigned thread_id, std::string ip,
   logger->info("Random seed is {}.", seed);
 
   // mapping from key to a set of worker addresses
-  std::unordered_map<Key, std::unordered_set<Address>> key_address_cache;
+  std::unordered_map<Key, std::unordered_map<unsigned, std::unordered_set<Address>>> key_address_cache;
 
   // observed per-key avg latency
   std::unordered_map<Key, std::pair<double, unsigned>> observed_latency;
@@ -289,14 +325,13 @@ void run(unsigned thread_id, std::string ip,
                                               kRoutingThreadCount)
                   .get_key_address_connect_addr();
           bool succeed;
-          std::vector<std::string> addresses =
-              kHashRingUtil->get_address_from_routing(
-                  ut, key, pushers[target_routing_address], key_address_puller,
-                  succeed, ip, thread_id, rid);
+          std::unordered_map<unsigned, std::unordered_set<Address>> addresses = kHashRingUtil->get_address_from_routing(
+              ut, key, pushers[target_routing_address], key_address_puller, succeed,
+              ip, thread_id, rid);
 
           if (succeed) {
-            for (const std::string address : addresses) {
-              key_address_cache[key].insert(address);
+            for (const auto& tier_address_pair : addresses) {
+              key_address_cache[key][tier_address_pair.first] = tier_address_pair.second;
             }
           } else {
             logger->info("Request timed out during cache warmup.");

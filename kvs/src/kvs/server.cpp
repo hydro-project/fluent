@@ -46,7 +46,7 @@ HashRingUtil hash_ring_util;
 HashRingUtilInterface* kHashRingUtil = &hash_ring_util;
 
 // only initialized for shared memory tier nodes
-SharedMemoryKVS* skvs;
+Serializer* shared_memory_serializer;
 
 void run(unsigned thread_id, Address public_ip, Address private_ip,
          Address seed_ip, std::vector<Address> routing_addresses,
@@ -57,7 +57,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   logger->flush_on(spdlog::level::info);
 
   // each thread has a handle to itself
-  ServerThread wt = ServerThread(public_ip, private_ip, thread_id);
+  ServerThread wt = ServerThread(public_ip, private_ip, thread_id, 0, kSelfTierId);
 
   unsigned seed = time(NULL);
   seed += thread_id;
@@ -118,25 +118,25 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   for (const auto& tier : membership.tiers()) {
     for (const auto server : tier.servers()) {
       global_hash_ring_map[tier.tier_id()].insert(server.public_ip(),
-                                                  server.private_ip(), 0, 0);
+                                                  server.private_ip(), 0, 0, tier.tier_id());
     }
   }
 
   // add itself to global hash ring
   global_hash_ring_map[kSelfTierId].insert(public_ip, private_ip,
-                                           self_join_count, 0);
+                                           self_join_count, 0, kSelfTierId);
 
   // form local hash rings
   for (const auto& tier_pair : kTierDataMap) {
     if (tier_pair.first != 3) {
       for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-        local_hash_ring_map[tier_pair.first].insert(public_ip, private_ip, tid);
+        local_hash_ring_map[tier_pair.first].insert(public_ip, private_ip, 0, tid, tier_pair.first);
       }
     }
   }
 
   // thread 0 notifies other servers that it has joined
-  if (thread_id == 0) {
+  if (wt.get_tid() == 0) {
     std::string msg = std::to_string(kSelfTierId) + ":" + public_ip + ":" +
                       private_ip + ":" + count_str;
 
@@ -172,9 +172,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     MemoryKVS* kvs = new MemoryKVS();
     serializer = new MemorySerializer<MemoryKVS>(kvs);
   } else if (kSelfTierId == 2) {
-    serializer = new EBSSerializer(thread_id);
+    serializer = new EBSSerializer(wt.get_tid());
   } else if (kSelfTierId == 3) {
-    serializer = new MemorySerializer<SharedMemoryKVS>(skvs);
+    serializer = shared_memory_serializer;
   } else {
     logger->info("Invalid node type");
     exit(1);
@@ -183,8 +183,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // the set of changes made on this thread since the last round of gossip
   std::unordered_set<Key> local_changeset;
 
-  // keep track of the key stat
-  std::unordered_map<Key, unsigned> key_size_map;
   // keep track of key access timestamp
   std::unordered_map<
       Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>
@@ -248,10 +246,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&join_puller);
-      node_join_handler(thread_id, seed, public_ip, private_ip, logger,
+      node_join_handler(seed, public_ip, private_ip, logger,
                         serialized, global_hash_ring_map, local_hash_ring_map,
-                        key_size_map, placement, join_remove_set, pushers, wt,
-                        join_addr_keyset_map, self_join_count);
+                        placement, join_remove_set, pushers, wt,
+                        join_addr_keyset_map, self_join_count, serializer);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -264,7 +262,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&depart_puller);
-      node_depart_handler(thread_id, public_ip, private_ip,
+      node_depart_handler(wt, public_ip, private_ip,
                           global_hash_ring_map, logger, serialized, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -278,9 +276,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&self_depart_puller);
-      self_depart_handler(thread_id, seed, public_ip, private_ip, logger,
+      self_depart_handler(seed, public_ip, private_ip, logger,
                           serialized, global_hash_ring_map, local_hash_ring_map,
-                          key_size_map, placement, routing_addresses,
+                          placement, routing_addresses,
                           monitoring_addresses, wt, pushers, serializer);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -296,7 +294,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       std::string serialized = kZmqUtil->recv_string(&request_puller);
       user_request_handler(total_accesses, seed, serialized, start_time, logger,
                            global_hash_ring_map, local_hash_ring_map,
-                           key_size_map, pending_request_map,
+                           pending_request_map,
                            key_access_timestamp, placement, local_changeset, wt,
                            serializer, pushers);
 
@@ -313,7 +311,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       std::string serialized = kZmqUtil->recv_string(&gossip_puller);
       gossip_handler(seed, serialized, global_hash_ring_map,
-                     local_hash_ring_map, key_size_map, pending_gossip_map,
+                     local_hash_ring_map, pending_gossip_map,
                      placement, wt, serializer, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -332,7 +330,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       rep_factor_response_handler(
           seed, total_accesses, logger, serialized, start_time,
           global_hash_ring_map, local_hash_ring_map, pending_request_map,
-          pending_gossip_map, key_access_timestamp, placement, key_size_map,
+          pending_gossip_map, key_access_timestamp, placement,
           local_changeset, wt, serializer, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -348,9 +346,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       std::string serialized =
           kZmqUtil->recv_string(&replication_factor_change_puller);
-      rep_factor_change_handler(public_ip, private_ip, thread_id, seed, logger,
+      rep_factor_change_handler(public_ip, private_ip, seed, logger,
                                 serialized, global_hash_ring_map,
-                                local_hash_ring_map, placement, key_size_map,
+                                local_hash_ring_map, placement,
                                 local_changeset, wt, serializer, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -373,9 +371,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         bool succeed;
         for (const Key& key : local_changeset) {
           ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-              wt, key, is_metadata(key),
+              wt.get_replication_factor_connect_addr(), key, is_metadata(key),
               global_hash_ring_map, local_hash_ring_map, placement, pushers,
-              kAllTierIds, succeed, seed);
+              kAllTierIds, succeed, seed, wt.get_tid(), wt.get_private_ip());
 
           if (succeed) {
             for (const ServerThread& thread : threads) {
@@ -413,8 +411,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       // compute total storage consumption
       unsigned long long consumption = 0;
-      for (const auto& key_pair : key_size_map) {
-        consumption += key_pair.second;
+      std::unordered_set<Key> keys = serializer->get_key_set();
+      for (const auto& key : keys) {
+        consumption += serializer->get_key_size(key);
       }
 
       int index = 0;
@@ -504,36 +503,39 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       }
 
       // report key size stats
-      KeySizeData primary_key_size;
-      for (const auto& key_size_pair : key_size_map) {
-        if (is_primary_replica(key_size_pair.first, placement,
-                               global_hash_ring_map, local_hash_ring_map, wt)) {
-          KeySizeData_KeySize* ks = primary_key_size.add_key_sizes();
-          ks->set_key(key_size_pair.first);
-          ks->set_size(key_size_pair.second);
+      if (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0)) {
+        KeySizeData primary_key_size;
+        std::unordered_set<Key> keys = serializer->get_key_set();
+        for (const auto& key : keys) {
+          if (is_primary_replica(key, placement,
+                                 global_hash_ring_map, local_hash_ring_map, wt)) {
+            KeySizeData_KeySize* ks = primary_key_size.add_key_sizes();
+            ks->set_key(key);
+            ks->set_size(serializer->get_key_size(key));
+          }
         }
-      }
 
-      key = get_metadata_key(wt, kSelfTierId, wt.get_tid(),
-                             MetadataType::key_size);
+        key = get_metadata_key(wt, kSelfTierId, wt.get_tid(),
+                               MetadataType::key_size);
 
-      std::string serialized_size;
-      primary_key_size.SerializeToString(&serialized_size);
+        std::string serialized_size;
+        primary_key_size.SerializeToString(&serialized_size);
 
-      req.Clear();
-      req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, serialized_size, 0);
+        req.Clear();
+        req.set_type(get_request_type("PUT"));
+        prepare_put_tuple(req, key, serialized_size, 0);
 
-      threads = kHashRingUtil->get_responsible_threads_metadata(
-          key, global_hash_ring_map[1], local_hash_ring_map[1]);
+        threads = kHashRingUtil->get_responsible_threads_metadata(
+            key, global_hash_ring_map[1], local_hash_ring_map[1]);
 
-      if (threads.size() != 0) {
-        Address target_address =
-            std::next(begin(threads), rand_r(&seed) % threads.size())
-                ->get_request_pulling_connect_addr();
-        std::string serialized;
-        req.SerializeToString(&serialized);
-        kZmqUtil->send_string(serialized, &pushers[target_address]);
+        if (threads.size() != 0) {
+          Address target_address =
+              std::next(begin(threads), rand_r(&seed) % threads.size())
+                  ->get_request_pulling_connect_addr();
+          std::string serialized;
+          req.SerializeToString(&serialized);
+          kZmqUtil->send_string(serialized, &pushers[target_address]);
+        }
       }
 
       report_start = std::chrono::system_clock::now();
@@ -584,7 +586,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       // remove keys
       if (join_addr_keyset_map.size() == 0) {
         for (const std::string& key : join_remove_set) {
-          key_size_map.erase(key);
           serializer->remove(key);
         }
       }
@@ -656,7 +657,8 @@ int main(int argc, char* argv[]) {
 
   if (kSelfTierId == 3) {
     // initialize the shared memory kvs
-    skvs = new SharedMemoryKVS();
+    SharedMemoryKVS* skvs = new SharedMemoryKVS();
+    shared_memory_serializer = new MemorySerializer<SharedMemoryKVS>(skvs);
   }
 
   // start the initial threads based on kThreadNum

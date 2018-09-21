@@ -30,10 +30,43 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 HashRingUtil hash_ring_util;
 HashRingUtilInterface* kHashRingUtil = &hash_ring_util;
 
+unsigned get_total_address_size(std::unordered_map<unsigned, std::unordered_set<Address>>& addresses) {
+  unsigned count = 0;
+  for (const auto& tier_address_pair : addresses) {
+    count += tier_address_pair.second.size();
+  }
+  return count;
+}
+
+// For GET, first check shared memory, then memory, then EBS
+// For PUT, first check memory, then shared memory, then EBS
+Address pick_worker_address(std::string req_type,
+                            std::unordered_map<unsigned, std::unordered_set<Address>>& addresses,
+                            unsigned& seed) {
+  if (req_type == "GET") {
+    // TODO: randomly choose thread
+    if (addresses.find(3) != addresses.end() && addresses[3].size() > 0) {
+      return *(next(begin(addresses[3]), rand_r(&seed) % addresses[3].size()));
+    } else if (addresses.find(1) != addresses.end() && addresses[1].size() > 0) {
+      return *(next(begin(addresses[1]), rand_r(&seed) % addresses[1].size()));
+    } else {
+      return *(next(begin(addresses[2]), rand_r(&seed) % addresses[2].size()));
+    }
+  } else {
+    if (addresses.find(1) != addresses.end() && addresses[1].size() > 0) {
+      return *(next(begin(addresses[1]), rand_r(&seed) % addresses[1].size()));
+    } else if (addresses.find(3) != addresses.end() && addresses[3].size() > 0) {
+      return *(next(begin(addresses[3]), rand_r(&seed) % addresses[3].size()));
+    } else {
+      return *(next(begin(addresses[2]), rand_r(&seed) % addresses[2].size()));
+    }
+  }
+}
+
 void handle_request(
     std::string request_line, SocketCache& pushers,
     std::vector<Address>& routing_addresses,
-    std::unordered_map<Key, std::unordered_set<Address>>& key_address_cache,
+    std::unordered_map<Key, std::unordered_map<unsigned, std::unordered_set<Address>>>& key_address_cache,
     unsigned& seed, std::shared_ptr<spdlog::logger> logger, UserThread& ut,
     zmq::socket_t& response_puller, zmq::socket_t& key_address_puller,
     Address& ip, unsigned& thread_id, unsigned& rid, unsigned& trial) {
@@ -73,29 +106,27 @@ void handle_request(
                                         kRoutingThreadCount)
             .get_key_address_connect_addr();
     bool succeed;
-    std::vector<Address> addresses = kHashRingUtil->get_address_from_routing(
+    std::unordered_map<unsigned, std::unordered_set<Address>> addresses = kHashRingUtil->get_address_from_routing(
         ut, key, pushers[target_routing_address], key_address_puller, succeed,
         ip, thread_id, rid);
 
     if (succeed) {
-      for (const std::string& address : addresses) {
-        key_address_cache[key].insert(address);
+      for (const auto& tier_address_pair : addresses) {
+        key_address_cache[key][tier_address_pair.first] = tier_address_pair.second;
       }
-      worker_address = addresses[rand_r(&seed) % addresses.size()];
     } else {
       logger->error(
           "Request timed out when querying routing. This should never happen!");
       return;
     }
   } else {
-    if (key_address_cache[key].size() == 0) {
+    if (get_total_address_size(key_address_cache[key]) == 0) {
       logger->error("Address cache for key " + key + " has size 0.");
       return;
     }
-
-    worker_address = *(next(begin(key_address_cache[key]),
-                            rand_r(&seed) % key_address_cache[key].size()));
   }
+
+  worker_address = pick_worker_address(v[0], key_address_cache[key], seed);
 
   KeyRequest req;
   req.set_response_address(ut.get_request_pulling_connect_addr());
@@ -107,7 +138,7 @@ void handle_request(
 
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
-  tp->set_address_cache_size(key_address_cache[key].size());
+  tp->set_address_cache_size(get_total_address_size(key_address_cache[key]));
 
   if (value == "") {
     // get request
@@ -130,14 +161,14 @@ void handle_request(
     if (tuple.error() == 2) {
       trial += 1;
       if (trial > 5) {
-        for (const auto& address : res.tuples(0).addresses()) {
+        /*for (const auto& address : res.tuples(0).addresses()) {
           logger->info("Server's return address for key {} is {}.", key,
                        address);
         }
 
         for (const std::string& address : key_address_cache[key]) {
           logger->info("My cached address for key {} is {}", key, address);
-        }
+        }*/
       }
 
       // update cache and retry
@@ -172,12 +203,14 @@ void handle_request(
     std::unordered_set<Key> remove_set;
 
     for (const auto& key_pair : key_address_cache) {
-      for (const std::string& address : key_pair.second) {
-        std::vector<std::string> v;
-        split(address, ':', v);
+      for (const auto& addresses : key_pair.second) {
+        for (const std::string& address : addresses.second) {
+          std::vector<std::string> v;
+          split(address, ':', v);
 
-        if (v[1] == signature) {
-          remove_set.insert(key_pair.first);
+          if (v[1] == signature) {
+            remove_set.insert(key_pair.first);
+          }
         }
       }
     }
@@ -207,7 +240,7 @@ void run(unsigned thread_id, std::string filename, Address ip,
   logger->info("Random seed is {}.", seed);
 
   // mapping from key to a set of worker addresses
-  std::unordered_map<Key, std::unordered_set<Address>> key_address_cache;
+  std::unordered_map<Key, std::unordered_map<unsigned, std::unordered_set<Address>>> key_address_cache;
 
   UserThread ut = UserThread(ip, thread_id);
 

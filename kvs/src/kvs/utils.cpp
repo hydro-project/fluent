@@ -57,12 +57,8 @@ std::pair<ReadCommittedPairLattice<std::string>, unsigned> process_get(
 }
 
 void process_put(const Key& key, const unsigned long long& timestamp,
-                 const std::string& value, Serializer* serializer,
-                 std::unordered_map<Key, unsigned>& key_size_map) {
-  if (serializer->put(key, value, timestamp)) {
-    // update value size if the value is replaced
-    key_size_map[key] = value.size();
-  }
+                 const std::string& value, Serializer* serializer) {
+  serializer->put(key, value, timestamp);
 }
 
 bool is_primary_replica(

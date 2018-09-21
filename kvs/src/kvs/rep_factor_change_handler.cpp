@@ -15,21 +15,20 @@
 #include "kvs/kvs_handlers.hpp"
 
 void rep_factor_change_handler(
-    Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
+    Address public_ip, Address private_ip, unsigned& seed,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
     std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, unsigned>& key_size_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
     Serializer* serializer, SocketCache& pushers) {
   logger->info("Received a replication factor change.");
-  if (thread_id == 0) {
+  if (wt.get_tid() == 0) {
     // tell all worker threads about the replication factor change
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
       kZmqUtil->send_string(
           serialized,
-          &pushers[ServerThread(public_ip, private_ip, tid)
+          &pushers[ServerThread(public_ip, private_ip, tid, 0, kSelfTierId)
                        .get_replication_factor_change_connect_addr()]);
     }
   }
@@ -48,11 +47,11 @@ void rep_factor_change_handler(
     Key key = key_rep.key();
 
     // if this thread was responsible for the key before the change
-    if (key_size_map.find(key) != key_size_map.end()) {
+    if (serializer->find(key) && (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0))) {
       ServerThreadSet orig_threads = kHashRingUtil->get_responsible_threads(
-          wt, key, is_metadata(key),
+          wt.get_replication_factor_connect_addr(), key, is_metadata(key),
           global_hash_ring_map, local_hash_ring_map, placement, pushers,
-          kAllTierIds, succeed, seed);
+          kAllTierIds, succeed, seed, wt.get_tid(), wt.get_private_ip());
 
       if (succeed) {
         // update the replication factor
@@ -79,9 +78,9 @@ void rep_factor_change_handler(
         }
 
         ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-            wt, key, is_metadata(key),
+            wt.get_replication_factor_connect_addr(), key, is_metadata(key),
             global_hash_ring_map, local_hash_ring_map, placement, pushers,
-            kAllTierIds, succeed, seed);
+            kAllTierIds, succeed, seed, wt.get_tid(), wt.get_private_ip());
 
         if (succeed) {
           if (threads.find(wt) == threads.end()) {  // this thread is no longer
@@ -99,16 +98,10 @@ void rep_factor_change_handler(
           // thread responsible for this key, then I gossip it to the new
           // threads that are responsible for it
           if (!decrement && orig_threads.begin()->get_id() == wt.get_id()) {
-            std::unordered_set<ServerThread, ThreadHash> new_threads;
-
             for (const ServerThread& thread : threads) {
               if (orig_threads.find(thread) == orig_threads.end()) {
-                new_threads.insert(thread);
+                addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
               }
-            }
-
-            for (const ServerThread& thread : new_threads) {
-              addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
             }
           }
         } else {
@@ -118,17 +111,6 @@ void rep_factor_change_handler(
       } else {
         logger->error(
             "Missing key replication factor in rep factor change routine.");
-
-        // just update the replication factor
-        for (const auto& global : key_rep.global()) {
-          placement[key].global_replication_map_[global.tier_id()] =
-              global.replication_factor();
-        }
-
-        for (const auto& local : key_rep.local()) {
-          placement[key].local_replication_map_[local.tier_id()] =
-              local.replication_factor();
-        }
       }
     } else {
       // just update the replication factor
@@ -144,12 +126,13 @@ void rep_factor_change_handler(
     }
   }
 
-  send_gossip(addr_keyset_map, pushers, serializer);
+  if (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0)) {
+    send_gossip(addr_keyset_map, pushers, serializer);
 
-  // remove keys
-  for (const std::string& key : remove_set) {
-    key_size_map.erase(key);
-    serializer->remove(key);
-    local_changeset.erase(key);
+    // remove keys
+    for (const std::string& key : remove_set) {
+      serializer->remove(key);
+      local_changeset.erase(key);
+    }
   }
 }

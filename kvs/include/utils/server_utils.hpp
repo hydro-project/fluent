@@ -41,11 +41,14 @@ typedef std::unordered_map<Address, std::unordered_set<Key>> AddressKeysetMap;
 
 class Serializer {
  public:
+  virtual bool find(const Key& key) = 0;
   virtual ReadCommittedPairLattice<std::string> get(const Key& key,
                                                     unsigned& err_number) = 0;
   virtual bool put(const Key& key, const std::string& value,
                    const unsigned& timestamp) = 0;
   virtual void remove(const Key& key) = 0;
+  virtual std::unordered_set<Key> get_key_set() = 0;
+  virtual unsigned get_key_size(const Key& key) = 0;
   virtual ~Serializer(){};
 };
 
@@ -55,6 +58,10 @@ class MemorySerializer : public Serializer {
 
  public:
   MemorySerializer(T* kvs) : kvs_(kvs) {}
+
+  bool find(const Key& key) {
+    return kvs_->contains(key);
+  }
 
   ReadCommittedPairLattice<std::string> get(const Key& key,
                                             unsigned& err_number) {
@@ -69,14 +76,23 @@ class MemorySerializer : public Serializer {
   }
 
   void remove(const Key& key) { kvs_->remove(key); }
+
+  std::unordered_set<Key> get_key_set() {
+    return kvs_->key_set();
+  }
+
+  unsigned get_key_size(const Key& key) {
+    return kvs_->key_size(key);
+  }
 };
 
 class EBSSerializer : public Serializer {
   unsigned tid_;
   std::string ebs_root_;
+  std::unordered_map<Key, unsigned> key_size_map;
 
  public:
-  EBSSerializer(unsigned& tid) : tid_(tid) {
+  EBSSerializer(unsigned tid) : tid_(tid) {
     YAML::Node conf = YAML::LoadFile("conf/config.yml");
 
     ebs_root_ = conf["ebs"].as<std::string>();
@@ -84,6 +100,10 @@ class EBSSerializer : public Serializer {
     if (ebs_root_.back() != '/') {
       ebs_root_ += "/";
     }
+  }
+
+  bool find(const Key& key) {
+    return (key_size_map.find(key) != key_size_map.end());
   }
 
   ReadCommittedPairLattice<std::string> get(const Key& key,
@@ -155,6 +175,7 @@ class EBSSerializer : public Serializer {
         if (!new_value.SerializeToOstream(&output)) {
           std::cerr << "Failed to write payload" << std::endl;
         }
+        key_size_map[key] = l.size();
       }
     }
 
@@ -168,22 +189,36 @@ class EBSSerializer : public Serializer {
       std::cerr << "Error deleting file" << std::endl;
     }
   }
+
+  std::unordered_set<Key> get_key_set() {
+    std::unordered_set<Key> res;
+    for (const auto &pair : key_size_map) {
+      res.insert(pair.first);
+    }
+    return res;
+  }
+
+  unsigned get_key_size(const Key& key) {
+    return key_size_map[key];
+  }
 };
 
 struct PendingRequest {
   PendingRequest() {}
   PendingRequest(std::string type, const std::string& value, Address addr,
-                 std::string respond_id) :
+                 std::string respond_id, unsigned address_cache_size) :
       type_(type),
       value_(value),
       addr_(addr),
-      respond_id_(respond_id) {}
+      respond_id_(respond_id),
+      address_cache_size_(address_cache_size) {}
 
   // TODO(vikram): change these type names
   std::string type_;
   std::string value_;
   Address addr_;
   std::string respond_id_;
+  unsigned address_cache_size_;
 };
 
 struct PendingGossip {

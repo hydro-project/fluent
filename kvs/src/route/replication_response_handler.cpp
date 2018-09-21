@@ -67,21 +67,14 @@ void replication_response_handler(
   // process pending key address requests
   if (pending_key_request_map.find(key) != pending_key_request_map.end()) {
     bool succeed;
-    std::vector<unsigned> tier_ids = {1, 3};
-    ServerThreadSet threads = {};
-
-    while (threads.size() == 0) {
-      threads = kHashRingUtil->get_responsible_threads(
-          rt, key, false,
+    ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
+          rt.get_replication_factor_connect_addr(), key, false,
           global_hash_ring_map, local_hash_ring_map, placement, pushers,
-          tier_ids, succeed, seed);
+          kAllTierIds, succeed, seed, rt.get_tid(), "");
 
-      if (!succeed) {
-        logger->error("Missing replication factor for key {}.", key);
-        return;
-      }
-
-      tier_ids = {2};
+    if (!succeed) {
+      logger->error("Missing replication factor for key {}.", key);
+      return;
     }
 
     for (const auto& pending_key_req : pending_key_request_map[key]) {
@@ -91,7 +84,9 @@ void replication_response_handler(
       tp->set_key(key);
 
       for (const ServerThread& thread : threads) {
-        tp->add_ips(thread.get_request_pulling_connect_addr());
+        KeyAddressResponse_Thread* th = tp->add_threads();
+        th->set_ip(thread.get_request_pulling_connect_addr());
+        th->set_tier(thread.get_tier_id());
       }
 
       // send the key address response

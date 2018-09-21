@@ -42,24 +42,17 @@ void address_handler(
     respond = true;
   } else {  // if there are servers, attempt to return the correct threads
     for (const Key& key : addr_request.keys()) {
-      std::vector<unsigned> tier_ids = {1, 3};
-      ServerThreadSet threads = {};
-
-      while (threads.size() == 0) {
-        threads = kHashRingUtil->get_responsible_threads(
-            rt, key, false,
+      ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
+            rt.get_replication_factor_connect_addr(), key, false,
             global_hash_ring_map, local_hash_ring_map, placement, pushers,
-            tier_ids, succeed, seed);
+            kAllTierIds, succeed, seed, rt.get_tid(), "");
 
-        if (!succeed) {  // this means we don't have the replication factor for
-                         // the key
-          pending_key_request_map[key].push_back(
-              std::pair<Address, std::string>(addr_request.response_address(),
-                                              addr_request.request_id()));
-          return;
-        }
-
-        tier_ids = {2};
+      if (!succeed) {  // this means we don't have the replication factor for
+                       // the key
+        pending_key_request_map[key].push_back(
+            std::pair<Address, std::string>(addr_request.response_address(),
+                                            addr_request.request_id()));
+        return;
       }
 
       KeyAddressResponse_KeyAddress* tp = addr_response.add_addresses();
@@ -68,7 +61,9 @@ void address_handler(
       addr_response.set_error(0);
 
       for (const ServerThread& thread : threads) {
-        tp->add_ips(thread.get_request_pulling_connect_addr());
+        KeyAddressResponse_Thread* th = tp->add_threads();
+        th->set_ip(thread.get_request_pulling_connect_addr());
+        th->set_tier(thread.get_tier_id());
       }
     }
   }

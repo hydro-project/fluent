@@ -26,7 +26,6 @@ message KeyTuple {
   optional uint64 timestamp = 4;
   optional uint32 address_cache_size = 5;
   optional bool invalidate = 6;
-  repeated string addresses = 7;
 }
 
 message KeyRequest {
@@ -48,9 +47,13 @@ message KeyAddressRequest {
 }
 
 message KeyAddressResponse {
+  message Thread {
+    required string ip = 1;
+    required uint32 tier = 2;
+  }
   message KeyAddress {
     required string key = 1;
-    repeated string ips = 2;
+    repeated Thread threads = 2;
   }
     
   repeated KeyAddress addresses = 1;

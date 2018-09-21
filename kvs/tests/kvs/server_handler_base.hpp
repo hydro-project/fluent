@@ -32,7 +32,6 @@ class ServerHandlerTest : public ::testing::Test {
   std::unordered_map<unsigned, GlobalHashRing> global_hash_ring_map;
   std::unordered_map<unsigned, LocalHashRing> local_hash_ring_map;
   std::unordered_map<Key, KeyInfo> placement;
-  std::unordered_map<Key, unsigned> key_size_map;
   ServerThread wt;
   PendingMap<PendingRequest> pending_request_map;
   PendingMap<PendingGossip> pending_gossip_map;
@@ -49,8 +48,8 @@ class ServerHandlerTest : public ::testing::Test {
   ServerHandlerTest() {
     kvs = new MemoryKVS();
     serializer = new MemorySerializer<MemoryKVS>(kvs);
-    wt = ServerThread(ip, ip, thread_id);
-    global_hash_ring_map[1].insert(ip, ip, 0, thread_id);
+    wt = ServerThread(ip, ip, thread_id, 0, 1);
+    global_hash_ring_map[1].insert(ip, ip, 0, thread_id, 1);
   }
 
   virtual ~ServerHandlerTest() {

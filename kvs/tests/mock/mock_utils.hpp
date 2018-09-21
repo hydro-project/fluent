@@ -30,11 +30,12 @@ class MockZmqUtil : public ZmqUtilInterface {
 class MockHashRingUtil : public HashRingUtilInterface {
  public:
   virtual ServerThreadSet get_responsible_threads(
-      ServerThread& wt, const Key& key, bool metadata,
+      Address response_address, const Key& key, bool metadata,
       std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
       std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
       std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-      const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
+      const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed,
+      unsigned thread_id, Address private_ip);
 };
 
 #endif  // TESTS_MOCKED_HPP_

@@ -28,7 +28,6 @@ void rep_factor_response_handler(
         Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
         key_access_timestamp,
     std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, unsigned>& key_size_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
     Serializer* serializer, SocketCache& pushers) {
   KeyResponse response;
@@ -76,9 +75,9 @@ void rep_factor_response_handler(
 
   if (pending_request_map.find(key) != pending_request_map.end()) {
     ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-        wt, key, is_metadata(key),
+        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
-        kSelfTierIdVector, succeed, seed);
+        kAllTierIds, succeed, seed, wt.get_tid(), wt.get_private_ip());
 
     if (succeed) {
       bool responsible = threads.find(wt) != threads.end();
@@ -97,10 +96,6 @@ void rep_factor_response_handler(
           tp->set_key(key);
           tp->set_error(2);
 
-          for (const ServerThread& thread : threads) {
-            tp->add_addresses(thread.get_request_pulling_connect_addr());
-          }
-
           std::string serialized_response;
           response.SerializeToString(&serialized_response);
           kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
@@ -113,11 +108,16 @@ void rep_factor_response_handler(
                     .count();
             auto ts = generate_timestamp(time_diff, wt.get_tid());
 
-            process_put(key, ts, request.value_, serializer, key_size_map);
+            process_put(key, ts, request.value_, serializer);
             key_access_timestamp[key].insert(now);
 
             total_access += 1;
-            local_changeset.insert(key);
+            if (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0)) {
+              local_changeset.insert(key);
+            } else {
+              logger->error("Only thread 0 in shared memory tier can process PUT. However, thread {} is processing PUT.",
+                            wt.get_tid());
+            }
           } else {
             logger->error("Received a GET request with no response address.");
           }
@@ -135,9 +135,6 @@ void rep_factor_response_handler(
             auto res = process_get(key, serializer);
             tp->set_value(res.first.reveal().value);
             tp->set_error(res.second);
-
-            key_access_timestamp[key].insert(std::chrono::system_clock::now());
-            total_access += 1;
           } else {
             auto time_diff =
                 std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -145,13 +142,23 @@ void rep_factor_response_handler(
                     .count();
             auto ts = generate_timestamp(time_diff, wt.get_tid());
 
-            process_put(key, ts, request.value_, serializer, key_size_map);
+            process_put(key, ts, request.value_, serializer);
             tp->set_error(0);
 
-            key_access_timestamp[key].insert(now);
-            total_access += 1;
-            local_changeset.insert(key);
+            if (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0)) {
+              local_changeset.insert(key);
+            } else {
+              logger->error("Only thread 0 in shared memory tier can process PUT. However, thread {} is processing PUT.",
+                            wt.get_tid());
+            }
           }
+
+          if (request.address_cache_size_ != threads.size()) {
+            tp->set_invalidate(true);
+          }
+
+          key_access_timestamp[key].insert(now);
+          total_access += 1;
 
           std::string serialized_response;
           response.SerializeToString(&serialized_response);
@@ -168,14 +175,14 @@ void rep_factor_response_handler(
 
   if (pending_gossip_map.find(key) != pending_gossip_map.end()) {
     ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-        wt, key, is_metadata(key),
+        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
-        kSelfTierIdVector, succeed, seed);
+        kAllTierIds, succeed, seed, wt.get_tid(), wt.get_private_ip());
 
     if (succeed) {
       if (threads.find(wt) != threads.end()) {
         for (const PendingGossip& gossip : pending_gossip_map[key]) {
-          process_put(key, gossip.ts_, gossip.value_, serializer, key_size_map);
+          process_put(key, gossip.ts_, gossip.value_, serializer);
         }
       } else {
         std::unordered_map<Address, KeyRequest> gossip_map;

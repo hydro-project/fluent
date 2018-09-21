@@ -21,11 +21,12 @@
 // get all threads responsible for a key from the "node_type" tier
 // metadata flag = 0 means the key is  metadata; otherwise, it is  regular data
 ServerThreadSet HashRingUtil::get_responsible_threads(
-    ServerThread& wt, const Key& key, bool metadata,
+    Address response_address, const Key& key, bool metadata,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
     std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-    const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) {
+    const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed,
+    unsigned thread_id, Address private_ip) {
   if (metadata) {
     succeed = true;
     return kHashRingUtil->get_responsible_threads_metadata(
@@ -35,7 +36,7 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
 
     if (placement.find(key) == placement.end()) {
       kHashRingUtil->issue_replication_factor_request(
-          wt.get_replication_factor_connect_addr(), key, global_hash_ring_map[1],
+          response_address, key, global_hash_ring_map[1],
           local_hash_ring_map[1], pushers, seed);
       succeed = false;
     } else {
@@ -53,19 +54,19 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
                 local_hash_ring_map[tier_id]);
 
             for (const unsigned& tid : tids) {
-              result.insert(ServerThread(public_ip, private_ip, tid));
+              result.insert(ServerThread(public_ip, private_ip, tid, 0, thread.get_tier_id()));
             }
           } else {
             // shared memory tier
             unsigned tid;
-            if (thread.get_private_ip() == wt.get_private_ip()) {
+            if (thread.get_private_ip() == private_ip) {
               // same node
-              tid = wt.get_tid();
+              tid = thread_id;
             } else {
               // different node
-              tid = rand_r(&seed) % kSharedMemoryThreadCount;
+              tid = 0;
             }
-            result.insert(ServerThread(public_ip, private_ip, tid));
+            result.insert(ServerThread(public_ip, private_ip, tid, 0, thread.get_tier_id()));
           }
         }
       }
@@ -143,7 +144,7 @@ ServerThreadSet HashRingUtilInterface::get_responsible_threads_metadata(
         key, kDefaultLocalReplication, local_memory_hash_ring);
 
     for (const unsigned& tid : tids) {
-      threads.insert(ServerThread(public_ip, private_ip, tid));
+      threads.insert(ServerThread(public_ip, private_ip, tid, 0, thread.get_tier_id()));
     }
   }
 
@@ -174,7 +175,7 @@ void HashRingUtilInterface::issue_replication_factor_request(
 }
 
 // query the routing for a key and return all address
-std::vector<Address> HashRingUtilInterface::get_address_from_routing(
+std::unordered_map<unsigned, std::unordered_set<Address>> HashRingUtilInterface::get_address_from_routing(
     UserThread& ut, const Key& key, zmq::socket_t& sending_socket,
     zmq::socket_t& receiving_socket, bool& succeed, Address& ip,
     unsigned& thread_id, unsigned& rid) {
@@ -188,7 +189,7 @@ std::vector<Address> HashRingUtilInterface::get_address_from_routing(
   std::string req_id =
       ip + ":" + std::to_string(thread_id) + "_" + std::to_string(rid);
   address_request.set_request_id(req_id);
-  std::vector<Address> result;
+  std::unordered_map<unsigned, std::unordered_set<Address>> result;
 
   int error = -1;
 
@@ -219,8 +220,8 @@ std::vector<Address> HashRingUtilInterface::get_address_from_routing(
     count++;
   }
 
-  for (const std::string& ip : address_response.addresses(0).ips()) {
-    result.push_back(ip);
+  for (const KeyAddressResponse_Thread& th : address_response.addresses(0).threads()) {
+    result[th.tier()].insert(th.ip());
   }
 
   return result;

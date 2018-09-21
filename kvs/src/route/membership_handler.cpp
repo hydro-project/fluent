@@ -35,7 +35,7 @@ void membership_handler(
 
     // update hash ring
     bool inserted = global_hash_ring_map[tier].insert(
-        new_server_public_ip, new_server_private_ip, join_count, 0);
+        new_server_public_ip, new_server_private_ip, join_count, 0, tier);
 
     if (inserted) {
       if (thread_id == 0) {
@@ -79,7 +79,7 @@ void membership_handler(
     logger->info("Received depart from server {}/{}.", new_server_public_ip,
                  new_server_private_ip, new_server_private_ip);
     global_hash_ring_map[tier].remove(new_server_public_ip,
-                                      new_server_private_ip, 0);
+                                      new_server_private_ip, 0, tier);
 
     if (thread_id == 0) {
       // tell all worker threads about the message

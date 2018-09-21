@@ -33,8 +33,8 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
   }
 
   bool insert(Address public_ip, Address private_ip, int join_count,
-              unsigned tid) {
-    ServerThread new_thread = ServerThread(public_ip, private_ip, tid, 0);
+              unsigned tid, unsigned tier_id) {
+    ServerThread new_thread = ServerThread(public_ip, private_ip, tid, 0, tier_id);
 
     if (unique_servers.find(new_thread) != unique_servers.end()) {
       // if we already have the server, only return true if it's rejoining
@@ -50,7 +50,7 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
 
       for (unsigned virtual_num = 0; virtual_num < kVirtualThreadNum;
            virtual_num++) {
-        ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num);
+        ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num, tier_id);
         ConsistentHashMap<ServerThread, H>::insert(st);
       }
 
@@ -58,14 +58,14 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
     }
   }
 
-  void remove(Address public_ip, Address private_ip, unsigned tid) {
+  void remove(Address public_ip, Address private_ip, unsigned tid, unsigned tier_id) {
     for (unsigned virtual_num = 0; virtual_num < kVirtualThreadNum;
          virtual_num++) {
-      ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num);
+      ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num, tier_id);
       ConsistentHashMap<ServerThread, H>::erase(st);
     }
 
-    unique_servers.erase(ServerThread(public_ip, private_ip, tid, 0));
+    unique_servers.erase(ServerThread(public_ip, private_ip, tid, 0, tier_id));
     server_join_count.erase(private_ip);
   }
 
@@ -80,11 +80,12 @@ typedef HashRing<LocalHasher> LocalHashRing;
 class HashRingUtilInterface {
  public:
   virtual ServerThreadSet get_responsible_threads(
-      ServerThread& wt, const Key& key, bool metadata,
+      Address response_address, const Key& key, bool metadata,
       std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
       std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
       std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-      const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) = 0;
+      const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed,
+      unsigned thread_id, Address private_ip) = 0;
 
   ServerThreadSet get_responsible_threads_metadata(
       const Key& key, GlobalHashRing& global_memory_hash_ring,
@@ -96,7 +97,7 @@ class HashRingUtilInterface {
                                         LocalHashRing& local_memory_hash_ring,
                                         SocketCache& pushers, unsigned& seed);
 
-  std::vector<Address> get_address_from_routing(UserThread& ut, const Key& key,
+  std::unordered_map<unsigned, std::unordered_set<Address>> get_address_from_routing(UserThread& ut, const Key& key,
                                                 zmq::socket_t& sending_socket,
                                                 zmq::socket_t& receiving_socket,
                                                 bool& succeed, Address& ip,
@@ -111,11 +112,12 @@ class HashRingUtilInterface {
 class HashRingUtil : public HashRingUtilInterface {
  public:
   virtual ServerThreadSet get_responsible_threads(
-      Address respond_address, const Key& key, bool metadata,
+      Address response_address, const Key& key, bool metadata,
       std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
       std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
       std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-      const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
+      const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed,
+      unsigned thread_id, Address private_ip);
 };
 
 ServerThreadSet responsible_global(const Key& key, unsigned global_rep,

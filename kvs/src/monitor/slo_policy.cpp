@@ -139,7 +139,7 @@ void slo_policy(
                                 pushers, mt, response_puller, logger, rid);
 
       ServerThread node = ServerThread(ss.min_occupancy_memory_public_ip,
-                                       ss.min_occupancy_memory_private_ip, 0);
+                                       ss.min_occupancy_memory_private_ip, 0, 0, 1);
       remove_node(logger, node, "memory", removing_memory_node, pushers,
                   departing_node_map, mt);
     }

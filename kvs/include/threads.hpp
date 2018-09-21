@@ -54,24 +54,28 @@ class ServerThread {
   Address private_ip_;
   unsigned tid_;
   unsigned virtual_num_;
+  unsigned tier_id_;
 
  public:
   ServerThread() {}
-  ServerThread(Address public_ip, Address private_ip, unsigned tid) :
-      public_ip_(public_ip),
-      private_ip_(private_ip),
-      tid_(tid) {}
-  ServerThread(Address public_ip, Address private_ip, unsigned tid,
-               unsigned virtual_num) :
+  /*ServerThread(Address public_ip, Address private_ip, unsigned tid, unsigned tier_id) :
       public_ip_(public_ip),
       private_ip_(private_ip),
       tid_(tid),
-      virtual_num_(virtual_num) {}
+      tier_id_(tier_id) {}*/
+  ServerThread(Address public_ip, Address private_ip, unsigned tid,
+               unsigned virtual_num, unsigned tier_id) :
+      public_ip_(public_ip),
+      private_ip_(private_ip),
+      tid_(tid),
+      virtual_num_(virtual_num),
+      tier_id_(tier_id) {}
 
   Address get_public_ip() const { return public_ip_; }
   Address get_private_ip() const { return private_ip_; }
   unsigned get_tid() const { return tid_; }
   unsigned get_virtual_num() const { return virtual_num_; }
+  unsigned get_tier_id() const { return tier_id_; }
   std::string get_id() const {
     return private_ip_ + ":" + std::to_string(tid_);
   }
