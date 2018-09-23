@@ -70,8 +70,9 @@ void user_request_handler(
               wt.get_replication_factor_connect_addr(), key,
               global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
 
-          pending_request_map[key].push_back(PendingRequest(
-              request_type, value, response_address, response_id, tuple.address_cache_size()));
+          pending_request_map[key].push_back(
+              PendingRequest(request_type, value, response_address, response_id,
+                             tuple.address_cache_size()));
         }
       } else {  // if we know the responsible threads, we process the request
         KeyTuple* tp = response.add_tuples();
@@ -97,8 +98,10 @@ void user_request_handler(
           if (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0)) {
             local_changeset.insert(key);
           } else {
-            logger->error("Only thread 0 in shared memory tier can process PUT. However, thread {} is processing PUT.",
-                          wt.get_tid());
+            logger->error(
+                "Only thread 0 in shared memory tier can process PUT. However, "
+                "thread {} is processing PUT.",
+                wt.get_tid());
           }
           tp->set_error(0);
         } else {
@@ -115,7 +118,8 @@ void user_request_handler(
       }
     } else {
       pending_request_map[key].push_back(
-          PendingRequest(request_type, value, response_address, response_id, tuple.address_cache_size()));
+          PendingRequest(request_type, value, response_address, response_id,
+                         tuple.address_cache_size()));
     }
   }
 

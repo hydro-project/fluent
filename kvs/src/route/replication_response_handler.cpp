@@ -68,9 +68,9 @@ void replication_response_handler(
   if (pending_key_request_map.find(key) != pending_key_request_map.end()) {
     bool succeed;
     ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-          rt.get_replication_factor_connect_addr(), key, false,
-          global_hash_ring_map, local_hash_ring_map, placement, pushers,
-          kAllTierIds, succeed, seed, rt.get_tid(), "");
+        rt.get_replication_factor_connect_addr(), key, false,
+        global_hash_ring_map, local_hash_ring_map, placement, pushers,
+        kAllTierIds, succeed, seed, rt.get_tid(), "");
 
     if (!succeed) {
       logger->error("Missing replication factor for key {}.", key);

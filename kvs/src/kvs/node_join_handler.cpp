@@ -47,7 +47,8 @@ void node_join_handler(
       kZmqUtil->send_string(
           std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip +
               ":" + std::to_string(self_join_count),
-          &pushers[ServerThread(new_server_public_ip, new_server_private_ip, 0, 0, kSelfTierId)
+          &pushers[ServerThread(new_server_public_ip, new_server_private_ip, 0,
+                                0, kSelfTierId)
                        .get_node_join_connect_addr()]);
 
       // gossip the new node address between server nodes to ensure consistency
@@ -72,13 +73,15 @@ void node_join_handler(
 
       // tell all worker threads about the new node join
       for (unsigned tid = 1; tid < kThreadNum; tid++) {
-        kZmqUtil->send_string(serialized,
-                              &pushers[ServerThread(public_ip, private_ip, tid, 0, kSelfTierId)
-                                           .get_node_join_connect_addr()]);
+        kZmqUtil->send_string(
+            serialized,
+            &pushers[ServerThread(public_ip, private_ip, tid, 0, kSelfTierId)
+                         .get_node_join_connect_addr()]);
       }
     }
 
-    if (tier == kSelfTierId && (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0))) {
+    if (tier == kSelfTierId &&
+        (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0))) {
       bool succeed;
 
       std::unordered_set<Key> keys = serializer->get_key_set();
@@ -86,7 +89,8 @@ void node_join_handler(
         ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
             wt.get_replication_factor_connect_addr(), key, is_metadata(key),
             global_hash_ring_map, local_hash_ring_map, placement, pushers,
-            kSelfTierIdVector, succeed, seed, wt.get_tid(), wt.get_private_ip());
+            kSelfTierIdVector, succeed, seed, wt.get_tid(),
+            wt.get_private_ip());
 
         if (succeed) {
           // there are two situations in which we gossip data to the joining

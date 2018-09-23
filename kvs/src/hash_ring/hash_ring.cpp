@@ -54,7 +54,8 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
                 local_hash_ring_map[tier_id]);
 
             for (const unsigned& tid : tids) {
-              result.insert(ServerThread(public_ip, private_ip, tid, 0, thread.get_tier_id()));
+              result.insert(ServerThread(public_ip, private_ip, tid, 0,
+                                         thread.get_tier_id()));
             }
           } else {
             // shared memory tier
@@ -66,7 +67,8 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
               // different node
               tid = 0;
             }
-            result.insert(ServerThread(public_ip, private_ip, tid, 0, thread.get_tier_id()));
+            result.insert(ServerThread(public_ip, private_ip, tid, 0,
+                                       thread.get_tier_id()));
           }
         }
       }
@@ -144,7 +146,8 @@ ServerThreadSet HashRingUtilInterface::get_responsible_threads_metadata(
         key, kDefaultLocalReplication, local_memory_hash_ring);
 
     for (const unsigned& tid : tids) {
-      threads.insert(ServerThread(public_ip, private_ip, tid, 0, thread.get_tier_id()));
+      threads.insert(
+          ServerThread(public_ip, private_ip, tid, 0, thread.get_tier_id()));
     }
   }
 
@@ -175,10 +178,13 @@ void HashRingUtilInterface::issue_replication_factor_request(
 }
 
 // query the routing for a key and return all address
-std::unordered_map<unsigned, std::unordered_set<Address>> HashRingUtilInterface::get_address_from_routing(
-    UserThread& ut, const Key& key, zmq::socket_t& sending_socket,
-    zmq::socket_t& receiving_socket, bool& succeed, Address& ip,
-    unsigned& thread_id, unsigned& rid) {
+std::unordered_map<unsigned, std::unordered_set<Address>>
+HashRingUtilInterface::get_address_from_routing(UserThread& ut, const Key& key,
+                                                zmq::socket_t& sending_socket,
+                                                zmq::socket_t& receiving_socket,
+                                                bool& succeed, Address& ip,
+                                                unsigned& thread_id,
+                                                unsigned& rid) {
   int count = 0;
 
   KeyAddressRequest address_request;
@@ -220,7 +226,8 @@ std::unordered_map<unsigned, std::unordered_set<Address>> HashRingUtilInterface:
     count++;
   }
 
-  for (const KeyAddressResponse_Thread& th : address_response.addresses(0).threads()) {
+  for (const KeyAddressResponse_Thread& th :
+       address_response.addresses(0).threads()) {
     result[th.tier()].insert(th.ip());
   }
 

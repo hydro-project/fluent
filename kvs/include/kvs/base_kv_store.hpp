@@ -27,9 +27,7 @@ class KVStore {
 
   KVStore<K, V>(MapLattice<K, V>& other) { db = other; }
 
-  bool contains(const K& k) {
-    return db.contains(k).reveal();
-  }
+  bool contains(const K& k) { return db.contains(k).reveal(); }
 
   V get(const K& k, unsigned& err_number) {
     if (!db.contains(k).reveal()) {
@@ -42,13 +40,9 @@ class KVStore {
 
   void remove(const K& k) { db.remove(k); }
 
-  std::unordered_set<K> key_set() {
-    return db.key_set().reveal();
-  }
+  std::unordered_set<K> key_set() { return db.key_set().reveal(); }
 
-  unsigned key_size(const K& k) {
-    return db.at(k).size();
-  }
+  unsigned key_size(const K& k) { return db.at(k).size(); }
 };
 
 #endif  // SRC_INCLUDE_KVS_BASE_KV_STORE_HPP_

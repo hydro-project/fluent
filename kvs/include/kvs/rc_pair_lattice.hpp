@@ -68,9 +68,7 @@ class ReadCommittedPairLattice : public Lattice<TimestampValuePair<T>> {
     return merge(pl.reveal());
   }
 
-  unsigned size() {
-    return this->element.value.size();
-  }
+  unsigned size() { return this->element.value.size(); }
 };
 
 #endif  // SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_

@@ -14,16 +14,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-if [ -z "$1" ] && [ -z "$2"] && [ -z "$3"] && [ -z "$4" ]; then
-  echo "Usage: ./create_cluster.sh <min_mem_instances> <min_ebs_instances> <routing_instances> <benchmark_instances> {<path-to-ssh-key>}"
+if [ -z "$1" ] && [ -z "$2"] && [ -z "$3"] && [ -z "$4" ] && [ -z "$5" ]; then
+  echo "Usage: ./create_cluster.sh <min_mem_instances> <min_ebs_instances> <min_sharedmemory_instance> <routing_instances> <benchmark_instances> {<path-to-ssh-key>}"
   echo ""
   echo "If no SSH key is specified, it is assumed that we are using the default SSH key (/home/ubuntu/.ssh/id_rsa). We assume that the corresponding public key has the same name and ends in .pub."
   exit 1
 fi
-if [ -z "$5" ]; then
+if [ -z "$6" ]; then
   SSH_KEY=/home/ubuntu/.ssh/id_rsa
 else
-  SSH_KEY=$5
+  SSH_KEY=$6
 fi
 
 export NAME=ucbrisebedrock.de
@@ -75,7 +75,7 @@ kubectl create -f tmp.yml > /dev/null 2>&1
 rm tmp.yml
 
 echo "Adding routing nodes..."
-./add_nodes.sh 0 0 $3 0
+./add_nodes.sh 0 0 0 $4 0
 
 echo "Waiting for routing nodes to start..."
 # wait for all proxies to be ready
@@ -87,7 +87,7 @@ while [ ${#ROUTING_IP_ARR[@]} -ne $3 ]; do
 done
 
 echo "Starting all other kinds of nodes..."
-./add_nodes.sh $1 $2 0 $4
+./add_nodes.sh $1 $2 $3 0 $5
 
 # copy the SSH key into the management node... doing this later because we need
 # to wait for the pod to come up

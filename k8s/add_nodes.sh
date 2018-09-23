@@ -14,8 +14,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-if [[ -z "$1" ]] && [[ -z "$2" ]] && [[ -z "$3" ]] && [[ -z "$4" ]]; then
-  echo "Usage: ./add_node.sh <memory-nodes> <ebs-nodes> <routing-nodes> <benchmark-nodes>"
+if [[ -z "$1" ]] && [[ -z "$2" ]] && [[ -z "$3" ]] && [[ -z "$4" ] && [[ -z "$5" ]]; then
+  echo "Usage: ./add_node.sh <memory-nodes> <ebs-nodes> <sharedmemory-nodes> <routing-nodes> <benchmark-nodes>"
   echo ""
   echo "Expected usage is calling add_nodes, which in turn adds servers (using add_servers.sh)."
   exit 1
@@ -50,8 +50,9 @@ add_servers() {
 
 add_servers memory $1
 add_servers ebs $2
-add_servers routing $3
-add_servers benchmark $4
+add_servers sharedmemory $3
+add_servers routing $4
+add_servers benchmark $5
 
 kops update cluster ${NAME} --yes > /dev/null 2>&1
 
@@ -79,6 +80,8 @@ add_pods() {
       YML_FILE=yaml/pods/benchmark-pod.yml
     elif [ "$1" = "ebs" ]; then
       YML_FILE=yaml/pods/ebs-pod.yml
+    elif [ "$1" = "sharedmemory" ]; then
+      YML_FILE=yaml/pods/sharedmemory-pod.yml
     elif [ "$1" = "routing" ]; then
       YML_FILE=yaml/pods/routing-pod.yml
     else
@@ -133,5 +136,6 @@ add_pods() {
 
 add_pods memory $1
 add_pods ebs $2
-add_pods routing $3
-add_pods benchmark $4
+add_pods sharedmemory $3
+add_pods routing $4
+add_pods benchmark $5

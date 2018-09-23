@@ -19,15 +19,17 @@
 #include "../lattices/core_lattices.hpp"
 
 template <typename K, typename V>
-class SharedKVStore{
+class SharedKVStore {
  protected:
   AtomicMapLattice<K, V> db;
   std::atomic<int> global_lock{0};
-  tbb::concurrent_unordered_map<K, std::unique_ptr<std::atomic<int>>> lock_table;
+  tbb::concurrent_unordered_map<K, std::unique_ptr<std::atomic<int>>>
+      lock_table;
 
   void acquire_global_S() {
     int expected_global = 0;
-    while(!global_lock.compare_exchange_strong(expected_global, expected_global - 1)) {
+    while (!global_lock.compare_exchange_strong(expected_global,
+                                                expected_global - 1)) {
       if (expected_global > 0) {
         expected_global = 0;
       }
@@ -36,26 +38,27 @@ class SharedKVStore{
 
   void acquire_global_X() {
     int expected_global = 0;
-    while(!global_lock.compare_exchange_strong(expected_global, expected_global + 1)) {
+    while (!global_lock.compare_exchange_strong(expected_global,
+                                                expected_global + 1)) {
       expected_global = 0;
     }
   }
 
-  void release_global_S() {
-    global_lock.fetch_add(1);
-  }
+  void release_global_S() { global_lock.fetch_add(1); }
 
-  void release_global_X() {
-    global_lock.fetch_sub(1);
-  }
+  void release_global_X() { global_lock.fetch_sub(1); }
 
   std::unique_ptr<std::atomic<int>>& acquire_local_S(const K& k) {
     auto it = lock_table.find(k);
     if (it == lock_table.end()) {
-      it = lock_table.insert({k, std::unique_ptr<std::atomic<int>>(new std::atomic<int>(0))}).first;
+      it = lock_table
+               .insert({k, std::unique_ptr<std::atomic<int>>(
+                               new std::atomic<int>(0))})
+               .first;
     }
     int expected_local = 0;
-    while(!it->second->compare_exchange_strong(expected_local, expected_local - 1)) {
+    while (!it->second->compare_exchange_strong(expected_local,
+                                                expected_local - 1)) {
       if (expected_local > 0) {
         expected_local = 0;
       }
@@ -66,10 +69,14 @@ class SharedKVStore{
   std::unique_ptr<std::atomic<int>>& acquire_local_X(const K& k) {
     auto it = lock_table.find(k);
     if (it == lock_table.end()) {
-      it = lock_table.insert({k, std::unique_ptr<std::atomic<int>>(new std::atomic<int>(0))}).first;
+      it = lock_table
+               .insert({k, std::unique_ptr<std::atomic<int>>(
+                               new std::atomic<int>(0))})
+               .first;
     }
     int expected_local = 0;
-    while(!it->second->compare_exchange_strong(expected_local, expected_local + 1)) {
+    while (!it->second->compare_exchange_strong(expected_local,
+                                                expected_local + 1)) {
       expected_local = 0;
     }
     return it->second;
@@ -82,10 +89,11 @@ class SharedKVStore{
   void release_local_X(std::unique_ptr<std::atomic<int>>& ptr) {
     ptr->fetch_sub(1);
   }
+
  public:
   SharedKVStore<K, V>() {}
 
-  SharedKVStore<K, V>(AtomicMapLattice<K, V> &other) { db = other; }
+  SharedKVStore<K, V>(AtomicMapLattice<K, V>& other) { db = other; }
 
   bool contains(const K& k) {
     acquire_global_S();
@@ -108,7 +116,7 @@ class SharedKVStore{
     return result;
   }
 
-  bool put(const K &k, const V &v) {
+  bool put(const K& k, const V& v) {
     acquire_global_S();
     auto ptr = &acquire_local_X(k);
     bool result = db.at(k).merge(v);
@@ -138,7 +146,6 @@ class SharedKVStore{
     release_global_S();
     return result;
   }
-
 };
 
 #endif  // SRC_INCLUDE_KVS_SHARED_KV_STORE_HPP_

@@ -19,8 +19,8 @@
 #include <string>
 
 #include "../kvs/base_kv_store.hpp"
-#include "../kvs/shared_kv_store.hpp"
 #include "../kvs/rc_pair_lattice.hpp"
+#include "../kvs/shared_kv_store.hpp"
 #include "yaml-cpp/yaml.h"
 
 // Define the garbage collect threshold
@@ -34,7 +34,8 @@
 
 typedef KVStore<Key, ReadCommittedPairLattice<std::string>> MemoryKVS;
 
-typedef SharedKVStore<Key, ReadCommittedPairLattice<std::string>> SharedMemoryKVS;
+typedef SharedKVStore<Key, ReadCommittedPairLattice<std::string>>
+    SharedMemoryKVS;
 
 // a map that represents which keys should be sent to which IP-port combinations
 typedef std::unordered_map<Address, std::unordered_set<Key>> AddressKeysetMap;
@@ -59,9 +60,7 @@ class MemorySerializer : public Serializer {
  public:
   MemorySerializer(T* kvs) : kvs_(kvs) {}
 
-  bool find(const Key& key) {
-    return kvs_->contains(key);
-  }
+  bool find(const Key& key) { return kvs_->contains(key); }
 
   ReadCommittedPairLattice<std::string> get(const Key& key,
                                             unsigned& err_number) {
@@ -77,13 +76,9 @@ class MemorySerializer : public Serializer {
 
   void remove(const Key& key) { kvs_->remove(key); }
 
-  std::unordered_set<Key> get_key_set() {
-    return kvs_->key_set();
-  }
+  std::unordered_set<Key> get_key_set() { return kvs_->key_set(); }
 
-  unsigned get_key_size(const Key& key) {
-    return kvs_->key_size(key);
-  }
+  unsigned get_key_size(const Key& key) { return kvs_->key_size(key); }
 };
 
 class EBSSerializer : public Serializer {
@@ -192,15 +187,13 @@ class EBSSerializer : public Serializer {
 
   std::unordered_set<Key> get_key_set() {
     std::unordered_set<Key> res;
-    for (const auto &pair : key_size_map) {
+    for (const auto& pair : key_size_map) {
       res.insert(pair.first);
     }
     return res;
   }
 
-  unsigned get_key_size(const Key& key) {
-    return key_size_map[key];
-  }
+  unsigned get_key_size(const Key& key) { return key_size_map[key]; }
 };
 
 struct PendingRequest {

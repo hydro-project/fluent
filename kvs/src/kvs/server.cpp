@@ -57,7 +57,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   logger->flush_on(spdlog::level::info);
 
   // each thread has a handle to itself
-  ServerThread wt = ServerThread(public_ip, private_ip, thread_id, 0, kSelfTierId);
+  ServerThread wt =
+      ServerThread(public_ip, private_ip, thread_id, 0, kSelfTierId);
 
   unsigned seed = time(NULL);
   seed += thread_id;
@@ -117,8 +118,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // populate addresses
   for (const auto& tier : membership.tiers()) {
     for (const auto server : tier.servers()) {
-      global_hash_ring_map[tier.tier_id()].insert(server.public_ip(),
-                                                  server.private_ip(), 0, 0, tier.tier_id());
+      global_hash_ring_map[tier.tier_id()].insert(
+          server.public_ip(), server.private_ip(), 0, 0, tier.tier_id());
     }
   }
 
@@ -130,7 +131,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   for (const auto& tier_pair : kTierDataMap) {
     if (tier_pair.first != 3) {
       for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-        local_hash_ring_map[tier_pair.first].insert(public_ip, private_ip, 0, tid, tier_pair.first);
+        local_hash_ring_map[tier_pair.first].insert(public_ip, private_ip, 0,
+                                                    tid, tier_pair.first);
       }
     }
   }
@@ -246,10 +248,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&join_puller);
-      node_join_handler(seed, public_ip, private_ip, logger,
-                        serialized, global_hash_ring_map, local_hash_ring_map,
-                        placement, join_remove_set, pushers, wt,
-                        join_addr_keyset_map, self_join_count, serializer);
+      node_join_handler(seed, public_ip, private_ip, logger, serialized,
+                        global_hash_ring_map, local_hash_ring_map, placement,
+                        join_remove_set, pushers, wt, join_addr_keyset_map,
+                        self_join_count, serializer);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -262,8 +264,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&depart_puller);
-      node_depart_handler(wt, public_ip, private_ip,
-                          global_hash_ring_map, logger, serialized, pushers);
+      node_depart_handler(wt, public_ip, private_ip, global_hash_ring_map,
+                          logger, serialized, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -276,10 +278,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&self_depart_puller);
-      self_depart_handler(seed, public_ip, private_ip, logger,
-                          serialized, global_hash_ring_map, local_hash_ring_map,
-                          placement, routing_addresses,
-                          monitoring_addresses, wt, pushers, serializer);
+      self_depart_handler(seed, public_ip, private_ip, logger, serialized,
+                          global_hash_ring_map, local_hash_ring_map, placement,
+                          routing_addresses, monitoring_addresses, wt, pushers,
+                          serializer);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -294,9 +296,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       std::string serialized = kZmqUtil->recv_string(&request_puller);
       user_request_handler(total_accesses, seed, serialized, start_time, logger,
                            global_hash_ring_map, local_hash_ring_map,
-                           pending_request_map,
-                           key_access_timestamp, placement, local_changeset, wt,
-                           serializer, pushers);
+                           pending_request_map, key_access_timestamp, placement,
+                           local_changeset, wt, serializer, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -311,8 +312,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       std::string serialized = kZmqUtil->recv_string(&gossip_puller);
       gossip_handler(seed, serialized, global_hash_ring_map,
-                     local_hash_ring_map, pending_gossip_map,
-                     placement, wt, serializer, pushers);
+                     local_hash_ring_map, pending_gossip_map, placement, wt,
+                     serializer, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -330,8 +331,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       rep_factor_response_handler(
           seed, total_accesses, logger, serialized, start_time,
           global_hash_ring_map, local_hash_ring_map, pending_request_map,
-          pending_gossip_map, key_access_timestamp, placement,
-          local_changeset, wt, serializer, pushers);
+          pending_gossip_map, key_access_timestamp, placement, local_changeset,
+          wt, serializer, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -346,10 +347,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       std::string serialized =
           kZmqUtil->recv_string(&replication_factor_change_puller);
-      rep_factor_change_handler(public_ip, private_ip, seed, logger,
-                                serialized, global_hash_ring_map,
-                                local_hash_ring_map, placement,
-                                local_changeset, wt, serializer, pushers);
+      rep_factor_change_handler(public_ip, private_ip, seed, logger, serialized,
+                                global_hash_ring_map, local_hash_ring_map,
+                                placement, local_changeset, wt, serializer,
+                                pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -507,8 +508,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         KeySizeData primary_key_size;
         std::unordered_set<Key> keys = serializer->get_key_set();
         for (const auto& key : keys) {
-          if (is_primary_replica(key, placement,
-                                 global_hash_ring_map, local_hash_ring_map, wt)) {
+          if (is_primary_replica(key, placement, global_hash_ring_map,
+                                 local_hash_ring_map, wt)) {
             KeySizeData_KeySize* ks = primary_key_size.add_key_sizes();
             ks->set_key(key);
             ks->set_size(serializer->get_key_size(key));
@@ -618,13 +619,13 @@ int main(int argc, char* argv[]) {
   YAML::Node threads = conf["threads"];
   kMemoryThreadCount = threads["memory"].as<unsigned>();
   kEbsThreadCount = threads["ebs"].as<unsigned>();
-  kSharedMemoryThreadCount = threads["shared"].as<unsigned>();
+  kSharedMemoryThreadCount = threads["sharedmemory"].as<unsigned>();
 
   YAML::Node replication = conf["replication"];
   kDefaultGlobalMemoryReplication = replication["memory"].as<unsigned>();
   kDefaultGlobalEbsReplication = replication["ebs"].as<unsigned>();
   kDefaultLocalReplication = replication["local"].as<unsigned>();
-  kDefaultSharedMemoryReplication = replication["shared"].as<unsigned>();
+  kDefaultSharedMemoryReplication = replication["sharedmemory"].as<unsigned>();
 
   YAML::Node server = conf["server"];
   Address public_ip = server["public_ip"].as<std::string>();
@@ -651,7 +652,8 @@ int main(int argc, char* argv[]) {
   kTierDataMap[2] =
       TierData(kEbsThreadCount, kDefaultGlobalEbsReplication, kEbsNodeCapacity);
   kTierDataMap[3] =
-      TierData(kSharedMemoryThreadCount, kDefaultSharedMemoryReplication, kSharedMemoryNodeCapacity);
+      TierData(kSharedMemoryThreadCount, kDefaultSharedMemoryReplication,
+               kSharedMemoryNodeCapacity);
 
   kThreadNum = kTierDataMap[kSelfTierId].thread_number_;
 

@@ -43,15 +43,14 @@ void address_handler(
   } else {  // if there are servers, attempt to return the correct threads
     for (const Key& key : addr_request.keys()) {
       ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
-            rt.get_replication_factor_connect_addr(), key, false,
-            global_hash_ring_map, local_hash_ring_map, placement, pushers,
-            kAllTierIds, succeed, seed, rt.get_tid(), "");
+          rt.get_replication_factor_connect_addr(), key, false,
+          global_hash_ring_map, local_hash_ring_map, placement, pushers,
+          kAllTierIds, succeed, seed, rt.get_tid(), "");
 
       if (!succeed) {  // this means we don't have the replication factor for
                        // the key
-        pending_key_request_map[key].push_back(
-            std::pair<Address, std::string>(addr_request.response_address(),
-                                            addr_request.request_id()));
+        pending_key_request_map[key].push_back(std::pair<Address, std::string>(
+            addr_request.response_address(), addr_request.request_id()));
         return;
       }
 

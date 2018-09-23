@@ -115,8 +115,10 @@ void rep_factor_response_handler(
             if (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0)) {
               local_changeset.insert(key);
             } else {
-              logger->error("Only thread 0 in shared memory tier can process PUT. However, thread {} is processing PUT.",
-                            wt.get_tid());
+              logger->error(
+                  "Only thread 0 in shared memory tier can process PUT. "
+                  "However, thread {} is processing PUT.",
+                  wt.get_tid());
             }
           } else {
             logger->error("Received a GET request with no response address.");
@@ -148,8 +150,10 @@ void rep_factor_response_handler(
             if (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0)) {
               local_changeset.insert(key);
             } else {
-              logger->error("Only thread 0 in shared memory tier can process PUT. However, thread {} is processing PUT.",
-                            wt.get_tid());
+              logger->error(
+                  "Only thread 0 in shared memory tier can process PUT. "
+                  "However, thread {} is processing PUT.",
+                  wt.get_tid());
             }
           }
 

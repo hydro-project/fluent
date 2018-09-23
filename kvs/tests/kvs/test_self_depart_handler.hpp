@@ -24,10 +24,9 @@ TEST_F(ServerHandlerTest, SelfDepart) {
 
   std::string serialized = "tcp://127.0.0.2:6560";
 
-  self_depart_handler(seed, ip, ip, logger, serialized,
-                      global_hash_ring_map, local_hash_ring_map,
-                      placement, routing_address, monitoring_address, wt,
-                      pushers, serializer);
+  self_depart_handler(seed, ip, ip, logger, serialized, global_hash_ring_map,
+                      local_hash_ring_map, placement, routing_address,
+                      monitoring_address, wt, pushers, serializer);
 
   EXPECT_EQ(global_hash_ring_map[1].size(), 0);
   EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 0);

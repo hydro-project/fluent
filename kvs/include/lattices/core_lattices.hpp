@@ -153,8 +153,10 @@ class AtomicMapLattice : public Lattice<tbb::concurrent_unordered_map<K, V>> {
     } else {
       // need to copy v since we will be "growing" it within the lattice
       V new_v = v;
-      // FIXME: it seems that there is a bug in tbb that fails to enable c++11 features with Clang on Linux. So we have to use insert instead of emplace for now...
-      // refer to https://software.intel.com/en-us/forums/intel-threading-building-blocks/topic/591305
+      // FIXME: it seems that there is a bug in tbb that fails to enable c++11
+      // features with Clang on Linux. So we have to use insert instead of
+      // emplace for now... refer to
+      // https://software.intel.com/en-us/forums/intel-threading-building-blocks/topic/591305
       this->element.insert({k, new_v});
     }
   }
@@ -163,12 +165,12 @@ class AtomicMapLattice : public Lattice<tbb::concurrent_unordered_map<K, V>> {
       this->insert_pair(pair.first, pair.second);
     }
   }
+
  public:
   AtomicMapLattice() : Lattice<tbb::concurrent_unordered_map<K, V>>() {}
-  AtomicMapLattice(const tbb::concurrent_unordered_map<K, V> &m) : Lattice<tbb::concurrent_unordered_map<K, V>>(m) {}
-  MaxLattice<int> size() const {
-    return this->element.size();
-  }
+  AtomicMapLattice(const tbb::concurrent_unordered_map<K, V> &m) :
+      Lattice<tbb::concurrent_unordered_map<K, V>>(m) {}
+  MaxLattice<int> size() const { return this->element.size(); }
 
   BoolLattice contains(K k) const {
     auto it = this->element.find(k);
@@ -186,9 +188,7 @@ class AtomicMapLattice : public Lattice<tbb::concurrent_unordered_map<K, V>> {
     return SetLattice<K>(res);
   }
 
-  V &at(K k) {
-    return this->element[k];
-  }
+  V &at(K k) { return this->element[k]; }
 
   void remove(K k) {
     auto it = this->element.find(k);

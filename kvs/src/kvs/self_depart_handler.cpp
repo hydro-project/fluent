@@ -24,7 +24,8 @@ void self_depart_handler(
     std::vector<Address>& monitoring_address, ServerThread& wt,
     SocketCache& pushers, Serializer* serializer) {
   logger->info("Node is departing.");
-  global_hash_ring_map[kSelfTierId].remove(public_ip, private_ip, 0, kSelfTierId);
+  global_hash_ring_map[kSelfTierId].remove(public_ip, private_ip, 0,
+                                           kSelfTierId);
 
   // thread 0 notifies other nodes in the cluster (of all types) that it is
   // leaving the cluster
@@ -57,9 +58,10 @@ void self_depart_handler(
 
     // tell all worker threads about the self departure
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
-      kZmqUtil->send_string(serialized,
-                            &pushers[ServerThread(public_ip, private_ip, tid, 0, kSelfTierId)
-                                         .get_self_depart_connect_addr()]);
+      kZmqUtil->send_string(
+          serialized,
+          &pushers[ServerThread(public_ip, private_ip, tid, 0, kSelfTierId)
+                       .get_self_depart_connect_addr()]);
     }
   }
 

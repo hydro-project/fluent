@@ -19,9 +19,11 @@
 
 unsigned kMemoryThreadCount;
 unsigned kEbsThreadCount;
+unsigned kSharedMemoryThreadCount;
 
 unsigned kDefaultGlobalMemoryReplication;
 unsigned kDefaultGlobalEbsReplication;
+unsigned kDefaultSharedMemoryReplication;
 unsigned kDefaultLocalReplication;
 unsigned kMinimumReplicaNumber;
 
@@ -52,10 +54,12 @@ int main(int argc, char *argv[]) {
   YAML::Node threads = conf["threads"];
   kMemoryThreadCount = threads["memory"].as<unsigned>();
   kEbsThreadCount = threads["ebs"].as<unsigned>();
+  kSharedMemoryThreadCount = threads["sharedmemory"].as<unsigned>();
 
   YAML::Node replication = conf["replication"];
   kDefaultGlobalMemoryReplication = replication["memory"].as<unsigned>();
   kDefaultGlobalEbsReplication = replication["ebs"].as<unsigned>();
+  kDefaultSharedMemoryReplication = replication["sharedmemory"].as<unsigned>();
   kDefaultLocalReplication = replication["local"].as<unsigned>();
   kMinimumReplicaNumber = replication["minimum"].as<unsigned>();
 
@@ -71,7 +75,8 @@ int main(int argc, char *argv[]) {
   // form local hash rings
   for (const auto &tier_pair : kTierDataMap) {
     for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(ip, ip, 0, tid, tier_pair.first);
+      local_hash_ring_map[tier_pair.first].insert(ip, ip, 0, tid,
+                                                  tier_pair.first);
     }
   }
 

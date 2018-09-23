@@ -58,10 +58,8 @@ class ServerThread {
 
  public:
   ServerThread() {}
-  /*ServerThread(Address public_ip, Address private_ip, unsigned tid, unsigned tier_id) :
-      public_ip_(public_ip),
-      private_ip_(private_ip),
-      tid_(tid),
+  /*ServerThread(Address public_ip, Address private_ip, unsigned tid, unsigned
+     tier_id) : public_ip_(public_ip), private_ip_(private_ip), tid_(tid),
       tier_id_(tier_id) {}*/
   ServerThread(Address public_ip, Address private_ip, unsigned tid,
                unsigned virtual_num, unsigned tier_id) :

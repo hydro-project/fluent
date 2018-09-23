@@ -47,7 +47,8 @@ void rep_factor_change_handler(
     Key key = key_rep.key();
 
     // if this thread was responsible for the key before the change
-    if (serializer->find(key) && (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0))) {
+    if (serializer->find(key) &&
+        (kSelfTierId != 3 || (kSelfTierId == 3 && wt.get_tid() == 0))) {
       ServerThreadSet orig_threads = kHashRingUtil->get_responsible_threads(
           wt.get_replication_factor_connect_addr(), key, is_metadata(key),
           global_hash_ring_map, local_hash_ring_map, placement, pushers,

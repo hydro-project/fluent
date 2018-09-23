@@ -30,7 +30,8 @@ ZmqUtilInterface* kZmqUtil = &zmq_util;
 HashRingUtil hash_ring_util;
 HashRingUtilInterface* kHashRingUtil = &hash_ring_util;
 
-unsigned get_total_address_size(std::unordered_map<unsigned, std::unordered_set<Address>>& addresses) {
+unsigned get_total_address_size(
+    std::unordered_map<unsigned, std::unordered_set<Address>>& addresses) {
   unsigned count = 0;
   for (const auto& tier_address_pair : addresses) {
     count += tier_address_pair.second.size();
@@ -40,14 +41,16 @@ unsigned get_total_address_size(std::unordered_map<unsigned, std::unordered_set<
 
 // For GET, first check shared memory, then memory, then EBS
 // For PUT, first check memory, then shared memory, then EBS
-Address pick_worker_address(std::string req_type,
-                            std::unordered_map<unsigned, std::unordered_set<Address>>& addresses,
-                            unsigned& seed) {
+Address pick_worker_address(
+    std::string req_type,
+    std::unordered_map<unsigned, std::unordered_set<Address>>& addresses,
+    unsigned& seed) {
   if (req_type == "GET") {
     // TODO: randomly choose thread
     if (addresses.find(3) != addresses.end() && addresses[3].size() > 0) {
       return *(next(begin(addresses[3]), rand_r(&seed) % addresses[3].size()));
-    } else if (addresses.find(1) != addresses.end() && addresses[1].size() > 0) {
+    } else if (addresses.find(1) != addresses.end() &&
+               addresses[1].size() > 0) {
       return *(next(begin(addresses[1]), rand_r(&seed) % addresses[1].size()));
     } else {
       return *(next(begin(addresses[2]), rand_r(&seed) % addresses[2].size()));
@@ -55,7 +58,8 @@ Address pick_worker_address(std::string req_type,
   } else {
     if (addresses.find(1) != addresses.end() && addresses[1].size() > 0) {
       return *(next(begin(addresses[1]), rand_r(&seed) % addresses[1].size()));
-    } else if (addresses.find(3) != addresses.end() && addresses[3].size() > 0) {
+    } else if (addresses.find(3) != addresses.end() &&
+               addresses[3].size() > 0) {
       return *(next(begin(addresses[3]), rand_r(&seed) % addresses[3].size()));
     } else {
       return *(next(begin(addresses[2]), rand_r(&seed) % addresses[2].size()));
@@ -66,7 +70,9 @@ Address pick_worker_address(std::string req_type,
 void handle_request(
     std::string request_line, SocketCache& pushers,
     std::vector<Address>& routing_addresses,
-    std::unordered_map<Key, std::unordered_map<unsigned, std::unordered_set<Address>>>& key_address_cache,
+    std::unordered_map<
+        Key, std::unordered_map<unsigned, std::unordered_set<Address>>>&
+        key_address_cache,
     unsigned& seed, std::shared_ptr<spdlog::logger> logger, UserThread& ut,
     zmq::socket_t& response_puller, zmq::socket_t& key_address_puller,
     Address& ip, unsigned& thread_id, unsigned& rid, unsigned& trial) {
@@ -106,13 +112,15 @@ void handle_request(
                                         kRoutingThreadCount)
             .get_key_address_connect_addr();
     bool succeed;
-    std::unordered_map<unsigned, std::unordered_set<Address>> addresses = kHashRingUtil->get_address_from_routing(
-        ut, key, pushers[target_routing_address], key_address_puller, succeed,
-        ip, thread_id, rid);
+    std::unordered_map<unsigned, std::unordered_set<Address>> addresses =
+        kHashRingUtil->get_address_from_routing(
+            ut, key, pushers[target_routing_address], key_address_puller,
+            succeed, ip, thread_id, rid);
 
     if (succeed) {
       for (const auto& tier_address_pair : addresses) {
-        key_address_cache[key][tier_address_pair.first] = tier_address_pair.second;
+        key_address_cache[key][tier_address_pair.first] =
+            tier_address_pair.second;
       }
     } else {
       logger->error(
@@ -240,7 +248,9 @@ void run(unsigned thread_id, std::string filename, Address ip,
   logger->info("Random seed is {}.", seed);
 
   // mapping from key to a set of worker addresses
-  std::unordered_map<Key, std::unordered_map<unsigned, std::unordered_set<Address>>> key_address_cache;
+  std::unordered_map<Key,
+                     std::unordered_map<unsigned, std::unordered_set<Address>>>
+      key_address_cache;
 
   UserThread ut = UserThread(ip, thread_id);
 

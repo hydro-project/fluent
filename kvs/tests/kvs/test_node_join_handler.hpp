@@ -24,10 +24,9 @@ TEST_F(ServerHandlerTest, BasicNodeJoin) {
   EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 1);
 
   std::string serialized = "1:127.0.0.2:127.0.0.2:0";
-  node_join_handler(seed, ip, ip, logger, serialized,
-                    global_hash_ring_map, local_hash_ring_map,
-                    placement, join_remove_set, pushers, wt,
-                    join_addr_keyset_map, 0, serializer);
+  node_join_handler(seed, ip, ip, logger, serialized, global_hash_ring_map,
+                    local_hash_ring_map, placement, join_remove_set, pushers,
+                    wt, join_addr_keyset_map, 0, serializer);
 
   std::vector<std::string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 2);
@@ -48,10 +47,9 @@ TEST_F(ServerHandlerTest, DuplicateNodeJoin) {
   EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 1);
 
   std::string serialized = "1:" + ip + ":" + ip + ":0";
-  node_join_handler(seed, ip, ip, logger, serialized,
-                    global_hash_ring_map, local_hash_ring_map,
-                    placement, join_remove_set, pushers, wt,
-                    join_addr_keyset_map, 0, serializer);
+  node_join_handler(seed, ip, ip, logger, serialized, global_hash_ring_map,
+                    local_hash_ring_map, placement, join_remove_set, pushers,
+                    wt, join_addr_keyset_map, 0, serializer);
 
   std::vector<std::string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 0);

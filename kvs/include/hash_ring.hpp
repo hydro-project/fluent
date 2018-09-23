@@ -34,7 +34,8 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
 
   bool insert(Address public_ip, Address private_ip, int join_count,
               unsigned tid, unsigned tier_id) {
-    ServerThread new_thread = ServerThread(public_ip, private_ip, tid, 0, tier_id);
+    ServerThread new_thread =
+        ServerThread(public_ip, private_ip, tid, 0, tier_id);
 
     if (unique_servers.find(new_thread) != unique_servers.end()) {
       // if we already have the server, only return true if it's rejoining
@@ -50,7 +51,8 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
 
       for (unsigned virtual_num = 0; virtual_num < kVirtualThreadNum;
            virtual_num++) {
-        ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num, tier_id);
+        ServerThread st =
+            ServerThread(public_ip, private_ip, tid, virtual_num, tier_id);
         ConsistentHashMap<ServerThread, H>::insert(st);
       }
 
@@ -58,10 +60,12 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
     }
   }
 
-  void remove(Address public_ip, Address private_ip, unsigned tid, unsigned tier_id) {
+  void remove(Address public_ip, Address private_ip, unsigned tid,
+              unsigned tier_id) {
     for (unsigned virtual_num = 0; virtual_num < kVirtualThreadNum;
          virtual_num++) {
-      ServerThread st = ServerThread(public_ip, private_ip, tid, virtual_num, tier_id);
+      ServerThread st =
+          ServerThread(public_ip, private_ip, tid, virtual_num, tier_id);
       ConsistentHashMap<ServerThread, H>::erase(st);
     }
 
@@ -97,12 +101,11 @@ class HashRingUtilInterface {
                                         LocalHashRing& local_memory_hash_ring,
                                         SocketCache& pushers, unsigned& seed);
 
-  std::unordered_map<unsigned, std::unordered_set<Address>> get_address_from_routing(UserThread& ut, const Key& key,
-                                                zmq::socket_t& sending_socket,
-                                                zmq::socket_t& receiving_socket,
-                                                bool& succeed, Address& ip,
-                                                unsigned& thread_id,
-                                                unsigned& rid);
+  std::unordered_map<unsigned, std::unordered_set<Address>>
+  get_address_from_routing(UserThread& ut, const Key& key,
+                           zmq::socket_t& sending_socket,
+                           zmq::socket_t& receiving_socket, bool& succeed,
+                           Address& ip, unsigned& thread_id, unsigned& rid);
 
   RoutingThread get_random_routing_thread(std::vector<Address>& routing_address,
                                           unsigned& seed,

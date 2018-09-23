@@ -24,12 +24,12 @@ ebs: ./
 threads:
   memory: 4
   ebs: 4
-  shared: 4
+  sharedmemory: 4
   routing: 4
   benchmark: 4
 replication:
   memory: 1
   ebs: 0
-  shared: 0
+  sharedmemory: 0
   minimum: 1
   local: 1
