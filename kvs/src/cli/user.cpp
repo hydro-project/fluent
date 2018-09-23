@@ -21,6 +21,7 @@
 #include "threads.hpp"
 #include "yaml-cpp/yaml.h"
 
+unsigned kSharedMemoryThreadCount;
 unsigned kRoutingThreadCount;
 unsigned kDefaultLocalReplication;
 
@@ -46,9 +47,13 @@ Address pick_worker_address(
     std::unordered_map<unsigned, std::unordered_set<Address>>& addresses,
     unsigned& seed) {
   if (req_type == "GET") {
-    // TODO: randomly choose thread
     if (addresses.find(3) != addresses.end() && addresses[3].size() > 0) {
-      return *(next(begin(addresses[3]), rand_r(&seed) % addresses[3].size()));
+      Address base_addr =
+          *(next(begin(addresses[3]), rand_r(&seed) % addresses[3].size()));
+      unsigned random_tid = rand_r(&seed) % kSharedMemoryThreadCount;
+      std::vector<std::string> tokens;
+      split(base_addr, ':', tokens);
+      return tokens[0] + std::to_string(random_tid + stoi(tokens[1]));
     } else if (addresses.find(1) != addresses.end() &&
                addresses[1].size() > 0) {
       return *(next(begin(addresses[1]), rand_r(&seed) % addresses[1].size()));
@@ -303,6 +308,7 @@ int main(int argc, char* argv[]) {
 
   // read the YAML conf
   YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
+  kSharedMemoryThreadCount = conf["threads"]["sharedmemory"].as<unsigned>();
   kRoutingThreadCount = conf["threads"]["routing"].as<unsigned>();
   kDefaultLocalReplication = conf["replication"]["local"].as<unsigned>();
 
