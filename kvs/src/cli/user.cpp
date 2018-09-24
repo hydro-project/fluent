@@ -34,7 +34,8 @@ HashRingUtilInterface* kHashRingUtil = &hash_ring_util;
 // Get the total number of threads in the address cache that can serve the key.
 // This number is compared against the result on the server side
 // to decide if the client should invalidate the cache.
-// Note that for shared memory nodes, only one thread (thread 0) is being counted.
+// Note that for shared memory nodes, only one thread (thread 0) is being
+// counted.
 unsigned get_total_address_num(
     std::unordered_map<unsigned, std::unordered_set<Address>>& addresses) {
   unsigned count = 0;
