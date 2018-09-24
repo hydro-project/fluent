@@ -26,7 +26,7 @@ class SharedKVStore {
   tbb::concurrent_unordered_map<K, std::unique_ptr<std::atomic<int>>>
       lock_table;
 
-  void acquire_global_S() {
+  void acquire_global_shared_lock() {
     int expected_global = 0;
     while (!global_lock.compare_exchange_strong(expected_global,
                                                 expected_global - 1)) {
@@ -36,7 +36,7 @@ class SharedKVStore {
     }
   }
 
-  void acquire_global_X() {
+  void acquire_global_exclusive_lock() {
     int expected_global = 0;
     while (!global_lock.compare_exchange_strong(expected_global,
                                                 expected_global + 1)) {
@@ -44,11 +44,11 @@ class SharedKVStore {
     }
   }
 
-  void release_global_S() { global_lock.fetch_add(1); }
+  void release_global_shared_lock() { global_lock.fetch_add(1); }
 
-  void release_global_X() { global_lock.fetch_sub(1); }
+  void release_global_exclusive_lock() { global_lock.fetch_sub(1); }
 
-  std::unique_ptr<std::atomic<int>>& acquire_local_S(const K& k) {
+  std::unique_ptr<std::atomic<int>>& acquire_local_shared_lock(const K& k) {
     auto it = lock_table.find(k);
     if (it == lock_table.end()) {
       it = lock_table
@@ -66,7 +66,7 @@ class SharedKVStore {
     return it->second;
   }
 
-  std::unique_ptr<std::atomic<int>>& acquire_local_X(const K& k) {
+  std::unique_ptr<std::atomic<int>>& acquire_local_exclusive_lock(const K& k) {
     auto it = lock_table.find(k);
     if (it == lock_table.end()) {
       it = lock_table
@@ -82,11 +82,11 @@ class SharedKVStore {
     return it->second;
   }
 
-  void release_local_S(std::unique_ptr<std::atomic<int>>& ptr) {
+  void release_local_shared_lock(std::unique_ptr<std::atomic<int>>& ptr) {
     ptr->fetch_add(1);
   }
 
-  void release_local_X(std::unique_ptr<std::atomic<int>>& ptr) {
+  void release_local_exclusive_lock(std::unique_ptr<std::atomic<int>>& ptr) {
     ptr->fetch_sub(1);
   }
 
@@ -96,54 +96,54 @@ class SharedKVStore {
   SharedKVStore<K, V>(AtomicMapLattice<K, V>& other) { db = other; }
 
   bool contains(const K& k) {
-    acquire_global_S();
-    auto ptr = &acquire_local_S(k);
+    acquire_global_shared_lock();
+    auto ptr = &acquire_local_shared_lock(k);
     bool result = db.contains(k).reveal();
-    release_local_S(*ptr);
-    release_global_S();
+    release_local_shared_lock(*ptr);
+    release_global_shared_lock();
     return result;
   }
 
   V get(const K& k, unsigned& err_number) {
-    acquire_global_S();
-    auto ptr = &acquire_local_S(k);
+    acquire_global_shared_lock();
+    auto ptr = &acquire_local_shared_lock(k);
     if (!db.contains(k).reveal()) {
       err_number = 1;
     }
     V result = db.at(k);
-    release_local_S(*ptr);
-    release_global_S();
+    release_local_shared_lock(*ptr);
+    release_global_shared_lock();
     return result;
   }
 
   bool put(const K& k, const V& v) {
-    acquire_global_S();
-    auto ptr = &acquire_local_X(k);
+    acquire_global_shared_lock();
+    auto ptr = &acquire_local_exclusive_lock(k);
     bool result = db.at(k).merge(v);
-    release_local_X(*ptr);
-    release_global_S();
+    release_local_exclusive_lock(*ptr);
+    release_global_shared_lock();
     return result;
   }
 
   void remove(const K& k) {
-    acquire_global_X();
+    acquire_global_exclusive_lock();
     db.remove(k);
-    release_global_X();
+    release_global_exclusive_lock();
   }
 
   std::unordered_set<K> key_set() {
-    acquire_global_S();
+    acquire_global_shared_lock();
     std::unordered_set<K> result = db.key_set().reveal();
-    release_global_S();
+    release_global_shared_lock();
     return result;
   }
 
   unsigned key_size(const K& k) {
-    acquire_global_S();
-    auto ptr = &acquire_local_S(k);
+    acquire_global_shared_lock();
+    auto ptr = &acquire_local_shared_lock(k);
     unsigned result = db.at(k).size();
-    release_local_S(*ptr);
-    release_global_S();
+    release_local_shared_lock(*ptr);
+    release_global_shared_lock();
     return result;
   }
 };

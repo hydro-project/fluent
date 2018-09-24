@@ -46,14 +46,14 @@ fi
 echo -e "threads:" > conf/kvs-config.yml
 echo -e "    memory: 4" >> conf/kvs-config.yml
 echo -e "    ebs: 4" >> conf/kvs-config.yml
-echo -e "    sharedmemory: 4" >> conf/kvs-config.yml
+echo -e "    shared-memory: 4" >> conf/kvs-config.yml
 echo -e "    benchmark: 4" >> conf/kvs-config.yml
 echo -e "    routing: 4" >> conf/kvs-config.yml
 
 echo -e "replication:" >> conf/kvs-config.yml
 echo -e "    memory: 1" >> conf/kvs-config.yml
 echo -e "    ebs: 0" >> conf/kvs-config.yml
-echo -e "    sharedmemory: 0" >> conf/kvs-config.yml
+echo -e "    shared-memory: 0" >> conf/kvs-config.yml
 echo -e "    minimum: 1" >> conf/kvs-config.yml
 echo -e "    local: 1" >> conf/kvs-config.yml
 

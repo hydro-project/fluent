@@ -61,10 +61,12 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
             // shared memory tier
             unsigned tid;
             if (thread.get_private_ip() == private_ip) {
-              // same node
+              // if the thread responsible for the key resides on the same node as me
+              // then return myself instead (because I can also serve this key)
               tid = thread_id;
             } else {
-              // different node
+              // if the thread responsible for the key is on a different node
+              // then return thread 0 of that node
               tid = 0;
             }
             result.insert(ServerThread(public_ip, private_ip, tid, 0,

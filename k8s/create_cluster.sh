@@ -15,7 +15,7 @@
 #  limitations under the License.
 
 if [ -z "$1" ] && [ -z "$2"] && [ -z "$3"] && [ -z "$4" ] && [ -z "$5" ]; then
-  echo "Usage: ./create_cluster.sh <min_mem_instances> <min_ebs_instances> <min_sharedmemory_instance> <routing_instances> <benchmark_instances> {<path-to-ssh-key>}"
+  echo "Usage: ./create_cluster.sh <min_mem_instances> <min_ebs_instances> <min_shared-memory_instance> <routing_instances> <benchmark_instances> {<path-to-ssh-key>}"
   echo ""
   echo "If no SSH key is specified, it is assumed that we are using the default SSH key (/home/ubuntu/.ssh/id_rsa). We assume that the corresponding public key has the same name and ends in .pub."
   exit 1

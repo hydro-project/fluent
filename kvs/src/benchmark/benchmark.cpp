@@ -76,7 +76,11 @@ int sample(int n, unsigned& seed, double base,
   return zipf_value;
 }
 
-unsigned get_total_address_size(
+// Get the total number of threads in the address cache that can serve the key.
+// This number is compared against the result on the server side
+// to decide if the client should invalidate the cache.
+// Note that for shared memory nodes, only one thread (thread 0) is being counted.
+unsigned get_total_address_num(
     std::unordered_map<unsigned, std::unordered_set<Address>>& addresses) {
   unsigned count = 0;
   for (const auto& tier_address_pair : addresses) {
@@ -160,7 +164,7 @@ void handle_request(
       return;
     }
   } else {
-    if (get_total_address_size(key_address_cache[key]) == 0) {
+    if (get_total_address_num(key_address_cache[key]) == 0) {
       logger->error("Address cache for key " + key + " has size 0.");
       return;
     }
@@ -176,7 +180,7 @@ void handle_request(
 
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
-  tp->set_address_cache_size(get_total_address_size(key_address_cache[key]));
+  tp->set_address_cache_size(get_total_address_num(key_address_cache[key]));
 
   std::string req_type;
 

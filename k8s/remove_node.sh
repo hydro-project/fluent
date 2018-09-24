@@ -47,8 +47,8 @@ if [ "$2" = "memory" ]; then
 elif [ "$2" = "ebs" ]; then
   YML_FILE="yaml/igs/ebs-ig.yml"
   EBS_VOLS=`kubectl get pod ebs-pod-$LABEL -o jsonpath='{.spec.volumes[*].awsElasticBlockStore.volumeID}'`
-elif [ "$2" = "sharedmemory" ]; then
-  YML_FILE="yaml/igs/sharedmemory-ig.yml"
+elif [ "$2" = "shared-memory" ]; then
+  YML_FILE="yaml/igs/shared-memory-ig.yml"
 else
   echo "Unrecognized node type: $1."
   exit 1
