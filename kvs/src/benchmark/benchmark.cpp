@@ -595,7 +595,7 @@ int main(int argc, char* argv[]) {
   }
 
   YAML::Node threads = conf["threads"];
-  kSharedMemoryThreadCount = threads["sharedmemory"].as<unsigned>();
+  kSharedMemoryThreadCount = threads["shared-memory"].as<unsigned>();
   kRoutingThreadCount = threads["routing"].as<int>();
   kBenchmarkThreadNum = threads["benchmark"].as<int>();
   kDefaultLocalReplication = conf["replication"]["local"].as<unsigned>();

@@ -54,12 +54,12 @@ int main(int argc, char *argv[]) {
   YAML::Node threads = conf["threads"];
   kMemoryThreadCount = threads["memory"].as<unsigned>();
   kEbsThreadCount = threads["ebs"].as<unsigned>();
-  kSharedMemoryThreadCount = threads["sharedmemory"].as<unsigned>();
+  kSharedMemoryThreadCount = threads["shared-memory"].as<unsigned>();
 
   YAML::Node replication = conf["replication"];
   kDefaultGlobalMemoryReplication = replication["memory"].as<unsigned>();
   kDefaultGlobalEbsReplication = replication["ebs"].as<unsigned>();
-  kDefaultSharedMemoryReplication = replication["sharedmemory"].as<unsigned>();
+  kDefaultSharedMemoryReplication = replication["shared-memory"].as<unsigned>();
   kDefaultLocalReplication = replication["local"].as<unsigned>();
   kMinimumReplicaNumber = replication["minimum"].as<unsigned>();
 

@@ -313,7 +313,7 @@ int main(int argc, char* argv[]) {
 
   // read the YAML conf
   YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
-  kSharedMemoryThreadCount = conf["threads"]["sharedmemory"].as<unsigned>();
+  kSharedMemoryThreadCount = conf["threads"]["shared-memory"].as<unsigned>();
   kRoutingThreadCount = conf["threads"]["routing"].as<unsigned>();
   kDefaultLocalReplication = conf["replication"]["local"].as<unsigned>();
 

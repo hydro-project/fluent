@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
   YAML::Node threads = conf["threads"];
   unsigned kMemoryThreadCount = threads["memory"].as<unsigned>();
   unsigned kEbsThreadCount = threads["ebs"].as<unsigned>();
-  unsigned kSharedMemoryThreadCount = threads["sharedmemory"].as<unsigned>();
+  unsigned kSharedMemoryThreadCount = threads["shared-memory"].as<unsigned>();
   kRoutingThreadCount = threads["routing"].as<unsigned>();
 
   YAML::Node replication = conf["replication"];
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
       replication["memory"].as<unsigned>();
   unsigned kDefaultGlobalEbsReplication = replication["ebs"].as<unsigned>();
   unsigned kDefaultSharedMemoryReplication =
-      replication["sharedmemory"].as<unsigned>();
+      replication["shared-memory"].as<unsigned>();
   kDefaultLocalReplication = replication["local"].as<unsigned>();
 
   YAML::Node routing = conf["routing"];
