@@ -33,13 +33,16 @@ void gossip_handler(
   for (const KeyTuple& tuple : gossip.tuples()) {
     // first check if the thread is responsible for the key
     Key key = tuple.key();
-    ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
+    ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
-      if (threads.find(wt) !=
+      //if (threads.find(wt) !=
+      //    threads.end()) {  // this means this worker thread is one of the
+      //                      // responsible threads
+      if (std::find(threads.begin(), threads.end(), wt) !=
           threads.end()) {  // this means this worker thread is one of the
                             // responsible threads
         process_put(tuple.key(), tuple.timestamp(), tuple.value(), serializer,

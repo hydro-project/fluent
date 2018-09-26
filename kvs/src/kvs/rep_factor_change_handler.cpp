@@ -49,7 +49,7 @@ void rep_factor_change_handler(
 
     // if this thread was responsible for the key before the change
     if (key_size_map.find(key) != key_size_map.end()) {
-      ServerThreadSet orig_threads = kHashRingUtil->get_responsible_threads(
+      ServerThreadList orig_threads = kHashRingUtil->get_responsible_threads(
           wt.get_replication_factor_connect_addr(), key, is_metadata(key),
           global_hash_ring_map, local_hash_ring_map, placement, pushers,
           kAllTierIds, succeed, seed);
@@ -78,14 +78,16 @@ void rep_factor_change_handler(
               local.replication_factor();
         }
 
-        ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
+        ServerThreadList threads = kHashRingUtil->get_responsible_threads(
             wt.get_replication_factor_connect_addr(), key, is_metadata(key),
             global_hash_ring_map, local_hash_ring_map, placement, pushers,
             kAllTierIds, succeed, seed);
 
         if (succeed) {
-          if (threads.find(wt) == threads.end()) {  // this thread is no longer
-                                                    // responsible for this key
+          //if (threads.find(wt) == threads.end()) {  // this thread is no longer
+          //                                          // responsible for this key
+          if (std::find(threads.begin(), threads.end(), wt) == threads.end()) {  // this thread is no longer
+                                       // responsible for this key
             remove_set.insert(key);
 
             // add all the new threads that this key should be sent to
@@ -102,7 +104,8 @@ void rep_factor_change_handler(
             std::unordered_set<ServerThread, ThreadHash> new_threads;
 
             for (const ServerThread& thread : threads) {
-              if (orig_threads.find(thread) == orig_threads.end()) {
+              //if (orig_threads.find(thread) == orig_threads.end()) {
+              if (std::find(threads.begin(), threads.end(), thread) == orig_threads.end()) {
                 new_threads.insert(thread);
               }
             }

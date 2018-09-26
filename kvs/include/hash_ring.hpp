@@ -79,14 +79,14 @@ typedef HashRing<LocalHasher> LocalHashRing;
 
 class HashRingUtilInterface {
  public:
-  virtual ServerThreadSet get_responsible_threads(
+  virtual ServerThreadList get_responsible_threads(
       Address respond_address, const Key& key, bool metadata,
       std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
       std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
       std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
       const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) = 0;
 
-  ServerThreadSet get_responsible_threads_metadata(
+  ServerThreadList get_responsible_threads_metadata(
       const Key& key, GlobalHashRing& global_memory_hash_ring,
       LocalHashRing& local_memory_hash_ring);
 
@@ -110,7 +110,7 @@ class HashRingUtilInterface {
 
 class HashRingUtil : public HashRingUtilInterface {
  public:
-  virtual ServerThreadSet get_responsible_threads(
+  virtual ServerThreadList get_responsible_threads(
       Address respond_address, const Key& key, bool metadata,
       std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
       std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
@@ -118,7 +118,7 @@ class HashRingUtil : public HashRingUtilInterface {
       const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
 };
 
-ServerThreadSet responsible_global(const Key& key, unsigned global_rep,
+ServerThreadList responsible_global(const Key& key, unsigned global_rep,
                                    GlobalHashRing& global_hash_ring);
 
 std::unordered_set<unsigned> responsible_local(const Key& key,

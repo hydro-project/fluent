@@ -140,7 +140,7 @@ void change_replication_factor(
         unsigned rep =
             std::max(placement[key].global_replication_map_[tier],
                      orig_placement_info[key].global_replication_map_[tier]);
-        ServerThreadSet threads =
+        ServerThreadList threads =
             responsible_global(key, rep, global_hash_ring_map[tier]);
 
         for (const ServerThread& thread : threads) {
