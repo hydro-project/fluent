@@ -20,7 +20,7 @@
 
 // get all threads responsible for a key from the "node_type" tier
 // metadata flag = 0 means the key is  metadata; otherwise, it is  regular data
-ServerThreadSet HashRingUtil::get_responsible_threads(
+ServerThreadList HashRingUtil::get_responsible_threads(
     Address response_address, const Key& key, bool metadata,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
@@ -31,7 +31,7 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
     return kHashRingUtil->get_responsible_threads_metadata(
         key, global_hash_ring_map[1], local_hash_ring_map[1]);
   } else {
-    ServerThreadSet result;
+    ServerThreadList result;
 
     if (placement.find(key) == placement.end()) {
       kHashRingUtil->issue_replication_factor_request(
@@ -40,7 +40,7 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
       succeed = false;
     } else {
       for (const unsigned& tier_id : tier_ids) {
-        ServerThreadSet threads = responsible_global(
+        ServerThreadList threads = responsible_global(
             key, placement[key].global_replication_map_[tier_id],
             global_hash_ring_map[tier_id]);
 
@@ -52,23 +52,22 @@ ServerThreadSet HashRingUtil::get_responsible_threads(
               local_hash_ring_map[tier_id]);
 
           for (const unsigned& tid : tids) {
-            result.insert(ServerThread(public_ip, private_ip, tid));
+            result.push_back(ServerThread(public_ip, private_ip, tid));
           }
         }
       }
 
       succeed = true;
     }
-
     return result;
   }
 }
 
 // assuming the replication factor will never be greater than the number of
 // nodes in a tier return a set of ServerThreads that are responsible for a key
-ServerThreadSet responsible_global(const Key& key, unsigned global_rep,
+ServerThreadList responsible_global(const Key& key, unsigned global_rep,
                                    GlobalHashRing& global_hash_ring) {
-  ServerThreadSet threads;
+  ServerThreadList threads;
   auto pos = global_hash_ring.find(key);
 
   if (pos != global_hash_ring.end()) {
@@ -76,14 +75,15 @@ ServerThreadSet responsible_global(const Key& key, unsigned global_rep,
     unsigned i = 0;
 
     while (i < global_rep) {
-      bool succeed = threads.insert(pos->second).second;
+      //bool succeed = threads.insert(pos->second).second;
+      threads.push_back(pos->second);
       if (++pos == global_hash_ring.end()) {
         pos = global_hash_ring.begin();
       }
 
-      if (succeed) {
-        i += 1;
-      }
+      //if (succeed) {
+      i += 1;
+      //}
     }
   }
 
@@ -117,10 +117,10 @@ std::unordered_set<unsigned> responsible_local(const Key& key,
   return tids;
 }
 
-ServerThreadSet HashRingUtilInterface::get_responsible_threads_metadata(
+ServerThreadList HashRingUtilInterface::get_responsible_threads_metadata(
     const Key& key, GlobalHashRing& global_memory_hash_ring,
     LocalHashRing& local_memory_hash_ring) {
-  ServerThreadSet threads = responsible_global(key, kMetadataReplicationFactor,
+  ServerThreadList threads = responsible_global(key, kMetadataReplicationFactor,
                                                global_memory_hash_ring);
 
   for (const ServerThread& thread : threads) {
@@ -130,7 +130,7 @@ ServerThreadSet HashRingUtilInterface::get_responsible_threads_metadata(
         key, kDefaultLocalReplication, local_memory_hash_ring);
 
     for (const unsigned& tid : tids) {
-      threads.insert(ServerThread(public_ip, private_ip, tid));
+      threads.push_back(ServerThread(public_ip, private_ip, tid));
     }
   }
 

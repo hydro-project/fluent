@@ -43,7 +43,7 @@ void address_handler(
   } else {  // if there are servers, attempt to return the correct threads
     for (const Key& key : addr_request.keys()) {
       unsigned tier_id = 1;
-      ServerThreadSet threads = {};
+      ServerThreadList threads = {};
 
       while (threads.size() == 0 && tier_id < kMaxTier) {
         threads = kHashRingUtil->get_responsible_threads(

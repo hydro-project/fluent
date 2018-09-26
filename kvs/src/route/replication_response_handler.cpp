@@ -68,7 +68,7 @@ void replication_response_handler(
   if (pending_key_request_map.find(key) != pending_key_request_map.end()) {
     bool succeed;
     unsigned tier_id = 1;
-    ServerThreadSet threads = {};
+    ServerThreadList threads = {};
 
     while (threads.size() == 0 && tier_id < kMaxTier) {
       threads = kHashRingUtil->get_responsible_threads(

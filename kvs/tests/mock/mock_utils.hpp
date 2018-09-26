@@ -29,7 +29,7 @@ class MockZmqUtil : public ZmqUtilInterface {
 
 class MockHashRingUtil : public HashRingUtilInterface {
  public:
-  virtual ServerThreadSet get_responsible_threads(
+  virtual ServerThreadList get_responsible_threads(
       Address respond_address, const Key& key, bool metadata,
       std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
       std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,

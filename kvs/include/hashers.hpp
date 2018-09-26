@@ -15,7 +15,8 @@
 #ifndef SRC_INCLUDE_HASHERS_HPP_
 #define SRC_INCLUDE_HASHERS_HPP_
 
-#include <unordered_set>
+//#include <unordered_set>
+#include <vector>
 #include "threads.hpp"
 
 struct ThreadHash {
@@ -29,6 +30,7 @@ struct ThreadHash {
 // because that file gets compiled before this one (and there is a circular
 // dependency between the two?)... not completely sure how to fix this
 typedef std::unordered_set<ServerThread, ThreadHash> ServerThreadSet;
+typedef std::vector<ServerThread> ServerThreadList;
 
 struct GlobalHasher {
   uint32_t operator()(const ServerThread& th) {

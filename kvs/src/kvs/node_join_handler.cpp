@@ -84,7 +84,7 @@ void node_join_handler(
 
       for (const auto& key_pair : key_size_map) {
         Key key = key_pair.first;
-        ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
+        ServerThreadList threads = kHashRingUtil->get_responsible_threads(
             wt.get_replication_factor_connect_addr(), key, is_metadata(key),
             global_hash_ring_map, local_hash_ring_map, placement, pushers,
             kSelfTierIdVector, succeed, seed);
@@ -108,12 +108,14 @@ void node_join_handler(
                     key);
               }
             }
-          } else if ((join_count == 0 && threads.find(wt) == threads.end())) {
+          //} else if ((join_count == 0 && threads.find(wt) == threads.end())) {
+          } else if ((join_count == 0 && std::find(threads.begin(), threads.end(), wt) == threads.end())) {
             join_remove_set.insert(key);
 
             for (const ServerThread& thread : threads) {
               join_addr_keyset_map[thread.get_gossip_connect_addr()].insert(
                   key);
+              //return; //TODO hacky, but stop after first thread sends gossip
             }
           }
         } else {

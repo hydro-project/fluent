@@ -75,13 +75,14 @@ void rep_factor_response_handler(
   bool succeed;
 
   if (pending_request_map.find(key) != pending_request_map.end()) {
-    ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
+    ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
-      bool responsible = threads.find(wt) != threads.end();
+      //bool responsible = threads.find(wt) != threads.end();
+      bool responsible = std::find(threads.begin(), threads.end(), wt) != threads.end();
 
       for (const PendingRequest& request : pending_request_map[key]) {
         auto now = std::chrono::system_clock::now();
@@ -167,13 +168,14 @@ void rep_factor_response_handler(
   }
 
   if (pending_gossip_map.find(key) != pending_gossip_map.end()) {
-    ServerThreadSet threads = kHashRingUtil->get_responsible_threads(
+    ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
         global_hash_ring_map, local_hash_ring_map, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
-      if (threads.find(wt) != threads.end()) {
+      //if (threads.find(wt) != threads.end()) {
+      if (!(wt == threads.back())) {
         for (const PendingGossip& gossip : pending_gossip_map[key]) {
           process_put(key, gossip.ts_, gossip.value_, serializer, key_size_map);
         }
