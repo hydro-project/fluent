@@ -29,7 +29,7 @@ struct ThreadHash {
 // it seems like it should actually be in threads.hpp; that doesn't compile
 // because that file gets compiled before this one (and there is a circular
 // dependency between the two?)... not completely sure how to fix this
-typedef std::unordered_set<ServerThread, ThreadHash> ServerThreadSet;
+// typedef std::unordered_set<ServerThread, ThreadHash> ServerThreadSet;
 typedef std::vector<ServerThread> ServerThreadList;
 
 struct GlobalHasher {

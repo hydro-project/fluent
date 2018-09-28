@@ -58,7 +58,7 @@ void user_request_handler(
 
     if (succeed) {
       //if (threads.find(wt) == threads.end()) {
-      if (std::find(threads.begin(), threads.end(), wt) == threads.enendd()) {
+      if (std::find(threads.begin(), threads.end(), wt) == threads.end()) {
         if (is_metadata(key)) {
           // this means that this node is not responsible for this metadata key
           KeyTuple* tp = response.add_tuples();
