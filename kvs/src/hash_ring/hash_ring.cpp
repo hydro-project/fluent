@@ -75,15 +75,14 @@ ServerThreadList responsible_global(const Key& key, unsigned global_rep,
     unsigned i = 0;
 
     while (i < global_rep) {
-      //bool succeed = threads.insert(pos->second).second;
-      threads.push_back(pos->second);
+      if (std::find(threads.begin(), threads.end(), pos->second) == 
+          threads.end()) { 
+        threads.push_back(pos->second);
+        i += 1;
+      }
       if (++pos == global_hash_ring.end()) {
         pos = global_hash_ring.begin();
       }
-
-      //if (succeed) {
-      i += 1;
-      //}
     }
   }
 
