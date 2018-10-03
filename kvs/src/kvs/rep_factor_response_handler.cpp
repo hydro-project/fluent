@@ -81,7 +81,6 @@ void rep_factor_response_handler(
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
-      //bool responsible = threads.find(wt) != threads.end();
       bool responsible = std::find(threads.begin(), threads.end(), wt) != threads.end();
 
       for (const PendingRequest& request : pending_request_map[key]) {
