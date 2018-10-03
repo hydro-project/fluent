@@ -57,7 +57,6 @@ void user_request_handler(
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
-      //if (threads.find(wt) == threads.end()) {
       if (std::find(threads.begin(), threads.end(), wt) == threads.end()) {
         if (is_metadata(key)) {
           // this means that this node is not responsible for this metadata key
