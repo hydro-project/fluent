@@ -39,9 +39,6 @@ void gossip_handler(
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
-      //if (threads.find(wt) !=
-      //    threads.end()) {  // this means this worker thread is one of the
-      //                      // responsible threads
       if (std::find(threads.begin(), threads.end(), wt) !=
           threads.end()) {  // this means this worker thread is one of the
                             // responsible threads

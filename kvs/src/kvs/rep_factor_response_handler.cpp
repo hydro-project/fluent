@@ -174,8 +174,7 @@ void rep_factor_response_handler(
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
-      //if (threads.find(wt) != threads.end()) {
-      if (!(wt == threads.back())) {
+      if (std::find(threads.begin(), threads.end(), wt) != threads.end()) {
         for (const PendingGossip& gossip : pending_gossip_map[key]) {
           process_put(key, gossip.ts_, gossip.value_, serializer, key_size_map);
         }
