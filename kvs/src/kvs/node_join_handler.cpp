@@ -108,7 +108,9 @@ void node_join_handler(
                     key);
               }
             }
-          } else if ((join_count == 0 && std::find(threads.begin(), threads.end(), wt) == threads.end())) {
+          } else if ((join_count == 0 && 
+                      std::find(threads.begin(), threads.end(), wt) == 
+                                threads.end())) {
             join_remove_set.insert(key);
             ServerThread first_thread = threads.front();
             join_addr_keyset_map[first_thread.get_gossip_connect_addr()].insert(
