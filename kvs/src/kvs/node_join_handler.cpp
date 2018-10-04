@@ -108,8 +108,8 @@ void node_join_handler(
                     key);
               }
             }
-          } else if ((join_count == 0 && 
-                      std::find(threads.begin(), threads.end(), wt) == 
+          } else if ((join_count == 0 &&
+                      std::find(threads.begin(), threads.end(), wt) ==
                                 threads.end())) {
             join_remove_set.insert(key);
 

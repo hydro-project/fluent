@@ -15,10 +15,10 @@
 #ifndef SRC_INCLUDE_COMMON_HPP_
 #define SRC_INCLUDE_COMMON_HPP_
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <algorithm>
 
 #include "kvs_types.hpp"
 #include "misc.pb.h"
