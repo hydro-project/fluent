@@ -119,7 +119,7 @@ class HashRingUtil : public HashRingUtilInterface {
 };
 
 ServerThreadList responsible_global(const Key& key, unsigned global_rep,
-                                   GlobalHashRing& global_hash_ring);
+                                    GlobalHashRing& global_hash_ring);
 
 std::unordered_set<unsigned> responsible_local(const Key& key,
                                                unsigned local_rep,

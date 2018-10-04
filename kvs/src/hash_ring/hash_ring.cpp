@@ -66,7 +66,7 @@ ServerThreadList HashRingUtil::get_responsible_threads(
 // assuming the replication factor will never be greater than the number of
 // nodes in a tier return a set of ServerThreads that are responsible for a key
 ServerThreadList responsible_global(const Key& key, unsigned global_rep,
-                                   GlobalHashRing& global_hash_ring) {
+                                    GlobalHashRing& global_hash_ring) {
   ServerThreadList threads;
   auto pos = global_hash_ring.find(key);
 
@@ -75,8 +75,8 @@ ServerThreadList responsible_global(const Key& key, unsigned global_rep,
     unsigned i = 0;
 
     while (i < global_rep) {
-      if (std::find(threads.begin(), threads.end(), pos->second) == 
-          threads.end()) { 
+      if (std::find(threads.begin(), threads.end(), pos->second) ==
+          threads.end()) {
         threads.push_back(pos->second);
         i += 1;
       }
@@ -120,7 +120,7 @@ ServerThreadList HashRingUtilInterface::get_responsible_threads_metadata(
     const Key& key, GlobalHashRing& global_memory_hash_ring,
     LocalHashRing& local_memory_hash_ring) {
   ServerThreadList threads = responsible_global(key, kMetadataReplicationFactor,
-                                               global_memory_hash_ring);
+                                                global_memory_hash_ring);
 
   for (const ServerThread& thread : threads) {
     Address public_ip = thread.get_public_ip();
