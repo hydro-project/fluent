@@ -110,7 +110,7 @@ void node_join_handler(
             }
           } else if ((join_count == 0 &&
                       std::find(threads.begin(), threads.end(), wt) ==
-                                threads.end())) {
+                          threads.end())) {
             join_remove_set.insert(key);
 
             int local_rep = placement[key].local_replication_map_[tier];

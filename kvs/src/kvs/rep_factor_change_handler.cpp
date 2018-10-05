@@ -84,9 +84,9 @@ void rep_factor_change_handler(
             kAllTierIds, succeed, seed);
 
         if (succeed) {
-          if (std::find(threads.begin(),
-                        threads.end(), wt) == threads.end()) {  // this thread is no longer
-                                                                // responsible for this key
+          if (std::find(threads.begin(), threads.end(), wt) ==
+              threads.end()) {  // this thread is no longer
+                                // responsible for this key
             remove_set.insert(key);
 
             // add all the new threads that this key should be sent to
@@ -104,7 +104,7 @@ void rep_factor_change_handler(
 
             for (const ServerThread& thread : threads) {
               if (std::find(orig_threads.begin(), orig_threads.end(), thread) ==
-                            orig_threads.end()) {
+                  orig_threads.end()) {
                 new_threads.insert(thread);
               }
             }
