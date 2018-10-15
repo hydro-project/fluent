@@ -112,7 +112,6 @@ void node_join_handler(
                       std::find(threads.begin(), threads.end(), wt) ==
                           threads.end())) {
             join_remove_set.insert(key);
-
             int local_rep = placement[key].local_replication_map_[tier];
             for (int i = 0; i < local_rep; i++) {
               ServerThread thread = threads[i];
