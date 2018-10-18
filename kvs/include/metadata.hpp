@@ -73,7 +73,7 @@ inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
 
   return kMetadataIdentifier + kMetadataDelimiter + st.get_public_ip() +
          kMetadataDelimiter + st.get_private_ip() + kMetadataDelimiter +
-         std::to_string(thread_num) + kMetadataDelimiter + "tier" +
+         std::to_string(thread_num) + kMetadataDelimiter +
          std::to_string(tier_id) + kMetadataDelimiter + suffix;
 }
 

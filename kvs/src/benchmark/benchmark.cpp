@@ -519,7 +519,7 @@ int main(int argc, char* argv[]) {
   }
 
   // read the YAML conf
-  YAML::Node conf = YAML::LoadFile("conf/config.yml");
+  YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
   YAML::Node user = conf["user"];
   std::string ip = user["ip"].as<std::string>();
 

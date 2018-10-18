@@ -38,16 +38,13 @@ int main(int argc, char* argv[]) {
 
   unsigned thread_num = atoi(argv[1]);
 
-  // read in the benchmark addresses
-  std::vector<Address> benchmark_address;
-
   // read the YAML conf
-  std::vector<Address> ips;
-  YAML::Node conf = YAML::LoadFile("conf/config.yml");
+  std::vector<Address> benchmark_address;
+  YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
   YAML::Node benchmark = conf["benchmark"];
 
   for (const YAML::Node& node : benchmark) {
-    ips.push_back(node.as<Address>());
+    benchmark_address.push_back(node.as<Address>());
   }
 
   zmq::context_t context(1);
@@ -58,7 +55,7 @@ int main(int argc, char* argv[]) {
     std::cout << "command> ";
     getline(std::cin, command);
 
-    for (const std::string address : benchmark_address) {
+    for (const Address address : benchmark_address) {
       for (unsigned tid = 0; tid < thread_num; tid++) {
         BenchmarkThread bt = BenchmarkThread(address, tid);
 
