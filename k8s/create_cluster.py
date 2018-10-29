@@ -22,8 +22,7 @@ from kubernetes.stream import stream
 import sys
 import tarfile
 from tempfile import TemporaryFile
-from util import NAMESPACE, replace_yaml_val, load_yaml, run_process, \
-        check_or_get_env_arg, init_k8s
+from util import *
 
 ec2_client = boto3.client('ec2')
 
@@ -49,7 +48,13 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
     client.create_namespaced_pod(namespace=NAMESPACE, body=kops_spec)
 
     # wait for the kops pod to start
-    kops_ip = get_pod_ips(client, 'role=kops')[0]
+    kops_pod = client.list_namespaced_pod(namespace=NAMESPACE,
+            label_selector='role=kops').items[0]
+    while kops_pod.status.phase != 'Running':
+        kops_pod = client.list_namespaced_pod(namespace=NAMESPACE,
+                label_selector='role=kops').items[0]
+
+    kops_ip = kops_pod.status.pod_ip
 
     # copy kube config file to kops pod, so it can execute kubectl commands
     kops_podname = kops_spec['metadata']['name']
@@ -114,21 +119,6 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
 
     print('The service can be accessed via the following address: \n\t%s' %
             (service.status.load_balancer.ingress[0].hostname))
-
-
-
-def get_pod_ips(client, selector):
-    pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
-            label_selector=selector).items
-
-    pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
-
-    while None in pod_ips:
-        pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
-                label_selector=selector).items
-        pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
-
-    return pod_ips
 
 
 # from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101

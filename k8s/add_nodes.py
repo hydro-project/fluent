@@ -17,8 +17,7 @@
 import boto3
 import kubernetes as k8s
 import random
-from util import NAMESPACE, EBS_VOL_COUNT, replace_yaml_val, load_yaml, \
-        run_process, check_or_get_env_arg
+from util import *
 
 ec2_client = boto3.client('ec2')
 
@@ -36,13 +35,12 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[]):
         prev_counts.append(prev_count)
 
         # run kops script to add servers to the cluster
-        run_process(['./add_servers.sh', kinds[i], str(counts[i]),
-          str(prev_count)])
+        run_process(['./modify_ig.sh', kinds[i], str(counts[i] + prev_count)])
 
 
     run_process(['./validate_cluster.sh'])
 
-    kops_ip = get_kops_ip(client)
+    kops_ip = get_pod_ips(client, 'role=kops')[0]
 
     route_str = ' '.join(route_ips)
     mon_str = ' '.join(mon_ips)
@@ -107,20 +105,3 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[]):
             client.create_namespaced_pod(namespace=NAMESPACE,
                     body=pod_spec)
 
-def get_previous_count(client, kind):
-    selector = 'role=%s' % (kind)
-    items = client.list_namespaced_pod(namespace=NAMESPACE,
-            label_selector=selector).items
-
-    return len(items)
-
-def get_kops_ip(client):
-    return client.list_namespaced_pod(namespace=NAMESPACE,
-            label_selector="role=kops").items[0].status.pod_ip
-
-if __name__ == '__main__':
-    # TODO: parse args and call add
-    cfg = k8s.config
-    cfg.load_kube_config()
-
-    client = k8s.client.CoreV1Api()

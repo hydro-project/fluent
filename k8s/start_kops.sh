@@ -21,4 +21,4 @@ echo "[default]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key =
 mkdir -p ~/.ssh
 
 # start python server
-cd fluent/k8s && python3 kops_server.py
+cd fluent/k8s && python3.6 kops_server.py

@@ -64,3 +64,29 @@ def check_or_get_env_arg(argname):
         sys.exit(1)
 
     return os.environ[argname]
+
+def get_pod_ips(client, selector):
+    pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
+            label_selector=selector).items
+
+    pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
+
+    while None in pod_ips:
+        pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
+                label_selector=selector).items
+        pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
+
+    return pod_ips
+
+def get_previous_count(client, kind):
+    selector = 'role=%s' % (kind)
+    items = client.list_namespaced_pod(namespace=NAMESPACE,
+            label_selector=selector).items
+
+    return len(items)
+
+def get_pod_from_ip(client, ip):
+    pods = client.list_namespaced_pod(namespace=NAMESPACE).items
+    pod = list(filter(lambda pod: pod.status.pod_ip == ip, pods))[0]
+
+    return pod

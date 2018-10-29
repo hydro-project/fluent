@@ -14,6 +14,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-sleep 3
-PNAME=`kubectl get pods -o json | jq '.items[] | select(.status.podIP=="'$1'")' | jq '.metadata.name' | cut -d\" -f2`
-kubectl get pod $PNAME -o jsonpath='{.status.containerStatuses[*].restartCount}'
+if [ -z "$1" ] && [ -z "$2" ]; then
+  echo "Usage: ./add_servers.sh node-type instance-count"
+  echo "Valid node types are memory, ebs, benchmark, and routing."
+  echo "If number of previous instances is not specified, it is assumed to be 0."
+  exit 1
+fi
+
+YML_FILE=yaml/igs/$1-ig.yml
+
+sed "s|CLUSTER_NAME|$NAME|g" $YML_FILE > tmp.yml
+sed -i "s|NUM_DUMMY|$2|g" tmp.yml
+
+kops replace -f tmp.yml --force > /dev/null 2>&1
+rm tmp.yml
+
+kops update cluster --name ${NAME} --yes > /dev/null 2>&1
