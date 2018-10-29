@@ -73,7 +73,7 @@ class EBSSerializer : public Serializer {
 
  public:
   EBSSerializer(unsigned& tid) : tid_(tid) {
-    YAML::Node conf = YAML::LoadFile("conf/config.yml");
+    YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
 
     ebs_root_ = conf["ebs"].as<std::string>();
 
