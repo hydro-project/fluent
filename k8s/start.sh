@@ -41,8 +41,6 @@ else
   PUBLIC_IP=$PRIVATE_IP
 fi
 
-
-
 echo -e "threads:" > conf/kvs-config.yml
 echo -e "    memory: 4" >> conf/kvs-config.yml
 echo -e "    ebs: 4" >> conf/kvs-config.yml
@@ -54,6 +52,8 @@ echo -e "    memory: 1" >> conf/kvs-config.yml
 echo -e "    ebs: 0" >> conf/kvs-config.yml
 echo -e "    minimum: 1" >> conf/kvs-config.yml
 echo -e "    local: 1" >> conf/kvs-config.yml
+
+echo -e "ebs: /ebs" >> conf/kvs-config.yml
 
 if [ "$1" = "mn" ]; then
   echo -e "monitoring:" >> conf/kvs-config.yml
