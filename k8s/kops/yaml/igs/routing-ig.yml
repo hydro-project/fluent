@@ -20,7 +20,7 @@ metadata:
   name: routing-instances
 spec:
   image: kope.io/k8s-1.8-debian-jessie-amd64-hvm-ebs-2018-03-11
-  achineType: r4.16xlarge
+  machineType: r4.16xlarge
   maxSize: NUM_DUMMY
   minSize: NUM_DUMMY
   role: Node

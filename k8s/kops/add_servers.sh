@@ -34,3 +34,5 @@ sed -i "s|NUM_DUMMY|$NUM_INSTANCES|g" tmp.yml
 
 kops replace -f tmp.yml --force > /dev/null 2>&1
 rm tmp.yml
+
+kops update cluster --name ${NAME} --yes > /dev/null 2>&1

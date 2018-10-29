@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
 
 #  Copyright 2018 U.C. Berkeley RISE Lab
 #
@@ -15,26 +15,26 @@
 #  limitations under the License.
 
 from add_nodes import add_nodes
+import boto3
 import json
 import kubernetes as k8s
-from k8s.stream import stream
+from kubernetes.stream import stream
 import sys
+import tarfile
+from tempfile import TemporaryFile
 from util import NAMESPACE, replace_yaml_val, load_yaml, run_process, \
-        check_or_get_env_arg
+        check_or_get_env_arg, init_k8s
 
-cfg = k8s.config
-cfg.load_kube_config()
+ec2_client = boto3.client('ec2')
 
-client = k8s.client.CoreV1Api()
-create_client = k8s.client.ExtensionsV1beta1Api()
-
-
-def create_cluster(mem_count, ebs_count, route_coute, bench_count, ssh_key,
+def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
         cluster_name, kops_bucket, aws_key_id, aws_key):
 
     # create the cluster object with kops
     run_process(['./create_cluster_object.sh', cluster_name, kops_bucket,
         ssh_key])
+
+    client = init_k8s()
 
     # create the kops pod
     print('Creating management pods...')
@@ -43,53 +43,57 @@ def create_cluster(mem_count, ebs_count, route_coute, bench_count, ssh_key,
 
     replace_yaml_val(env, 'AWS_ACCESS_KEY_ID', aws_key_id)
     replace_yaml_val(env, 'AWS_SECRET_ACCESS_KEY', aws_key)
-    replace_yaml_val(env, 'KOPS_STATE_STORE', kops_bucketj)
+    replace_yaml_val(env, 'KOPS_STATE_STORE', kops_bucket)
     replace_yaml_val(env, 'NAME', cluster_name)
 
-    create_client.create_namespaced_pod(namespace=NAMESPACE, body=kops_spec)
+    client.create_namespaced_pod(namespace=NAMESPACE, body=kops_spec)
 
     # wait for the kops pod to start
-    kops_ip = get_pod_ips('role=kops')[0]
+    kops_ip = get_pod_ips(client, 'role=kops')[0]
 
     # copy kube config file to kops pod, so it can execute kubectl commands
-    copy_file_to_pod('/home/ubuntu/.kube/config', '/root/.kube/config')
-    copy_file_to_pod(ssh_key, '/root/.ssh/id_rsa')
-    copy_file_to_pod(ssh_key + '.pub', '/root/.ssh/id_rsa.pub')
+    kops_podname = kops_spec['metadata']['name']
+    copy_file_to_pod(client, '/home/ubuntu/.kube/config', kops_podname,
+            '/root/.kube/')
+    copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/')
+    copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
+            '/root/.ssh/')
 
     # start the monitoring pod
     mon_spec = load_yaml('yaml/pods/monitoring-pod.yml')
     replace_yaml_val(mon_spec['spec']['containers'][0]['env'], 'MGMT_IP',
             kops_ip)
-    create_client.create_namespaced_pod(namespace=NAMESPACE, body=mon_spec)
+    client.create_namespaced_pod(namespace=NAMESPACE, body=mon_spec)
 
-    mon_ips = get_pods_ips('role=monitoring')
+    mon_ips = get_pod_ips(client, 'role=monitoring')
 
     print('Creating %d routing nodes...' % (route_count))
-    add_nodes(['routing'], [route_count], mon_ips)
-    route_ips = get_pod_ips('role=routing')
+    add_nodes(client, ['routing'], [route_count], mon_ips)
+    route_ips = get_pod_ips(client, 'role=routing')
 
-    print('Creating %d memory, %d ebs, and %d benchmark nodes...' %
-            (memory_count, ebs_count, bench_count))
-    add_nodes(['memory', 'ebs', 'benchmark'], [memory_count, ebs_count,
-        bench_count], mon_ips, route_ips)
+    print('Creating %d memory, %d ebs, and %d benchmark node(s)...' %
+            (mem_count, ebs_count, bench_count))
+    add_nodes(client, ['memory', 'ebs', 'benchmark'],
+            [mem_count, ebs_count, bench_count], mon_ips, route_ips)
 
     print('Finished creating all pods...')
     print('Creating routing service...')
     service_spec = load_yaml('yaml/services/routing.yml')
-    create_client.create_namespaced_service(namespace=NAMESPACE,
+    client.create_namespaced_service(namespace=NAMESPACE,
             body=service_spec)
 
     service_name = service_spec['metadata']['name']
     service = client.read_namespaced_service(namespace=NAMESPACE,
             name=service_name)
 
-    while service.status.load_balancer.ingress[0].hostname == None:
+    while service.status.load_balancer.ingress == None or \
+            service.status.load_balancer.ingress[0].hostname == None:
         service = client.read_namespaced_service(namespace=NAMESPACE,
                 name=service_name)
 
     sg_name = 'nodes.' + cluster_name
     sg = ec2_client.describe_security_groups(Filters=[{'Name': 'group-name',
-        Values: [sg_name]}])['SecurityGroups'][0]
+        'Values': [sg_name]}])['SecurityGroups'][0]
 
     permissions = []
     for i in range(4):
@@ -113,13 +117,13 @@ def create_cluster(mem_count, ebs_count, route_coute, bench_count, ssh_key,
 
 
 
-def get_pod_ips(selector):
+def get_pod_ips(client, selector):
     pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
             label_selector=selector).items
 
     pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
 
-    while None in pod_ips
+    while None in pod_ips:
         pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
                 label_selector=selector).items
         pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
@@ -127,8 +131,8 @@ def get_pod_ips(selector):
     return pod_ips
 
 
-
-def copy_file_to_pod(filename, podname, podpath):
+# from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101
+def copy_file_to_pod(client, filepath, podname, podpath):
     exec_command = ['tar', 'xvf', '-', '-C', podpath]
     resp = stream(client.connect_get_namespaced_pod_exec, podname, NAMESPACE,
                   command=exec_command,
@@ -136,23 +140,25 @@ def copy_file_to_pod(filename, podname, podpath):
                   stdout=True, tty=False,
                   _preload_content=False)
 
+    filename = filepath.split('/')[-1]
     with TemporaryFile() as tar_buffer:
         with tarfile.open(fileobj=tar_buffer, mode='w') as tar:
-            tar.add(filename)
+            tar.add(filepath, arcname=filename)
 
         tar_buffer.seek(0)
         commands = []
-        commands.append(tar_buffer.read())
+        commands.append(str(tar_buffer.read(), 'utf-8'))
 
         while resp.is_open():
             resp.update(timeout=1)
             if resp.peek_stdout():
-                print("STDOUT: %s" % resp.read_stdout())
+                pass
             if resp.peek_stderr():
-                print("STDERR: %s" % resp.read_stderr())
+                print("Unexpected error while copying files: %s" %
+                        (resp.read_stderr()))
+                sys.exit(1)
             if commands:
                 c = commands.pop(0)
-                #print("Running command... %s\n" % c)
                 resp.write_stdin(c)
             else:
                 break
@@ -167,7 +173,7 @@ def parse_args(args, length, typ):
             result.append(typ(arg))
         except:
             print('Unrecognized command-line argument %s. Could not convert \
-                    to integer.')
+                    to integer.' % (arg))
             sys.exit(1)
 
     return tuple(result)
@@ -175,14 +181,14 @@ def parse_args(args, length, typ):
 if __name__ == '__main__':
     if len(sys.argv) < 4:
         print('Usage: ./create_cluster.py min_mem_instances min_ebs_instances \
-                routing_instance benchmark_instances <path-to-ssh-key}')
+                routing_instance benchmark_instances <path-to-ssh-key>')
         print()
         print('If no SSH key is specified, we will use the default SSH key \
                 (/home/ubuntu/.ssh/id_rsa). The corresponding public key is \
                 assumed to have the same path and end in .pub.')
         sys.exit(1)
 
-    mem, ebs, route, bench = parse_args(sys.argv, int)
+    mem, ebs, route, bench = parse_args(sys.argv[1:], 4, int)
 
     cluster_name = check_or_get_env_arg('NAME')
     kops_bucket = check_or_get_env_arg('KOPS_STATE_STORE')
@@ -194,5 +200,5 @@ if __name__ == '__main__':
     else:
         ssh_key = sys.argv[5]
 
-    create_cluster(mem, ebs, route, bench, ssh_key cluster_name, kops_bucket,
+    create_cluster(mem, ebs, route, bench, ssh_key, cluster_name, kops_bucket,
             aws_key_id, aws_key)

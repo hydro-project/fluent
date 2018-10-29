@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 #  Copyright 2018 U.C. Berkeley RISE Lab
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import kubernetes as k8s
 import os
 import subprocess
 import yaml
@@ -27,8 +26,16 @@ def replace_yaml_val(yamlobj, name, val):
             pair['value'] = val
             return
 
+def init_k8s():
+    cfg = k8s.config
+    cfg.load_kube_config()
+
+    client = k8s.client.CoreV1Api()
+
+    return client
+
 def load_yaml(filename):
-    try:a
+    try:
         with open(filename, 'r') as f:
             return yaml.load(f.read())
     except Error as e:
@@ -42,7 +49,7 @@ def load_yaml(filename):
 def run_process(command):
     try:
         subprocess.run(command, cwd='./kops', check=True)
-    except CalledProcessError as e:
+    except subprocess.CalledProcessError as e:
         print('Unexpected error while running command %s:' % (e.cmd))
         print(e.stderr)
         print('')
