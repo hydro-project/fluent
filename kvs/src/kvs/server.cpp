@@ -267,19 +267,13 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     }
 
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      auto work_start = std::chrono::system_clock::now();
-
       std::string serialized = kZmqUtil->recv_string(&self_depart_puller);
       self_depart_handler(thread_id, seed, public_ip, private_ip, logger,
                           serialized, global_hash_ring_map, local_hash_ring_map,
                           key_size_map, placement, routing_addresses,
                           monitoring_addresses, wt, pushers, serializer);
 
-      auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-                              std::chrono::system_clock::now() - work_start)
-                              .count();
-      working_time += time_elapsed;
-      working_time_map[2] += time_elapsed;
+      return 0;
     }
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
