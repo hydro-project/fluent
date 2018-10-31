@@ -37,10 +37,11 @@ RUN mv cmake-3.9.4-Linux-x86_64 /usr/bin/cmake
 ENV PATH $PATH:/usr/bin/cmake/bin
 RUN rm cmake-3.9.4-Linux-x86_64.tar.gz
 
-# install protobuf
+# download protobuf
 RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protobuf-all-3.5.1.zip
 RUN unzip protobuf-all-3.5.1.zip 
 
+# install protobuf
 WORKDIR /protobuf-3.5.1/
 RUN ./autogen.sh
 RUN ./configure CXX=clang++ CXXFLAGS='-std=c++11 -stdlib=libc++ -O3 -g'
@@ -52,9 +53,8 @@ RUN ldconfig
 WORKDIR /
 RUN rm -rf protobuf-3.5.1 protobuf-all-3.5.1.zip
 
-# build Bedrock
+# build Anna
 RUN git clone https://github.com/fluent-project/fluent
 RUN cd fluent && bash scripts/build-all.sh -j4 -bRelease
-COPY start.sh /fluent/k8s/start.sh
 
 CMD bash fluent/k8s/start.sh $SERVER_TYPE
