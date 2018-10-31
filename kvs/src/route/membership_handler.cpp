@@ -26,9 +26,11 @@ void membership_handler(
   unsigned tier = stoi(v[1]);
   Address new_server_public_ip = v[2];
   Address new_server_private_ip = v[3];
-  int join_count = stoi(v[4]);
 
   if (type == "join") {
+    // we only read the join count if it's a join message, not if it's a depart
+    // message because the latter does not send a join count
+    int join_count = stoi(v[4]);
     logger->info("Received join from server {}/{} in tier {}.",
                  new_server_public_ip, new_server_private_ip,
                  std::to_string(tier));
