@@ -26,8 +26,15 @@ logging.basicConfig(filename='log.txt',level=logging.INFO)
 
 def run():
     context = zmq.Context(1)
-    request_pull_socket = context.socket(zmq.REP)
-    request_pull_socket.bind('tcp://*:7000')
+    restart_pull_socket = context.socket(zmq.REP)
+    restart_pull_socket.bind('tcp://*:7000')
+
+    churn_pull_socket = context.socket(zmq.PULL)
+    churn_pull_socket.bind('tcp://*:7001')
+
+    poller = zmq.Poller()
+    poller.register(restart_pull_socket, zmq.POLLIN)
+    poller.register(churn_pull_socket, zmq.POLLIN)
 
     # waits until the kubecfg file gets copied into the pod -- this might be
     # brittle if we try to move to a non-Ubuntu setting, but I'm not worried
@@ -38,46 +45,43 @@ def run():
     client = util.init_k8s()
 
     while True:
-        msg = request_pull_socket.recv_string()
-        args = msg.split(':')
+        socks = dict(poller.poll())
 
-        if args[0] == 'add':
-            num = int(args[1])
-            ntype = args[2]
-            logging.info('Adding %d new %s node(s)...' % (num, ntype))
+        if churn_pull_socket in socks and socks[churn_pull_socket] == \
+                zmq.POLLIN:
 
-            mon_ips = util.get_pod_ips(client, 'role=monitoring')
-            route_ips = util.get_pod_ips(client, 'role=routing')
+            msg = churn_pull_socket.recv_string()
+            args = msg.split(':')
 
-            try:
+            if args[0] == 'add':
+                num = int(args[1])
+                ntype = args[2]
+                logging.info('Adding %d new %s node(s)...' % (num, ntype))
+
+                mon_ips = util.get_pod_ips(client, 'role=monitoring')
+                route_ips = util.get_pod_ips(client, 'role=routing')
+
                 add_nodes(client, [ntype], [num], mon_ips, route_ips)
                 logging.info('Successfully added %d %s node(s).' % (num, ntype))
+            elif args[0] == 'remove':
+                ip = args[1]
+                ntype = args[2]
 
-                request_pull_socket.send_string('Success.')
-            except:
-                logging.error('Unexpected error while adding node(s).')
-        elif args[0] == 'remove':
-            ip = args[1]
-            ntype = args[2]
-
-            try:
                 remove_node(ip, ntype)
                 logging.info('Successfully removed node %s.' % (ip))
+        if restart_pull_socket in socks and socks[restart_pull_socket] == \
+                zmq.POLLIN:
 
-                request_pull_socket.send_string('Success.')
-            except:
-                logging.error('Unexpected error while removing node %s.' % (ip))
+            msg = restart_pull_socket.recv_string()
+            args = msg.split(':')
 
-        elif args[0] == 'restart':
             ip = args[1]
             pod = util.get_pod_from_ip(client, ip)
 
             count = str(pod.status.container_statuses[0].restart_count)
 
             logging.info('Returning restart count ' + count + ' for IP ' + ip + '.')
-            request_pull_socket.send_string(count)
-        else:
-            logging.info('Unknown argument type: %s.' % (args[0]))
+            restart_pull_socket.send_string(count)
 
 if __name__ == '__main__':
     run()

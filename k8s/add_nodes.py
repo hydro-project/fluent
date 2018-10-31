@@ -53,19 +53,21 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[]):
         new_nodes.sort(key=lambda node: node.metadata.creation_timestamp,
                 reverse=True)
 
+        if prev_counts[i] > 0:
+            role_selector = 'role=%s' % (kinds[i])
+            max_id = max(list(map(lambda pod:
+                int(pod.spec.node_selector['podid'].split('-')[-1]),
+                client.list_namespaced_pod(namespace=NAMESPACE, label_selector=\
+                        role_selector).items)))
+        else:
+            max_id = 0
+
         for j in range(counts[i]):
             podid = '%s-%d' % (kinds[i], j + prev_counts[i] + 1)
             client.patch_node(new_nodes[j].metadata.name, body={'metadata': {'labels':
                 {'podid': podid}}})
 
         print('Creating %d %s pod(s)...' % (counts[i], kind))
-        if prev_counts[i] > 0:
-            role_selector = 'role=%s' % (kinds[i])
-            max_id = max(list(map(lambda node:
-                int(node.metadata.labels['podid'].split('-')[-1]),
-                client.list_node(label_selector=selector).items)))
-        else:
-            max_id = 0
 
         for j in range(max_id + 1, max_id + counts[i] + 1):
             filename = 'yaml/pods/%s-pod.yml' % (kind)
