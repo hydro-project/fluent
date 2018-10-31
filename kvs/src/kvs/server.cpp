@@ -273,7 +273,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
                           key_size_map, placement, routing_addresses,
                           monitoring_addresses, wt, pushers, serializer);
 
-      return 0;
+      return;
     }
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
@@ -646,4 +646,11 @@ int main(int argc, char* argv[]) {
 
   run(0, public_ip, private_ip, seed_ip, routing_addresses,
       monitoring_addresses, mgmt_ip);
+
+  // join on all threads to make sure they finish before exiting
+  for (unsigned tid = 1; tid < kThreadNum; tid++) {
+    worker_threads[tid].join();
+  }
+
+  return 0;
 }

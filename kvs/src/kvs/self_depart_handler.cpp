@@ -84,7 +84,6 @@ void self_depart_handler(
     }
   }
 
-
   send_gossip(addr_keyset_map, pushers, serializer);
   kZmqUtil->send_string(
       public_ip + "_" + private_ip + "_" + std::to_string(kSelfTierId),
