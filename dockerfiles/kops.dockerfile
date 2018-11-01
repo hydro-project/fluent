@@ -16,6 +16,10 @@ FROM ubuntu:14.04
 
 MAINTAINER Vikram Sreekanti <vsreekanti@gmail..com> version: 0.1
 
+ARG repo_org=fluent-project
+ARG source_branch=master
+ARG build_branch=build
+
 USER root
 
 # update and install software
@@ -39,10 +43,11 @@ RUN mv ./kubectl /usr/local/bin/kubectl
 # eventually; for now, going to assume that the user is already set up or we
 # can just provide a script to this generally, independent of running it here
 
-RUN git clone https://github.com/fluent-project/fluent
-COPY start_kops.sh /fluent/k8s/start_kops.sh
+RUN git clone https://github.com/$repo_org/fluent
+RUN cd fluent && git fetch origin && git checkout -b $build_branch origin/$source_branch
 
 # make kube root dir
 RUN mkdir /root/.kube
 
-CMD sh fluent/k8s/start_kops.sh
+COPY start_kops.sh /
+CMD bash start_kops.sh

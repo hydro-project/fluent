@@ -16,6 +16,10 @@ FROM ubuntu:14.04
 
 MAINTAINER Vikram Sreekanti <vsreekanti@gmail..com> version: 0.1
 
+ARG repo_org=fluent-project
+ARG source_branch=master
+ARG build_branch=build
+
 USER root
 
 # run updates
@@ -53,8 +57,11 @@ WORKDIR /
 RUN rm -rf protobuf-3.5.1 protobuf-all-3.5.1.zip
 
 # build Bedrock
-RUN git clone https://github.com/fluent-project/fluent
-RUN cd fluent && bash scripts/build-all.sh -j4 -bRelease
-COPY start.sh /fluent/k8s/start.sh
+RUN git clone https://github.com/$repo_org/fluent
+WORKDIR /fluent
+RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
+RUN bash scripts/build-all.sh -j4 -bRelease
+WORKDIR /
 
-CMD bash fluent/k8s/start.sh $SERVER_TYPE
+COPY start.sh /
+CMD bash start.sh $SERVER_TYPE
