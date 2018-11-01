@@ -22,7 +22,7 @@ spec:
   hostNetwork: true
   containers:
   - name: memory-container
-    image: vsreekanti/anna
+    image: fluentproject/annakvs
     env: 
     - name: SERVER_TYPE
       value: "1"

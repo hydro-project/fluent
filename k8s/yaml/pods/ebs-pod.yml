@@ -21,7 +21,7 @@ metadata:
 spec:
   containers:
     - name: ebs-container
-      image: vsreekanti/anna
+      image: fluentproject/annakvs
       env: 
       - name: SERVER_TYPE
         value: "2"
