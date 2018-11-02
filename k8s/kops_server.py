@@ -177,9 +177,14 @@ def check_unused_nodes(client):
 
     for kind in kinds:
         selector = 'role=' + kind
-        node_ips = list(map(lambda node: list(filter(lambda address:
-            address.type == 'InternalIP', node.status.addresses))[0].address,
-            client.list_node(label_selector=selector).items))
+
+        nodes = {}
+        for node in client.list_node(label_selector=selector).items:
+            ip = list(filter(lambda address: address.type == 'InternalIP',
+                    node.status.addresses))[0].address
+            nodes[ip] = node
+
+        node_ips = nodes.keys()
 
         pod_ips = util.get_pod_ips(client, selector)
         unallocated = set(node_ips) - set(pod_ips)
@@ -191,8 +196,7 @@ def check_unused_nodes(client):
             kind))
         for node_ip in unallocated:
             # note that the last argument is a list of lists
-            add_nodes(client, [kind], [1], mon_ips, route_ips, [[node_ip]])
-
+            add_nodes(client, [kind], [1], mon_ips, route_ips, [[nodes[node_ip]]])
 
 if __name__ == '__main__':
     run()
