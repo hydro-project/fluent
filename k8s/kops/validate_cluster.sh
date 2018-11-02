@@ -14,11 +14,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# set AWS environment variables
-mkdir -p ~/.aws
-echo "[default]\nregion = us-east-1" > ~/.aws/config
-echo "[default]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
-mkdir -p ~/.ssh
+echo "Validating cluster..."
+kops validate cluster > /dev/null 2>&1
+while [ $? -ne 0 ]
+do
+  kops validate cluster > /dev/null 2>&1
+done
 
-# start python server
-cd fluent/k8s && python3.6 kops_server.py

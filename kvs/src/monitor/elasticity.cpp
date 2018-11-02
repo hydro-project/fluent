@@ -19,7 +19,7 @@ void add_node(std::shared_ptr<spdlog::logger> logger, std::string tier,
               const Address& management_address) {
   logger->info("Adding {} node(s) in tier {}.", std::to_string(number), tier);
 
-  std::string mgmt_addr = "tcp://" + management_address + ":7000";
+  std::string mgmt_addr = "tcp://" + management_address + ":7001";
   std::string message = "add:" + std::to_string(number) + ":" + tier;
 
   kZmqUtil->send_string(message, &pushers[mgmt_addr]);
