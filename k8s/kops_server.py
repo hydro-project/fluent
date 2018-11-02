@@ -16,13 +16,17 @@
 
 from add_nodes import add_nodes
 import logging
+from misc_pb2 import *
 import os
+import random
 from remove_node import remove_node
 import subprocess
+import time
 import util
 import zmq
 
 logging.basicConfig(filename='log.txt',level=logging.INFO)
+THRESHOLD = 30
 
 def run():
     context = zmq.Context(1)
@@ -44,8 +48,9 @@ def run():
 
     client = util.init_k8s()
 
+    start = time.time()
     while True:
-        socks = dict(poller.poll())
+        socks = dict(poller.poll(timeout=1000))
 
         if churn_pull_socket in socks and socks[churn_pull_socket] == \
                 zmq.POLLIN:
@@ -69,6 +74,7 @@ def run():
 
                 remove_node(ip, ntype)
                 logging.info('Successfully removed node %s.' % (ip))
+
         if restart_pull_socket in socks and socks[restart_pull_socket] == \
                 zmq.POLLIN:
 
@@ -82,6 +88,111 @@ def run():
 
             logging.info('Returning restart count ' + count + ' for IP ' + ip + '.')
             restart_pull_socket.send_string(count)
+
+        end = time.time()
+        if end - start > THRESHOLD:
+            logging.info('Checking hash ring...')
+            check_hash_ring(client, context)
+
+            logging.info('Checking for extra nodes...')
+            check_unused_nodes(client)
+
+            start = time.time()
+
+def check_hash_ring(client, context):
+    # get routing IPs
+    route_ips = util.get_pod_ips(client, 'role=routing')
+
+    if not route_ips:
+        return
+
+    ip = random.choice(route_ips)
+
+    route_addr_port = 6350
+    storage_depart_port = 6100
+    route_depart_port = 6400
+    mon_depart_port = 6600
+
+    # bind to routing port
+    socket = context.socket(zmq.REQ)
+    socket.connect('tcp://' + ip + ':' + str(route_addr_port))
+
+    # get all nodes that are members
+    socket.send_string('')
+    resp = socket.recv()
+
+    tm = TierMembership()
+    tm.ParseFromString(resp)
+    tier_data = tm.tiers
+
+    if len(tier_data) == 0:
+        return
+    elif len(tier_data) > 1:
+        mem_tier, ebs_tier = tier_data[0], tier_data[1] if tier_data[0].tier_id \
+                == 1 else tier_data[1], tier_data[0]
+    else:
+        mem_tier, ebs_tier = tier_data[0], None
+
+    # check memory tier
+    mem_ips = util.get_pod_ips(client, 'role=memory')
+
+    departed = []
+    for node in mem_tier.servers:
+        if node.private_ip not in mem_ips:
+            departed.append(('1', node))
+
+    # check EBS tier
+    ebs_ips = []
+    if ebs_tier:
+        ebs_ips = util.get_pod_ips(client, 'role=ebs')
+        for node in ebs_tier.servers:
+            if node.private_ip not in ebs_ips:
+                ebs_departed.append(('2', node))
+
+    mon_ips = util.get_pod_ips(client, 'role=monitoring')
+    storage_ips = mem_ips + ebs_ips
+
+    logging.info('Found %d departed nodes.' % (len(departed)))
+    for pair in departed:
+        logging.info('Informing cluster that node %s/%s has departed.' %
+                (pair[1].public_ip, pair[1].private_ip))
+        msg = pair[0] + ':' + pair[1].public_ip + ':' + pair[1].private_ip
+        for ip in storage_ips:
+            send_msg(msg, context, ip, storage_depart_port)
+
+        msg = 'depart:' + msg
+        for ip in route_ips:
+            send_msg(msg, context, ip, route_depart_port)
+
+        for ip in mon_ips:
+            send_msg(msg, context, ip, mon_depart_port)
+
+def send_msg(msg, context, ip, port):
+    sckt = context.socket(zmq.PUSH)
+    sckt.connect('tcp://' + ip + ':' + str(port))
+    sckt.send_string(msg)
+
+def check_unused_nodes(client):
+    kinds = ['ebs', 'memory']
+
+    for kind in kinds:
+        selector = 'role=' + kind
+        node_ips = list(map(lambda node: list(filter(lambda address:
+            address.type == 'InternalIP', node.status.addresses))[0].address,
+            client.list_node(label_selector=selector).items))
+
+        pod_ips = util.get_pod_ips(client, selector)
+        unallocated = set(node_ips) - set(pod_ips)
+
+        mon_ips = util.get_pod_ips(client, 'role=monitoring')
+        route_ips = util.get_pod_ips(client, 'role=routing')
+
+        logging.info('Found %d unallocated %s nodes.' % (len(unallocated),
+            kind))
+        for node_ip in unallocated:
+            # note that the last argument is a list of lists
+            add_nodes(client, [kind], [1], mon_ips, route_ips, [[node_ip]])
+
 
 if __name__ == '__main__':
     run()
