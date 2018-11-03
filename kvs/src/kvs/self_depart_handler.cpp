@@ -41,8 +41,7 @@ void self_depart_handler(
       }
     }
 
-    msg = "depart:" + std::to_string(kSelfTierId) + ":" + public_ip + ":" +
-          private_ip;
+    msg = "depart:" + msg;
 
     // notify all routing nodes
     for (const std::string& address : routing_address) {

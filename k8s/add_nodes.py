@@ -39,7 +39,6 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
             # run kops script to add servers to the cluster
             run_process(['./modify_ig.sh', kinds[i], str(counts[i] + prev_count)])
 
-
     run_process(['./validate_cluster.sh'])
 
     kops_ip = get_pod_ips(client, 'role=kops')[0]
