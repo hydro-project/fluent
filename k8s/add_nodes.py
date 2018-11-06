@@ -21,9 +21,9 @@ from util import *
 
 ec2_client = boto3.client('ec2')
 
-def add_nodes(client, kinds, counts, mon_ips, route_ips=[]):
-    assert len(kinds) == len(counts), 'Must have same number of kinds and \
-            counts.'
+def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
+    assert len(kinds) == len(counts) == len(node_ips), 'Must have same number \
+            of kinds and counts and node_ips.'
 
     cluster_name = check_or_get_env_arg('NAME')
 
@@ -34,9 +34,10 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[]):
         prev_count = get_previous_count(client, kinds[i])
         prev_counts.append(prev_count)
 
-        # run kops script to add servers to the cluster
-        run_process(['./modify_ig.sh', kinds[i], str(counts[i] + prev_count)])
-
+        # we only add new nodes if we didn't pass in a node IP
+        if not node_ips:
+            # run kops script to add servers to the cluster
+            run_process(['./modify_ig.sh', kinds[i], str(counts[i] + prev_count)])
 
     run_process(['./validate_cluster.sh'])
 
@@ -48,10 +49,14 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[]):
     for i in range(len(kinds)):
         kind = kinds[i]
 
-        role_selector = 'role=%s' % (kinds[i])
-        new_nodes = client.list_node(label_selector=role_selector).items
-        new_nodes.sort(key=lambda node: node.metadata.creation_timestamp,
-                reverse=True)
+        # select the newest nodes if we don't have any preallocated nodes
+        if not node_ips:
+            role_selector = 'role=%s' % (kinds[i])
+            new_nodes = client.list_node(label_selector=role_selector).items
+            new_nodes.sort(key=lambda node: node.metadata.creation_timestamp,
+                    reverse=True)
+        else: # otherwise just use the nodes we have
+            new_nodes = node_ips[i]
 
         if prev_counts[i] > 0:
             role_selector = 'role=%s' % (kinds[i])
@@ -74,10 +79,7 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[]):
             pod_spec = load_yaml(filename)
             pod_name = '%s-pod-%d' % (kind, j)
 
-            if route_ips:
-                seed_ip = random.choice(route_ips)
-            else:
-                seed_ip = ''
+            seed_ip = random.choice(route_ips) if route_ips else ''
 
             pod_spec['metadata']['name'] = pod_name
             env = pod_spec['spec']['containers'][0]['env']
