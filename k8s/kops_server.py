@@ -199,4 +199,8 @@ def check_unused_nodes(client):
             add_nodes(client, [kind], [1], mon_ips, route_ips, [[nodes[node_ip]]])
 
 if __name__ == '__main__':
+    # wait for this file to appear before starting
+    while not os.path.isfile('/fluent/setup_complete'):
+        pass
+
     run()
