@@ -87,7 +87,6 @@ void handle_request(
     logger->info("Waiting 5 seconds.");
     std::chrono::seconds dura(5);
     std::this_thread::sleep_for(dura);
-    logger->info("Waited 5s.");
   }
 
   // get worker address
@@ -262,10 +261,11 @@ void run(unsigned thread_id, std::string ip,
     kZmqUtil->poll(-1, &pollitems);
 
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      logger->info("Received benchmark command!");
+      std::string msg = kZmqUtil->recv_string(&command_puller);
+      logger->info("Received benchmark command: {}", msg);
       std::vector<std::string> v;
 
-      split(kZmqUtil->recv_string(&command_puller), ':', v);
+      split(msg, ':', v);
       std::string mode = v[0];
 
       if (mode == "CACHE") {
@@ -280,7 +280,7 @@ void run(unsigned thread_id, std::string ip,
                     std::to_string(i);
 
           if (i % 50000 == 0) {
-            logger->info("warming up cache for key {}", key);
+            logger->info("Warming up cache for key {}.", key);
           }
 
           Address target_routing_address =
@@ -479,10 +479,13 @@ void run(unsigned thread_id, std::string ip,
         unsigned end = thread_id * range + 1 + range;
 
         Key key;
-        logger->info("Warming up data");
         auto warmup_start = std::chrono::system_clock::now();
 
         for (unsigned i = start; i < end; i++) {
+          if (i % 50000 == 0) {
+            logger->info("Creating key {}.", i);
+          }
+
           unsigned trial = 1;
           key = std::string(8 - std::to_string(i).length(), '0') +
                 std::to_string(i);
@@ -494,10 +497,6 @@ void run(unsigned thread_id, std::string ip,
           // reset rid
           if (rid > 10000000) {
             rid = 0;
-          }
-
-          if (i == (end - start) / 2) {
-            logger->info("Warmed up half.");
           }
         }
 
