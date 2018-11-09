@@ -22,8 +22,12 @@ from util import *
 ec2_client = boto3.client('ec2')
 
 def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
-    assert len(kinds) == len(counts) == len(node_ips), 'Must have same number \
-            of kinds and counts and node_ips.'
+    if node_ips:
+        assert len(kinds) == len(counts) == len(node_ips), 'Must have same \
+                number of kinds and counts and node_ips.'
+    else:
+        assert len(kinds) == len(counts), 'Must have same number of kinds and \
+                counts.'
 
     cluster_name = check_or_get_env_arg('NAME')
 
