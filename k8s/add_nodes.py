@@ -55,7 +55,7 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
 
         # select the newest nodes if we don't have any preallocated nodes
         if not node_ips:
-            role_selector = 'role=%s' % (kinds[i])
+            role_selector = 'role=%s' % (kind)
             new_nodes = client.list_node(label_selector=role_selector).items
             new_nodes.sort(key=lambda node: node.metadata.creation_timestamp,
                     reverse=True)
@@ -63,7 +63,7 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
             new_nodes = node_ips[i]
 
         if prev_counts[i] > 0:
-            role_selector = 'role=%s' % (kinds[i])
+            role_selector = 'role=%s' % (kind)
             max_id = max(list(map(lambda pod:
                 int(pod.spec.node_selector['podid'].split('-')[-1]),
                 client.list_namespaced_pod(namespace=NAMESPACE, label_selector=\
@@ -71,13 +71,14 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
         else:
             max_id = 0
 
-        for j in range(counts[i]):
-            podid = '%s-%d' % (kinds[i], j + prev_counts[i] + 1)
-            client.patch_node(new_nodes[j].metadata.name, body={'metadata': {'labels':
+        index = 0
+        for j in range(max_id + 1, max_id + counts[i] + 1):
+            podid = '%s-%d' % (kind, j)
+            client.patch_node(new_nodes[index].metadata.name, body={'metadata': {'labels':
                 {'podid': podid}}})
+            index += 1
 
         print('Creating %d %s pod(s)...' % (counts[i], kind))
-
         for j in range(max_id + 1, max_id + counts[i] + 1):
             filename = 'yaml/pods/%s-pod.yml' % (kind)
             pod_spec = load_yaml(filename)
