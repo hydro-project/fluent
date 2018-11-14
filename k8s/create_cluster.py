@@ -82,7 +82,9 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
             [mem_count, ebs_count, bench_count], mon_ips, route_ips)
 
     print('Finished creating all pods...')
-    copy_file_to_pod(client, 'util.py', kops_podname, '/fluent/setup_complete')
+    os.system('touch setup_complete')
+    copy_file_to_pod(client, 'setup_complete', kops_podname, '/fluent')
+    os.system('rm setup_complete')
 
     print('Creating routing service...')
     service_spec = load_yaml('yaml/services/routing.yml')
