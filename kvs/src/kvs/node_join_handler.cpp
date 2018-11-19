@@ -114,7 +114,8 @@ void node_join_handler(
             join_remove_set.insert(key);
 
             for (const ServerThread& thread : threads) {
-              join_addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
+              join_addr_keyset_map[thread.get_gossip_connect_addr()].insert(
+                  key);
             }
           }
         } else {
