@@ -18,7 +18,7 @@ MAINTAINER Vikram Sreekanti <vsreekanti@gmail..com> version: 0.1
 
 ARG repo_org=fluent-project
 ARG source_branch=master
-ARG build_branch=build
+ARG build_branch=docker-build
 
 USER root
 
