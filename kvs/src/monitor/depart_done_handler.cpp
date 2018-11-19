@@ -44,7 +44,7 @@ void depart_done_handler(
       logger->info("Removing {} node {}/{}.", ntype, departed_public_ip,
                    departed_private_ip);
 
-      std::string mgmt_addr = "tcp://" + management_address + ":7000";
+      std::string mgmt_addr = "tcp://" + management_address + ":7001";
       std::string message = "remove:" + departed_private_ip + ":" + ntype;
 
       kZmqUtil->send_string(message, &pushers[mgmt_addr]);

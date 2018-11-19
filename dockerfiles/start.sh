@@ -72,7 +72,7 @@ elif [ "$1" = "r" ]; then
   ./build/kvs/src/route/flroute
 elif [ "$1" = "b" ]; then
   echo -e "user:" >> conf/kvs-config.yml
-  echo -e "    ip: $PRIVATE_IP" >> conf conf/kvs-config.yml
+  echo -e "    ip: $PRIVATE_IP" >> conf/kvs-config.yml
 
   LST=$(gen_yml_list "$MON_IPS")
   echo -e "    monitoring:" >> conf/kvs-config.yml
@@ -82,7 +82,7 @@ elif [ "$1" = "b" ]; then
   echo -e "    routing:" >> conf/kvs-config.yml
   echo -e "$LST" >> conf/kvs-config.yml
 
-  ./build/kvs/src/benchmark/flbench
+  ./build/kvs/src/benchmark/flkvs-bench
 else
   echo -e "server:" >> conf/kvs-config.yml
   echo -e "    seed_ip: $SEED_IP" >> conf/kvs-config.yml

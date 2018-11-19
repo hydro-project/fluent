@@ -13,7 +13,6 @@
 #  limitations under the License.
 
 FROM ubuntu:14.04
-
 MAINTAINER Vikram Sreekanti <vsreekanti@gmail..com> version: 0.1
 
 ARG repo_org=fluent-project
@@ -23,10 +22,14 @@ ARG build_branch=docker-build
 USER root
 
 # update and install software
+RUN apt-get update -y
+RUN apt-get install -y vim curl jq wget git libpq-dev libssl-dev openssl libffi-dev zlib1g-dev python-software-properties software-properties-common
+RUN add-apt-repository -y ppa:jonathonf/python-3.6
 RUN apt-get update
-RUN apt-get install -y wget curl python3 python3-pip vim jq git
-RUN pip3 install awscli
-RUN pip3 install zmq
+RUN apt-get install -y python3.6
+RUN wget https://bootstrap.pypa.io/get-pip.py
+RUN python3.6 get-pip.py
+RUN pip3 install awscli zmq six kubernetes boto3
 
 # install kops
 RUN wget -O kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep -Po '"tag_name": "\K.*?(?=")')/kops-linux-amd64
@@ -42,7 +45,6 @@ RUN mv ./kubectl /usr/local/bin/kubectl
 # need the user's AWS creds... should have a script to do this at runtime
 # eventually; for now, going to assume that the user is already set up or we
 # can just provide a script to this generally, independent of running it here
-
 RUN git clone https://github.com/$repo_org/fluent
 RUN cd fluent && git fetch origin && git checkout -b $build_branch origin/$source_branch
 

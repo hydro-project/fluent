@@ -107,7 +107,7 @@ void rep_factor_response_handler(
           kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
         } else if (responsible && request.addr_ == "") {
           // only put requests should fall into this category
-          if (request.type_ == "P") {
+          if (request.type_ == "PUT") {
             auto time_diff =
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                     now - start_time)
@@ -132,7 +132,7 @@ void rep_factor_response_handler(
           KeyTuple* tp = response.add_tuples();
           tp->set_key(key);
 
-          if (request.type_ == "G") {
+          if (request.type_ == "GET") {
             auto res = process_get(key, serializer);
             tp->set_value(res.first.reveal().value);
             tp->set_error(res.second);

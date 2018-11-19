@@ -19,6 +19,7 @@ metadata:
   labels: 
     role: ebs
 spec:
+  hostNetwork: true
   containers:
     - name: ebs-container
       image: fluentproject/annakvs
