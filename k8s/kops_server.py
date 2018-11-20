@@ -109,7 +109,7 @@ def check_hash_ring(client, context):
     ip = random.choice(route_ips)
 
     route_addr_port = 6350
-    storage_depart_port = 6100
+    storage_depart_port = 6050
     route_depart_port = 6400
     mon_depart_port = 6600
 
@@ -199,4 +199,8 @@ def check_unused_nodes(client):
             add_nodes(client, [kind], [1], mon_ips, route_ips, [[nodes[node_ip]]])
 
 if __name__ == '__main__':
+    # wait for this file to appear before starting
+    while not os.path.isfile('/fluent/setup_complete'):
+        pass
+
     run()

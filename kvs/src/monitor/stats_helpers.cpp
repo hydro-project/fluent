@@ -68,7 +68,7 @@ void collect_internal_stats(
           unsigned tier_id = stoi(tokens[4]);
           std::string metadata_type = tokens[5];
 
-          if (metadata_type == "stat") {
+          if (metadata_type == "stats") {
             // deserialized the value
             ServerThreadStatistics stat;
             stat.ParseFromString(tuple.value());
