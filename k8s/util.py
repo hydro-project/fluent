@@ -15,6 +15,7 @@
 import kubernetes as k8s
 import os
 import subprocess
+import sys
 import yaml
 
 NAMESPACE = 'default'
