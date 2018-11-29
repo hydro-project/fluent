@@ -19,12 +19,12 @@ from flask import session
 from flask_session import Session
 import os
 from threading import Thread
-import utils
 import uuid
 
 app = flask.Flask(__name__)
 
 routing_addr = os.environ['ROUTE_ADDR']
+print(routing_addr)
 client = AnnaClient(routing_addr)
 
 @app.route('/create/<funcname>', methods=['POST'])
@@ -32,6 +32,7 @@ def create_func(funcname):
     func_binary = flask.request.get_data()
 
     app.logger.info('Creating function: ' + funcname + '.')
+    print('Creating function: ' + funcname + '.')
     client.put(funcname, func_binary)
 
     return construct_response()
@@ -45,6 +46,8 @@ def remove_func(funcname):
 
 @app.route('/<funcname>', methods=['POST'])
 def call_func(funcname):
+    app.logger.info('Calling function: ' + funcname + '.')
+    print('Calling function: ' + funcname + '.')
     obj_id = str(uuid.uuid4())
     t = Thread(target=_exec_func, args=(funcname, obj_id, flask.request.get_data()))
     t.start()

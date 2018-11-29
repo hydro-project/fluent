@@ -24,8 +24,8 @@ spec:
   - name: function-container
     image: vsreekanti/fluent-func
     env: 
-    - name: ROUTING_ADDR
-      value: ROUTING_ADDR_DUMMY
+    - name: ROUTE_ADDR
+      value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
   nodeSelector:

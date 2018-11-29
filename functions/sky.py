@@ -2,11 +2,10 @@ from anna.client import AnnaClient
 import cloudpickle as cp
 import boto3
 import requests
-import utils
 
 class SkyConnection():
     def __init__(self, func_addr, kvs_addr, port=6000):
-        self.service_addr = 'http://'+  addr + ":" + str(port)
+        self.service_addr = 'http://'+  func_addr + ":" + str(port)
         self.kvs_client = AnnaClient(kvs_addr)
 
         self.session = requests.Session()

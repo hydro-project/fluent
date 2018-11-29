@@ -30,7 +30,7 @@ RUN apt-get update
 RUN apt-get install -y python3.6
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python3.6 get-pip.py
-RUN pip3 install flask cloudpickle zmq protobuf
+RUN pip3 install flask cloudpickle zmq protobuf Flask-Session
 
 # clone and install relevant libraries
 RUN git clone https://github.com/$repo_org/fluent
