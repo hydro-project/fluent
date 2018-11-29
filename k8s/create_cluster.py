@@ -26,7 +26,7 @@ from util import *
 
 ec2_client = boto3.client('ec2')
 
-def create_cluster(mem_count, ebs_count, func_count route_count, bench_count,
+def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
         ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
 
     # create the cluster object with kops
@@ -99,7 +99,7 @@ def create_cluster(mem_count, ebs_count, func_count route_count, bench_count,
             route_addr=routing_svc_addr)
 
     print('Creating function service...')
-    service_spec = load_yaml('yaml/service/function.yml')
+    service_spec = load_yaml('yaml/services/function.yml')
     client.create_namespaced_service(namespace=NAMESPACE,
             body=service_spec)
 
@@ -198,10 +198,10 @@ if __name__ == '__main__':
     aws_key_id = check_or_get_env_arg('AWS_ACCESS_KEY_ID')
     aws_key = check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
 
-    if len(sys.argv) == 5:
+    if len(sys.argv) == 6:
         ssh_key = '/home/ubuntu/.ssh/id_rsa'
     else:
-        ssh_key = sys.argv[5]
+        ssh_key = sys.argv[6]
 
     create_cluster(mem, ebs, func, route, bench, ssh_key, cluster_name, kops_bucket,
             aws_key_id, aws_key)

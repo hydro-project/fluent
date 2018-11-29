@@ -23,13 +23,14 @@ ARG build_branch=docker-build
 USER root
 
 # update and install python3
-RUN apt-get update -y
-RUN apt-get install -y vim curl wget git python-software-properties software-properties-common
+RUN apt-get update
+RUN apt-get install -y vim curl wget git gcc libzmq-dev python-software-properties software-properties-common
 RUN add-apt-repository -y ppa:jonathonf/python-3.6
 RUN apt-get update
 RUN apt-get install -y python3.6
 RUN wget https://bootstrap.pypa.io/get-pip.py
-RUN pip3 install flask cloudpickle
+RUN python3.6 get-pip.py
+RUN pip3 install flask cloudpickle zmq protobuf
 
 # clone and install relevant libraries
 RUN git clone https://github.com/$repo_org/fluent
