@@ -26,8 +26,8 @@ from util import *
 
 ec2_client = boto3.client('ec2')
 
-def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
-        cluster_name, kops_bucket, aws_key_id, aws_key):
+def create_cluster(mem_count, ebs_count, func_count route_count, bench_count,
+        ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
 
     # create the cluster object with kops
     run_process(['./create_cluster_object.sh', cluster_name, kops_bucket,
@@ -78,8 +78,8 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
 
     print('Creating %d memory, %d ebs, and %d benchmark node(s)...' %
             (mem_count, ebs_count, bench_count))
-    add_nodes(client, ['memory', 'ebs', 'benchmark'],
-            [mem_count, ebs_count, bench_count], mon_ips, route_ips)
+    add_nodes(client, ['memory', 'ebs', 'function', 'benchmark'],
+            [mem_count, ebs_count, func_count, bench_count], mon_ips, route_ips)
 
     print('Finished creating all pods...')
     os.system('touch setup_complete')
@@ -91,14 +91,16 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
     client.create_namespaced_service(namespace=NAMESPACE,
             body=service_spec)
 
-    service_name = service_spec['metadata']['name']
-    service = client.read_namespaced_service(namespace=NAMESPACE,
-            name=service_name)
+    routing_svc = service_spec['metadata']['name']
+    routing_svc_addr = wait_for_service(routing_svc)
 
-    while service.status.load_balancer.ingress == None or \
-            service.status.load_balancer.ingress[0].hostname == None:
-        service = client.read_namespaced_service(namespace=NAMESPACE,
-                name=service_name)
+    print('Creating function service...')
+    service_spec = load_yaml('yaml/service/function.yml')
+    client.create_namespaced_service(namespace=NAMESPACE,
+            body=service_spec)
+
+    function_svc = service_spec['metadata']['name']
+    function_svc_addr = wait_for_service(function_svc)
 
     sg_name = 'nodes.' + cluster_name
     sg = ec2_client.describe_security_groups(Filters=[{'Name': 'group-name',
@@ -121,8 +123,21 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
     ec2_client.authorize_security_group_ingress(GroupId=sg['GroupId'],
             IpPermissions=permissions)
 
-    print('The service can be accessed via the following address: \n\t%s' %
-            (service.status.load_balancer.ingress[0].hostname))
+    print('The routing service can be accessed here: \n\t%s' %
+            (routing_svc_addr))
+    print('The function service can be accessed here: \n\t%s' %
+            (function_svc_addr))
+
+def wait_for_service(svc_name):
+    service = client.read_namespaced_service(namespace=NAMESPACE,
+            name=service_name)
+
+    while service.status.load_balancer.ingress == None or \
+            service.status.load_balancer.ingress[0].hostname == None:
+        service = client.read_namespaced_service(namespace=NAMESPACE,
+                name=service_name)
+
+    return service.status.load_balancer.ingress[0].hostname
 
 
 # from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101
@@ -173,16 +188,17 @@ def parse_args(args, length, typ):
     return tuple(result)
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         print('Usage: ./create_cluster.py min_mem_instances min_ebs_instances \
-                routing_instance benchmark_instances <path-to-ssh-key>')
+                min_func_instances routing_instance benchmark_instances \
+                <path-to-ssh-key>')
         print()
         print('If no SSH key is specified, we will use the default SSH key \
                 (/home/ubuntu/.ssh/id_rsa). The corresponding public key is \
                 assumed to have the same path and end in .pub.')
         sys.exit(1)
 
-    mem, ebs, route, bench = parse_args(sys.argv[1:], 4, int)
+    mem, ebs, func, route, bench = parse_args(sys.argv[1:], 5, int)
 
     cluster_name = check_or_get_env_arg('NAME')
     kops_bucket = check_or_get_env_arg('KOPS_STATE_STORE')
@@ -194,5 +210,5 @@ if __name__ == '__main__':
     else:
         ssh_key = sys.argv[5]
 
-    create_cluster(mem, ebs, route, bench, ssh_key, cluster_name, kops_bucket,
+    create_cluster(mem, ebs, func, route, bench, ssh_key, cluster_name, kops_bucket,
             aws_key_id, aws_key)
