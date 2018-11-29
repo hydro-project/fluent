@@ -78,8 +78,8 @@ def create_cluster(mem_count, ebs_count, func_count route_count, bench_count,
 
     print('Creating %d memory, %d ebs, and %d benchmark node(s)...' %
             (mem_count, ebs_count, bench_count))
-    add_nodes(client, ['memory', 'ebs', 'function', 'benchmark'],
-            [mem_count, ebs_count, func_count, bench_count], mon_ips, route_ips)
+    add_nodes(client, ['memory', 'ebs', 'benchmark'],
+            [mem_count, ebs_count, bench_count], mon_ips, route_ips)
 
     print('Finished creating all pods...')
     os.system('touch setup_complete')
@@ -92,7 +92,11 @@ def create_cluster(mem_count, ebs_count, func_count route_count, bench_count,
             body=service_spec)
 
     routing_svc = service_spec['metadata']['name']
-    routing_svc_addr = wait_for_service(routing_svc)
+    routing_svc_addr = get_service_address(client, routing_svc)
+
+    print('Adding function serving nodes...')
+    add_nodes(client, ['function'], [func_count], mon_ips,
+            route_addr=routing_svc_addr)
 
     print('Creating function service...')
     service_spec = load_yaml('yaml/service/function.yml')
@@ -100,7 +104,7 @@ def create_cluster(mem_count, ebs_count, func_count route_count, bench_count,
             body=service_spec)
 
     function_svc = service_spec['metadata']['name']
-    function_svc_addr = wait_for_service(function_svc)
+    function_svc_addr = get_service_address(client, function_svc)
 
     sg_name = 'nodes.' + cluster_name
     sg = ec2_client.describe_security_groups(Filters=[{'Name': 'group-name',
@@ -127,17 +131,6 @@ def create_cluster(mem_count, ebs_count, func_count route_count, bench_count,
             (routing_svc_addr))
     print('The function service can be accessed here: \n\t%s' %
             (function_svc_addr))
-
-def wait_for_service(svc_name):
-    service = client.read_namespaced_service(namespace=NAMESPACE,
-            name=service_name)
-
-    while service.status.load_balancer.ingress == None or \
-            service.status.load_balancer.ingress[0].hostname == None:
-        service = client.read_namespaced_service(namespace=NAMESPACE,
-                name=service_name)
-
-    return service.status.load_balancer.ingress[0].hostname
 
 
 # from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101

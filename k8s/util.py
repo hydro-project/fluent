@@ -91,3 +91,14 @@ def get_pod_from_ip(client, ip):
     pod = list(filter(lambda pod: pod.status.pod_ip == ip, pods))[0]
 
     return pod
+
+def get_service_address(client, svc_name):
+    service = client.read_namespaced_service(namespace=NAMESPACE,
+            name=svc_name)
+
+    while service.status.load_balancer.ingress == None or \
+            service.status.load_balancer.ingress[0].hostname == None:
+        service = client.read_namespaced_service(namespace=NAMESPACE,
+                name=svc_name)
+
+    return service.status.load_balancer.ingress[0].hostname

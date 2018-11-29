@@ -15,6 +15,7 @@
 #  limitations under the License.
 
 from add_nodes import add_nodes
+from functools import reduce
 import logging
 from misc_pb2 import *
 import os
@@ -27,6 +28,7 @@ import zmq
 
 logging.basicConfig(filename='log.txt',level=logging.INFO)
 THRESHOLD = 30
+FOCC_THRESHOLD = .75
 
 def run():
     context = zmq.Context(1)
@@ -36,17 +38,17 @@ def run():
     churn_pull_socket = context.socket(zmq.PULL)
     churn_pull_socket.bind('tcp://*:7001')
 
+    func_pull_socket = context.socket(zmq.PULL)
+    func_pull_socket.bind('tcp://*:7002')
+
     poller = zmq.Poller()
     poller.register(restart_pull_socket, zmq.POLLIN)
     poller.register(churn_pull_socket, zmq.POLLIN)
-
-    # waits until the kubecfg file gets copied into the pod -- this might be
-    # brittle if we try to move to a non-Ubuntu setting, but I'm not worried
-    # about that for now
-    while not os.path.isfile('/root/.kube/config'):
-        pass
+    poller.register(func_pull_socket, zmq.POLLIN)
 
     client = util.init_k8s()
+
+    func_occ_map = {}
 
     start = time.time()
     while True:
@@ -89,6 +91,14 @@ def run():
             logging.info('Returning restart count ' + count + ' for IP ' + ip + '.')
             restart_pull_socket.send_string(count)
 
+        if func_pull_socket in socks and socks[func_pull_socket] == zmq.POLLIN:
+
+            msg = func_pull_socket.recv_string()
+            args = msg.split('|')
+
+            ip, util = args[0], float(args[1])
+            func_occ_map[ip] = util
+
         end = time.time()
         if end - start > THRESHOLD:
             logging.info('Checking hash ring...')
@@ -97,7 +107,18 @@ def run():
             logging.info('Checking for extra nodes...')
             check_unused_nodes(client)
 
+            logging.info('Calculating average function node occupancy...')
+            avg_focc = reduce(lambda a, b: a + b, func_occ_map.values()) / \
+                    len(func_occ_map)
+
+            if avg_focc > FOCC_THRESHOLD:
+                mon_ips = util.get_pod_ips(client, 'role=monitoring')
+                route_addr = get_service_address(client, 'routing-service')
+                add_nodes(client, ['function'], [1], mon_ips,
+                        route_addr=route_addr)
+
             start = time.time()
+
 
 def check_hash_ring(client, context):
     # get routing IPs
