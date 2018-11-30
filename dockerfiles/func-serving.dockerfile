@@ -39,5 +39,7 @@ RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
 RUN cd client/python && python3.6 setup.py install --prefix=$HOME/.local
 WORKDIR /
 
+COPY start-funcs.sh /start-funcs.sh
+
 # start the Flask server
-CMD cd /fluent/functions && python3.6 sky_server.py
+CMD bash start-funcs.sh

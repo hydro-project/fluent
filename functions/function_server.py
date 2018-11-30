@@ -19,12 +19,20 @@ from flask import session
 from flask_session import Session
 import os
 from threading import Thread
+import time
 import uuid
+import zmq
+
+REPORT_THRESH = 30
 
 app = flask.Flask(__name__)
+report_start = time.time()
+ctx = zmq.Context(1)
+
+global_util = 0.0
 
 routing_addr = os.environ['ROUTE_ADDR']
-print(routing_addr)
+mgmt_ip = os.environ['MGMT_IP']
 client = AnnaClient(routing_addr)
 
 @app.route('/create/<funcname>', methods=['POST'])
@@ -75,6 +83,7 @@ def call_func(funcname):
     return construct_response(obj_id)
 
 def _exec_func(funcname, obj_id, arg_obj):
+    start = time.time()
     func_binary = client.get(funcname)
     func = cp.loads(func_binary)
 
@@ -90,8 +99,21 @@ def _exec_func(funcname, obj_id, arg_obj):
 
 
     res = func(*args)
-
     client.put(obj_id, cp.dumps(res))
+    end = time.time()
+    global_util += (end - start)
+
+    # periodically report function occupancy
+    report_end = time.time()
+    if report_end - report_start > REPORT_THRESH:
+        util = global_util / REPORT_THRESH
+
+        sckt = ctx.socket(zmq.PUSH)
+        sckt.connect('tcp://' + mgmt_ip + ':7002')
+        sckt.send_string(str(util))
+
+        report_start = time.time()
+
 
 def _resolve_ref(ref, client):
     ref_data = client.get_object(ref.key)
