@@ -17,6 +17,7 @@ import cloudpickle as cp
 import flask
 from flask import session
 from flask_session import Session
+import logging
 import os
 from threading import Thread
 import time
@@ -24,16 +25,18 @@ import uuid
 import zmq
 
 REPORT_THRESH = 30
+logging.basicConfig(filename='log.txt',level=logging.INFO)
 
 app = flask.Flask(__name__)
 report_start = time.time()
 ctx = zmq.Context(1)
-
 global_util = 0.0
 
 routing_addr = os.environ['ROUTE_ADDR']
 mgmt_ip = os.environ['MGMT_IP']
-client = AnnaClient(routing_addr)
+ip = os.environ['MY_IP']
+
+client = AnnaClient(routing_addr, ip)
 
 @app.route('/create/<funcname>', methods=['POST'])
 def create_func(funcname):
@@ -106,13 +109,14 @@ def _exec_func(funcname, obj_id, arg_obj):
     # periodically report function occupancy
     report_end = time.time()
     if report_end - report_start > REPORT_THRESH:
-        util = global_util / REPORT_THRESH
+        util = (global_util * 1000) / REPORT_THRESH
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + mgmt_ip + ':7002')
         sckt.send_string(str(util))
 
         report_start = time.time()
+        global_util = 0
 
 
 def _resolve_ref(ref, client):

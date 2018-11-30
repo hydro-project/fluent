@@ -33,6 +33,7 @@ RUN python3.6 get-pip.py
 RUN pip3 install flask cloudpickle zmq protobuf Flask-Session
 
 # clone and install relevant libraries
+RUN touch a && rm a
 RUN git clone https://github.com/$repo_org/fluent
 WORKDIR /fluent
 RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
