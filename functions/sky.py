@@ -24,7 +24,8 @@ class SkyConnection():
 
     def _get_func_list(self, prefix=None):
         if prefix == None:
-            r = self.session.get(self.service_addr + "/list")
+            addr = self.service_addr + '/list'
+            r = self.session.get(addr)
         else:
             r = self.session.get(self.service_addr + "/list/" + prefix)
         return cp.loads(r.content)
@@ -40,7 +41,8 @@ class SkyConnection():
         return cp.loads(r.content)
 
     def register(self, func, name):
-        self.session.post(self.service_addr + "/create/" + name,
+        addr = self.service_addr + '/create/' + name
+        self.session.post(addr,
                 data=cp.dumps(func))
 
     def deregister(self, name):

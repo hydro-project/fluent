@@ -32,8 +32,11 @@ def create_func(funcname):
     func_binary = flask.request.get_data()
 
     app.logger.info('Creating function: ' + funcname + '.')
-    print('Creating function: ' + funcname + '.')
     client.put(funcname, func_binary)
+
+    funcs = _get_func_list('')
+    funcs.append('funcs/' + funcname)
+    client.put('allfuncs', cp.dumps(funcs))
 
     return construct_response()
 
@@ -44,10 +47,27 @@ def remove_func(funcname):
 
     return construct_response()
 
+def _get_func_list(prefix):
+    funcs = client.get('allfuncs')
+    if len(funcs) == 0:
+        return []
+    funcs = cp.loads(funcs)
+
+    result = []
+    prefix = "funcs/" + prefix
+
+    for f in funcs:
+        if f.startswith(prefix):
+            if fullname:
+                result.append(f)
+            else:
+                result.append(f[6:])
+
+    return result
+
 @app.route('/<funcname>', methods=['POST'])
 def call_func(funcname):
     app.logger.info('Calling function: ' + funcname + '.')
-    print('Calling function: ' + funcname + '.')
     obj_id = str(uuid.uuid4())
     t = Thread(target=_exec_func, args=(funcname, obj_id, flask.request.get_data()))
     t.start()
@@ -84,7 +104,7 @@ def _resolve_ref(ref, client):
 @app.route('/list', methods=['GET'])
 @app.route('/list/<prefix>', methods=['GET'])
 def list_funcs(prefix=''):
-    result = client.get_list(prefix)
+    result = _get_func_list(prefix)
 
     return construct_response(result)
 
