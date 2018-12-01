@@ -44,7 +44,7 @@ class AnnaClient():
         # TODO: doesn't support invalidate yet
         send_request(req, resp_obj, send_sock, self.response_puller)
 
-        return str(resp_obj.tuples[0].value, 'utf-8')
+        return resp_obj.tuples[0].value
 
 
     def put(self, key, value):
@@ -53,7 +53,11 @@ class AnnaClient():
 
         req, tup = self._prepare_data_request(key)
         req.type = PUT
-        tup.value = bytes(value, 'utf-8')
+
+        if type(value) == str:
+            value = bytes(value, 'utf-8')
+
+        tup.value = value
         tup.timestamp = 0
         resp_obj = KeyResponse()
 

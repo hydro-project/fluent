@@ -58,7 +58,7 @@ def remove_func(funcname):
 
     return construct_response()
 
-def _get_func_list(prefix):
+def _get_func_list(prefix, fullname=False):
     funcs = client.get('allfuncs')
     if len(funcs) == 0:
         return []
