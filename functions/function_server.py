@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 from anna.client import AnnaClient
+from client import SkyReference
 import cloudpickle as cp
 import flask
 from flask import session
@@ -80,12 +81,12 @@ def _get_func_list(prefix, fullname=False):
 def call_func(funcname):
     app.logger.info('Calling function: ' + funcname + '.')
     obj_id = str(uuid.uuid4())
-    t = Thread(target=_exec_func, args=(funcname, obj_id, flask.request.get_data()))
+    t = Thread(target=_exec_func, args=(funcname, app.logger, obj_id, flask.request.get_data()))
     t.start()
 
     return construct_response(obj_id)
 
-def _exec_func(funcname, obj_id, arg_obj):
+def _exec_func(funcname, logger, obj_id, arg_obj):
     start = time.time()
     func_binary = client.get(funcname)
     func = cp.loads(func_binary)
@@ -93,15 +94,18 @@ def _exec_func(funcname, obj_id, arg_obj):
     args = cp.loads(arg_obj)
 
     func_args = ()
+    flog = open('flog.txt', 'a+')
 
     for arg in args:
-        if isinstance(arg, sky.SkyReference):
+        if isinstance(arg, SkyReference):
             func_args = (_resolve_ref(arg, client),)
         else:
             func_args += (arg,)
 
 
-    res = func(*args)
+    res = func(*func_args)
+    flog.write('Putting result %s into KVS at id %s.\n' % (str(res), obj_id))
+
     client.put(obj_id, cp.dumps(res))
     end = time.time()
     global_util += (end - start)
@@ -115,8 +119,12 @@ def _exec_func(funcname, obj_id, arg_obj):
         sckt.connect('tcp://' + mgmt_ip + ':7002')
         sckt.send_string(str(util))
 
+        flog.write('Sending utilization of %.2f%%.' % (util))
+
         report_start = time.time()
         global_util = 0
+
+    flog.close()
 
 
 def _resolve_ref(ref, client):

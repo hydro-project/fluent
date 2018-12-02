@@ -4,9 +4,12 @@ import boto3
 import requests
 
 class SkyConnection():
-    def __init__(self, func_addr, kvs_addr, port=6000):
+    def __init__(self, func_addr, kvs_addr, ip=None, port=6000):
         self.service_addr = 'http://'+  func_addr + ":" + str(port)
-        self.kvs_client = AnnaClient(kvs_addr)
+        if ip:
+            self.kvs_client = AnnaClient(kvs_addr, ip)
+        else:
+            self.kvs_client = AnnaClient(kvs_addr)
 
         self.session = requests.Session()
 
