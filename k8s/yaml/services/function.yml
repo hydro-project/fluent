@@ -20,7 +20,7 @@ spec:
   type: LoadBalancer
   ports:
   - port: 6000
-    targetPort: 7000
+    targetPort: 5000
     name: function-0
   selector:
     role: function

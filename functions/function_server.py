@@ -15,58 +15,96 @@
 from anna.client import AnnaClient
 from client import SkyReference
 import cloudpickle as cp
-import flask
-from flask import session
-from flask_session import Session
 import logging
 import os
+from shared import *
 from threading import Thread
 import time
 import uuid
 import zmq
 
 REPORT_THRESH = 30
-logging.basicConfig(filename='log.txt',level=logging.INFO)
-
-app = flask.Flask(__name__)
-report_start = time.time()
-ctx = zmq.Context(1)
 global_util = 0.0
 
-routing_addr = os.environ['ROUTE_ADDR']
-mgmt_ip = os.environ['MGMT_IP']
-ip = os.environ['MY_IP']
+logging.basicConfig(filename='log.txt', level=logging.INFO)
 
-client = AnnaClient(routing_addr, ip)
+def run():
+    global global_util
 
-@app.route('/create/<funcname>', methods=['POST'])
-def create_func(funcname):
-    func_binary = flask.request.get_data()
+    ctx = zmq.Context(1)
+    msg_socket = ctx.socket(zmq.REP)
+    msg_socket.bind(BIND_ADDR_TEMPLATE % (MSG_PORT))
 
-    app.logger.info('Creating function: ' + funcname + '.')
-    client.put(funcname, func_binary)
+    routing_addr = os.environ['ROUTE_ADDR']
+    mgmt_ip = os.environ['MGMT_IP']
+    ip = os.environ['MY_IP']
 
-    funcs = _get_func_list('')
-    funcs.append('funcs/' + funcname)
-    client.put('allfuncs', cp.dumps(funcs))
+    client = AnnaClient(routing_addr, ip)
 
-    return construct_response()
+    report_start = time.time()
 
-@app.route('/remove/<funcname>', methods=['POST'])
-def remove_func(funcname):
-    app.logger.info('Removing function: ' + funcname + '.')
-    client.remove(funcname)
+    while True:
+        msg = msg_socket.recv_string()
+        logging.info('Received message: %s.' % (msg))
+        args = msg.split('|')
 
-    return construct_response()
+        if args[0] == 'create':
+            name = _get_func_kvs_name(args[1])
+            body = deserialize(args[2])
 
-def _get_func_list(prefix, fullname=False):
-    funcs = client.get('allfuncs')
+            logging.info('Creating function %s.' % (name))
+            client.put(name, body)
+
+            funcs = _get_func_list(client, '', fullname=True)
+            funcs.append(name)
+            _put_func_list(client, funcs)
+
+            msg_socket.send_string('Success!')
+
+        if args[0] == 'call':
+            name = _get_func_kvs_name(args[1])
+            logging.info('Executing function %s.' % (name))
+
+            if len(args) > 3:
+                reqid = args[2]
+                fargs = load(args[3])
+            else:
+                fargs = load(args[2])
+
+
+            obj_id = str(uuid.uuid4())
+            msg_socket.send_string(obj_id)
+
+            _exec_func(name, obj_id, fargs, reqid)
+
+        if args[0] == 'list':
+            prefix = args[1] if len(args) > 1 else ''
+
+            logging.info('Retrieving functions with prefix %s.' % (prefix))
+            msg_socket.send_string(dump(_get_func_list(client, prefix)))
+
+        # periodically report function occupancy
+        report_end = time.time()
+        if report_end - report_start > REPORT_THRESH:
+            util = global_util / REPORT_THRESH
+
+            sckt = ctx.socket(zmq.PUSH)
+            sckt.connect('tcp://' + mgmt_ip + ':7002')
+            sckt.send_string(str(util))
+
+            logging.info('Sending utilization of %.2f%%.' % (util))
+
+            report_start = time.time()
+            global_util = 0
+
+def _get_func_list(client, prefix, fullname=False):
+    funcs = client.get(FUNCOBJ)
     if len(funcs) == 0:
         return []
     funcs = cp.loads(funcs)
 
     result = []
-    prefix = "funcs/" + prefix
+    prefix = FUNC_PREFIX + prefix
 
     for f in funcs:
         if f.startswith(prefix):
@@ -77,94 +115,50 @@ def _get_func_list(prefix, fullname=False):
 
     return result
 
-@app.route('/<funcname>', methods=['POST'])
-def call_func(funcname):
-    app.logger.info('Calling function: ' + funcname + '.')
-    obj_id = str(uuid.uuid4())
-    t = Thread(target=_exec_func, args=(funcname, app.logger, obj_id, flask.request.get_data()))
-    t.start()
+def _put_func_list(client, funclist):
+    client.put(FUNCOBJ, cp.dumps(list(set(funclist))))
 
-    return construct_response(obj_id)
+def _get_func_kvs_name(fname):
+    return FUNC_PREFIX + fname
 
-def _exec_func(funcname, logger, obj_id, arg_obj):
+def _exec_func(funcname, obj_id, arg_obj, reqid):
+    global global_util
     start = time.time()
     func_binary = client.get(funcname)
-    func = cp.loads(func_binary)
 
+    func = cp.loads(func_binary)
     args = cp.loads(arg_obj)
 
     func_args = ()
-    flog = open('flog.txt', 'a+')
+    logging.info('Executing function %s (%s).\n' % (funcname, reqid))
 
     for arg in args:
         if isinstance(arg, SkyReference):
-            func_args = (_resolve_ref(arg, client),)
+            func_args += (_resolve_ref(arg, flog, client),)
         else:
             func_args += (arg,)
 
-
     res = func(*func_args)
-    flog.write('Putting result %s into KVS at id %s.\n' % (str(res), obj_id))
+    logging.info('Putting result %s into KVS at id %s (%s).\n' % (str(res),
+        obj_id, reqid))
 
     client.put(obj_id, cp.dumps(res))
     end = time.time()
     global_util += (end - start)
 
-    # periodically report function occupancy
-    report_end = time.time()
-    if report_end - report_start > REPORT_THRESH:
-        util = (global_util * 1000) / REPORT_THRESH
+def _resolve_ref(ref, flog, client):
+    ref_data = client.get(ref.key)
 
-        sckt = ctx.socket(zmq.PUSH)
-        sckt.connect('tcp://' + mgmt_ip + ':7002')
-        sckt.send_string(str(util))
+    # when chaining function executions, we must wait
+    while not ref_data:
+        ref_data = client.get(ref.key)
 
-        flog.write('Sending utilization of %.2f%%.' % (util))
-
-        report_start = time.time()
-        global_util = 0
-
-    flog.close()
-
-
-def _resolve_ref(ref, client):
-    ref_data = client.get_object(ref.key)
+    logging.info('Resolved reference %s with value is %s.' % (key.ref, cp.loads(ref_data)))
 
     if ref.deserialize:
         return cp.loads(ref_data)
     else:
         return ref_data
 
-@app.route('/list', methods=['GET'])
-@app.route('/list/<prefix>', methods=['GET'])
-def list_funcs(prefix=''):
-    result = _get_func_list(prefix)
-
-    return construct_response(result)
-
-def construct_response(obj=None):
-    resp = flask.make_response()
-    if obj != None:
-        resp.data = cp.dumps(obj)
-        resp.content_type = 'text/plain'
-
-    resp.status_code = 200
-
-    return resp
-
-def return_error(error=''):
-    resp = flask.make_response()
-    if error != '':
-        resp.data = error
-        resp.content_type = 'text/plain'
-
-    resp.status_code = 400
-
-    return resp
-
-def run():
-    app.secret_key = "this is a secret key"
-    Session(app)
-    app.run(threaded=True, host='0.0.0.0', port=7000)
-
-run()
+if __name__ == '__main__':
+    run()

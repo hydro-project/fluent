@@ -1,17 +1,22 @@
 from anna.client import AnnaClient
-import cloudpickle as cp
 import boto3
-import requests
+import cloudpickle as cp
+from shared import *
+import zmq
 
 class SkyConnection():
     def __init__(self, func_addr, kvs_addr, ip=None, port=6000):
-        self.service_addr = 'http://'+  func_addr + ":" + str(port)
         if ip:
             self.kvs_client = AnnaClient(kvs_addr, ip)
         else:
             self.kvs_client = AnnaClient(kvs_addr)
 
-        self.session = requests.Session()
+        service_addr = 'tcp://'+  func_addr + ":" + str(port)
+        context = zmq.Context(1)
+        self.req_socket = context.socket(zmq.REQ)
+        self.req_socket.connect(service_addr)
+
+        self.rid = 0
 
     def list(self, prefix=None):
         for fname in self._get_func_list(prefix):
@@ -26,31 +31,36 @@ class SkyConnection():
         return SkyFunc(name, self._name_to_handle(name), self, self.kvs_client)
 
     def _get_func_list(self, prefix=None):
-        if prefix == None:
-            addr = self.service_addr + '/list'
-            r = self.session.get(addr)
-        else:
-            r = self.session.get(self.service_addr + "/list/" + prefix)
-        return cp.loads(r.content)
+        msg = 'list' + (prefix if prefix else '')
+        self.req_socket.send_string(msg)
 
+        return load(self.req_socket.recv_string())
 
     def _name_to_handle(self, name):
         return name
 
     def exec_func(self, handle, args):
-        args_bin = cp.dumps(args)
+        args = list(map(lambda arg: SkyReference(arg.obj_id, True) if
+            isinstance(arg, SkyFuture) else arg, args))
 
-        r = self.session.post(self.service_addr + "/" + handle, data=args_bin)
-        return cp.loads(r.content)
+        msg = 'call|' + str(self.reqid) + '|' + handle + '|' + dump(args)
+        self.req_socket.send_string(msg)
+
+        self.req_id += 1
+        return self.req_socket.recv_string()
 
     def register(self, func, name):
-        addr = self.service_addr + '/create/' + name
-        self.session.post(addr,
-                data=cp.dumps(func))
+        msg = 'create|' + name + '|' + dump(func)
+        self.req_socket.send_string(msg)
 
-    def deregister(self, name):
-        self.session.post(self.service_addr + "/remove/" + name)
+        resp = self.req_socket.recv_string()
 
+        if resp.contains('Success'):
+            return SkyFunc(name, self._name_to_handle(name), self.
+                    self.kvs_client)
+        else:
+            print('Unexpected error while registering function: \n\t%s.'
+                    % (resp))
 
 class SkyFuture():
     def __init__(self, obj_id, kvs_client):

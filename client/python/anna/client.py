@@ -19,15 +19,15 @@ class AnnaClient():
         else:
             self.ut = UserThread(socket.gethostbyname(socket.gethostname()), offset)
 
-        self.context = zmq.Context(1)
+        context = zmq.Context(1)
 
         self.address_cache = {}
-        self.pusher_cache = SocketCache(self.context, zmq.PUSH)
+        self.pusher_cache = SocketCache(context, zmq.PUSH)
 
-        self.response_puller = self.context.socket(zmq.PULL)
+        self.response_puller = context.socket(zmq.PULL)
         self.response_puller.bind(self.ut.get_request_pull_bind_addr())
 
-        self.key_address_puller = self.context.socket(zmq.PULL)
+        self.key_address_puller = context.socket(zmq.PULL)
         self.key_address_puller.bind(self.ut.get_key_address_bind_addr())
 
         self.rid = 0
