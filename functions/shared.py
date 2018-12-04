@@ -20,4 +20,4 @@ def dump(msg):
     return serialize(cp.dumps(msg))
 
 def load(msg):
-    return deserialize(cp.loads(msg))
+    return cp.loads(deserialize(msg))

@@ -43,10 +43,10 @@ class SkyConnection():
         args = list(map(lambda arg: SkyReference(arg.obj_id, True) if
             isinstance(arg, SkyFuture) else arg, args))
 
-        msg = 'call|' + str(self.reqid) + '|' + handle + '|' + dump(args)
+        msg = 'call|' + handle + '|' + str(self.rid) + '|' + dump(args)
         self.req_socket.send_string(msg)
 
-        self.req_id += 1
+        self.rid += 1
         return self.req_socket.recv_string()
 
     def register(self, func, name):
@@ -55,8 +55,8 @@ class SkyConnection():
 
         resp = self.req_socket.recv_string()
 
-        if resp.contains('Success'):
-            return SkyFunc(name, self._name_to_handle(name), self.
+        if 'Success' in resp:
+            return SkyFunc(name, self._name_to_handle(name), self,
                     self.kvs_client)
         else:
             print('Unexpected error while registering function: \n\t%s.'

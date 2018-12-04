@@ -45,12 +45,11 @@ def run():
 
     while True:
         msg = msg_socket.recv_string()
-        logging.info('Received message: %s.' % (msg))
         args = msg.split('|')
 
         if args[0] == 'create':
             name = _get_func_kvs_name(args[1])
-            body = deserialize(args[2])
+            body = '|'.join(args[2:])
 
             logging.info('Creating function %s.' % (name))
             client.put(name, body)
@@ -65,17 +64,13 @@ def run():
             name = _get_func_kvs_name(args[1])
             logging.info('Executing function %s.' % (name))
 
-            if len(args) > 3:
-                reqid = args[2]
-                fargs = load(args[3])
-            else:
-                fargs = load(args[2])
-
+            reqid = args[2]
+            fargs = load('|'.join(args[3:]))
 
             obj_id = str(uuid.uuid4())
             msg_socket.send_string(obj_id)
 
-            _exec_func(name, obj_id, fargs, reqid)
+            _exec_func(client, name, obj_id, fargs, reqid)
 
         if args[0] == 'list':
             prefix = args[1] if len(args) > 1 else ''
@@ -121,20 +116,19 @@ def _put_func_list(client, funclist):
 def _get_func_kvs_name(fname):
     return FUNC_PREFIX + fname
 
-def _exec_func(funcname, obj_id, arg_obj, reqid):
+def _exec_func(client, funcname, obj_id, args, reqid):
     global global_util
     start = time.time()
-    func_binary = client.get(funcname)
+    func_binary = str(client.get(funcname), 'utf-8')
 
-    func = cp.loads(func_binary)
-    args = cp.loads(arg_obj)
+    func = load(func_binary)
 
     func_args = ()
     logging.info('Executing function %s (%s).\n' % (funcname, reqid))
 
     for arg in args:
         if isinstance(arg, SkyReference):
-            func_args += (_resolve_ref(arg, flog, client),)
+            func_args += (_resolve_ref(arg, client),)
         else:
             func_args += (arg,)
 
@@ -146,14 +140,14 @@ def _exec_func(funcname, obj_id, arg_obj, reqid):
     end = time.time()
     global_util += (end - start)
 
-def _resolve_ref(ref, flog, client):
+def _resolve_ref(ref, client):
     ref_data = client.get(ref.key)
 
     # when chaining function executions, we must wait
     while not ref_data:
         ref_data = client.get(ref.key)
 
-    logging.info('Resolved reference %s with value is %s.' % (key.ref, cp.loads(ref_data)))
+    logging.info('Resolved reference %s with value is %s.' % (ref.key, cp.loads(ref_data)))
 
     if ref.deserialize:
         return cp.loads(ref_data)
