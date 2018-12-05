@@ -13,19 +13,20 @@
 #  limitations under the License.
 
 from anna.client import AnnaClient
-from client import SkyReference
-import cloudpickle as cp
+from cache import LruCache
 from functions_pb2 import *
 import logging
 import os
 from shared import *
-from threading import Thread
+from serializer import *
 import time
 import uuid
 import zmq
 
 REPORT_THRESH = 30
+FUNC_CACHE_SIZE = 100
 global_util = 0.0
+function_cache = LruCache(FUNC_CACHE_SIZE)
 
 logging.basicConfig(filename='log.txt', level=logging.INFO)
 
@@ -97,10 +98,8 @@ def run():
 
         if list_socket in socks and socks[list_socket] == zmq.POLLIN:
             msg = list_socket.recv_string()
-            args = msg.split('|')
-            prefix = args[1] if len(args) > 1 else ''
+            prefix = msg if msg else ''
 
-            logging.info('Retrieving functions with prefix %s.' % (prefix))
             resp = FunctionList()
             resp.names.append(_get_func_list(client, prefix))
 
@@ -109,13 +108,13 @@ def run():
         # periodically report function occupancy
         report_end = time.time()
         if report_end - report_start > REPORT_THRESH:
-            util = global_util / REPORT_THRESH
+            util = global_util / (report_end - report_start)
 
             sckt = ctx.socket(zmq.PUSH)
             sckt.connect('tcp://' + mgmt_ip + ':7002')
             sckt.send_string(str(util))
 
-            logging.info('Sending utilization of %.2f%%.' % (util))
+            logging.info('Sending utilization of %.2f%%.' % (util * 100))
 
             report_start = time.time()
             global_util = 0
@@ -124,7 +123,7 @@ def _get_func_list(client, prefix, fullname=False):
     funcs = client.get(FUNCOBJ)
     if len(funcs) == 0:
         return []
-    funcs = cp.loads(funcs)
+    funcs = default_ser.load(funcs)
 
     prefix = FUNC_PREFIX + prefix
     result = list(filter(lambda fn: fn.startswith(prefix), funcs))
@@ -135,32 +134,38 @@ def _get_func_list(client, prefix, fullname=False):
     return result
 
 def _put_func_list(client, funclist):
-    client.put(FUNCOBJ, cp.dumps(list(set(funclist))))
+    client.put(FUNCOBJ, default_ser.dump(list(set(funclist))))
 
 def _get_func_kvs_name(fname):
     return FUNC_PREFIX + fname
 
 def _exec_func(client, funcname, obj_id, args, reqid):
-    global global_util
+    global global_util, function_cache
     start = time.time()
-
-    func = default_ser.load(client.get(funcname))
-
-    func_args = ()
     logging.info('Executing function %s (%s).' % (funcname, reqid))
 
+    # load the function from the KVS if it is not cached locally
+    func = function_cache.get(funcname)
+    if not func:
+        func = function_ser.load(client.get(funcname))
+        function_cache.put(funcname, func)
+
+    func_args = ()
+
+    # resolve any references to KVS objects
     for arg in args:
-        if isinstance(arg, SkyReference):
+        if isinstance(arg, FluentReference):
             func_args += (_resolve_ref(arg, client),)
         else:
             func_args += (arg,)
 
+    # execute the function
     res = func(*func_args)
-    logging.info('Putting result %s into KVS at id %s (%s).' % (str(res),
-        obj_id, reqid))
 
+    # reserialize the result and put it back into the KVS
     res = serialize_val(res).SerializeToString()
     client.put(obj_id, res)
+
     end = time.time()
     global_util += (end - start)
 

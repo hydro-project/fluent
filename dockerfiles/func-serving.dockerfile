@@ -30,10 +30,12 @@ RUN apt-get update
 RUN apt-get install -y python3.6
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python3.6 get-pip.py
-RUN pip3 install flask cloudpickle zmq protobuf Flask-Session
+RUN pip3 install cloudpickle zmq protobuf boto3
+
+# pipeline specific installs
+RUN pip3 install numpy sklearn scikit-image torch torchvision
 
 # clone and install relevant libraries
-RUN touch a && rm a
 RUN git clone https://github.com/$repo_org/fluent
 WORKDIR /fluent
 RUN git fetch origin && git checkout -b $build_branch origin/$source_branch

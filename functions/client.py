@@ -1,12 +1,27 @@
+#  Copyright 2018 U.C. Berkeley RISE Lab
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 from anna.client import AnnaClient
 import boto3
 import cloudpickle as cp
 from functions_pb2 import *
 import numpy
 from shared import *
+from serializer import *
 import zmq
 
-class SkyConnection():
+class FluentConnection():
     def __init__(self, func_addr, ip=None):
         self.service_addr = 'tcp://'+  func_addr + ':%d'
         self.context = zmq.Context(1)
@@ -45,10 +60,10 @@ class SkyConnection():
             print("To view all functions, use the `list` method.")
             return None
 
-        return SkyFunc(name, self, self.kvs_client)
+        return FluentFunction(name, self, self.kvs_client)
 
     def _get_func_list(self, prefix=None):
-        msg = 'list|' + (prefix if prefix else '')
+        msg = prefix if prefix else ''
         self.list_sock.send_string(msg)
 
         flist = FunctionList()
@@ -72,14 +87,14 @@ class SkyConnection():
     def register(self, function, name):
         func = Function()
         func.name = name
-        func.body = default_ser.dump(function)
+        func.body = function_ser.dump(function)
 
         self.create_sock.send(func.SerializeToString())
 
         resp = self.create_sock.recv_string()
 
         if 'Success' in resp:
-            return SkyFunc(name, self, self.kvs_client)
+            return FluentFunction(name, self, self.kvs_client)
         else:
             print('Unexpected error while registering function: \n\t%s.'
                     % (resp))
