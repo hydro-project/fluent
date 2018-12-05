@@ -19,8 +19,17 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - port: 6000
+  - port: 4999
+    targetPort: 4999
+    name: connect
+  - port: 5000
     targetPort: 5000
-    name: function-0
+    name: create
+  - port: 5001
+    targetPort: 5001
+    name: call
+  - port: 5002
+    targetPort: 5002
+    name: list
   selector:
     role: function

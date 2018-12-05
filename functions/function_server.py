@@ -15,6 +15,7 @@
 from anna.client import AnnaClient
 from client import SkyReference
 import cloudpickle as cp
+from functions_pb2 import *
 import logging
 import os
 from shared import *
@@ -32,8 +33,23 @@ def run():
     global global_util
 
     ctx = zmq.Context(1)
-    msg_socket = ctx.socket(zmq.REP)
-    msg_socket.bind(BIND_ADDR_TEMPLATE % (MSG_PORT))
+    connect_socket = ctx.socket(zmq.REP)
+    connect_socket.bind(BIND_ADDR_TEMPLATE % (CONNECT_PORT))
+
+    create_socket = ctx.socket(zmq.REP)
+    create_socket.bind(BIND_ADDR_TEMPLATE % (CREATE_PORT))
+
+    call_socket = ctx.socket(zmq.REP)
+    call_socket.bind(BIND_ADDR_TEMPLATE % (CALL_PORT))
+
+    list_socket = ctx.socket(zmq.REP)
+    list_socket.bind(BIND_ADDR_TEMPLATE % (LIST_PORT))
+
+    poller = zmq.Poller()
+    poller.register(connect_socket, zmq.POLLIN)
+    poller.register(create_socket, zmq.POLLIN)
+    poller.register(call_socket, zmq.POLLIN)
+    poller.register(list_socket, zmq.POLLIN)
 
     routing_addr = os.environ['ROUTE_ADDR']
     mgmt_ip = os.environ['MGMT_IP']
@@ -44,39 +60,51 @@ def run():
     report_start = time.time()
 
     while True:
-        msg = msg_socket.recv_string()
-        args = msg.split('|')
+        socks = dict(poller.poll(timeout=1000))
 
-        if args[0] == 'create':
-            name = _get_func_kvs_name(args[1])
-            body = '|'.join(args[2:])
+        if connect_socket in socks and socks[connect_socket] == zmq.POLLIN:
+            logging.info('Received connection request.')
+            msg = connect_socket.recv_string()
+            connect_socket.send_string(routing_addr)
 
+        if create_socket in socks and socks[create_socket] == zmq.POLLIN:
+            func = Function()
+            func.ParseFromString(create_socket.recv())
+
+            name = _get_func_kvs_name(func.name)
             logging.info('Creating function %s.' % (name))
-            client.put(name, body)
+            client.put(name, func.body)
 
             funcs = _get_func_list(client, '', fullname=True)
             funcs.append(name)
             _put_func_list(client, funcs)
 
-            msg_socket.send_string('Success!')
+            create_socket.send_string('Success!')
 
-        if args[0] == 'call':
-            name = _get_func_kvs_name(args[1])
-            logging.info('Executing function %s.' % (name))
+        if call_socket in socks and socks[call_socket] == zmq.POLLIN:
+            call = FunctionCall()
+            call.ParseFromString(call_socket.recv())
 
-            reqid = args[2]
-            fargs = load('|'.join(args[3:]))
+            name = _get_func_kvs_name(call.name)
+            reqid = call.request_id;
+            fargs = list(map(lambda arg:
+                get_serializer(arg.type).load(arg.body), call.args))
 
             obj_id = str(uuid.uuid4())
-            msg_socket.send_string(obj_id)
+            call_socket.send_string(obj_id)
 
             _exec_func(client, name, obj_id, fargs, reqid)
 
-        if args[0] == 'list':
+        if list_socket in socks and socks[list_socket] == zmq.POLLIN:
+            msg = list_socket.recv_string()
+            args = msg.split('|')
             prefix = args[1] if len(args) > 1 else ''
 
             logging.info('Retrieving functions with prefix %s.' % (prefix))
-            msg_socket.send_string(dump(_get_func_list(client, prefix)))
+            resp = FunctionList()
+            resp.names.append(_get_func_list(client, prefix))
+
+            list_socket.send(resp.SerializeToString())
 
         # periodically report function occupancy
         report_end = time.time()
@@ -98,15 +126,11 @@ def _get_func_list(client, prefix, fullname=False):
         return []
     funcs = cp.loads(funcs)
 
-    result = []
     prefix = FUNC_PREFIX + prefix
+    result = list(filter(lambda fn: fn.startswith(prefix), funcs))
 
-    for f in funcs:
-        if f.startswith(prefix):
-            if fullname:
-                result.append(f)
-            else:
-                result.append(f[6:])
+    if not fullname:
+        result = list(map(lambda fn: fn.split(FUNC_PREFIX)[-1], result))
 
     return result
 
@@ -119,12 +143,11 @@ def _get_func_kvs_name(fname):
 def _exec_func(client, funcname, obj_id, args, reqid):
     global global_util
     start = time.time()
-    func_binary = str(client.get(funcname), 'utf-8')
 
-    func = load(func_binary)
+    func = default_ser.load(client.get(funcname))
 
     func_args = ()
-    logging.info('Executing function %s (%s).\n' % (funcname, reqid))
+    logging.info('Executing function %s (%s).' % (funcname, reqid))
 
     for arg in args:
         if isinstance(arg, SkyReference):
@@ -133,7 +156,7 @@ def _exec_func(client, funcname, obj_id, args, reqid):
             func_args += (arg,)
 
     res = func(*func_args)
-    logging.info('Putting result %s into KVS at id %s (%s).\n' % (str(res),
+    logging.info('Putting result %s into KVS at id %s (%s).' % (str(res),
         obj_id, reqid))
 
     client.put(obj_id, cp.dumps(res))
