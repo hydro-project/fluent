@@ -159,7 +159,8 @@ def _exec_func(client, funcname, obj_id, args, reqid):
     logging.info('Putting result %s into KVS at id %s (%s).' % (str(res),
         obj_id, reqid))
 
-    client.put(obj_id, cp.dumps(res))
+    res = serialize_val(res).SerializeToString()
+    client.put(obj_id, res)
     end = time.time()
     global_util += (end - start)
 
@@ -170,12 +171,13 @@ def _resolve_ref(ref, client):
     while not ref_data:
         ref_data = client.get(ref.key)
 
-    logging.info('Resolved reference %s with value is %s.' % (ref.key, cp.loads(ref_data)))
+    refval = Value()
+    refval.ParseFromString(ref_data)
 
     if ref.deserialize:
-        return cp.loads(ref_data)
-    else:
-        return ref_data
+        refval = get_serializer(refval.type).load(refval.body)
+
+    return refval
 
 if __name__ == '__main__':
     run()

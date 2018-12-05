@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='functions.proto',
   package='',
   syntax='proto2',
-  serialized_pb=_b('\n\x0f\x66unctions.proto\"&\n\x08\x46unction\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0c\n\x04\x62ody\x18\x02 \x02(\x0c\"\x8f\x01\n\x0c\x46unctionCall\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x12\n\nrequest_id\x18\x02 \x02(\r\x12$\n\x04\x61rgs\x18\x03 \x03(\x0b\x32\x16.FunctionCall.Argument\x1a\x37\n\x08\x41rgument\x12\x0c\n\x04\x62ody\x18\x01 \x02(\x0c\x12\x1d\n\x04type\x18\x02 \x01(\x0e\x32\x0f.SerializerType\"\x1d\n\x0c\x46unctionList\x12\r\n\x05names\x18\x01 \x03(\t*4\n\x0eSerializerType\x12\x0b\n\x07\x44\x45\x46\x41ULT\x10\x00\x12\n\n\x06STRING\x10\x01\x12\t\n\x05NUMPY\x10\x02')
+  serialized_pb=_b('\n\x0f\x66unctions.proto\"&\n\x08\x46unction\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0c\n\x04\x62ody\x18\x02 \x02(\x0c\"4\n\x05Value\x12\x0c\n\x04\x62ody\x18\x01 \x02(\x0c\x12\x1d\n\x04type\x18\x02 \x01(\x0e\x32\x0f.SerializerType\"F\n\x0c\x46unctionCall\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x12\n\nrequest_id\x18\x02 \x02(\r\x12\x14\n\x04\x61rgs\x18\x03 \x03(\x0b\x32\x06.Value\"\x1d\n\x0c\x46unctionList\x12\r\n\x05names\x18\x01 \x03(\t*4\n\x0eSerializerType\x12\x0b\n\x07\x44\x45\x46\x41ULT\x10\x00\x12\n\n\x06STRING\x10\x01\x12\t\n\x05NUMPY\x10\x02')
 )
 
 _SERIALIZERTYPE = _descriptor.EnumDescriptor(
@@ -44,8 +44,8 @@ _SERIALIZERTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=236,
-  serialized_end=288,
+  serialized_start=216,
+  serialized_end=268,
 )
 _sym_db.RegisterEnumDescriptor(_SERIALIZERTYPE)
 
@@ -94,22 +94,22 @@ _FUNCTION = _descriptor.Descriptor(
 )
 
 
-_FUNCTIONCALL_ARGUMENT = _descriptor.Descriptor(
-  name='Argument',
-  full_name='FunctionCall.Argument',
+_VALUE = _descriptor.Descriptor(
+  name='Value',
+  full_name='Value',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='body', full_name='FunctionCall.Argument.body', index=0,
+      name='body', full_name='Value.body', index=0,
       number=1, type=12, cpp_type=9, label=2,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='type', full_name='FunctionCall.Argument.type', index=1,
+      name='type', full_name='Value.type', index=1,
       number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -127,9 +127,10 @@ _FUNCTIONCALL_ARGUMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=148,
-  serialized_end=203,
+  serialized_start=59,
+  serialized_end=111,
 )
+
 
 _FUNCTIONCALL = _descriptor.Descriptor(
   name='FunctionCall',
@@ -162,7 +163,7 @@ _FUNCTIONCALL = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_FUNCTIONCALL_ARGUMENT, ],
+  nested_types=[],
   enum_types=[
   ],
   options=None,
@@ -171,8 +172,8 @@ _FUNCTIONCALL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=60,
-  serialized_end=203,
+  serialized_start=113,
+  serialized_end=183,
 )
 
 
@@ -202,14 +203,14 @@ _FUNCTIONLIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=205,
-  serialized_end=234,
+  serialized_start=185,
+  serialized_end=214,
 )
 
-_FUNCTIONCALL_ARGUMENT.fields_by_name['type'].enum_type = _SERIALIZERTYPE
-_FUNCTIONCALL_ARGUMENT.containing_type = _FUNCTIONCALL
-_FUNCTIONCALL.fields_by_name['args'].message_type = _FUNCTIONCALL_ARGUMENT
+_VALUE.fields_by_name['type'].enum_type = _SERIALIZERTYPE
+_FUNCTIONCALL.fields_by_name['args'].message_type = _VALUE
 DESCRIPTOR.message_types_by_name['Function'] = _FUNCTION
+DESCRIPTOR.message_types_by_name['Value'] = _VALUE
 DESCRIPTOR.message_types_by_name['FunctionCall'] = _FUNCTIONCALL
 DESCRIPTOR.message_types_by_name['FunctionList'] = _FUNCTIONLIST
 DESCRIPTOR.enum_types_by_name['SerializerType'] = _SERIALIZERTYPE
@@ -222,20 +223,19 @@ Function = _reflection.GeneratedProtocolMessageType('Function', (_message.Messag
   ))
 _sym_db.RegisterMessage(Function)
 
-FunctionCall = _reflection.GeneratedProtocolMessageType('FunctionCall', (_message.Message,), dict(
+Value = _reflection.GeneratedProtocolMessageType('Value', (_message.Message,), dict(
+  DESCRIPTOR = _VALUE,
+  __module__ = 'functions_pb2'
+  # @@protoc_insertion_point(class_scope:Value)
+  ))
+_sym_db.RegisterMessage(Value)
 
-  Argument = _reflection.GeneratedProtocolMessageType('Argument', (_message.Message,), dict(
-    DESCRIPTOR = _FUNCTIONCALL_ARGUMENT,
-    __module__ = 'functions_pb2'
-    # @@protoc_insertion_point(class_scope:FunctionCall.Argument)
-    ))
-  ,
+FunctionCall = _reflection.GeneratedProtocolMessageType('FunctionCall', (_message.Message,), dict(
   DESCRIPTOR = _FUNCTIONCALL,
   __module__ = 'functions_pb2'
   # @@protoc_insertion_point(class_scope:FunctionCall)
   ))
 _sym_db.RegisterMessage(FunctionCall)
-_sym_db.RegisterMessage(FunctionCall.Argument)
 
 FunctionList = _reflection.GeneratedProtocolMessageType('FunctionList', (_message.Message,), dict(
   DESCRIPTOR = _FUNCTIONLIST,

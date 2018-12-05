@@ -25,15 +25,15 @@ enum SerializerType {
   NUMPY = 2;
 }
 
+message Value {
+  required bytes body = 1;
+  optional SerializerType type = 2;
+}
+
 message FunctionCall {
   required string name = 1;
   required uint32 request_id = 2;
-  
-  message Argument {
-    required bytes body = 1;
-    optional SerializerType type = 2;
-  }
-  repeated Argument args = 3;
+  repeated Value args = 3;
 }
 
 message FunctionList {

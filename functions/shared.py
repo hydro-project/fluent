@@ -1,7 +1,8 @@
 import cloudpickle as cp
 import codecs
-import functions_pb2
+from functions_pb2 import *
 from io import BytesIO
+import numpy as np
 
 # shared constants
 FUNCOBJ = 'funcs/index-allfuncs'
@@ -14,6 +15,37 @@ CALL_PORT = 5001
 LIST_PORT = 5002
 
 SER_FORMAT = 'raw_unicode_escape'
+
+class SkyFuture():
+    def __init__(self, obj_id, kvs_client):
+        self.obj_id = obj_id
+        self.kvs_client = kvs_client
+
+    def get(self):
+        obj = self.kvs_client.get(self.obj_id)
+
+        while not obj:
+            obj = self.kvs_client.get(self.obj_id)
+
+        retval = Value()
+        retval.ParseFromString(obj)
+
+        return get_serializer(retval.type).load(retval.body)
+
+class SkyFunc():
+    def __init__(self, name, conn, kvs_client):
+        self.name = name
+        self._conn = conn
+        self._kvs_client = kvs_client
+
+    def __call__(self, *args):
+        obj_id = self._conn.exec_func(self.name, args)
+        return SkyFuture(obj_id, self._kvs_client)
+
+class SkyReference():
+    def __init__(self, key, deserialize):
+        self.key = key
+        self.deserialize = deserialize
 
 class Serializer():
     def __init__(self):
@@ -63,17 +95,18 @@ class StringSerializer(Serializer):
     def load(self, msg):
         return cp.loads(deserialize(msg))
 
+# TODO: how can we make serializers pluggable?
 class NumpySerializer(DefaultSerializer):
     def __init__(self):
         pass
 
-    def dump(msg):
+    def dump(self, msg):
         body = BytesIO()
 
         np.save(body, msg)
         return body.getvalue()
 
-    def load(msg):
+    def load(self, msg):
         return np.load(BytesIO(msg))
 
 numpy_ser = NumpySerializer()
@@ -83,11 +116,26 @@ string_ser = StringSerializer()
 def get_serializer(kind):
     global numpy_ser, default_ser, string_ser
 
-    if kind == functions_pb2.NUMPY:
+    if kind == NUMPY:
         return numpy_ser
-    elif kind == functions_pb2.STRING:
+    elif kind == STRING:
         return string_ser
-    elif kind == functions_pb2.DEFAULT:
+    elif kind == DEFAULT:
         return default_ser
     else:
         return default_ser
+
+def serialize_val(val, valobj=None):
+    if not valobj:
+        valobj = Value()
+
+    if isinstance(val, SkyFuture):
+        valobj.body = default_ser.dump(SkyReference(val.obj_id, True))
+    elif isinstance(val, np.ndarray):
+        valobj.body = numpy_ser.dump(val)
+        valobj.type = NUMPY
+    else:
+        valobj.body = default_ser.dump(val)
+
+    return valobj
+
