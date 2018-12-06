@@ -26,9 +26,9 @@ import time
 import util
 import zmq
 
-logging.basicConfig(filename='log.txt',level=logging.INFO)
 THRESHOLD = 30
 FOCC_THRESHOLD = .75
+logging.basicConfig(filename='log.txt',level=logging.INFO)
 
 def run():
     context = zmq.Context(1)
@@ -94,12 +94,12 @@ def run():
         if func_pull_socket in socks and socks[func_pull_socket] == zmq.POLLIN:
             msg = func_pull_socket.recv_string()
             args = msg.split('|')
-            ip, util = args[0], float(args[1])
+            ip, mutil = args[0], float(args[1])
 
             logging.info('Received node occupancy of %.2f%% from IP %s.' %
-                    (util * 100, ip))
+                    (mutil * 100, ip))
 
-            func_occ_map[ip] = util
+            func_occ_map[ip] = mutil
 
         end = time.time()
         if end - start > THRESHOLD:
@@ -109,8 +109,11 @@ def run():
             logging.info('Checking for extra nodes...')
             check_unused_nodes(client)
 
-            avg_focc = reduce(lambda a, b: a + b, func_occ_map.values()) / \
-                    len(func_occ_map)
+            if func_occ_map.values():
+                avg_focc = reduce(lambda a, b: a + b, func_occ_map.values(), \
+                        0) / len(func_occ_map)
+            else:
+                avg_focc = 0
             logging.info('Average node occupancy is %f%%...' % (avg_focc * 100))
 
             if avg_focc > FOCC_THRESHOLD:
