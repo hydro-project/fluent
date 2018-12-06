@@ -12,6 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from functions_pb2 import *
+from serializer import *
+
 # shared constants
 FUNCOBJ = 'funcs/index-allfuncs'
 FUNC_PREFIX = 'funcs/'
@@ -53,3 +56,16 @@ class FluentReference():
         self.key = key
         self.deserialize = deserialize
 
+def serialize_val(val, valobj=None):
+    if not valobj:
+        valobj = Value()
+
+    if isinstance(val, FluentFuture):
+        valobj.body = default_ser.dump(FluentReference(val.obj_id, True))
+    elif isinstance(val, np.ndarray):
+        valobj.body = numpy_ser.dump(val)
+        valobj.type = NUMPY
+    else:
+        valobj.body = default_ser.dump(val)
+
+    return valobj

@@ -25,8 +25,10 @@ import zmq
 
 REPORT_THRESH = 30
 FUNC_CACHE_SIZE = 100
+DATA_CACHE_SIZE = 100
 global_util = 0.0
 function_cache = LruCache(FUNC_CACHE_SIZE)
+data_cache = LruCache(DATA_CACHE_SIZE)
 
 logging.basicConfig(filename='log.txt', level=logging.INFO)
 
@@ -140,7 +142,7 @@ def _get_func_kvs_name(fname):
     return FUNC_PREFIX + fname
 
 def _exec_func(client, funcname, obj_id, args, reqid):
-    global global_util, function_cache
+    global global_util, function_cache, data_cache
     start = time.time()
     logging.info('Executing function %s (%s).' % (funcname, reqid))
 
@@ -161,15 +163,23 @@ def _exec_func(client, funcname, obj_id, args, reqid):
 
     # execute the function
     res = func(*func_args)
+    data_cache.put(obj_id, res)
 
     # reserialize the result and put it back into the KVS
     res = serialize_val(res).SerializeToString()
     client.put(obj_id, res)
 
+
     end = time.time()
     global_util += (end - start)
 
 def _resolve_ref(ref, client):
+    global data_cache
+
+    refval = data_cache.get(ref.key)
+    if refval is not None:
+        return refval
+
     ref_data = client.get(ref.key)
 
     # when chaining function executions, we must wait
@@ -181,6 +191,8 @@ def _resolve_ref(ref, client):
 
     if ref.deserialize:
         refval = get_serializer(refval.type).load(refval.body)
+
+    data_cache.put(ref.key, refval)
 
     return refval
 
