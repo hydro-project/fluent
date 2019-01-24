@@ -11,21 +11,7 @@ The first is a key-value store based on prior open-source work from the RISE lab
 
 The second component is a data-centric programming framework, built on top of the Anna KVS. The goal of the programming framework is to provide users a general-purpose API and runtime for executing programs on data stored in the Anna KVS. Users are able to submit arbitrary code or containers for execution, and we plan to support performance SLOs for function execution. 
 
-## Getting Started
-
-```bash
-# install required dependencies; if you're on a Mac, please use install-dependencies-osx.sh
-$ ./scripts/install-dependencies.sh
-$ ./scripts/build-all.sh
-$ ./scripts/start-kvs-local.sh n n
-$ ./scripts/start-runtime-local.sh
-```
-
-To build only the KVS, please run `./scripts/build-kvs.sh`.
-
-**TODO** Add more information about how to start the client and run code.
-
-**TODO**: Add more information about starting and running in Kubernetes.
+To get started with the full project, please see the [Getting Started](docs/getting-started.md) page. You can find the index of all the docs [here](docs/index.md).
 
 ## Contributing
 
