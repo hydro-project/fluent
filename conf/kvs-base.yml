@@ -1,6 +1,6 @@
 ebs: ./
 threads:
-  memory: 4
+  memory: 3
   ebs: 4
   routing: 4
   benchmark: 4
