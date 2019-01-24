@@ -18,16 +18,14 @@ from add_nodes import add_nodes
 import boto3
 import json
 import kubernetes as k8s
-from kubernetes.stream import stream
 import sys
 import tarfile
-from tempfile import TemporaryFile
 from util import *
 
 ec2_client = boto3.client('ec2')
 
-def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
-        cluster_name, kops_bucket, aws_key_id, aws_key):
+def create_cluster(mem_count, ebs_count, route_count, bench_count, cfile,
+        ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
 
     # create the cluster object with kops
     run_process(['./create_cluster_object.sh', cluster_name, kops_bucket,
@@ -63,6 +61,7 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
     copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/')
     copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
             '/root/.ssh/')
+    copy_file_to_pod(client, cfile, kops_podname, '/fluent/conf/kvs-base.yml')
 
     # start the monitoring pod
     mon_spec = load_yaml('yaml/pods/monitoring-pod.yml')
@@ -73,12 +72,12 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
     mon_ips = get_pod_ips(client, 'role=monitoring')
 
     print('Creating %d routing nodes...' % (route_count))
-    add_nodes(client, ['routing'], [route_count], mon_ips)
+    add_nodes(client, cfile, ['routing'], [route_count], mon_ips)
     route_ips = get_pod_ips(client, 'role=routing')
 
     print('Creating %d memory, %d ebs, and %d benchmark node(s)...' %
             (mem_count, ebs_count, bench_count))
-    add_nodes(client, ['memory', 'ebs', 'benchmark'],
+    add_nodes(client, cfile, ['memory', 'ebs', 'benchmark'],
             [mem_count, ebs_count, bench_count], mon_ips, route_ips)
 
     print('Finished creating all pods...')
@@ -125,39 +124,6 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, ssh_key,
             (service.status.load_balancer.ingress[0].hostname))
 
 
-# from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101
-def copy_file_to_pod(client, filepath, podname, podpath):
-    exec_command = ['tar', 'xvf', '-', '-C', podpath]
-    resp = stream(client.connect_get_namespaced_pod_exec, podname, NAMESPACE,
-                  command=exec_command,
-                  stderr=True, stdin=True,
-                  stdout=True, tty=False,
-                  _preload_content=False)
-
-    filename = filepath.split('/')[-1]
-    with TemporaryFile() as tar_buffer:
-        with tarfile.open(fileobj=tar_buffer, mode='w') as tar:
-            tar.add(filepath, arcname=filename)
-
-        tar_buffer.seek(0)
-        commands = []
-        commands.append(str(tar_buffer.read(), 'utf-8'))
-
-        while resp.is_open():
-            resp.update(timeout=1)
-            if resp.peek_stdout():
-                pass
-            if resp.peek_stderr():
-                print("Unexpected error while copying files: %s" %
-                        (resp.read_stderr()))
-                sys.exit(1)
-            if commands:
-                c = commands.pop(0)
-                resp.write_stdin(c)
-            else:
-                break
-        resp.close()
-
 
 def parse_args(args, length, typ):
     result = []
@@ -175,11 +141,15 @@ def parse_args(args, length, typ):
 if __name__ == '__main__':
     if len(sys.argv) < 4:
         print('Usage: ./create_cluster.py min_mem_instances min_ebs_instances \
-                routing_instance benchmark_instances <path-to-ssh-key>')
+                routing_instance benchmark_instances <path-to-conf-file> \
+                <path-to-ssh-key>')
         print()
         print('If no SSH key is specified, we will use the default SSH key \
                 (/home/ubuntu/.ssh/id_rsa). The corresponding public key is \
                 assumed to have the same path and end in .pub.')
+        print()
+        print('If no config file is specific, the default base config file in \
+                $FLUENT_HOME/conf/kvs-base.yml will be used.')
         sys.exit(1)
 
     mem, ebs, route, bench = parse_args(sys.argv[1:], 4, int)
@@ -189,10 +159,15 @@ if __name__ == '__main__':
     aws_key_id = check_or_get_env_arg('AWS_ACCESS_KEY_ID')
     aws_key = check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
 
-    if len(sys.argv) == 5:
+    if len(sys.argv) <= 5:
+        conf_file = '../conf/kvs-base.yml'
+    else:
+        conf_file = sys.argv[5]
+
+    if len(sys.argv) <= 6:
         ssh_key = '/home/ubuntu/.ssh/id_rsa'
     else:
-        ssh_key = sys.argv[5]
+        ssh_key = sys.argv[6]
 
-    create_cluster(mem, ebs, route, bench, ssh_key, cluster_name, kops_bucket,
-            aws_key_id, aws_key)
+    create_cluster(mem, ebs, route, bench, cfile, ssh_key, cluster_name,
+            kops_bucket, aws_key_id, aws_key)

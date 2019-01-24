@@ -13,9 +13,11 @@
 #  limitations under the License.
 
 import kubernetes as k8s
+from kubernetes.stream import stream
 import os
 import subprocess
 import sys
+from tempfile import TemporaryFile
 import yaml
 
 NAMESPACE = 'default'
@@ -91,3 +93,37 @@ def get_pod_from_ip(client, ip):
     pod = list(filter(lambda pod: pod.status.pod_ip == ip, pods))[0]
 
     return pod
+
+# from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101
+def copy_file_to_pod(client, filepath, podname, podpath):
+    exec_command = ['tar', 'xvf', '-', '-C', podpath]
+    resp = stream(client.connect_get_namespaced_pod_exec, podname, NAMESPACE,
+                  command=exec_command,
+                  stderr=True, stdin=True,
+                  stdout=True, tty=False,
+                  _preload_content=False)
+
+    filename = filepath.split('/')[-1]
+    with TemporaryFile() as tar_buffer:
+        with tarfile.open(fileobj=tar_buffer, mode='w') as tar:
+            tar.add(filepath, arcname=filename)
+
+        tar_buffer.seek(0)
+        commands = []
+        commands.append(str(tar_buffer.read(), 'utf-8'))
+
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                pass
+            if resp.peek_stderr():
+                print("Unexpected error while copying files: %s" %
+                        (resp.read_stderr()))
+                sys.exit(1)
+            if commands:
+                c = commands.pop(0)
+                resp.write_stdin(c)
+            else:
+                break
+        resp.close()
+
