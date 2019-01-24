@@ -42,8 +42,8 @@ const std::vector<unsigned> kAllTierIds = {1, 2};
 const unsigned kSloWorst = 3000;
 const unsigned SLO_BEST = 1500;
 
-const unsigned kMemoryNodeCapacity = 40000000;
-const unsigned kEbsNodeCapacity = 256000000;
+const unsigned kMemoryNodeCapacity;
+const unsigned kEbsNodeCapacity;
 
 // run-time constants
 extern unsigned kSelfTierId;

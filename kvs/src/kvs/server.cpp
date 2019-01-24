@@ -604,6 +604,10 @@ int main(int argc, char* argv[]) {
   kMemoryThreadCount = threads["memory"].as<unsigned>();
   kEbsThreadCount = threads["ebs"].as<unsigned>();
 
+  YAML::Node capacities = conf["capacities"];
+  kMemoryNodeCapacity = capacities["memory-cap"].as<unsigned> * 1000000;
+  kEbsNodeCapacity = capacities["ebs-cap"].as<unsigned> * 1000000;
+
   YAML::Node replication = conf["replication"];
   kDefaultGlobalMemoryReplication = replication["memory"].as<unsigned>();
   kDefaultGlobalEbsReplication = replication["ebs"].as<unsigned>();

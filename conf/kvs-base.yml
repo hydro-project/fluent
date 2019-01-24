@@ -1,4 +1,7 @@
 ebs: ./
+capacities: # in GB
+  memory-cap: 45 
+  ebs-cap: 256
 threads:
   memory: 3
   ebs: 4

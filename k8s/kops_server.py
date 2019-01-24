@@ -65,8 +65,18 @@ def run():
                 ntype = args[2]
                 logging.info('Adding %d new %s node(s)...' % (num, ntype))
 
+                if len(args) > 3:
+                    num_threads = args[3]
+                else:
+                    num_threads = 3
+
                 mon_ips = util.get_pod_ips(client, 'role=monitoring')
                 route_ips = util.get_pod_ips(client, 'role=routing')
+
+                os.system('sed -i "s|%s: [0-9][0-9]*|%s: %d|g" %s' % (ntype,
+                    ntype, num_threads, cfile))
+                os.system('sed -i "s|%s-cap: [0-9][0-9]*|%s: %d|g" %s' % (ntype,
+                    ntype, num_threads * 15, cfile))
 
                 add_nodes(client, cfile, [ntype], [num], mon_ips, route_ips)
                 logging.info('Successfully added %d %s node(s).' % (num, ntype))
