@@ -21,28 +21,28 @@ metadata:
 spec:
   hostNetwork: true
   containers:
-  - name: ebs-container
-    image: vsreekanti/anna
-    env: 
-    - name: SERVER_TYPE
-      value: "2"
-    - name: ROUTING_IPS
-      value: ROUTING_IPS_DUMMY
-    - name: MGMT_IP
-      value: MGMT_IP_DUMMY
-    - name: SEED_IP
-      value: SEED_IP_DUMMY
-    - name: MON_IPS
-      value: MON_IPS_DUMMY
-    volumeMounts:
-    - mountPath: /ebs/ebs_0
-      name: ebs0
-    - mountPath: /ebs/ebs_1
-      name: ebs1
-    - mountPath: /ebs/ebs_2
-      name: ebs2
-    - mountPath: /ebs/ebs_3
-      name: ebs3
+    - name: ebs-container
+      image: fluentproject/annakvs
+      env: 
+      - name: SERVER_TYPE
+        value: "2"
+      - name: ROUTING_IPS
+        value: ROUTING_IPS_DUMMY
+      - name: SEED_IP
+        value: SEED_IP_DUMMY
+      - name: MGMT_IP
+        value: MGMT_IP_DUMMY
+      - name: MON_IPS
+        value: MON_IPS_DUMMY
+      volumeMounts:
+      - mountPath: /ebs/ebs_0
+        name: ebs0
+      - mountPath: /ebs/ebs_1
+        name: ebs1
+      - mountPath: /ebs/ebs_2
+        name: ebs2
+      - mountPath: /ebs/ebs_3
+        name: ebs3
   nodeSelector:
     role: ebs
     podid: ebs-NUM_DUMMY
