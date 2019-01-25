@@ -25,6 +25,8 @@ if [ "$1" = "y" ] || [ "$1" = "yes" ]; then
   ./scripts/build.sh
 fi
 
+cp conf/kvs-example.yml conf/kvs-config.yml
+
 ./build/kvs/src/monitor/flmonitor &
 MPID=$!
 ./build/kvs/src/route/flroute &

@@ -27,4 +27,5 @@ if [ "$1" = "y" ]; then
   rm log*
 fi
 
+rm conf/kvs-config.yml
 rm pids
