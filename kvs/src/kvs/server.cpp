@@ -31,6 +31,9 @@ std::vector<unsigned> kSelfTierIdVector;
 unsigned kMemoryThreadCount;
 unsigned kEbsThreadCount;
 
+unsigned kMemoryNodeCapacity;
+unsigned kEbsNodeCapacity;
+
 unsigned kDefaultGlobalMemoryReplication;
 unsigned kDefaultGlobalEbsReplication;
 unsigned kDefaultLocalReplication;
@@ -605,8 +608,8 @@ int main(int argc, char* argv[]) {
   kEbsThreadCount = threads["ebs"].as<unsigned>();
 
   YAML::Node capacities = conf["capacities"];
-  kMemoryNodeCapacity = capacities["memory-cap"].as<unsigned> * 1000000;
-  kEbsNodeCapacity = capacities["ebs-cap"].as<unsigned> * 1000000;
+  kMemoryNodeCapacity = capacities["memory-cap"].as<unsigned>() * 1000000;
+  kEbsNodeCapacity = capacities["ebs-cap"].as<unsigned>() * 1000000;
 
   YAML::Node replication = conf["replication"];
   kDefaultGlobalMemoryReplication = replication["memory"].as<unsigned>();

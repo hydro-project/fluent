@@ -42,12 +42,12 @@ const std::vector<unsigned> kAllTierIds = {1, 2};
 const unsigned kSloWorst = 3000;
 const unsigned SLO_BEST = 1500;
 
-const unsigned kMemoryNodeCapacity;
-const unsigned kEbsNodeCapacity;
-
 // run-time constants
 extern unsigned kSelfTierId;
 extern std::vector<unsigned> kSelfTierIdVector;
+
+extern unsigned kMemoryNodeCapacity;
+extern unsigned kEbsNodeCapacity;
 
 // the number of threads running in this executable
 extern unsigned kThreadNum;

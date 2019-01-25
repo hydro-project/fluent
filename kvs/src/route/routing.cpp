@@ -19,6 +19,9 @@ std::unordered_map<unsigned, TierData> kTierDataMap;
 unsigned kDefaultLocalReplication;
 unsigned kRoutingThreadCount;
 
+unsigned kMemoryNodeCapacity;
+unsigned kEbsNodeCapacity;
+
 ZmqUtil zmq_util;
 ZmqUtilInterface *kZmqUtil = &zmq_util;
 
@@ -161,8 +164,8 @@ int main(int argc, char *argv[]) {
   kRoutingThreadCount = threads["routing"].as<unsigned>();
 
   YAML::Node capacities = conf["capacities"];
-  kMemoryNodeCapacity = capacities["memory-cap"].as<unsigned> * 1000000;
-  kEbsNodeCapacity = capacities["ebs-cap"].as<unsigned> * 1000000;
+  kMemoryNodeCapacity = capacities["memory-cap"].as<unsigned>() * 1000000;
+  kEbsNodeCapacity = capacities["ebs-cap"].as<unsigned>() * 1000000;
 
   YAML::Node replication = conf["replication"];
   unsigned kDefaultGlobalMemoryReplication =
