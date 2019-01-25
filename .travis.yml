@@ -23,6 +23,9 @@ dist: trusty
 compiler:
   - clang
 
+services:
+  - docker
+
 env:
   global:
     - PROTOBUF_DIR="$HOME/protobuf"
@@ -40,3 +43,4 @@ script:
 
 after_success:
   - ./scripts/travis/upload-codecov.sh
+  - ./scripts/travis/docker-build.sh

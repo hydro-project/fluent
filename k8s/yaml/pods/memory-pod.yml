@@ -22,7 +22,7 @@ spec:
   hostNetwork: true
   containers:
   - name: memory-container
-    image: vsreekanti/anna
+    image: fluentproject/annakvs
     resources:
       limits:
         memory: "40Gi"
