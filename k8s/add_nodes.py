@@ -95,6 +95,8 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
             replace_yaml_val(env, 'SEED_IP', seed_ip)
             pod_spec['spec']['nodeSelector']['podid'] = ('%s-%d' % (kind, j))
 
+            created_pods += [pod_name, ]
+
             if kind == 'ebs':
                 vols = pod_spec['spec']['volumes']
                 for i in range(EBS_VOL_COUNT):
@@ -116,10 +118,10 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
                     body=pod_spec)
 
             # wait until all pods of this kind are running
-            ips = get_pod_ips(client, 'role='+kind)
-            while len(ips) < counts[i]:
-                ips = get_pod_ips(client, 'role='+kind)
+            ips = get_pod_ips(client, 'role='+kind, isRunning=True)
 
+            os.system('cp %s ./kvs-config.yml' % cfile)
             for pod in created_pods:
-                copy_file_to_pod(client, cfile, pod, '/fluent/conf/kvs-config.yml')
+                copy_file_to_pod(client, 'kvs-config.yml', pod, '/fluent/conf/')
 
+            os.system('rm ./kvs-config.yml')

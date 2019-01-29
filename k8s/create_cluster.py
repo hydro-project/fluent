@@ -19,7 +19,6 @@ import boto3
 import json
 import kubernetes as k8s
 import sys
-import tarfile
 from util import *
 
 ec2_client = boto3.client('ec2')
@@ -61,7 +60,7 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, cfile,
     copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/')
     copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
             '/root/.ssh/')
-    copy_file_to_pod(client, cfile, kops_podname, '/fluent/conf/kvs-base.yml')
+    copy_file_to_pod(client, cfile, kops_podname, '/fluent/conf/')
 
     # start the monitoring pod
     mon_spec = load_yaml('yaml/pods/monitoring-pod.yml')
@@ -169,5 +168,5 @@ if __name__ == '__main__':
     else:
         ssh_key = sys.argv[6]
 
-    create_cluster(mem, ebs, route, bench, cfile, ssh_key, cluster_name,
+    create_cluster(mem, ebs, route, bench, conf_file, ssh_key, cluster_name,
             kops_bucket, aws_key_id, aws_key)

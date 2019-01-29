@@ -17,6 +17,7 @@ from kubernetes.stream import stream
 import os
 import subprocess
 import sys
+import tarfile
 from tempfile import TemporaryFile
 import yaml
 
@@ -68,16 +69,28 @@ def check_or_get_env_arg(argname):
 
     return os.environ[argname]
 
-def get_pod_ips(client, selector):
+def get_pod_ips(client, selector, isRunning=False):
     pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
             label_selector=selector).items
 
     pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
+    print(pod_ips)
 
-    while None in pod_ips:
+    running = False
+    while None in pod_ips or not running:
         pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
                 label_selector=selector).items
         pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
+        print(pod_ips)
+
+        if isRunning:
+            print(list(map(lambda pod: pod.status.phase, pod_list)))
+            pod_statuses = list(filter(lambda pod: pod.status.phase !=
+                'Running', pod_list))
+            running = len(pod_statuses) == 0
+            print('There are ' + str(len(pod_statuses)) + ' not running things.')
+        else:
+            running = True
 
     return pod_ips
 
