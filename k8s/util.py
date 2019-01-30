@@ -13,9 +13,12 @@
 #  limitations under the License.
 
 import kubernetes as k8s
+from kubernetes.stream import stream
 import os
 import subprocess
 import sys
+import tarfile
+from tempfile import TemporaryFile
 import yaml
 
 NAMESPACE = 'default'
@@ -66,16 +69,28 @@ def check_or_get_env_arg(argname):
 
     return os.environ[argname]
 
-def get_pod_ips(client, selector):
+def get_pod_ips(client, selector, isRunning=False):
     pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
             label_selector=selector).items
 
     pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
+    print(pod_ips)
 
-    while None in pod_ips:
+    running = False
+    while None in pod_ips or not running:
         pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
                 label_selector=selector).items
         pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
+        print(pod_ips)
+
+        if isRunning:
+            print(list(map(lambda pod: pod.status.phase, pod_list)))
+            pod_statuses = list(filter(lambda pod: pod.status.phase !=
+                'Running', pod_list))
+            running = len(pod_statuses) == 0
+            print('There are ' + str(len(pod_statuses)) + ' not running things.')
+        else:
+            running = True
 
     return pod_ips
 
@@ -91,3 +106,37 @@ def get_pod_from_ip(client, ip):
     pod = list(filter(lambda pod: pod.status.pod_ip == ip, pods))[0]
 
     return pod
+
+# from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101
+def copy_file_to_pod(client, filepath, podname, podpath):
+    exec_command = ['tar', 'xvf', '-', '-C', podpath]
+    resp = stream(client.connect_get_namespaced_pod_exec, podname, NAMESPACE,
+                  command=exec_command,
+                  stderr=True, stdin=True,
+                  stdout=True, tty=False,
+                  _preload_content=False)
+
+    filename = filepath.split('/')[-1]
+    with TemporaryFile() as tar_buffer:
+        with tarfile.open(fileobj=tar_buffer, mode='w') as tar:
+            tar.add(filepath, arcname=filename)
+
+        tar_buffer.seek(0)
+        commands = []
+        commands.append(str(tar_buffer.read(), 'utf-8'))
+
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                pass
+            if resp.peek_stderr():
+                print("Unexpected error while copying files: %s" %
+                        (resp.read_stderr()))
+                sys.exit(1)
+            if commands:
+                c = commands.pop(0)
+                resp.write_stdin(c)
+            else:
+                break
+        resp.close()
+

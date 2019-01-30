@@ -21,7 +21,7 @@ from util import *
 
 ec2_client = boto3.client('ec2')
 
-def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
+def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
     if node_ips:
         assert len(kinds) == len(counts) == len(node_ips), 'Must have same \
                 number of kinds and counts and node_ips.'
@@ -78,6 +78,7 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
                 {'podid': podid}}})
             index += 1
 
+        created_pods = []
         print('Creating %d %s pod(s)...' % (counts[i], kind))
         for j in range(max_id + 1, max_id + counts[i] + 1):
             filename = 'yaml/pods/%s-pod.yml' % (kind)
@@ -93,6 +94,8 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
             replace_yaml_val(env, 'MGMT_IP', kops_ip)
             replace_yaml_val(env, 'SEED_IP', seed_ip)
             pod_spec['spec']['nodeSelector']['podid'] = ('%s-%d' % (kind, j))
+
+            created_pods += [pod_name, ]
 
             if kind == 'ebs':
                 vols = pod_spec['spec']['volumes']
@@ -114,3 +117,11 @@ def add_nodes(client, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
             client.create_namespaced_pod(namespace=NAMESPACE,
                     body=pod_spec)
 
+            # wait until all pods of this kind are running
+            ips = get_pod_ips(client, 'role='+kind, isRunning=True)
+
+            os.system('cp %s ./kvs-config.yml' % cfile)
+            for pod in created_pods:
+                copy_file_to_pod(client, 'kvs-config.yml', pod, '/fluent/conf/')
+
+            os.system('rm ./kvs-config.yml')

@@ -23,6 +23,10 @@ spec:
   containers:
   - name: memory-container
     image: fluentproject/annakvs
+    resources:
+      limits:
+        memory: "40Gi"
+        cpu: "3"
     env: 
     - name: SERVER_TYPE
       value: "1"

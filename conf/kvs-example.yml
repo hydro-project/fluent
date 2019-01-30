@@ -21,6 +21,9 @@ server:
   private_ip: 127.0.0.1
   mgmt_ip: "NULL"
 ebs: ./
+capacities: # in GB
+  memory-cap: 2 
+  ebs-cap: 4
 threads:
   memory: 4
   ebs: 4
