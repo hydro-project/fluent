@@ -46,6 +46,14 @@ def run():
     poller.register(churn_pull_socket, zmq.POLLIN)
     poller.register(func_pull_socket, zmq.POLLIN)
 
+    cfile = '/fluent/conf/kvs-base.yml'
+
+    # waits until the kubecfg file gets copied into the pod -- this might be
+    # brittle if we try to move to a non-Ubuntu setting, but I'm not worried
+    # about that for now
+    while not os.path.isfile('/root/.kube/config'):
+        pass
+
     client = util.init_k8s()
 
     func_occ_map = {}
@@ -65,10 +73,20 @@ def run():
                 ntype = args[2]
                 logging.info('Adding %d new %s node(s)...' % (num, ntype))
 
+                if len(args) > 3:
+                    num_threads = args[3]
+                else:
+                    num_threads = 3
+
                 mon_ips = util.get_pod_ips(client, 'role=monitoring')
                 route_ips = util.get_pod_ips(client, 'role=routing')
 
-                add_nodes(client, [ntype], [num], mon_ips, route_ips)
+                os.system('sed -i "s|%s: [0-9][0-9]*|%s: %d|g" %s' % (ntype,
+                    ntype, num_threads, cfile))
+                os.system('sed -i "s|%s-cap: [0-9][0-9]*|%s: %d|g" %s' % (ntype,
+                    ntype, num_threads * 15, cfile))
+
+                add_nodes(client, cfile, [ntype], [num], mon_ips, route_ips)
                 logging.info('Successfully added %d %s node(s).' % (num, ntype))
             elif args[0] == 'remove':
                 ip = args[1]

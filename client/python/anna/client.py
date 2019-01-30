@@ -6,14 +6,14 @@ from .common import *
 from .zmq_util import *
 from .requests_pb2 import *
 
-ELB_PORTS = list(range(6000, 6004))
-
 class AnnaClient():
-    def __init__(self, elb_addr, ip=None, offset=0):
+    def __init__(self, elb_addr, ip=None, elb_ports=list(range(6000, 6004)), offset=0):
         assert type(elb_addr) == str, \
             'ELB IP argument must be a string.'
 
         self.elb_addr = elb_addr
+        self.elb_ports = elb_ports
+
         if ip:
             self.ut = UserThread(ip, offset)
         else:
@@ -81,7 +81,7 @@ class AnnaClient():
 
     def _get_worker_address(self, key):
         if key not in self.address_cache:
-            port = random.choice(ELB_PORTS)
+            port = random.choice(self.elb_ports)
             addresses = self._query_proxy(key, port)
             self.address_cache[key] = addresses
 
