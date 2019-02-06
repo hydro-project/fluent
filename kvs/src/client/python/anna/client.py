@@ -67,16 +67,14 @@ class AnnaClient():
             # really matter
             req.request_id = self._get_request_id()
 
-            send_sock = self.pusher_cache.get(worker_address)
+            send_sock = self.pusher_cache.get(address)
             send_request(req, send_sock)
 
             req_ids.append(req.request_id)
 
         responses = recv_response(req_ids, self.response_puller, KeyResponse)
 
-        return list(map(lambda resp: str(resp.tuple[0].value, 'utf-8'), responses))
-
-
+        return list(map(lambda resp: str(resp.tuples[0].value, 'utf-8'), responses))
 
 
     def durable_put(self, key, value):
@@ -93,7 +91,7 @@ class AnnaClient():
             # really matter
             req.request_id = self._get_request_id()
 
-            send_sock = self.pusher_cache.get(worker_address)
+            send_sock = self.pusher_cache.get(address)
             send_request(req, send_sock)
 
             req_ids.append(req.request_id)
@@ -101,12 +99,12 @@ class AnnaClient():
         responses = recv_response(req_ids, self.response_puller, KeyResponse)
 
         for resp in responses:
-            tup = resp.tuple[0]
+            tup = resp.tuples[0]
             if tup.invalidate:
                 # reissue the request
                 return self.durable_put(key, value)
 
-            if tupe.error != 0:
+            if tup.error != 0:
                 return False
 
         return True
@@ -122,8 +120,8 @@ class AnnaClient():
         tup.timestamp = 0
 
         send_request(req, send_sock)
-        response = recv_response([req.request_id], KeyResponse,
-            self.response_puller)[0]
+        response = recv_response([req.request_id], self.response_puller,
+                KeyResponse)[0]
 
         # we currently only support single key operations
         tup = response.tuples[0]
@@ -185,8 +183,8 @@ class AnnaClient():
         send_sock = self.pusher_cache.get(dst_addr)
 
         send_request(key_request, send_sock)
-        response = recv_response([key_request.request_id], KeyAddressResponse,
-                self.key_address_puller)[0]
+        response = recv_response([key_request.request_id],
+                self.key_address_puller,  KeyAddressResponse)[0]
 
         result = []
         for t in response.addresses:

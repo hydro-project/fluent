@@ -16,6 +16,8 @@ def recv_response(req_ids, rcv_sock, resp_class):
             resp_obj.Clear()
             resp_obj.ParseFromString(rcv_sock.recv())
 
+        responses.append(resp_obj)
+
     return responses
 
 class SocketCache():
