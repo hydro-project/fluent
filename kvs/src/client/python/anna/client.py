@@ -32,6 +32,7 @@ class AnnaClient():
 
         self.rid = 0
 
+
     def get(self, key):
         worker_address = self._get_worker_address(key)
         send_sock = self.pusher_cache.get(worker_address)
@@ -53,6 +54,30 @@ class AnnaClient():
             return self.get(tup.key)
 
         return str(tup.value, 'utf-8')
+
+    def get_all(self, key):
+        worker_addresses = self._get_worker_address(key, False)
+
+        req, _ = self._prepare_data_request(key)
+        req.type = GET
+
+        req_ids = []
+        for address in worker_addresses:
+            # NOTE: We technically waste a request id here, but it doesn't
+            # really matter
+            req.request_id = self._get_request_id()
+
+            send_sock = self.pusher_cache.get(worker_address)
+            send_request(req, send_sock)
+
+            req_ids.append(req.request_id)
+
+        responses = recv_response(req_ids, self.response_puller, KeyResponse)
+
+        return list(map(lambda resp: str(resp.tuple[0].value, 'utf-8'), responses))
+
+
+
 
     def durable_put(self, key, value):
         worker_addresses = self._get_worker_address(key, False)
@@ -76,7 +101,12 @@ class AnnaClient():
         responses = recv_response(req_ids, self.response_puller, KeyResponse)
 
         for resp in responses:
-            if resp.tuple[0].error != 0:
+            tup = resp.tuple[0]
+            if tup.invalidate:
+                # reissue the request
+                return self.durable_put(key, value)
+
+            if tupe.error != 0:
                 return False
 
         return True
@@ -118,10 +148,12 @@ class AnnaClient():
 
         return (req, tup)
 
+
     def _get_request_id(self):
         response = self.ut.get_ip() + ':' + str(self.rid)
         self.rid = (self.rid + 1) % 10000
         return response
+
 
     def _get_worker_address(self, key, pick=True):
         if key not in self.address_cache:
@@ -134,11 +166,13 @@ class AnnaClient():
         else:
             return self.address_cache[key]
 
+
     def _invalidate_cache(self, key, new_addresses=None):
         if new_addresses:
             self.address_cache[key] = new_addresses
         else:
             del self.address_cache[key]
+
 
     def _query_routing(self, key, port):
         key_request = KeyAddressRequest()
