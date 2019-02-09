@@ -17,4 +17,4 @@ To get started with the full project, please see the [Getting Started](docs/gett
 
 If you run into any issues, please open an issue and make sure to include relevant information (e.g., stack traces) as well as operating system, dependency versions, etc.
 
-If you are looking to contribute to the project, please look at our [issues list](https://github.com/ucbrise/fluent/issues), particularly those marked as [good for beginners](https://github.com/ucbrise/fluent/issues?q=is%3Aopen+is%3Aissue+label%3Abeginners) and [help wanted](https://github.com/ucbrise/fluent/labels/help%20wanted).
+If you are looking to contribute to the project, please look at our [issues list](https://github.com/fluent-project/fluent/issues), particularly those marked as [good for beginners](https://github.com/fluent-project/fluent/issues?q=is%3Aopen+is%3Aissue+label%3Abeginners) and [help wanted](https://github.com/fluent-project/fluent/labels/help%20wanted).
