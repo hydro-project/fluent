@@ -42,7 +42,7 @@ void gossip_handler(
       if (std::find(threads.begin(), threads.end(), wt) !=
           threads.end()) {  // this means this worker thread is one of the
                             // responsible threads
-        process_put(tuple.key(), tuple.payload(), serializer,
+        process_put(tuple.key(), tuple.timestamp(), tuple.value(), serializer,
                     key_size_map);
       } else {
         if (is_metadata(key)) {  // forward the gossip
@@ -54,7 +54,7 @@ void gossip_handler(
             }
 
             prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key,
-                              tuple.payload());
+                              tuple.value(), tuple.timestamp());
           }
         } else {
           kHashRingUtil->issue_replication_factor_request(
@@ -62,12 +62,12 @@ void gossip_handler(
               global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
 
           pending_gossip_map[key].push_back(
-              PendingGossip(tuple.payload()));
+              PendingGossip(tuple.value(), tuple.timestamp()));
         }
       }
     } else {
       pending_gossip_map[key].push_back(
-          PendingGossip(tuple.payload()));
+          PendingGossip(tuple.value(), tuple.timestamp()));
     }
   }
 

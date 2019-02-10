@@ -49,7 +49,7 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   std::string repfactor;
   rf.SerializeToString(&repfactor);
 
-  tp->set_payload(serialize(0, repfactor));
+  tp->set_value(repfactor);
 
   std::string serialized;
   response.SerializeToString(&serialized);

@@ -64,6 +64,6 @@ void prepare_metadata_put_request(
       mt, rid, "PUT");
 
   if (!target_address.empty()) {
-    prepare_put_tuple(addr_request_map[target_address], key, serialize(0, value));
+    prepare_put_tuple(addr_request_map[target_address], key, value, 0);
   }
 }

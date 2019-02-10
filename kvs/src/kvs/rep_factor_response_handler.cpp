@@ -42,10 +42,8 @@ void rep_factor_response_handler(
   unsigned error = tuple.error();
 
   if (error == 0) {
-    LWWValue lww_value;
-    lww_value.ParseFromString(tuple.payload());
     ReplicationFactor rep_data;
-    rep_data.ParseFromString(lww_value.value());
+    rep_data.ParseFromString(tuple.value());
 
     for (const auto& global : rep_data.global()) {
       placement[key].global_replication_map_[global.tier_id()] =
@@ -116,7 +114,7 @@ void rep_factor_response_handler(
                     .count();
             auto ts = generate_timestamp(time_diff, wt.get_tid());
 
-            process_put(key, serialize(ts, request.value_), serializer, key_size_map);
+            process_put(key, ts, request.value_, serializer, key_size_map);
             key_access_timestamp[key].insert(now);
 
             total_access += 1;
@@ -136,7 +134,7 @@ void rep_factor_response_handler(
 
           if (request.type_ == "GET") {
             auto res = process_get(key, serializer);
-            tp->set_payload(res.first);
+            tp->set_value(res.first.reveal().value);
             tp->set_error(res.second);
 
             key_access_timestamp[key].insert(std::chrono::system_clock::now());
@@ -148,7 +146,7 @@ void rep_factor_response_handler(
                     .count();
             auto ts = generate_timestamp(time_diff, wt.get_tid());
 
-            process_put(key, serialize(ts, request.value_), serializer, key_size_map);
+            process_put(key, ts, request.value_, serializer, key_size_map);
             tp->set_error(0);
 
             key_access_timestamp[key].insert(now);
@@ -178,7 +176,7 @@ void rep_factor_response_handler(
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) != threads.end()) {
         for (const PendingGossip& gossip : pending_gossip_map[key]) {
-          process_put(key, gossip.payload_, serializer, key_size_map);
+          process_put(key, gossip.ts_, gossip.value_, serializer, key_size_map);
         }
       } else {
         std::unordered_map<Address, KeyRequest> gossip_map;
@@ -190,7 +188,7 @@ void rep_factor_response_handler(
 
           for (const PendingGossip& gossip : pending_gossip_map[key]) {
             prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key,
-                              gossip.payload_);
+                              gossip.value_, gossip.ts_);
           }
         }
 

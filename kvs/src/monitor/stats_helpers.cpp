@@ -68,13 +68,10 @@ void collect_internal_stats(
           unsigned tier_id = stoi(tokens[4]);
           std::string metadata_type = tokens[5];
 
-          LWWValue lww_value;
-          lww_value.ParseFromString(tuple.payload());
-
           if (metadata_type == "stats") {
-            // deserialize the value
+            // deserialized the value
             ServerThreadStatistics stat;
-            stat.ParseFromString(lww_value.value());
+            stat.ParseFromString(tuple.value());
 
             if (tier_id == 1) {
               memory_tier_storage[ip_pair][tid] = stat.storage_consumption();
@@ -90,7 +87,7 @@ void collect_internal_stats(
           } else if (metadata_type == "access") {
             // deserialized the value
             KeyAccessData access;
-            access.ParseFromString(lww_value.value());
+            access.ParseFromString(tuple.value());
 
             for (const auto& key_count : access.keys()) {
               Key key = key_count.key();
@@ -100,7 +97,7 @@ void collect_internal_stats(
           } else if (metadata_type == "size") {
             // deserialized the size
             KeySizeData key_size_msg;
-            key_size_msg.ParseFromString(lww_value.value());
+            key_size_msg.ParseFromString(tuple.value());
 
             for (const auto& key_size_tuple : key_size_msg.key_sizes()) {
               key_size[key_size_tuple.key()] = key_size_tuple.size();

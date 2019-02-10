@@ -34,10 +34,8 @@ void replication_response_handler(
   unsigned error = tuple.error();
 
   if (error == 0) {
-    LWWValue lww_value;
-    lww_value.ParseFromString(tuple.payload());
     ReplicationFactor rep_data;
-    rep_data.ParseFromString(lww_value.value());
+    rep_data.ParseFromString(tuple.value());
 
     for (const auto& global : rep_data.global()) {
       placement[key].global_replication_map_[global.tier_id()] =

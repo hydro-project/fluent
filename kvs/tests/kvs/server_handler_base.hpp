@@ -44,11 +44,11 @@ class ServerHandlerTest : public ::testing::Test {
   zmq::context_t context;
   SocketCache pushers = SocketCache(&context, ZMQ_PUSH);
   Serializer* serializer;
-  MemoryLWWKVS* kvs;
+  MemoryKVS* kvs;
 
   ServerHandlerTest() {
-    kvs = new MemoryLWWKVS();
-    serializer = new MemoryLWWSerializer(kvs);
+    kvs = new MemoryKVS();
+    serializer = new MemorySerializer(kvs);
     wt = ServerThread(ip, ip, thread_id);
     global_hash_ring_map[1].insert(ip, ip, 0, thread_id);
   }
@@ -103,7 +103,8 @@ class ServerHandlerTest : public ::testing::Test {
 
     KeyTuple* tp = request.add_tuples();
     tp->set_key(key);
-    tp->set_payload(value);
+    tp->set_value(value);
+    tp->set_timestamp(0);
 
     std::string request_str;
     request.SerializeToString(&request_str);

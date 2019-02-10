@@ -17,7 +17,7 @@
 TEST_F(ServerHandlerTest, UserGetTest) {
   Key key = "key";
   std::string value = "value";
-  serializer->put(key, serialize(0, value));
+  serializer->put(key, value, 0);
 
   std::string get_request = get_key_request(key, ip);
 
@@ -44,7 +44,7 @@ TEST_F(ServerHandlerTest, UserGetTest) {
   KeyTuple rtp = response.tuples(0);
 
   EXPECT_EQ(rtp.key(), key);
-  EXPECT_EQ(rtp.payload(), serialize(0, value));
+  EXPECT_EQ(rtp.value(), value);
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 0);
@@ -102,11 +102,9 @@ TEST_F(ServerHandlerTest, UserPutAndGetTest) {
   EXPECT_EQ(response.tuples().size(), 1);
 
   rtp = response.tuples(0);
-  LWWValue lww_value;
-  lww_value.ParseFromString(rtp.payload());
 
   EXPECT_EQ(rtp.key(), key);
-  EXPECT_EQ(lww_value.value(), value);
+  EXPECT_EQ(rtp.value(), value);
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 1);

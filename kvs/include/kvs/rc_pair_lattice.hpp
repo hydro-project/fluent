@@ -15,8 +15,6 @@
 #ifndef SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_
 #define SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_
 
-#include "../lattices/core_lattices.hpp"
-
 template <typename T>
 struct TimestampValuePair {
   // MapLattice<int, MaxLattice<int>> v_map;
@@ -41,7 +39,7 @@ struct TimestampValuePair {
 };
 
 template <typename T>
-class LWWPairLattice : public Lattice<TimestampValuePair<T>> {
+class ReadCommittedPairLattice : public Lattice<TimestampValuePair<T>> {
  protected:
   void do_merge(const TimestampValuePair<T>& p) {
     if (p.timestamp >= this->element.timestamp) {
@@ -51,8 +49,8 @@ class LWWPairLattice : public Lattice<TimestampValuePair<T>> {
   }
 
  public:
-  LWWPairLattice() : Lattice<TimestampValuePair<T>>() {}
-  LWWPairLattice(const TimestampValuePair<T>& p) :
+  ReadCommittedPairLattice() : Lattice<TimestampValuePair<T>>() {}
+  ReadCommittedPairLattice(const TimestampValuePair<T>& p) :
       Lattice<TimestampValuePair<T>>(p) {}
 
   bool merge(const TimestampValuePair<T>& p) {
@@ -66,7 +64,7 @@ class LWWPairLattice : public Lattice<TimestampValuePair<T>> {
     return false;
   }
 
-  bool merge(const LWWPairLattice<T>& pl) {
+  bool merge(const ReadCommittedPairLattice<T>& pl) {
     return merge(pl.reveal());
   }
 };
