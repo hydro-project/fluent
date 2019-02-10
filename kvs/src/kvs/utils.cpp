@@ -50,10 +50,7 @@ std::pair<std::string, unsigned> process_get(
 
 void process_put(const Key& key, const std::string& payload, Serializer* serializer,
                  std::unordered_map<Key, unsigned>& key_size_map) {
-  if (serializer->put(key, payload)) {
-    // update value size if the value is replaced
-    key_size_map[key] = payload.size();
-  }
+  key_size_map[key] = serializer->put(key, payload);
 }
 
 bool is_primary_replica(
