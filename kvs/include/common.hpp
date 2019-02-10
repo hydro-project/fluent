@@ -27,6 +27,7 @@
 #include "types.hpp"
 #include "zmq/socket_cache.hpp"
 #include "zmq/zmq_util.hpp"
+#include "kvs/lww_pair_lattice.hpp"
 
 const std::string kMetadataIdentifier = "ANNA_METADATA";
 
@@ -79,16 +80,15 @@ inline unsigned long long generate_timestamp(unsigned long long time,
 }
 
 inline void prepare_get_tuple(KeyRequest& req, Key key) {
-  KeyTuple* tuple = req.add_tuples();
-  tuple->set_key(key);
-}
-
-inline void prepare_put_tuple(KeyRequest& req, Key key, std::string value,
-                              unsigned long long timestamp) {
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
-  tp->set_value(value);
-  tp->set_timestamp(timestamp);
+}
+
+inline void prepare_put_tuple(KeyRequest& req, Key key, std::string payload) {
+
+  KeyTuple* tp = req.add_tuples();
+  tp->set_key(key);
+  tp->set_payload(payload);
 }
 
 // TODO(vikram): what's the right way to check if this succeeded or not?
@@ -97,6 +97,34 @@ inline RequestType get_request_type(const std::string& type_str) {
   RequestType_Parse(type_str, &type);
 
   return type;
+}
+
+inline std::string serialize(const LWWPairLattice<std::string>& l) {
+  LWWValue lww_value;
+  lww_value.set_timestamp(l.reveal().timestamp);
+  lww_value.set_value(l.reveal().value);
+  std::string serialized;
+  lww_value.SerializeToString(&serialized);
+  return serialized;
+}
+
+inline std::string serialize(const unsigned long long& timestamp, const std::string& value) {
+  LWWValue lww_value;
+  lww_value.set_timestamp(timestamp);
+  lww_value.set_value(value);
+  std::string serialized;
+  lww_value.SerializeToString(&serialized);
+  return serialized;
+}
+
+inline std::string serialize(const SetLattice<std::string>& l) {
+  SetValue set_value;
+  for (const std::string& val : l.reveal()) {
+    set_value.add_values(val);
+  }
+  std::string serialized;
+  set_value.SerializeToString(&serialized);
+  return serialized;
 }
 
 #endif  // SRC_INCLUDE_COMMON_HPP_

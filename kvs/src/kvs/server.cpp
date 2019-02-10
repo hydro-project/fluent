@@ -166,10 +166,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   Serializer* serializer;
 
   if (kSelfTierId == 1) {
-    MemoryKVS* kvs = new MemoryKVS();
-    serializer = new MemorySerializer(kvs);
+    MemoryLWWKVS* kvs = new MemoryLWWKVS();
+    serializer = new MemoryLWWSerializer(kvs);
   } else if (kSelfTierId == 2) {
-    serializer = new EBSSerializer(thread_id);
+    serializer = new EBSLWWSerializer(thread_id);
   } else {
     logger->info("Invalid node type");
     exit(1);
@@ -433,7 +433,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       KeyRequest req;
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, serialized_stat, 0);
+      prepare_put_tuple(req, key, serialize(0, serialized_stat));
 
       auto threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
@@ -478,7 +478,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       req.Clear();
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, serialized_access, 0);
+      prepare_put_tuple(req, key, serialize(0, serialized_access));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
@@ -511,7 +511,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       req.Clear();
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, serialized_size, 0);
+      prepare_put_tuple(req, key, serialize(0, serialized_size));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);

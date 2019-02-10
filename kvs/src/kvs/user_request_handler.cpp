@@ -49,7 +49,7 @@ void user_request_handler(
   for (const auto& tuple : request.tuples()) {
     // first check if the thread is responsible for the key
     Key key = tuple.key();
-    std::string value = tuple.has_value() ? tuple.value() : "";
+    std::string payload = tuple.has_payload() ? tuple.payload() : "";
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
@@ -72,7 +72,7 @@ void user_request_handler(
               global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
 
           pending_request_map[key].push_back(PendingRequest(
-              request_type, value, response_address, response_id));
+              request_type, payload, response_address, response_id));
         }
       } else {  // if we know the responsible threads, we process the request
         KeyTuple* tp = response.add_tuples();
@@ -80,7 +80,7 @@ void user_request_handler(
 
         if (request_type == "GET") {
           auto res = process_get(key, serializer);
-          tp->set_value(res.first.reveal().value);
+          tp->set_payload(res.first);
           tp->set_error(res.second);
         } else if (request_type == "PUT") {
           auto time_diff =
@@ -89,7 +89,7 @@ void user_request_handler(
                   .count();
           auto ts = generate_timestamp(time_diff, wt.get_tid());
 
-          process_put(key, ts, tuple.value(), serializer, key_size_map);
+          process_put(key, serialize(ts, payload), serializer, key_size_map);
           local_changeset.insert(key);
           tp->set_error(0);
         } else {
@@ -107,7 +107,7 @@ void user_request_handler(
       }
     } else {
       pending_request_map[key].push_back(
-          PendingRequest(request_type, value, response_address, response_id));
+          PendingRequest(request_type, payload, response_address, response_id));
     }
   }
 
