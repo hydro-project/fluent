@@ -49,7 +49,7 @@ void prepare_metadata_get_request(
       mt, rid, "GET");
 
   if (!target_address.empty()) {
-    prepare_get_tuple(addr_request_map[target_address], key);
+    prepare_get_tuple(addr_request_map[target_address], key, kLWWIdentifier);
   }
 }
 

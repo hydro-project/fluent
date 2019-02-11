@@ -134,6 +134,7 @@ void handle_request(
   rid += 1;
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
+  tp->set_lattice_type(kLWWIdentifier);
   tp->set_address_cache_size(key_address_cache[key].size());
 
   if (value == "") {
@@ -142,8 +143,7 @@ void handle_request(
   } else {
     // put request
     req.set_type(get_request_type("PUT"));
-    tp->set_value(value);
-    tp->set_timestamp(0);
+    tp->set_payload(value);
   }
 
   bool succeed;

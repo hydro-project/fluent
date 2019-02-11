@@ -83,9 +83,10 @@ inline unsigned long long generate_timestamp(unsigned long long time,
   return time * pow + tid;
 }
 
-inline void prepare_get_tuple(KeyRequest& req, Key key) {
+inline void prepare_get_tuple(KeyRequest& req, Key key, unsigned lattice_type) {
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
+  tp->set_lattice_type(lattice_type);
 }
 
 inline void prepare_put_tuple(KeyRequest& req, Key key, unsigned lattice_type, std::string payload) {
