@@ -116,7 +116,10 @@ void handle_request(
   } else {
     // put request
     req.set_type(get_request_type("PUT"));
-    tp->set_payload(value);
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    auto ts = generate_timestamp(time, 0);
+    tp->set_payload(serialize(ts, value));
   }
 
   bool succeed;

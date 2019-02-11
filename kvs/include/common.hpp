@@ -76,25 +76,25 @@ inline void split(const std::string& s, char delim,
 }
 
 // form the timestamp given a time and a thread id
-inline unsigned long long generate_timestamp(unsigned long long time,
-                                             unsigned tid) {
+inline unsigned long long generate_timestamp(const unsigned long long& time,
+                                             const unsigned& id) {
   unsigned pow = 10;
-  while (tid >= pow) pow *= 10;
-  return time * pow + tid;
+  while (id >= pow) pow *= 10;
+  return time * pow + id;
 }
 
 inline void prepare_get_tuple(KeyRequest& req, Key key, unsigned lattice_type) {
   KeyTuple* tp = req.add_tuples();
-  tp->set_key(key);
-  tp->set_lattice_type(lattice_type);
+  tp->set_key(std::move(key));
+  tp->set_lattice_type(std::move(lattice_type));
 }
 
 inline void prepare_put_tuple(KeyRequest& req, Key key, unsigned lattice_type,
                               std::string payload) {
   KeyTuple* tp = req.add_tuples();
-  tp->set_key(key);
-  tp->set_lattice_type(lattice_type);
-  tp->set_payload(payload);
+  tp->set_key(std::move(key));
+  tp->set_lattice_type(std::move(lattice_type));
+  tp->set_payload(std::move(payload));
 }
 
 // TODO(vikram): what's the right way to check if this succeeded or not?

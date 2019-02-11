@@ -50,7 +50,7 @@ void user_request_handler(
   for (const auto& tuple : request.tuples()) {
     // first check if the thread is responsible for the key
     Key key = tuple.key();
-    std::string payload = tuple.has_payload() ? tuple.payload() : "";
+    std::string payload = tuple.has_payload() ? (std::move(tuple.payload())) : "";
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
@@ -92,13 +92,7 @@ void user_request_handler(
             tp->set_payload(res.first);
             tp->set_error(res.second);
           } else if (request_type == "PUT") {
-            auto time_diff =
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now() - start_time)
-                    .count();
-            auto ts = generate_timestamp(time_diff, wt.get_tid());
-
-            process_put(key, tuple.lattice_type(), serialize(ts, payload),
+            process_put(key, tuple.lattice_type(), payload,
                         serializers[tuple.lattice_type()], key_stat_map);
 
             local_changeset.insert(key);

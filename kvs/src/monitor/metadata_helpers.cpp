@@ -64,7 +64,10 @@ void prepare_metadata_put_request(
       mt, rid, "PUT");
 
   if (!target_address.empty()) {
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    auto ts = generate_timestamp(time, 0);
     prepare_put_tuple(addr_request_map[target_address], key, kLWWIdentifier,
-                      serialize(0, value));
+                      serialize(ts, value));
   }
 }

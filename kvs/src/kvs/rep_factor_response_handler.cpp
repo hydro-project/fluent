@@ -118,14 +118,8 @@ void rep_factor_response_handler(
                   "Lattice type mismatch: {} from query but {} expected.",
                   request.lattice_type_, key_stat_map[key].second);
             } else {
-              auto time_diff =
-                  std::chrono::duration_cast<std::chrono::milliseconds>(
-                      now - start_time)
-                      .count();
-              auto ts = generate_timestamp(time_diff, wt.get_tid());
-
               process_put(key, request.lattice_type_,
-                          serialize(ts, request.value_),
+                          request.payload_,
                           serializers[request.lattice_type_], key_stat_map);
               key_access_timestamp[key].insert(now);
 
@@ -161,14 +155,8 @@ void rep_factor_response_handler(
                   std::chrono::system_clock::now());
               total_access += 1;
             } else {
-              auto time_diff =
-                  std::chrono::duration_cast<std::chrono::milliseconds>(
-                      now - start_time)
-                      .count();
-              auto ts = generate_timestamp(time_diff, wt.get_tid());
-
               process_put(key, request.lattice_type_,
-                          serialize(ts, request.value_),
+                          request.payload_,
                           serializers[request.lattice_type_], key_stat_map);
               tp->set_error(0);
 

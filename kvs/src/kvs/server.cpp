@@ -408,6 +408,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (duration >= kServerReportThreshold) {
       epoch += 1;
 
+      auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now().time_since_epoch()).count();
+      auto ts = generate_timestamp(time, wt.get_tid());
+
       Key key = get_metadata_key(wt, kSelfTierId, wt.get_tid(),
                                  MetadataType::server_stats);
 
@@ -445,7 +449,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       KeyRequest req;
       req.set_type(get_request_type("PUT"));
       prepare_put_tuple(req, key, kLWWIdentifier,
-                        serialize(0, serialized_stat));
+                        serialize(ts, serialized_stat));
 
       auto threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
@@ -491,7 +495,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       req.Clear();
       req.set_type(get_request_type("PUT"));
       prepare_put_tuple(req, key, kLWWIdentifier,
-                        serialize(0, serialized_access));
+                        serialize(ts, serialized_access));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
@@ -525,7 +529,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       req.Clear();
       req.set_type(get_request_type("PUT"));
       prepare_put_tuple(req, key, kLWWIdentifier,
-                        serialize(0, serialized_size));
+                        serialize(ts, serialized_size));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);

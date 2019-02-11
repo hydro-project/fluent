@@ -114,7 +114,7 @@ class ServerHandlerTest : public ::testing::Test {
     KeyTuple* tp = request.add_tuples();
     tp->set_key(key);
     tp->set_lattice_type(kLWWIdentifier);
-    tp->set_payload(value);
+    tp->set_payload(serialize(0, value));
 
     std::string request_str;
     request.SerializeToString(&request_str);
