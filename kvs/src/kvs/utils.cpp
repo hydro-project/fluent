@@ -15,20 +15,20 @@
 #include "kvs/kvs_handlers.hpp"
 
 void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
-                 Serializer* serializer) {
+                 std::unordered_map<unsigned, Serializer*>& serializers, std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map) {
   std::unordered_map<Address, KeyRequest> gossip_map;
 
   for (const auto& key_pair : addr_keyset_map) {
-    std::string key = key_pair.first;
+    std::string address = key_pair.first;
     RequestType type;
-    RequestType_Parse("GET", &type);
-    gossip_map[key].set_type(type);
+    RequestType_Parse("PUT", &type);
+    gossip_map[address].set_type(type);
 
-    for (const auto& address : key_pair.second) {
-      auto res = process_get(address, serializer);
+    for (const auto& key : key_pair.second) {
+      auto res = process_get(key, serializers[key_stat_map[key].second]);
 
       if (res.second == 0) {
-        prepare_put_tuple(gossip_map[key], address, res.first);
+        prepare_put_tuple(gossip_map[address], key, key_stat_map[key].second, res.first);
       }
     }
   }
@@ -48,9 +48,10 @@ std::pair<std::string, unsigned> process_get(
   return std::pair<std::string, unsigned>(std::move(res), err_number);
 }
 
-void process_put(const Key& key, const std::string& payload, Serializer* serializer,
-                 std::unordered_map<Key, unsigned>& key_size_map) {
-  key_size_map[key] = serializer->put(key, payload);
+void process_put(const Key& key, unsigned lattice_type, const std::string& payload, Serializer* serializer,
+                 std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map) {
+  key_stat_map[key].first = serializer->put(key, payload);
+  key_stat_map[key].second = lattice_type;
 }
 
 bool is_primary_replica(

@@ -280,15 +280,17 @@ class EBSSetSerializer : public Serializer {
 
 struct PendingRequest {
   PendingRequest() {}
-  PendingRequest(std::string type, const std::string& value, Address addr,
+  PendingRequest(std::string type, unsigned lattice_type, const std::string& value, Address addr,
                  std::string respond_id) :
       type_(type),
+      lattice_type_(lattice_type),
       value_(value),
       addr_(addr),
       respond_id_(respond_id) {}
 
   // TODO(vikram): change these type names
   std::string type_;
+  unsigned lattice_type_;
   std::string value_;
   Address addr_;
   std::string respond_id_;
@@ -296,8 +298,10 @@ struct PendingRequest {
 
 struct PendingGossip {
   PendingGossip() {}
-  PendingGossip(const std::string& payload) :
+  PendingGossip(unsigned lattice_type, const std::string& payload) :
+      lattice_type_(lattice_type),
       payload_(payload){}
+  unsigned lattice_type_;
   std::string payload_;
 };
 

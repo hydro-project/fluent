@@ -32,7 +32,7 @@ class ServerHandlerTest : public ::testing::Test {
   std::unordered_map<unsigned, GlobalHashRing> global_hash_ring_map;
   std::unordered_map<unsigned, LocalHashRing> local_hash_ring_map;
   std::unordered_map<Key, KeyInfo> placement;
-  std::unordered_map<Key, unsigned> key_size_map;
+  std::unordered_map<Key, std::pair<unsigned, unsigned>> key_stat_map;
   ServerThread wt;
   PendingMap<PendingRequest> pending_request_map;
   PendingMap<PendingGossip> pending_gossip_map;
@@ -43,19 +43,28 @@ class ServerHandlerTest : public ::testing::Test {
 
   zmq::context_t context;
   SocketCache pushers = SocketCache(&context, ZMQ_PUSH);
-  Serializer* serializer;
-  MemoryLWWKVS* kvs;
+  std::unordered_map<unsigned, Serializer*> serializers;
+  Serializer* lww_serializer;
+  Serializer* set_serializer;
+  MemoryLWWKVS* lww_kvs;
+  MemorySetKVS* set_kvs;
 
   ServerHandlerTest() {
-    kvs = new MemoryLWWKVS();
-    serializer = new MemoryLWWSerializer(kvs);
+    lww_kvs = new MemoryLWWKVS();
+    lww_serializer = new MemoryLWWSerializer(lww_kvs);
+    set_kvs = new MemorySetKVS();
+    set_serializer = new MemorySetSerializer(set_kvs);
+    serializers[kLWWIdentifier] = lww_serializer;
+    serializers[kSetIdentifier] = set_serializer;
     wt = ServerThread(ip, ip, thread_id);
     global_hash_ring_map[1].insert(ip, ip, 0, thread_id);
   }
 
   virtual ~ServerHandlerTest() {
-    delete kvs;
-    delete serializer;
+    delete lww_kvs;
+    delete set_kvs;
+    delete serializers[kLWWIdentifier];
+    delete serializers[kSetIdentifier];
   }
 
  public:
@@ -87,6 +96,7 @@ class ServerHandlerTest : public ::testing::Test {
 
     KeyTuple* tp = request.add_tuples();
     tp->set_key(key);
+    tp->set_lattice_type(kLWWIdentifier);
 
     std::string request_str;
     request.SerializeToString(&request_str);
@@ -103,6 +113,7 @@ class ServerHandlerTest : public ::testing::Test {
 
     KeyTuple* tp = request.add_tuples();
     tp->set_key(key);
+    tp->set_lattice_type(kLWWIdentifier);
     tp->set_payload(value);
 
     std::string request_str;

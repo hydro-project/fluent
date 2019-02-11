@@ -28,9 +28,9 @@ void rep_factor_response_handler(
         Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
         key_access_timestamp,
     std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, unsigned>& key_size_map,
+    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    Serializer* serializer, SocketCache& pushers) {
+    std::unordered_map<unsigned, Serializer*>& serializers, SocketCache& pushers) {
   KeyResponse response;
   response.ParseFromString(serialized);
 
@@ -110,55 +110,65 @@ void rep_factor_response_handler(
         } else if (responsible && request.addr_ == "") {
           // only put requests should fall into this category
           if (request.type_ == "PUT") {
-            auto time_diff =
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    now - start_time)
-                    .count();
-            auto ts = generate_timestamp(time_diff, wt.get_tid());
+            if (key_stat_map[key].second != kNoLatticeTypeIdentifier && key_stat_map[key].second != request.lattice_type_) {
+              logger->error("Lattice type mismatch: {} from query but {} expected.",
+                          request.lattice_type_, key_stat_map[key].second);
+            } else {
+              auto time_diff =
+                  std::chrono::duration_cast<std::chrono::milliseconds>(
+                      now - start_time)
+                      .count();
+              auto ts = generate_timestamp(time_diff, wt.get_tid());
 
-            process_put(key, serialize(ts, request.value_), serializer, key_size_map);
-            key_access_timestamp[key].insert(now);
+              process_put(key, request.lattice_type_, serialize(ts, request.value_), serializers[request.lattice_type_], key_stat_map);
+              key_access_timestamp[key].insert(now);
 
-            total_access += 1;
-            local_changeset.insert(key);
+              total_access += 1;
+              local_changeset.insert(key);
+            }
           } else {
             logger->error("Received a GET request with no response address.");
           }
         } else if (responsible && request.addr_ != "") {
-          KeyResponse response;
-
-          if (request.respond_id_ != "") {
-            response.set_response_id(request.respond_id_);
-          }
-
-          KeyTuple* tp = response.add_tuples();
-          tp->set_key(key);
-
-          if (request.type_ == "GET") {
-            auto res = process_get(key, serializer);
-            tp->set_payload(res.first);
-            tp->set_error(res.second);
-
-            key_access_timestamp[key].insert(std::chrono::system_clock::now());
-            total_access += 1;
+          if (key_stat_map[key].second != kNoLatticeTypeIdentifier && key_stat_map[key].second != request.lattice_type_) {
+            logger->error("Lattice type mismatch: {} from query but {} expected.",
+                        request.lattice_type_, key_stat_map[key].second);
           } else {
-            auto time_diff =
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    now - start_time)
-                    .count();
-            auto ts = generate_timestamp(time_diff, wt.get_tid());
+            KeyResponse response;
 
-            process_put(key, serialize(ts, request.value_), serializer, key_size_map);
-            tp->set_error(0);
+            if (request.respond_id_ != "") {
+              response.set_response_id(request.respond_id_);
+            }
 
-            key_access_timestamp[key].insert(now);
-            total_access += 1;
-            local_changeset.insert(key);
+            KeyTuple* tp = response.add_tuples();
+            tp->set_key(key);
+
+            if (request.type_ == "GET") {
+              auto res = process_get(key, serializers[request.lattice_type_]);
+              tp->set_payload(res.first);
+              tp->set_error(res.second);
+
+              key_access_timestamp[key].insert(std::chrono::system_clock::now());
+              total_access += 1;
+            } else {
+              auto time_diff =
+                  std::chrono::duration_cast<std::chrono::milliseconds>(
+                      now - start_time)
+                      .count();
+              auto ts = generate_timestamp(time_diff, wt.get_tid());
+
+              process_put(key, request.lattice_type_, serialize(ts, request.value_), serializers[request.lattice_type_], key_stat_map);
+              tp->set_error(0);
+
+              key_access_timestamp[key].insert(now);
+              total_access += 1;
+              local_changeset.insert(key);
+            }
+
+            std::string serialized_response;
+            response.SerializeToString(&serialized_response);
+            kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
           }
-
-          std::string serialized_response;
-          response.SerializeToString(&serialized_response);
-          kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
         }
       }
     } else {
@@ -178,7 +188,12 @@ void rep_factor_response_handler(
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) != threads.end()) {
         for (const PendingGossip& gossip : pending_gossip_map[key]) {
-          process_put(key, gossip.payload_, serializer, key_size_map);
+          if (key_stat_map[key].second != kNoLatticeTypeIdentifier && key_stat_map[key].second != gossip.lattice_type_) {
+            logger->error("Lattice type mismatch: {} from query but {} expected.",
+                        gossip.lattice_type_, key_stat_map[key].second);
+          } else {
+            process_put(key, gossip.lattice_type_, gossip.payload_, serializers[gossip.lattice_type_], key_stat_map);
+          }
         }
       } else {
         std::unordered_map<Address, KeyRequest> gossip_map;
@@ -189,7 +204,7 @@ void rep_factor_response_handler(
               get_request_type("PUT"));
 
           for (const PendingGossip& gossip : pending_gossip_map[key]) {
-            prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key,
+            prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key, gossip.lattice_type_,
                               gossip.payload_);
           }
         }

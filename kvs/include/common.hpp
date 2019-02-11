@@ -31,6 +31,10 @@
 
 const std::string kMetadataIdentifier = "ANNA_METADATA";
 
+const unsigned kNoLatticeTypeIdentifier = 0;
+const unsigned kLWWIdentifier = 1;
+const unsigned kSetIdentifier = 2;
+
 const unsigned kMetadataReplicationFactor = 1;
 const unsigned kMetadataLocalReplicationFactor = 1;
 
@@ -84,10 +88,10 @@ inline void prepare_get_tuple(KeyRequest& req, Key key) {
   tp->set_key(key);
 }
 
-inline void prepare_put_tuple(KeyRequest& req, Key key, std::string payload) {
-
+inline void prepare_put_tuple(KeyRequest& req, Key key, unsigned lattice_type, std::string payload) {
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
+  tp->set_lattice_type(lattice_type);
   tp->set_payload(payload);
 }
 

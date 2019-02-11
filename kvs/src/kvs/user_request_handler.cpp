@@ -22,14 +22,14 @@ void user_request_handler(
     std::shared_ptr<spdlog::logger> logger,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, unsigned>& key_size_map,
+    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
     PendingMap<PendingRequest>& pending_request_map,
     std::unordered_map<
         Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
         key_access_timestamp,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    Serializer* serializer, SocketCache& pushers) {
+    std::unordered_map<unsigned, Serializer*>& serializers, SocketCache& pushers) {
   KeyRequest request;
   request.ParseFromString(serialized);
 
@@ -72,42 +72,48 @@ void user_request_handler(
               global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
 
           pending_request_map[key].push_back(PendingRequest(
-              request_type, payload, response_address, response_id));
+              request_type, tuple.lattice_type(), payload, response_address, response_id));
         }
       } else {  // if we know the responsible threads, we process the request
-        KeyTuple* tp = response.add_tuples();
-        tp->set_key(key);
-
-        if (request_type == "GET") {
-          auto res = process_get(key, serializer);
-          tp->set_payload(res.first);
-          tp->set_error(res.second);
-        } else if (request_type == "PUT") {
-          auto time_diff =
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  std::chrono::system_clock::now() - start_time)
-                  .count();
-          auto ts = generate_timestamp(time_diff, wt.get_tid());
-
-          process_put(key, serialize(ts, payload), serializer, key_size_map);
-          local_changeset.insert(key);
-          tp->set_error(0);
+        if (key_stat_map[key].second != kNoLatticeTypeIdentifier && key_stat_map[key].second != tuple.lattice_type()) {
+          logger->error("Lattice type mismatch: {} from query but {} expected.",
+                      tuple.lattice_type(), key_stat_map[key].second);
         } else {
-          logger->error("Unknown request type {} in user request handler.",
-                        request_type);
-        }
+          KeyTuple* tp = response.add_tuples();
+          tp->set_key(key);
 
-        if (tuple.has_address_cache_size() &&
-            tuple.address_cache_size() != threads.size()) {
-          tp->set_invalidate(true);
-        }
+          if (request_type == "GET") {
+            auto res = process_get(key, serializers[tuple.lattice_type()]);
+            tp->set_payload(res.first);
+            tp->set_error(res.second);
+          } else if (request_type == "PUT") {
+            auto time_diff =
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now() - start_time)
+                    .count();
+            auto ts = generate_timestamp(time_diff, wt.get_tid());
 
-        key_access_timestamp[key].insert(std::chrono::system_clock::now());
-        total_accesses += 1;
+            process_put(key, tuple.lattice_type(), serialize(ts, payload), serializers[tuple.lattice_type()], key_stat_map);
+
+            local_changeset.insert(key);
+            tp->set_error(0);
+          } else {
+            logger->error("Unknown request type {} in user request handler.",
+                          request_type);
+          }
+
+          if (tuple.has_address_cache_size() &&
+              tuple.address_cache_size() != threads.size()) {
+            tp->set_invalidate(true);
+          }
+
+          key_access_timestamp[key].insert(std::chrono::system_clock::now());
+          total_accesses += 1;
+        }
       }
     } else {
       pending_request_map[key].push_back(
-          PendingRequest(request_type, payload, response_address, response_id));
+          PendingRequest(request_type, tuple.lattice_type(), payload, response_address, response_id));
     }
   }
 

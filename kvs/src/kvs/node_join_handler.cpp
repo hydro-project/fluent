@@ -19,7 +19,7 @@ void node_join_handler(
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, unsigned>& key_size_map,
+    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& join_remove_set, SocketCache& pushers,
     ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
@@ -82,7 +82,7 @@ void node_join_handler(
     if (tier == kSelfTierId) {
       bool succeed;
 
-      for (const auto& key_pair : key_size_map) {
+      for (const auto& key_pair : key_stat_map) {
         Key key = key_pair.first;
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
             wt.get_replication_factor_connect_addr(), key, is_metadata(key),
