@@ -98,6 +98,7 @@ void rep_factor_response_handler(
 
           KeyTuple* tp = response.add_tuples();
           tp->set_key(key);
+          tp->set_lattice_type(request.lattice_type_);
           tp->set_error(2);
 
           for (const ServerThread& thread : threads) {
@@ -142,6 +143,7 @@ void rep_factor_response_handler(
 
             KeyTuple* tp = response.add_tuples();
             tp->set_key(key);
+            tp->set_lattice_type(request.lattice_type_);
 
             if (request.type_ == "GET") {
               auto res = process_get(key, serializers[request.lattice_type_]);

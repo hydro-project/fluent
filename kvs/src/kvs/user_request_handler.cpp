@@ -63,6 +63,7 @@ void user_request_handler(
           KeyTuple* tp = response.add_tuples();
 
           tp->set_key(key);
+          tp->set_lattice_type(tuple.lattice_type());
           tp->set_error(2);
         } else {
           // if we don't know what threads are responsible, we issue a rep
@@ -81,6 +82,7 @@ void user_request_handler(
         } else {
           KeyTuple* tp = response.add_tuples();
           tp->set_key(key);
+          tp->set_lattice_type(tuple.lattice_type());
 
           if (request_type == "GET") {
             auto res = process_get(key, serializers[tuple.lattice_type()]);

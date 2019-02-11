@@ -28,6 +28,7 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   KeyResponse response;
   KeyTuple* tp = response.add_tuples();
   tp->set_key("|key|replication");
+  tp->set_lattice_type(kLWWIdentifier);
   tp->set_error(0);
 
   std::string metakey = key;
