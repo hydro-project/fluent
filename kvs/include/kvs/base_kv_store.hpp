@@ -36,9 +36,7 @@ class KVStore {
 
   void put(const K& k, const V& v) { return db.at(k).merge(v); }
 
-  unsigned size(const K& k) {
-    return db.at(k).size().reveal();
-  }
+  unsigned size(const K& k) { return db.at(k).size().reveal(); }
 
   void remove(const K& k) { db.remove(k); }
 };

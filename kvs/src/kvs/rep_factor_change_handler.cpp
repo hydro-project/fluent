@@ -22,7 +22,8 @@ void rep_factor_change_handler(
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers, SocketCache& pushers) {
+    std::unordered_map<unsigned, Serializer*>& serializers,
+    SocketCache& pushers) {
   logger->info("Received a replication factor change.");
   if (thread_id == 0) {
     // tell all worker threads about the replication factor change

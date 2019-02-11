@@ -29,7 +29,8 @@ void user_request_handler(
         key_access_timestamp,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers, SocketCache& pushers) {
+    std::unordered_map<unsigned, Serializer*>& serializers,
+    SocketCache& pushers) {
   KeyRequest request;
   request.ParseFromString(serialized);
 
@@ -72,13 +73,15 @@ void user_request_handler(
               wt.get_replication_factor_connect_addr(), key,
               global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
 
-          pending_request_map[key].push_back(PendingRequest(
-              request_type, tuple.lattice_type(), payload, response_address, response_id));
+          pending_request_map[key].push_back(
+              PendingRequest(request_type, tuple.lattice_type(), payload,
+                             response_address, response_id));
         }
       } else {  // if we know the responsible threads, we process the request
-        if (key_stat_map[key].second != kNoLatticeTypeIdentifier && key_stat_map[key].second != tuple.lattice_type()) {
+        if (key_stat_map[key].second != kNoLatticeTypeIdentifier &&
+            key_stat_map[key].second != tuple.lattice_type()) {
           logger->error("Lattice type mismatch: {} from query but {} expected.",
-                      tuple.lattice_type(), key_stat_map[key].second);
+                        tuple.lattice_type(), key_stat_map[key].second);
         } else {
           KeyTuple* tp = response.add_tuples();
           tp->set_key(key);
@@ -95,7 +98,8 @@ void user_request_handler(
                     .count();
             auto ts = generate_timestamp(time_diff, wt.get_tid());
 
-            process_put(key, tuple.lattice_type(), serialize(ts, payload), serializers[tuple.lattice_type()], key_stat_map);
+            process_put(key, tuple.lattice_type(), serialize(ts, payload),
+                        serializers[tuple.lattice_type()], key_stat_map);
 
             local_changeset.insert(key);
             tp->set_error(0);
@@ -115,7 +119,8 @@ void user_request_handler(
       }
     } else {
       pending_request_map[key].push_back(
-          PendingRequest(request_type, tuple.lattice_type(), payload, response_address, response_id));
+          PendingRequest(request_type, tuple.lattice_type(), payload,
+                         response_address, response_id));
     }
   }
 

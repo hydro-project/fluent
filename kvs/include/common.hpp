@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "kvs/lww_pair_lattice.hpp"
 #include "kvs_types.hpp"
 #include "misc.pb.h"
 #include "replication.pb.h"
@@ -27,7 +28,6 @@
 #include "types.hpp"
 #include "zmq/socket_cache.hpp"
 #include "zmq/zmq_util.hpp"
-#include "kvs/lww_pair_lattice.hpp"
 
 const std::string kMetadataIdentifier = "ANNA_METADATA";
 
@@ -89,7 +89,8 @@ inline void prepare_get_tuple(KeyRequest& req, Key key, unsigned lattice_type) {
   tp->set_lattice_type(lattice_type);
 }
 
-inline void prepare_put_tuple(KeyRequest& req, Key key, unsigned lattice_type, std::string payload) {
+inline void prepare_put_tuple(KeyRequest& req, Key key, unsigned lattice_type,
+                              std::string payload) {
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
   tp->set_lattice_type(lattice_type);
@@ -113,7 +114,8 @@ inline std::string serialize(const LWWPairLattice<std::string>& l) {
   return serialized;
 }
 
-inline std::string serialize(const unsigned long long& timestamp, const std::string& value) {
+inline std::string serialize(const unsigned long long& timestamp,
+                             const std::string& value) {
   LWWValue lww_value;
   lww_value.set_timestamp(timestamp);
   lww_value.set_value(value);

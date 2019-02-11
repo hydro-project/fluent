@@ -23,8 +23,8 @@ void gossip_handler(
     std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
     PendingMap<PendingGossip>& pending_gossip_map,
     std::unordered_map<Key, KeyInfo>& placement, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers, SocketCache& pushers,
-    std::shared_ptr<spdlog::logger> logger) {
+    std::unordered_map<unsigned, Serializer*>& serializers,
+    SocketCache& pushers, std::shared_ptr<spdlog::logger> logger) {
   KeyRequest gossip;
   gossip.ParseFromString(serialized);
 
@@ -43,12 +43,13 @@ void gossip_handler(
       if (std::find(threads.begin(), threads.end(), wt) !=
           threads.end()) {  // this means this worker thread is one of the
                             // responsible threads
-        if (key_stat_map[key].second != kNoLatticeTypeIdentifier && key_stat_map[key].second != tuple.lattice_type()) {
+        if (key_stat_map[key].second != kNoLatticeTypeIdentifier &&
+            key_stat_map[key].second != tuple.lattice_type()) {
           logger->error("Lattice type mismatch: {} from query but {} expected.",
-                      tuple.lattice_type(), key_stat_map[key].second);
+                        tuple.lattice_type(), key_stat_map[key].second);
         } else {
-          process_put(tuple.key(), tuple.lattice_type(), tuple.payload(), serializers[tuple.lattice_type()],
-                    key_stat_map);
+          process_put(tuple.key(), tuple.lattice_type(), tuple.payload(),
+                      serializers[tuple.lattice_type()], key_stat_map);
         }
       } else {
         if (is_metadata(key)) {  // forward the gossip
@@ -59,8 +60,8 @@ void gossip_handler(
                   get_request_type("PUT"));
             }
 
-            prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key, tuple.lattice_type(),
-                              tuple.payload());
+            prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key,
+                              tuple.lattice_type(), tuple.payload());
           }
         } else {
           kHashRingUtil->issue_replication_factor_request(

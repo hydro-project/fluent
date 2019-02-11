@@ -38,9 +38,7 @@ struct TimestampValuePair {
     timestamp = ts;
     value = v;
   }
-  unsigned size() {
-    return value.size() + sizeof(unsigned long long);
-  }
+  unsigned size() { return value.size() + sizeof(unsigned long long); }
 };
 
 template <typename T>
@@ -57,9 +55,7 @@ class LWWPairLattice : public Lattice<TimestampValuePair<T>> {
   LWWPairLattice() : Lattice<TimestampValuePair<T>>() {}
   LWWPairLattice(const TimestampValuePair<T>& p) :
       Lattice<TimestampValuePair<T>>(p) {}
-  MaxLattice<unsigned> size() {
-    return {this->element.size()};
-  }
+  MaxLattice<unsigned> size() { return {this->element.size()}; }
 };
 
 #endif  // SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_

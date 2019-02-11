@@ -14,8 +14,10 @@
 
 #include "kvs/kvs_handlers.hpp"
 
-void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
-                 std::unordered_map<unsigned, Serializer*>& serializers, std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map) {
+void send_gossip(
+    AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
+    std::unordered_map<unsigned, Serializer*>& serializers,
+    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map) {
   std::unordered_map<Address, KeyRequest> gossip_map;
 
   for (const auto& key_pair : addr_keyset_map) {
@@ -28,7 +30,8 @@ void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
       auto res = process_get(key, serializers[key_stat_map[key].second]);
 
       if (res.second == 0) {
-        prepare_put_tuple(gossip_map[address], key, key_stat_map[key].second, res.first);
+        prepare_put_tuple(gossip_map[address], key, key_stat_map[key].second,
+                          res.first);
       }
     }
   }
@@ -41,15 +44,17 @@ void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
   }
 }
 
-std::pair<std::string, unsigned> process_get(
-    const Key& key, Serializer* serializer) {
+std::pair<std::string, unsigned> process_get(const Key& key,
+                                             Serializer* serializer) {
   unsigned err_number = 0;
   auto res = serializer->get(key, err_number);
   return std::pair<std::string, unsigned>(std::move(res), err_number);
 }
 
-void process_put(const Key& key, unsigned lattice_type, const std::string& payload, Serializer* serializer,
-                 std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map) {
+void process_put(
+    const Key& key, unsigned lattice_type, const std::string& payload,
+    Serializer* serializer,
+    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map) {
   key_stat_map[key].first = serializer->put(key, payload);
   key_stat_map[key].second = lattice_type;
 }

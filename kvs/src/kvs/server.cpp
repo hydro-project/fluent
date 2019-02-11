@@ -444,7 +444,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       KeyRequest req;
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, kLWWIdentifier, serialize(0, serialized_stat));
+      prepare_put_tuple(req, key, kLWWIdentifier,
+                        serialize(0, serialized_stat));
 
       auto threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
@@ -489,7 +490,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       req.Clear();
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, kLWWIdentifier, serialize(0, serialized_access));
+      prepare_put_tuple(req, key, kLWWIdentifier,
+                        serialize(0, serialized_access));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
@@ -522,7 +524,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       req.Clear();
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, kLWWIdentifier, serialize(0, serialized_size));
+      prepare_put_tuple(req, key, kLWWIdentifier,
+                        serialize(0, serialized_size));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);

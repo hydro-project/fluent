@@ -46,7 +46,8 @@ void self_depart_handler(
     std::unordered_map<Key, KeyInfo>& placement,
     std::vector<Address>& routing_address,
     std::vector<Address>& monitoring_address, ServerThread& wt,
-    SocketCache& pushers, std::unordered_map<unsigned, Serializer*>& serializers);
+    SocketCache& pushers,
+    std::unordered_map<unsigned, Serializer*>& serializers);
 
 void user_request_handler(
     unsigned& total_access, unsigned& seed, std::string& serialized,
@@ -61,7 +62,8 @@ void user_request_handler(
         key_access_timestamp,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers, SocketCache& pushers);
+    std::unordered_map<unsigned, Serializer*>& serializers,
+    SocketCache& pushers);
 
 void gossip_handler(
     unsigned& seed, std::string& serialized,
@@ -70,8 +72,8 @@ void gossip_handler(
     std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
     PendingMap<PendingGossip>& pending_gossip_map,
     std::unordered_map<Key, KeyInfo>& placement, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers, SocketCache& pushers,
-    std::shared_ptr<spdlog::logger> logger);
+    std::unordered_map<unsigned, Serializer*>& serializers,
+    SocketCache& pushers, std::shared_ptr<spdlog::logger> logger);
 
 void rep_factor_response_handler(
     unsigned& seed, unsigned& total_access,
@@ -87,7 +89,8 @@ void rep_factor_response_handler(
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers, SocketCache& pushers);
+    std::unordered_map<unsigned, Serializer*>& serializers,
+    SocketCache& pushers);
 
 void rep_factor_change_handler(
     Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
@@ -97,16 +100,21 @@ void rep_factor_change_handler(
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers, SocketCache& pushers);
+    std::unordered_map<unsigned, Serializer*>& serializers,
+    SocketCache& pushers);
 
-void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
-                 std::unordered_map<unsigned, Serializer*>& serializers, std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map);
+void send_gossip(
+    AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
+    std::unordered_map<unsigned, Serializer*>& serializers,
+    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map);
 
-std::pair<std::string, unsigned> process_get(
-    const Key& key, Serializer* serializer);
+std::pair<std::string, unsigned> process_get(const Key& key,
+                                             Serializer* serializer);
 
-void process_put(const Key& key, unsigned lattice_type, const std::string& payload, Serializer* serializer,
-                 std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map);
+void process_put(
+    const Key& key, unsigned lattice_type, const std::string& payload,
+    Serializer* serializer,
+    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map);
 
 bool is_primary_replica(
     const Key& key, std::unordered_map<Key, KeyInfo>& placement,

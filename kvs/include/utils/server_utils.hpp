@@ -18,9 +18,9 @@
 #include <fstream>
 #include <string>
 
-#include "common.hpp"
 #include "../kvs/base_kv_store.hpp"
 #include "../kvs/lww_pair_lattice.hpp"
+#include "common.hpp"
 #include "yaml-cpp/yaml.h"
 
 // Define the garbage collect threshold
@@ -63,8 +63,8 @@ class MemoryLWWSerializer : public Serializer {
   unsigned put(const Key& key, const std::string& serialized) {
     LWWValue lww_value;
     lww_value.ParseFromString(serialized);
-    TimestampValuePair<std::string> p =
-        TimestampValuePair<std::string>(lww_value.timestamp(), lww_value.value());
+    TimestampValuePair<std::string> p = TimestampValuePair<std::string>(
+        lww_value.timestamp(), lww_value.value());
     kvs_->put(key, LWWPairLattice<std::string>(p));
     return kvs_->size(key);
   }
@@ -115,8 +115,7 @@ class EBSLWWSerializer : public Serializer {
     }
   }
 
-  std::string get(const Key& key,
-                                            unsigned& err_number) {
+  std::string get(const Key& key, unsigned& err_number) {
     std::string res;
     LWWValue value;
 
@@ -196,8 +195,7 @@ class EBSSetSerializer : public Serializer {
     }
   }
 
-  std::string get(const Key& key,
-                                            unsigned& err_number) {
+  std::string get(const Key& key, unsigned& err_number) {
     std::string res;
     SetValue value;
 
@@ -280,7 +278,8 @@ class EBSSetSerializer : public Serializer {
 
 struct PendingRequest {
   PendingRequest() {}
-  PendingRequest(std::string type, unsigned lattice_type, const std::string& value, Address addr,
+  PendingRequest(std::string type, unsigned lattice_type,
+                 const std::string& value, Address addr,
                  std::string respond_id) :
       type_(type),
       lattice_type_(lattice_type),
@@ -300,7 +299,7 @@ struct PendingGossip {
   PendingGossip() {}
   PendingGossip(unsigned lattice_type, const std::string& payload) :
       lattice_type_(lattice_type),
-      payload_(payload){}
+      payload_(payload) {}
   unsigned lattice_type_;
   std::string payload_;
 };

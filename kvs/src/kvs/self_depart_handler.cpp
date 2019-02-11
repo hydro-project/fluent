@@ -23,7 +23,8 @@ void self_depart_handler(
     std::unordered_map<Key, KeyInfo>& placement,
     std::vector<Address>& routing_address,
     std::vector<Address>& monitoring_address, ServerThread& wt,
-    SocketCache& pushers, std::unordered_map<unsigned, Serializer*>& serializers) {
+    SocketCache& pushers,
+    std::unordered_map<unsigned, Serializer*>& serializers) {
   logger->info("Node is departing.");
   global_hash_ring_map[kSelfTierId].remove(public_ip, private_ip, 0);
 

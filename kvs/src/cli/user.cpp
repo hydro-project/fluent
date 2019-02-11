@@ -154,8 +154,8 @@ void handle_request(
       if (value == "" && tuple.error() == 0) {
         LWWValue lww_value;
         lww_value.ParseFromString(tuple.payload());
-        std::cout << "value of key " + tuple.key() + " is " + lww_value.value() +
-                         "\n";
+        std::cout << "value of key " + tuple.key() + " is " +
+                         lww_value.value() + "\n";
       } else if (value == "" && tuple.error() == 1) {
         std::cout << "key " + tuple.key() + " does not exist\n";
       } else if (value != "") {
