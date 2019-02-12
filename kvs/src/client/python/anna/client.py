@@ -74,6 +74,16 @@ class AnnaClient():
 
         responses = recv_response(req_ids, self.response_puller, KeyResponse)
 
+        for resp in responses:
+            tup = resp.tuples[0]
+            if tup.invalidate:
+                # reissue the request
+                self._invalidate_cache(tup.key, tup.addresses)
+                return self.get_all(key)
+
+            if tup.error != 0:
+                return None
+
         return list(map(lambda resp: str(resp.tuples[0].value, 'utf-8'), responses))
 
 
@@ -102,6 +112,7 @@ class AnnaClient():
             tup = resp.tuples[0]
             if tup.invalidate:
                 # reissue the request
+                self._invalidate_cache(tup.key, tup.addresses)
                 return self.durable_put(key, value)
 
             if tup.error != 0:
