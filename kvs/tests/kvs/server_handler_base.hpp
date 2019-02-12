@@ -32,7 +32,7 @@ class ServerHandlerTest : public ::testing::Test {
   std::unordered_map<unsigned, GlobalHashRing> global_hash_ring_map;
   std::unordered_map<unsigned, LocalHashRing> local_hash_ring_map;
   std::unordered_map<Key, KeyInfo> placement;
-  std::unordered_map<Key, unsigned> key_size_map;
+  std::unordered_map<Key, std::pair<unsigned, LatticeType>> key_stat_map;
   ServerThread wt;
   PendingMap<PendingRequest> pending_request_map;
   PendingMap<PendingGossip> pending_gossip_map;
@@ -43,19 +43,28 @@ class ServerHandlerTest : public ::testing::Test {
 
   zmq::context_t context;
   SocketCache pushers = SocketCache(&context, ZMQ_PUSH);
-  Serializer* serializer;
-  MemoryKVS* kvs;
+  std::unordered_map<LatticeType, Serializer*, lattice_type_hash> serializers;
+  Serializer* lww_serializer;
+  Serializer* set_serializer;
+  MemoryLWWKVS* lww_kvs;
+  MemorySetKVS* set_kvs;
 
   ServerHandlerTest() {
-    kvs = new MemoryKVS();
-    serializer = new MemorySerializer(kvs);
+    lww_kvs = new MemoryLWWKVS();
+    lww_serializer = new MemoryLWWSerializer(lww_kvs);
+    set_kvs = new MemorySetKVS();
+    set_serializer = new MemorySetSerializer(set_kvs);
+    serializers[LatticeType::LWW] = lww_serializer;
+    serializers[LatticeType::SET] = set_serializer;
     wt = ServerThread(ip, ip, thread_id);
     global_hash_ring_map[1].insert(ip, ip, 0, thread_id);
   }
 
   virtual ~ServerHandlerTest() {
-    delete kvs;
-    delete serializer;
+    delete lww_kvs;
+    delete set_kvs;
+    delete serializers[LatticeType::LWW];
+    delete serializers[LatticeType::SET];
   }
 
  public:
@@ -78,7 +87,8 @@ class ServerHandlerTest : public ::testing::Test {
 
   // NOTE: Pass in an empty string to avoid putting something into the
   // serializer
-  std::string get_key_request(Key key, std::string ip) {
+  std::string get_key_request(Key key, LatticeType lattice_type,
+                              std::string ip) {
     KeyRequest request;
     request.set_type(get_request_type("GET"));
     request.set_response_address(
@@ -86,7 +96,8 @@ class ServerHandlerTest : public ::testing::Test {
     request.set_request_id(kRequestId);
 
     KeyTuple* tp = request.add_tuples();
-    tp->set_key(key);
+    tp->set_key(std::move(key));
+    tp->set_lattice_type(std::move(lattice_type));
 
     std::string request_str;
     request.SerializeToString(&request_str);
@@ -94,7 +105,8 @@ class ServerHandlerTest : public ::testing::Test {
     return request_str;
   }
 
-  std::string put_key_request(Key key, std::string value, std::string ip) {
+  std::string put_key_request(Key key, LatticeType lattice_type,
+                              std::string payload, std::string ip) {
     KeyRequest request;
     request.set_type(get_request_type("PUT"));
     request.set_response_address(
@@ -102,9 +114,9 @@ class ServerHandlerTest : public ::testing::Test {
     request.set_request_id(kRequestId);
 
     KeyTuple* tp = request.add_tuples();
-    tp->set_key(key);
-    tp->set_value(value);
-    tp->set_timestamp(0);
+    tp->set_key(std::move(key));
+    tp->set_lattice_type(std::move(lattice_type));
+    tp->set_payload(std::move(payload));
 
     std::string request_str;
     request.SerializeToString(&request_str);

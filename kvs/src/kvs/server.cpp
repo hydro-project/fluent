@@ -90,11 +90,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   TierMembership membership;
   membership.ParseFromString(serialized_addresses);
 
-  // populate start time
-  unsigned long long duration = membership.start_time();
-  std::chrono::milliseconds dur(duration);
-  std::chrono::system_clock::time_point start_time(dur);
-
   // get join number from management node if we are running in Kubernetes
   std::string count_str;
 
@@ -163,23 +158,34 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     }
   }
 
-  Serializer* serializer;
+  std::unordered_map<LatticeType, Serializer*, lattice_type_hash> serializers;
+
+  Serializer* lww_serializer;
+  Serializer* set_serializer;
 
   if (kSelfTierId == 1) {
-    MemoryKVS* kvs = new MemoryKVS();
-    serializer = new MemorySerializer(kvs);
+    MemoryLWWKVS* lww_kvs = new MemoryLWWKVS();
+    lww_serializer = new MemoryLWWSerializer(lww_kvs);
+    MemorySetKVS* set_kvs = new MemorySetKVS();
+    set_serializer = new MemorySetSerializer(set_kvs);
   } else if (kSelfTierId == 2) {
-    serializer = new EBSSerializer(thread_id);
+    lww_serializer = new EBSLWWSerializer(thread_id);
+    set_serializer = new EBSSetSerializer(thread_id);
   } else {
     logger->info("Invalid node type");
     exit(1);
   }
 
+  serializers[LatticeType::LWW] = lww_serializer;
+  serializers[LatticeType::SET] = set_serializer;
+
   // the set of changes made on this thread since the last round of gossip
   std::unordered_set<Key> local_changeset;
 
   // keep track of the key stat
-  std::unordered_map<Key, unsigned> key_size_map;
+  // the first entry is the size of the key,
+  // the second entry is its lattice type.
+  std::unordered_map<Key, std::pair<unsigned, LatticeType>> key_stat_map;
   // keep track of key access timestamp
   std::unordered_map<
       Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>
@@ -245,7 +251,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       std::string serialized = kZmqUtil->recv_string(&join_puller);
       node_join_handler(thread_id, seed, public_ip, private_ip, logger,
                         serialized, global_hash_ring_map, local_hash_ring_map,
-                        key_size_map, placement, join_remove_set, pushers, wt,
+                        key_stat_map, placement, join_remove_set, pushers, wt,
                         join_addr_keyset_map, self_join_count);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -273,8 +279,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       std::string serialized = kZmqUtil->recv_string(&self_depart_puller);
       self_depart_handler(thread_id, seed, public_ip, private_ip, logger,
                           serialized, global_hash_ring_map, local_hash_ring_map,
-                          key_size_map, placement, routing_addresses,
-                          monitoring_addresses, wt, pushers, serializer);
+                          key_stat_map, placement, routing_addresses,
+                          monitoring_addresses, wt, pushers, serializers);
 
       return;
     }
@@ -283,11 +289,11 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&request_puller);
-      user_request_handler(total_accesses, seed, serialized, start_time, logger,
+      user_request_handler(total_accesses, seed, serialized, logger,
                            global_hash_ring_map, local_hash_ring_map,
-                           key_size_map, pending_request_map,
+                           key_stat_map, pending_request_map,
                            key_access_timestamp, placement, local_changeset, wt,
-                           serializer, pushers);
+                           serializers, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -302,8 +308,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       std::string serialized = kZmqUtil->recv_string(&gossip_puller);
       gossip_handler(seed, serialized, global_hash_ring_map,
-                     local_hash_ring_map, key_size_map, pending_gossip_map,
-                     placement, wt, serializer, pushers);
+                     local_hash_ring_map, key_stat_map, pending_gossip_map,
+                     placement, wt, serializers, pushers, logger);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -318,11 +324,11 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       std::string serialized =
           kZmqUtil->recv_string(&replication_factor_puller);
-      rep_factor_response_handler(
-          seed, total_accesses, logger, serialized, start_time,
-          global_hash_ring_map, local_hash_ring_map, pending_request_map,
-          pending_gossip_map, key_access_timestamp, placement, key_size_map,
-          local_changeset, wt, serializer, pushers);
+      rep_factor_response_handler(seed, total_accesses, logger, serialized,
+                                  global_hash_ring_map, local_hash_ring_map,
+                                  pending_request_map, pending_gossip_map,
+                                  key_access_timestamp, placement, key_stat_map,
+                                  local_changeset, wt, serializers, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -339,8 +345,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           kZmqUtil->recv_string(&replication_factor_change_puller);
       rep_factor_change_handler(public_ip, private_ip, thread_id, seed, logger,
                                 serialized, global_hash_ring_map,
-                                local_hash_ring_map, placement, key_size_map,
-                                local_changeset, wt, serializer, pushers);
+                                local_hash_ring_map, placement, key_stat_map,
+                                local_changeset, wt, serializers, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -375,7 +381,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           }
         }
 
-        send_gossip(addr_keyset_map, pushers, serializer);
+        send_gossip(addr_keyset_map, pushers, serializers, key_stat_map);
         local_changeset.clear();
       }
 
@@ -397,13 +403,18 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (duration >= kServerReportThreshold) {
       epoch += 1;
 
+      auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      std::chrono::system_clock::now().time_since_epoch())
+                      .count();
+      auto ts = generate_timestamp(time, wt.get_tid());
+
       Key key = get_metadata_key(wt, kSelfTierId, wt.get_tid(),
                                  MetadataType::server_stats);
 
       // compute total storage consumption
       unsigned long long consumption = 0;
-      for (const auto& key_pair : key_size_map) {
-        consumption += key_pair.second;
+      for (const auto& key_pair : key_stat_map) {
+        consumption += key_pair.second.first;
       }
 
       int index = 0;
@@ -433,7 +444,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       KeyRequest req;
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, serialized_stat, 0);
+      prepare_put_tuple(req, key, LatticeType::LWW,
+                        serialize(ts, serialized_stat));
 
       auto threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
@@ -478,7 +490,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       req.Clear();
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, serialized_access, 0);
+      prepare_put_tuple(req, key, LatticeType::LWW,
+                        serialize(ts, serialized_access));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
@@ -494,12 +507,12 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       // report key size stats
       KeySizeData primary_key_size;
-      for (const auto& key_size_pair : key_size_map) {
+      for (const auto& key_size_pair : key_stat_map) {
         if (is_primary_replica(key_size_pair.first, placement,
                                global_hash_ring_map, local_hash_ring_map, wt)) {
           KeySizeData_KeySize* ks = primary_key_size.add_key_sizes();
           ks->set_key(key_size_pair.first);
-          ks->set_size(key_size_pair.second);
+          ks->set_size(key_size_pair.second.first);
         }
       }
 
@@ -511,7 +524,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       req.Clear();
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, serialized_size, 0);
+      prepare_put_tuple(req, key, LatticeType::LWW,
+                        serialize(ts, serialized_size));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(
           key, global_hash_ring_map[1], local_hash_ring_map[1]);
@@ -568,13 +582,13 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         join_addr_keyset_map.erase(remove_address);
       }
 
-      send_gossip(addr_keyset_map, pushers, serializer);
+      send_gossip(addr_keyset_map, pushers, serializers, key_stat_map);
 
       // remove keys
       if (join_addr_keyset_map.size() == 0) {
         for (const std::string& key : join_remove_set) {
-          key_size_map.erase(key);
-          serializer->remove(key);
+          serializers[key_stat_map[key].second]->remove(key);
+          key_stat_map.erase(key);
         }
       }
     }

@@ -19,7 +19,8 @@
 #include <string>
 
 #include "../kvs/base_kv_store.hpp"
-#include "../kvs/rc_pair_lattice.hpp"
+#include "../kvs/lww_pair_lattice.hpp"
+#include "common.hpp"
 #include "yaml-cpp/yaml.h"
 
 // Define the garbage collect threshold
@@ -31,48 +32,80 @@
 // Define the gossip period (frequency)
 #define PERIOD 10000000
 
-typedef KVStore<Key, ReadCommittedPairLattice<std::string>> MemoryKVS;
+typedef KVStore<Key, LWWPairLattice<std::string>> MemoryLWWKVS;
+typedef KVStore<Key, SetLattice<std::string>> MemorySetKVS;
 
 // a map that represents which keys should be sent to which IP-port combinations
 typedef std::unordered_map<Address, std::unordered_set<Key>> AddressKeysetMap;
 
 class Serializer {
  public:
-  virtual ReadCommittedPairLattice<std::string> get(const Key& key,
-                                                    unsigned& err_number) = 0;
-  virtual bool put(const Key& key, const std::string& value,
-                   const unsigned& timestamp) = 0;
+  virtual std::string get(const Key& key, unsigned& err_number) = 0;
+  virtual unsigned put(const Key& key, const std::string& serialized) = 0;
   virtual void remove(const Key& key) = 0;
   virtual ~Serializer(){};
 };
 
-class MemorySerializer : public Serializer {
-  MemoryKVS* kvs_;
+class MemoryLWWSerializer : public Serializer {
+  MemoryLWWKVS* kvs_;
 
  public:
-  MemorySerializer(MemoryKVS* kvs) : kvs_(kvs) {}
+  MemoryLWWSerializer(MemoryLWWKVS* kvs) : kvs_(kvs) {}
 
-  ReadCommittedPairLattice<std::string> get(const Key& key,
-                                            unsigned& err_number) {
-    return kvs_->get(key, err_number);
+  std::string get(const Key& key, unsigned& err_number) {
+    auto val = kvs_->get(key, err_number);
+    if (val.reveal().value == "") {
+      err_number = 1;
+    }
+    return serialize(val);
   }
 
-  bool put(const Key& key, const std::string& value,
-           const unsigned& timestamp) {
-    TimestampValuePair<std::string> p =
-        TimestampValuePair<std::string>(timestamp, value);
-    return kvs_->put(key, ReadCommittedPairLattice<std::string>(p));
+  unsigned put(const Key& key, const std::string& serialized) {
+    LWWValue lww_value;
+    lww_value.ParseFromString(serialized);
+    TimestampValuePair<std::string> p = TimestampValuePair<std::string>(
+        lww_value.timestamp(), lww_value.value());
+    kvs_->put(key, LWWPairLattice<std::string>(p));
+    return kvs_->size(key);
   }
 
   void remove(const Key& key) { kvs_->remove(key); }
 };
 
-class EBSSerializer : public Serializer {
+class MemorySetSerializer : public Serializer {
+  MemorySetKVS* kvs_;
+
+ public:
+  MemorySetSerializer(MemorySetKVS* kvs) : kvs_(kvs) {}
+
+  std::string get(const Key& key, unsigned& err_number) {
+    auto val = kvs_->get(key, err_number);
+    if (val.reveal().size() == 0) {
+      err_number = 1;
+    }
+    return serialize(val);
+  }
+
+  unsigned put(const Key& key, const std::string& serialized) {
+    SetValue set_value;
+    set_value.ParseFromString(serialized);
+    std::unordered_set<std::string> s;
+    for (auto& val : set_value.values()) {
+      s.emplace(std::move(val));
+    }
+    kvs_->put(key, SetLattice<std::string>(s));
+    return kvs_->size(key);
+  }
+
+  void remove(const Key& key) { kvs_->remove(key); }
+};
+
+class EBSLWWSerializer : public Serializer {
   unsigned tid_;
   std::string ebs_root_;
 
  public:
-  EBSSerializer(unsigned& tid) : tid_(tid) {
+  EBSLWWSerializer(unsigned& tid) : tid_(tid) {
     YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
 
     ebs_root_ = conf["ebs"].as<std::string>();
@@ -82,10 +115,9 @@ class EBSSerializer : public Serializer {
     }
   }
 
-  ReadCommittedPairLattice<std::string> get(const Key& key,
-                                            unsigned& err_number) {
-    ReadCommittedPairLattice<std::string> res;
-    DataValue value;
+  std::string get(const Key& key, unsigned& err_number) {
+    std::string res;
+    LWWValue value;
 
     // open a new filestream for reading in a binary
     std::string fname = ebs_root_ + "ebs_" + std::to_string(tid_) + "/" + key;
@@ -97,64 +129,142 @@ class EBSSerializer : public Serializer {
       std::cerr << "Failed to parse payload." << std::endl;
       err_number = 1;
     } else {
-      res = ReadCommittedPairLattice<std::string>(
-          TimestampValuePair<std::string>(value.timestamp(), value.value()));
+      res = serialize(LWWPairLattice<std::string>(
+          TimestampValuePair<std::string>(value.timestamp(), value.value())));
     }
     return res;
   }
 
-  bool put(const Key& key, const std::string& value,
-           const unsigned& timestamp) {
-    bool replaced = false;
-    TimestampValuePair<std::string> p =
-        TimestampValuePair<std::string>(timestamp, value);
+  unsigned put(const Key& key, const std::string& serialized) {
+    LWWValue input_value;
+    input_value.ParseFromString(serialized);
 
-    DataValue original_value;
-    DataValue new_value;
+    LWWValue original_value;
 
     std::string fname = ebs_root_ + "ebs_" + std::to_string(tid_) + "/" + key;
     std::fstream input(fname, std::ios::in | std::ios::binary);
 
     if (!input) {  // in this case, this key has never been seen before, so we
                    // attempt to create a new file for it
-      replaced = true;
-      new_value.set_timestamp(timestamp);
-      new_value.set_value(value);
 
       // ios::trunc means that we overwrite the existing file
       std::fstream output(fname,
                           std::ios::out | std::ios::trunc | std::ios::binary);
-      if (!new_value.SerializeToOstream(&output)) {
+      if (!input_value.SerializeToOstream(&output)) {
         std::cerr << "Failed to write payload." << std::endl;
       }
+      return output.tellp();
     } else if (!original_value.ParseFromIstream(
                    &input)) {  // if we have seen the key before, attempt to
                                // parse what was there before
       std::cerr << "Failed to parse payload." << std::endl;
+      return 0;
     } else {
-      // get the existing value that we have and merge
-      ReadCommittedPairLattice<std::string> l =
-          ReadCommittedPairLattice<std::string>(TimestampValuePair<std::string>(
-              original_value.timestamp(), original_value.value()));
-      replaced = l.merge(p);
-
-      if (replaced) {
-        // set the payload's data to the merged values of the value and
-        // timestamp
-        new_value.set_timestamp(l.reveal().timestamp);
-        new_value.set_value(l.reveal().value);
-
-        // write out the new payload.
-        std::fstream output(fname,
-                            std::ios::out | std::ios::trunc | std::ios::binary);
-
-        if (!new_value.SerializeToOstream(&output)) {
+      std::fstream output(fname,
+                          std::ios::out | std::ios::trunc | std::ios::binary);
+      if (input_value.timestamp() >= original_value.timestamp()) {
+        if (!input_value.SerializeToOstream(&output)) {
           std::cerr << "Failed to write payload" << std::endl;
         }
       }
+      return output.tellp();
     }
+  }
 
-    return replaced;
+  void remove(const Key& key) {
+    std::string fname = ebs_root_ + "ebs_" + std::to_string(tid_) + "/" + key;
+
+    if (std::remove(fname.c_str()) != 0) {
+      std::cerr << "Error deleting file" << std::endl;
+    }
+  }
+};
+
+class EBSSetSerializer : public Serializer {
+  unsigned tid_;
+  std::string ebs_root_;
+
+ public:
+  EBSSetSerializer(unsigned& tid) : tid_(tid) {
+    YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
+
+    ebs_root_ = conf["ebs"].as<std::string>();
+
+    if (ebs_root_.back() != '/') {
+      ebs_root_ += "/";
+    }
+  }
+
+  std::string get(const Key& key, unsigned& err_number) {
+    std::string res;
+    SetValue value;
+
+    // open a new filestream for reading in a binary
+    std::string fname = ebs_root_ + "ebs_" + std::to_string(tid_) + "/" + key;
+    std::fstream input(fname, std::ios::in | std::ios::binary);
+
+    if (!input) {
+      err_number = 1;
+    } else if (!value.ParseFromIstream(&input)) {
+      std::cerr << "Failed to parse payload." << std::endl;
+      err_number = 1;
+    } else {
+      std::unordered_set<std::string> s;
+      for (auto& val : value.values()) {
+        s.emplace(std::move(val));
+      }
+      res = serialize(SetLattice<std::string>(s));
+    }
+    return res;
+  }
+
+  unsigned put(const Key& key, const std::string& serialized) {
+    SetValue input_value;
+    input_value.ParseFromString(serialized);
+
+    SetValue original_value;
+
+    std::string fname = ebs_root_ + "ebs_" + std::to_string(tid_) + "/" + key;
+    std::fstream input(fname, std::ios::in | std::ios::binary);
+
+    if (!input) {  // in this case, this key has never been seen before, so we
+                   // attempt to create a new file for it
+      // ios::trunc means that we overwrite the existing file
+      std::fstream output(fname,
+                          std::ios::out | std::ios::trunc | std::ios::binary);
+      if (!input_value.SerializeToOstream(&output)) {
+        std::cerr << "Failed to write payload." << std::endl;
+      }
+      return output.tellp();
+    } else if (!original_value.ParseFromIstream(
+                   &input)) {  // if we have seen the key before, attempt to
+                               // parse what was there before
+      std::cerr << "Failed to parse payload." << std::endl;
+      return 0;
+    } else {
+      // get the existing value that we have and merge
+      std::unordered_set<std::string> set_union;
+      for (auto& val : original_value.values()) {
+        set_union.emplace(std::move(val));
+      }
+      for (auto& val : input_value.values()) {
+        set_union.emplace(std::move(val));
+      }
+
+      SetValue new_value;
+      for (auto& val : set_union) {
+        new_value.add_values(std::move(val));
+      }
+
+      // write out the new payload.
+      std::fstream output(fname,
+                          std::ios::out | std::ios::trunc | std::ios::binary);
+
+      if (!new_value.SerializeToOstream(&output)) {
+        std::cerr << "Failed to write payload" << std::endl;
+      }
+      return output.tellp();
+    }
   }
 
   void remove(const Key& key) {
@@ -168,27 +278,29 @@ class EBSSerializer : public Serializer {
 
 struct PendingRequest {
   PendingRequest() {}
-  PendingRequest(std::string type, const std::string& value, Address addr,
-                 std::string respond_id) :
+  PendingRequest(std::string type, LatticeType lattice_type,
+                 std::string payload, Address addr, std::string response_id) :
       type_(type),
-      value_(value),
+      lattice_type_(std::move(lattice_type)),
+      payload_(std::move(payload)),
       addr_(addr),
-      respond_id_(respond_id) {}
+      response_id_(response_id) {}
 
   // TODO(vikram): change these type names
   std::string type_;
-  std::string value_;
+  LatticeType lattice_type_;
+  std::string payload_;
   Address addr_;
-  std::string respond_id_;
+  std::string response_id_;
 };
 
 struct PendingGossip {
   PendingGossip() {}
-  PendingGossip(const std::string& value, const unsigned long long& ts) :
-      value_(value),
-      ts_(ts) {}
-  std::string value_;
-  unsigned long long ts_;
+  PendingGossip(LatticeType lattice_type, std::string payload) :
+      lattice_type_(std::move(lattice_type)),
+      payload_(std::move(payload)) {}
+  LatticeType lattice_type_;
+  std::string payload_;
 };
 
 #endif  // SRC_INCLUDE_UTILS_SERVER_UTILS_HPP_

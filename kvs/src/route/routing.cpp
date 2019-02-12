@@ -102,20 +102,13 @@ void run(unsigned thread_id, Address ip,
       {static_cast<void *>(replication_factor_change_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void *>(key_address_puller), 0, ZMQ_POLLIN, 0}};
 
-  auto start_time = std::chrono::system_clock::now();
-  auto start_time_ms =
-      std::chrono::time_point_cast<std::chrono::milliseconds>(start_time);
-
-  auto value = start_time_ms.time_since_epoch();
-  unsigned long long duration = value.count();
-
   while (true) {
     kZmqUtil->poll(-1, &pollitems);
 
     // only relavant for the seed node
     if (pollitems[0].revents & ZMQ_POLLIN) {
       kZmqUtil->recv_string(&addr_responder);
-      auto serialized = seed_handler(logger, global_hash_ring_map, duration);
+      auto serialized = seed_handler(logger, global_hash_ring_map);
       kZmqUtil->send_string(serialized, &addr_responder);
     }
 

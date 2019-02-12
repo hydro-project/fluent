@@ -49,7 +49,7 @@ void prepare_metadata_get_request(
       mt, rid, "GET");
 
   if (!target_address.empty()) {
-    prepare_get_tuple(addr_request_map[target_address], key);
+    prepare_get_tuple(addr_request_map[target_address], key, LatticeType::LWW);
   }
 }
 
@@ -64,6 +64,11 @@ void prepare_metadata_put_request(
       mt, rid, "PUT");
 
   if (!target_address.empty()) {
-    prepare_put_tuple(addr_request_map[target_address], key, value, 0);
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch())
+                    .count();
+    auto ts = generate_timestamp(time, 0);
+    prepare_put_tuple(addr_request_map[target_address], key, LatticeType::LWW,
+                      serialize(ts, value));
   }
 }

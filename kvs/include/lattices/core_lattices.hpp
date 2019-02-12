@@ -65,7 +65,7 @@ class SetLattice : public Lattice<std::unordered_set<T>> {
   SetLattice(const std::unordered_set<T> &e) :
       Lattice<std::unordered_set<T>>(e) {}
 
-  MaxLattice<int> size() const { return MaxLattice<int>(this->element.size()); }
+  MaxLattice<unsigned> size() const { return this->element.size(); }
 
   void insert(const T &e) { this->element.insert(e); }
 
@@ -116,7 +116,7 @@ class MapLattice : public Lattice<std::unordered_map<K, V>> {
   MapLattice() : Lattice<std::unordered_map<K, V>>() {}
   MapLattice(const std::unordered_map<K, V> &m) :
       Lattice<std::unordered_map<K, V>>(m) {}
-  MaxLattice<int> size() const { return this->element.size(); }
+  MaxLattice<unsigned> size() const { return this->element.size(); }
 
   MapLattice<K, V> intersect(MapLattice<K, V> other) const {
     MapLattice<K, V> res;

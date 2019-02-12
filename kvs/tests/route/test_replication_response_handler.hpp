@@ -28,6 +28,7 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   KeyResponse response;
   KeyTuple* tp = response.add_tuples();
   tp->set_key("|key|replication");
+  tp->set_lattice_type(LatticeType::LWW);
   tp->set_error(0);
 
   std::string metakey = key;
@@ -49,7 +50,7 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   std::string repfactor;
   rf.SerializeToString(&repfactor);
 
-  tp->set_value(repfactor);
+  tp->set_payload(serialize(0, repfactor));
 
   std::string serialized;
   response.SerializeToString(&serialized);

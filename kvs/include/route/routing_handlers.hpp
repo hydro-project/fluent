@@ -20,8 +20,7 @@
 
 std::string seed_handler(
     std::shared_ptr<spdlog::logger> logger,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    unsigned long long duration);
+    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map);
 
 void membership_handler(
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
