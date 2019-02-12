@@ -17,9 +17,12 @@
 # only build a new Docker image if this is a master branch build -- ignore this
 # for PR builds
 if [[ "$TRAVIS_BRANCH" = "master" ]]; then
+  docker pull fluentproject/annakvs
+  docker pull fluentproject/kops
+
   cd dockerfiles
-  docker build . -f anna.dockerfile -t fluentproject/annakvs
-  docker build . -f kops.dockerfile -t fluentproject/kops
+  docker build . -f anna.dockerfile -t fluentproject/annakvs --cache-from fluentproject/annakvs:latest
+  docker build . -f kops.dockerfile -t fluentproject/kops --cache-from fluentproject/kops:latest
 
   echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
