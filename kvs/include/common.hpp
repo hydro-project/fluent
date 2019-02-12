@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "kvs/lww_pair_lattice.hpp"
 #include "kvs_types.hpp"
 #include "misc.pb.h"
 #include "replication.pb.h"
@@ -71,24 +72,26 @@ inline void split(const std::string& s, char delim,
 }
 
 // form the timestamp given a time and a thread id
-inline unsigned long long generate_timestamp(unsigned long long time,
-                                             unsigned tid) {
+inline unsigned long long generate_timestamp(const unsigned long long& time,
+                                             const unsigned& id) {
   unsigned pow = 10;
-  while (tid >= pow) pow *= 10;
-  return time * pow + tid;
+  while (id >= pow) pow *= 10;
+  return time * pow + id;
 }
 
-inline void prepare_get_tuple(KeyRequest& req, Key key) {
-  KeyTuple* tuple = req.add_tuples();
-  tuple->set_key(key);
-}
-
-inline void prepare_put_tuple(KeyRequest& req, Key key, std::string value,
-                              unsigned long long timestamp) {
+inline void prepare_get_tuple(KeyRequest& req, Key key,
+                              LatticeType lattice_type) {
   KeyTuple* tp = req.add_tuples();
-  tp->set_key(key);
-  tp->set_value(value);
-  tp->set_timestamp(timestamp);
+  tp->set_key(std::move(key));
+  tp->set_lattice_type(std::move(lattice_type));
+}
+
+inline void prepare_put_tuple(KeyRequest& req, Key key,
+                              LatticeType lattice_type, std::string payload) {
+  KeyTuple* tp = req.add_tuples();
+  tp->set_key(std::move(key));
+  tp->set_lattice_type(std::move(lattice_type));
+  tp->set_payload(std::move(payload));
 }
 
 // TODO(vikram): what's the right way to check if this succeeded or not?
@@ -98,5 +101,40 @@ inline RequestType get_request_type(const std::string& type_str) {
 
   return type;
 }
+
+inline std::string serialize(const LWWPairLattice<std::string>& l) {
+  LWWValue lww_value;
+  lww_value.set_timestamp(l.reveal().timestamp);
+  lww_value.set_value(l.reveal().value);
+  std::string serialized;
+  lww_value.SerializeToString(&serialized);
+  return serialized;
+}
+
+inline std::string serialize(const unsigned long long& timestamp,
+                             const std::string& value) {
+  LWWValue lww_value;
+  lww_value.set_timestamp(timestamp);
+  lww_value.set_value(value);
+  std::string serialized;
+  lww_value.SerializeToString(&serialized);
+  return serialized;
+}
+
+inline std::string serialize(const SetLattice<std::string>& l) {
+  SetValue set_value;
+  for (const std::string& val : l.reveal()) {
+    set_value.add_values(val);
+  }
+  std::string serialized;
+  set_value.SerializeToString(&serialized);
+  return serialized;
+}
+
+struct lattice_type_hash {
+  std::size_t operator()(const LatticeType& lt) const {
+    return std::hash<std::string>()(LatticeType_Name(lt));
+  }
+};
 
 #endif  // SRC_INCLUDE_COMMON_HPP_

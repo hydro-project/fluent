@@ -25,7 +25,7 @@ TEST_F(ServerHandlerTest, BasicNodeJoin) {
 
   std::string serialized = "1:127.0.0.2:127.0.0.2:0";
   node_join_handler(thread_id, seed, ip, ip, logger, serialized,
-                    global_hash_ring_map, local_hash_ring_map, key_size_map,
+                    global_hash_ring_map, local_hash_ring_map, key_stat_map,
                     placement, join_remove_set, pushers, wt,
                     join_addr_keyset_map, 0);
 
@@ -49,7 +49,7 @@ TEST_F(ServerHandlerTest, DuplicateNodeJoin) {
 
   std::string serialized = "1:" + ip + ":" + ip + ":0";
   node_join_handler(thread_id, seed, ip, ip, logger, serialized,
-                    global_hash_ring_map, local_hash_ring_map, key_size_map,
+                    global_hash_ring_map, local_hash_ring_map, key_stat_map,
                     placement, join_remove_set, pushers, wt,
                     join_addr_keyset_map, 0);
 

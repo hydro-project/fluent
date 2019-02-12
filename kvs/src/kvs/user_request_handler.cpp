@@ -18,18 +18,19 @@
 
 void user_request_handler(
     unsigned& total_accesses, unsigned& seed, std::string& serialized,
-    std::chrono::system_clock::time_point& start_time,
     std::shared_ptr<spdlog::logger> logger,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, unsigned>& key_size_map,
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     PendingMap<PendingRequest>& pending_request_map,
     std::unordered_map<
         Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
         key_access_timestamp,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    Serializer* serializer, SocketCache& pushers) {
+    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
+        serializers,
+    SocketCache& pushers) {
   KeyRequest request;
   request.ParseFromString(serialized);
 
@@ -49,7 +50,8 @@ void user_request_handler(
   for (const auto& tuple : request.tuples()) {
     // first check if the thread is responsible for the key
     Key key = tuple.key();
-    std::string value = tuple.has_value() ? tuple.value() : "";
+    std::string payload =
+        tuple.has_payload() ? (std::move(tuple.payload())) : "";
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
@@ -63,6 +65,7 @@ void user_request_handler(
           KeyTuple* tp = response.add_tuples();
 
           tp->set_key(key);
+          tp->set_lattice_type(tuple.lattice_type());
           tp->set_error(2);
         } else {
           // if we don't know what threads are responsible, we issue a rep
@@ -71,43 +74,49 @@ void user_request_handler(
               wt.get_replication_factor_connect_addr(), key,
               global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
 
-          pending_request_map[key].push_back(PendingRequest(
-              request_type, value, response_address, response_id));
+          pending_request_map[key].push_back(
+              PendingRequest(request_type, tuple.lattice_type(), payload,
+                             response_address, response_id));
         }
       } else {  // if we know the responsible threads, we process the request
-        KeyTuple* tp = response.add_tuples();
-        tp->set_key(key);
-
-        if (request_type == "GET") {
-          auto res = process_get(key, serializer);
-          tp->set_value(res.first.reveal().value);
-          tp->set_error(res.second);
-        } else if (request_type == "PUT") {
-          auto time_diff =
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  std::chrono::system_clock::now() - start_time)
-                  .count();
-          auto ts = generate_timestamp(time_diff, wt.get_tid());
-
-          process_put(key, ts, tuple.value(), serializer, key_size_map);
-          local_changeset.insert(key);
-          tp->set_error(0);
+        if (key_stat_map[key].second != LatticeType::NO &&
+            key_stat_map[key].second != tuple.lattice_type()) {
+          logger->error("Lattice type mismatch: {} from query but {} expected.",
+                        LatticeType_Name(tuple.lattice_type()),
+                        key_stat_map[key].second);
         } else {
-          logger->error("Unknown request type {} in user request handler.",
-                        request_type);
-        }
+          KeyTuple* tp = response.add_tuples();
+          tp->set_key(key);
+          tp->set_lattice_type(tuple.lattice_type());
 
-        if (tuple.has_address_cache_size() &&
-            tuple.address_cache_size() != threads.size()) {
-          tp->set_invalidate(true);
-        }
+          if (request_type == "GET") {
+            auto res = process_get(key, serializers[tuple.lattice_type()]);
+            tp->set_payload(res.first);
+            tp->set_error(res.second);
+          } else if (request_type == "PUT") {
+            process_put(key, tuple.lattice_type(), payload,
+                        serializers[tuple.lattice_type()], key_stat_map);
 
-        key_access_timestamp[key].insert(std::chrono::system_clock::now());
-        total_accesses += 1;
+            local_changeset.insert(key);
+            tp->set_error(0);
+          } else {
+            logger->error("Unknown request type {} in user request handler.",
+                          request_type);
+          }
+
+          if (tuple.has_address_cache_size() &&
+              tuple.address_cache_size() != threads.size()) {
+            tp->set_invalidate(true);
+          }
+
+          key_access_timestamp[key].insert(std::chrono::system_clock::now());
+          total_accesses += 1;
+        }
       }
     } else {
       pending_request_map[key].push_back(
-          PendingRequest(request_type, value, response_address, response_id));
+          PendingRequest(request_type, tuple.lattice_type(), payload,
+                         response_address, response_id));
     }
   }
 

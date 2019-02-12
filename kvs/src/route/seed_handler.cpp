@@ -16,12 +16,10 @@
 
 std::string seed_handler(
     std::shared_ptr<spdlog::logger> logger,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    unsigned long long duration) {
+    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map) {
   logger->info("Received an address request.");
 
   TierMembership membership;
-  membership.set_start_time(duration);
 
   for (const auto& global_pair : global_hash_ring_map) {
     unsigned tier_id = global_pair.first;
