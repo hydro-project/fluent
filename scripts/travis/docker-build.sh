@@ -17,6 +17,9 @@
 # only build a new Docker image if this is a master branch build -- ignore this
 # for PR builds
 if [[ "$TRAVIS_BRANCH" = "master" ]]; then
+  docker pull fluentproject/annakvs
+  docker pull fluentproject/kops
+
   cd dockerfiles
   docker build . -f anna.dockerfile -t fluentproject/annakvs
   docker build . -f kops.dockerfile -t fluentproject/kops
