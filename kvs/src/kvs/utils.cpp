@@ -16,8 +16,9 @@
 
 void send_gossip(
     AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
-    std::unordered_map<unsigned, Serializer*>& serializers,
-    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map) {
+    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
+        serializers,
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map) {
   std::unordered_map<Address, KeyRequest> gossip_map;
 
   for (const auto& key_pair : addr_keyset_map) {
@@ -52,11 +53,11 @@ std::pair<std::string, unsigned> process_get(const Key& key,
 }
 
 void process_put(
-    const Key& key, unsigned lattice_type, const std::string& payload,
+    const Key& key, LatticeType lattice_type, const std::string& payload,
     Serializer* serializer,
-    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map) {
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map) {
   key_stat_map[key].first = serializer->put(key, payload);
-  key_stat_map[key].second = lattice_type;
+  key_stat_map[key].second = std::move(lattice_type);
 }
 
 bool is_primary_replica(

@@ -31,10 +31,6 @@
 
 const std::string kMetadataIdentifier = "ANNA_METADATA";
 
-const unsigned kNoLatticeTypeIdentifier = 0;
-const unsigned kLWWIdentifier = 1;
-const unsigned kSetIdentifier = 2;
-
 const unsigned kMetadataReplicationFactor = 1;
 const unsigned kMetadataLocalReplicationFactor = 1;
 
@@ -83,14 +79,15 @@ inline unsigned long long generate_timestamp(const unsigned long long& time,
   return time * pow + id;
 }
 
-inline void prepare_get_tuple(KeyRequest& req, Key key, unsigned lattice_type) {
+inline void prepare_get_tuple(KeyRequest& req, Key key,
+                              LatticeType lattice_type) {
   KeyTuple* tp = req.add_tuples();
   tp->set_key(std::move(key));
   tp->set_lattice_type(std::move(lattice_type));
 }
 
-inline void prepare_put_tuple(KeyRequest& req, Key key, unsigned lattice_type,
-                              std::string payload) {
+inline void prepare_put_tuple(KeyRequest& req, Key key,
+                              LatticeType lattice_type, std::string payload) {
   KeyTuple* tp = req.add_tuples();
   tp->set_key(std::move(key));
   tp->set_lattice_type(std::move(lattice_type));
@@ -133,5 +130,11 @@ inline std::string serialize(const SetLattice<std::string>& l) {
   set_value.SerializeToString(&serialized);
   return serialized;
 }
+
+struct lattice_type_hash {
+  std::size_t operator()(const LatticeType& lt) const {
+    return std::hash<std::string>()(LatticeType_Name(lt));
+  }
+};
 
 #endif  // SRC_INCLUDE_COMMON_HPP_

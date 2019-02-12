@@ -19,12 +19,13 @@ void self_depart_handler(
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     std::unordered_map<Key, KeyInfo>& placement,
     std::vector<Address>& routing_address,
     std::vector<Address>& monitoring_address, ServerThread& wt,
     SocketCache& pushers,
-    std::unordered_map<unsigned, Serializer*>& serializers) {
+    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
+        serializers) {
   logger->info("Node is departing.");
   global_hash_ring_map[kSelfTierId].remove(public_ip, private_ip, 0);
 

@@ -41,8 +41,7 @@ message TierMembership {
     repeated Server servers = 2;
   }
 
-  required uint64 start_time = 1;
-  repeated Tier tiers = 2;
+  repeated Tier tiers = 1;
 }
 
 message UserFeedback {

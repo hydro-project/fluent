@@ -90,11 +90,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   TierMembership membership;
   membership.ParseFromString(serialized_addresses);
 
-  // populate start time
-  unsigned long long duration = membership.start_time();
-  std::chrono::milliseconds dur(duration);
-  std::chrono::system_clock::time_point start_time(dur);
-
   // get join number from management node if we are running in Kubernetes
   std::string count_str;
 
@@ -163,7 +158,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     }
   }
 
-  std::unordered_map<unsigned, Serializer*> serializers;
+  std::unordered_map<LatticeType, Serializer*, lattice_type_hash> serializers;
 
   Serializer* lww_serializer;
   Serializer* set_serializer;
@@ -181,8 +176,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     exit(1);
   }
 
-  serializers[kLWWIdentifier] = lww_serializer;
-  serializers[kSetIdentifier] = set_serializer;
+  serializers[LatticeType::LWW] = lww_serializer;
+  serializers[LatticeType::SET] = set_serializer;
 
   // the set of changes made on this thread since the last round of gossip
   std::unordered_set<Key> local_changeset;
@@ -190,7 +185,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // keep track of the key stat
   // the first entry is the size of the key,
   // the second entry is its lattice type.
-  std::unordered_map<Key, std::pair<unsigned, unsigned>> key_stat_map;
+  std::unordered_map<Key, std::pair<unsigned, LatticeType>> key_stat_map;
   // keep track of key access timestamp
   std::unordered_map<
       Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>
@@ -294,7 +289,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       std::string serialized = kZmqUtil->recv_string(&request_puller);
-      user_request_handler(total_accesses, seed, serialized, start_time, logger,
+      user_request_handler(total_accesses, seed, serialized, logger,
                            global_hash_ring_map, local_hash_ring_map,
                            key_stat_map, pending_request_map,
                            key_access_timestamp, placement, local_changeset, wt,
@@ -329,11 +324,11 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       std::string serialized =
           kZmqUtil->recv_string(&replication_factor_puller);
-      rep_factor_response_handler(
-          seed, total_accesses, logger, serialized, start_time,
-          global_hash_ring_map, local_hash_ring_map, pending_request_map,
-          pending_gossip_map, key_access_timestamp, placement, key_stat_map,
-          local_changeset, wt, serializers, pushers);
+      rep_factor_response_handler(seed, total_accesses, logger, serialized,
+                                  global_hash_ring_map, local_hash_ring_map,
+                                  pending_request_map, pending_gossip_map,
+                                  key_access_timestamp, placement, key_stat_map,
+                                  local_changeset, wt, serializers, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -409,7 +404,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       epoch += 1;
 
       auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::system_clock::now().time_since_epoch()).count();
+                      std::chrono::system_clock::now().time_since_epoch())
+                      .count();
       auto ts = generate_timestamp(time, wt.get_tid());
 
       Key key = get_metadata_key(wt, kSelfTierId, wt.get_tid(),
@@ -448,7 +444,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       KeyRequest req;
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, kLWWIdentifier,
+      prepare_put_tuple(req, key, LatticeType::LWW,
                         serialize(ts, serialized_stat));
 
       auto threads = kHashRingUtil->get_responsible_threads_metadata(
@@ -494,7 +490,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       req.Clear();
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, kLWWIdentifier,
+      prepare_put_tuple(req, key, LatticeType::LWW,
                         serialize(ts, serialized_access));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(
@@ -528,7 +524,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       req.Clear();
       req.set_type(get_request_type("PUT"));
-      prepare_put_tuple(req, key, kLWWIdentifier,
+      prepare_put_tuple(req, key, LatticeType::LWW,
                         serialize(ts, serialized_size));
 
       threads = kHashRingUtil->get_responsible_threads_metadata(

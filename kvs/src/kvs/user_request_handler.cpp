@@ -18,18 +18,18 @@
 
 void user_request_handler(
     unsigned& total_accesses, unsigned& seed, std::string& serialized,
-    std::chrono::system_clock::time_point& start_time,
     std::shared_ptr<spdlog::logger> logger,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     PendingMap<PendingRequest>& pending_request_map,
     std::unordered_map<
         Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
         key_access_timestamp,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers,
+    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
+        serializers,
     SocketCache& pushers) {
   KeyRequest request;
   request.ParseFromString(serialized);
@@ -50,7 +50,8 @@ void user_request_handler(
   for (const auto& tuple : request.tuples()) {
     // first check if the thread is responsible for the key
     Key key = tuple.key();
-    std::string payload = tuple.has_payload() ? (std::move(tuple.payload())) : "";
+    std::string payload =
+        tuple.has_payload() ? (std::move(tuple.payload())) : "";
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
@@ -78,10 +79,11 @@ void user_request_handler(
                              response_address, response_id));
         }
       } else {  // if we know the responsible threads, we process the request
-        if (key_stat_map[key].second != kNoLatticeTypeIdentifier &&
+        if (key_stat_map[key].second != LatticeType::NO &&
             key_stat_map[key].second != tuple.lattice_type()) {
           logger->error("Lattice type mismatch: {} from query but {} expected.",
-                        tuple.lattice_type(), key_stat_map[key].second);
+                        LatticeType_Name(tuple.lattice_type()),
+                        key_stat_map[key].second);
         } else {
           KeyTuple* tp = response.add_tuples();
           tp->set_key(key);

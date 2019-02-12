@@ -19,7 +19,7 @@ void node_join_handler(
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     std::unordered_map<Key, KeyInfo>& placement,
     std::unordered_set<Key>& join_remove_set, SocketCache& pushers,
     ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,

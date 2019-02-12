@@ -134,7 +134,7 @@ void handle_request(
   rid += 1;
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
-  tp->set_lattice_type(kLWWIdentifier);
+  tp->set_lattice_type(LatticeType::LWW);
   tp->set_address_cache_size(key_address_cache[key].size());
 
   if (value == "") {
@@ -144,7 +144,8 @@ void handle_request(
     // put request
     req.set_type(get_request_type("PUT"));
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+                    std::chrono::system_clock::now().time_since_epoch())
+                    .count();
     auto ts = generate_timestamp(time, 0);
     tp->set_payload(serialize(ts, value));
   }

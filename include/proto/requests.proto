@@ -19,6 +19,12 @@ enum RequestType {
   PUT = 1;
 }
 
+enum LatticeType {
+  NO = 0;
+  LWW = 1;
+  SET = 2;
+}
+
 message LWWValue {
   required uint64 timestamp = 1;
   required string value = 2;
@@ -30,7 +36,7 @@ message SetValue {
 
 message KeyTuple {
   required string key = 1;
-  required uint32 lattice_type = 2;
+  required LatticeType lattice_type = 2;
   optional uint32 error = 3;
   optional bytes payload = 4;
   optional uint32 address_cache_size = 5;

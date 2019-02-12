@@ -19,7 +19,6 @@
 void rep_factor_response_handler(
     unsigned& seed, unsigned& total_access,
     std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::chrono::system_clock::time_point& start_time,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
     PendingMap<PendingRequest>& pending_request_map,
@@ -28,9 +27,10 @@ void rep_factor_response_handler(
         Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
         key_access_timestamp,
     std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers,
+    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
+        serializers,
     SocketCache& pushers) {
   KeyResponse response;
   response.ParseFromString(serialized);
@@ -93,8 +93,8 @@ void rep_factor_response_handler(
         if (!responsible && request.addr_ != "") {
           KeyResponse response;
 
-          if (request.respond_id_ != "") {
-            response.set_response_id(request.respond_id_);
+          if (request.response_id_ != "") {
+            response.set_response_id(request.response_id_);
           }
 
           KeyTuple* tp = response.add_tuples();
@@ -112,14 +112,14 @@ void rep_factor_response_handler(
         } else if (responsible && request.addr_ == "") {
           // only put requests should fall into this category
           if (request.type_ == "PUT") {
-            if (key_stat_map[key].second != kNoLatticeTypeIdentifier &&
+            if (key_stat_map[key].second != LatticeType::NO &&
                 key_stat_map[key].second != request.lattice_type_) {
               logger->error(
                   "Lattice type mismatch: {} from query but {} expected.",
-                  request.lattice_type_, key_stat_map[key].second);
+                  LatticeType_Name(request.lattice_type_),
+                  key_stat_map[key].second);
             } else {
-              process_put(key, request.lattice_type_,
-                          request.payload_,
+              process_put(key, request.lattice_type_, request.payload_,
                           serializers[request.lattice_type_], key_stat_map);
               key_access_timestamp[key].insert(now);
 
@@ -130,16 +130,17 @@ void rep_factor_response_handler(
             logger->error("Received a GET request with no response address.");
           }
         } else if (responsible && request.addr_ != "") {
-          if (key_stat_map[key].second != kNoLatticeTypeIdentifier &&
+          if (key_stat_map[key].second != LatticeType::NO &&
               key_stat_map[key].second != request.lattice_type_) {
             logger->error(
                 "Lattice type mismatch: {} from query but {} expected.",
-                request.lattice_type_, key_stat_map[key].second);
+                LatticeType_Name(request.lattice_type_),
+                key_stat_map[key].second);
           } else {
             KeyResponse response;
 
-            if (request.respond_id_ != "") {
-              response.set_response_id(request.respond_id_);
+            if (request.response_id_ != "") {
+              response.set_response_id(request.response_id_);
             }
 
             KeyTuple* tp = response.add_tuples();
@@ -155,8 +156,7 @@ void rep_factor_response_handler(
                   std::chrono::system_clock::now());
               total_access += 1;
             } else {
-              process_put(key, request.lattice_type_,
-                          request.payload_,
+              process_put(key, request.lattice_type_, request.payload_,
                           serializers[request.lattice_type_], key_stat_map);
               tp->set_error(0);
 
@@ -188,11 +188,12 @@ void rep_factor_response_handler(
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) != threads.end()) {
         for (const PendingGossip& gossip : pending_gossip_map[key]) {
-          if (key_stat_map[key].second != kNoLatticeTypeIdentifier &&
+          if (key_stat_map[key].second != LatticeType::NO &&
               key_stat_map[key].second != gossip.lattice_type_) {
             logger->error(
                 "Lattice type mismatch: {} from query but {} expected.",
-                gossip.lattice_type_, key_stat_map[key].second);
+                LatticeType_Name(gossip.lattice_type_),
+                key_stat_map[key].second);
           } else {
             process_put(key, gossip.lattice_type_, gossip.payload_,
                         serializers[gossip.lattice_type_], key_stat_map);

@@ -20,10 +20,11 @@ void gossip_handler(
     unsigned& seed, std::string& serialized,
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     PendingMap<PendingGossip>& pending_gossip_map,
     std::unordered_map<Key, KeyInfo>& placement, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers,
+    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
+        serializers,
     SocketCache& pushers, std::shared_ptr<spdlog::logger> logger) {
   KeyRequest gossip;
   gossip.ParseFromString(serialized);
@@ -43,10 +44,11 @@ void gossip_handler(
       if (std::find(threads.begin(), threads.end(), wt) !=
           threads.end()) {  // this means this worker thread is one of the
                             // responsible threads
-        if (key_stat_map[key].second != kNoLatticeTypeIdentifier &&
+        if (key_stat_map[key].second != LatticeType::NO &&
             key_stat_map[key].second != tuple.lattice_type()) {
           logger->error("Lattice type mismatch: {} from query but {} expected.",
-                        tuple.lattice_type(), key_stat_map[key].second);
+                        LatticeType_Name(tuple.lattice_type()),
+                        key_stat_map[key].second);
         } else {
           process_put(tuple.key(), tuple.lattice_type(), tuple.payload(),
                       serializers[tuple.lattice_type()], key_stat_map);

@@ -20,9 +20,10 @@ void rep_factor_change_handler(
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
     std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, std::pair<unsigned, unsigned>>& key_stat_map,
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<unsigned, Serializer*>& serializers,
+    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
+        serializers,
     SocketCache& pushers) {
   logger->info("Received a replication factor change.");
   if (thread_id == 0) {

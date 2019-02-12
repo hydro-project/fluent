@@ -153,7 +153,7 @@ void HashRingUtilInterface::issue_replication_factor_request(
   key_request.set_type(get_request_type("GET"));
   key_request.set_response_address(response_address);
 
-  prepare_get_tuple(key_request, replication_key, kLWWIdentifier);
+  prepare_get_tuple(key_request, replication_key, LatticeType::LWW);
   std::string serialized;
   key_request.SerializeToString(&serialized);
   kZmqUtil->send_string(serialized, &pushers[target_address]);
