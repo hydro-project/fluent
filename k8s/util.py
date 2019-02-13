@@ -57,14 +57,14 @@ def run_process(command):
         print('Unexpected error while running command %s:' % (e.cmd))
         print(e.stderr)
         print('')
-        print('Make sure to clean up the cluster object and state store \
-                before recreating the cluster.')
+        print('Make sure to clean up the cluster object and state store ' +
+                'before recreating the cluster.')
         sys.exit(1)
 
 def check_or_get_env_arg(argname):
     if argname not in os.environ:
-        print('Required argument %s not found as an environment variable. \
-                Please specify before re-running.' % (argname))
+        print('Required argument %s not found as an environment variable.' +
+                'Please specify before re-running.' % (argname))
         sys.exit(1)
 
     return os.environ[argname]
@@ -74,21 +74,17 @@ def get_pod_ips(client, selector, isRunning=False):
             label_selector=selector).items
 
     pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
-    print(pod_ips)
 
     running = False
     while None in pod_ips or not running:
         pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
                 label_selector=selector).items
         pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
-        print(pod_ips)
 
         if isRunning:
-            print(list(map(lambda pod: pod.status.phase, pod_list)))
             pod_statuses = list(filter(lambda pod: pod.status.phase !=
                 'Running', pod_list))
             running = len(pod_statuses) == 0
-            print('There are ' + str(len(pod_statuses)) + ' not running things.')
         else:
             running = True
 

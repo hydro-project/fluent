@@ -23,7 +23,7 @@ from util import *
 
 ec2_client = boto3.client('ec2')
 
-def create_cluster(mem_count, ebs_count, func_count route_count, bench_count,
+def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
         cfile, ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
 
     # create the cluster object with kops
@@ -93,7 +93,7 @@ def create_cluster(mem_count, ebs_count, func_count route_count, bench_count,
     routing_svc_addr = get_service_address(client, routing_svc)
 
     print('Adding function serving nodes...')
-    add_nodes(client, ['function'], [func_count], mon_ips,
+    add_nodes(client, cfile, ['function'], [func_count], mon_ips,
             route_addr=routing_svc_addr)
 
     print('Creating function service...')
@@ -176,5 +176,5 @@ if __name__ == '__main__':
     else:
         ssh_key = sys.argv[7]
 
-    create_cluster(mem, ebs, func, route, bench, conf_file ssh_key,
+    create_cluster(mem, ebs, func, route, bench, conf_file, ssh_key,
             cluster_name, kops_bucket, aws_key_id, aws_key)

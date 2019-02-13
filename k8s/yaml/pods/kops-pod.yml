@@ -21,7 +21,7 @@ metadata:
 spec:
   containers:
   - name: kops-container
-    image: fluentproject/kops
+    image: vsreekanti/fluent-kops
     env: 
     - name: AWS_ACCESS_KEY_ID
       value: ACCESS_KEY_ID_DUMMY
