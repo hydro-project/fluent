@@ -18,7 +18,7 @@ import boto3
 import kubernetes as k8s
 from util import *
 
-ec2_client = boto3.client('ec2')
+ec2_client = boto3.client('ec2', 'us-east')
 
 def remove_node(ip, ntype):
     client = init_k8s()
