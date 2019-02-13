@@ -1,14 +1,24 @@
 import zmq
 
-def send_request(req_obj, resp_obj, send_sock, rcv_sock):
+def send_request(req_obj, send_sock):
     req_string = req_obj.SerializeToString()
 
     send_sock.send(req_string)
-    resp_obj.ParseFromString(rcv_sock.recv())
 
-    while req_obj.request_id != resp_obj.response_id:
-        resp_obj.Clear()
+def recv_response(req_ids, rcv_sock, resp_class):
+    responses = []
+
+    while len(responses) < len(req_ids):
+        resp_obj = resp_class()
         resp_obj.ParseFromString(rcv_sock.recv())
+
+        while resp_obj.response_id not in req_ids:
+            resp_obj.Clear()
+            resp_obj.ParseFromString(rcv_sock.recv())
+
+        responses.append(resp_obj)
+
+    return responses
 
 class SocketCache():
     def __init__(self, context, zmq_type):

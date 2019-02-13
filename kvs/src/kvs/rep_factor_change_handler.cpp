@@ -20,9 +20,11 @@ void rep_factor_change_handler(
     std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
     std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
     std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, unsigned>& key_size_map,
+    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    Serializer* serializer, SocketCache& pushers) {
+    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
+        serializers,
+    SocketCache& pushers) {
   logger->info("Received a replication factor change.");
   if (thread_id == 0) {
     // tell all worker threads about the replication factor change
@@ -48,7 +50,7 @@ void rep_factor_change_handler(
     Key key = key_rep.key();
 
     // if this thread was responsible for the key before the change
-    if (key_size_map.find(key) != key_size_map.end()) {
+    if (key_stat_map.find(key) != key_stat_map.end()) {
       ServerThreadList orig_threads = kHashRingUtil->get_responsible_threads(
           wt.get_replication_factor_connect_addr(), key, is_metadata(key),
           global_hash_ring_map, local_hash_ring_map, placement, pushers,
@@ -146,12 +148,12 @@ void rep_factor_change_handler(
     }
   }
 
-  send_gossip(addr_keyset_map, pushers, serializer);
+  send_gossip(addr_keyset_map, pushers, serializers, key_stat_map);
 
   // remove keys
   for (const std::string& key : remove_set) {
-    key_size_map.erase(key);
-    serializer->remove(key);
+    serializers[key_stat_map[key].second]->remove(key);
+    key_stat_map.erase(key);
     local_changeset.erase(key);
   }
 }

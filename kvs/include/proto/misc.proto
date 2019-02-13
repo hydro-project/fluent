@@ -14,11 +14,6 @@
 
 syntax = "proto2";
 
-message DataValue {
-  required string value = 1;
-  required int64 timestamp = 2;
-}
-
 message ServerThreadStatistics {
   required uint64 storage_consumption = 1;
   required double occupancy = 2;
@@ -46,8 +41,7 @@ message TierMembership {
     repeated Server servers = 2;
   }
 
-  required uint64 start_time = 1;
-  repeated Tier tiers = 2;
+  repeated Tier tiers = 1;
 }
 
 message UserFeedback {

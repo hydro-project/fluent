@@ -107,6 +107,7 @@ void handle_request(
 
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
+  tp->set_lattice_type(LatticeType::LWW);
   tp->set_address_cache_size(key_address_cache[key].size());
 
   if (value == "") {
@@ -115,8 +116,11 @@ void handle_request(
   } else {
     // put request
     req.set_type(get_request_type("PUT"));
-    tp->set_value(value);
-    tp->set_timestamp(0);
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch())
+                    .count();
+    auto ts = generate_timestamp(time, 0);
+    tp->set_payload(serialize(ts, value));
   }
 
   bool succeed;
@@ -152,8 +156,10 @@ void handle_request(
         key_address_cache.erase(key);
       }
       if (value == "" && tuple.error() == 0) {
-        std::cout << "value of key " + tuple.key() + " is " + tuple.value() +
-                         "\n";
+        LWWValue lww_value;
+        lww_value.ParseFromString(tuple.payload());
+        std::cout << "value of key " + tuple.key() + " is " +
+                         lww_value.value() + "\n";
       } else if (value == "" && tuple.error() == 1) {
         std::cout << "key " + tuple.key() + " does not exist\n";
       } else if (value != "") {

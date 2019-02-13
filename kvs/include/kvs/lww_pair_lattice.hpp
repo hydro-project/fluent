@@ -15,31 +15,34 @@
 #ifndef SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_
 #define SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_
 
+#include "../lattices/core_lattices.hpp"
+
 template <typename T>
 struct TimestampValuePair {
   // MapLattice<int, MaxLattice<int>> v_map;
-  int timestamp{-1};
+  unsigned long long timestamp{0};
   T value;
 
   TimestampValuePair<T>() {
-    timestamp = -1;
+    timestamp = 0;
     value = T();
   }
 
   // need this because of static cast
-  TimestampValuePair<T>(int a) {
-    timestamp = -1;
+  TimestampValuePair<T>(const unsigned long long& a) {
+    timestamp = 0;
     value = T();
   }
 
-  TimestampValuePair<T>(int ts, T v) {
+  TimestampValuePair<T>(const unsigned long long& ts, const T& v) {
     timestamp = ts;
     value = v;
   }
+  unsigned size() { return value.size() + sizeof(unsigned long long); }
 };
 
 template <typename T>
-class ReadCommittedPairLattice : public Lattice<TimestampValuePair<T>> {
+class LWWPairLattice : public Lattice<TimestampValuePair<T>> {
  protected:
   void do_merge(const TimestampValuePair<T>& p) {
     if (p.timestamp >= this->element.timestamp) {
@@ -49,24 +52,10 @@ class ReadCommittedPairLattice : public Lattice<TimestampValuePair<T>> {
   }
 
  public:
-  ReadCommittedPairLattice() : Lattice<TimestampValuePair<T>>() {}
-  ReadCommittedPairLattice(const TimestampValuePair<T>& p) :
+  LWWPairLattice() : Lattice<TimestampValuePair<T>>() {}
+  LWWPairLattice(const TimestampValuePair<T>& p) :
       Lattice<TimestampValuePair<T>>(p) {}
-
-  bool merge(const TimestampValuePair<T>& p) {
-    if (p.timestamp >= this->element.timestamp) {
-      this->element.timestamp = p.timestamp;
-      this->element.value = p.value;
-
-      return true;
-    }
-
-    return false;
-  }
-
-  bool merge(const ReadCommittedPairLattice<T>& pl) {
-    return merge(pl.reveal());
-  }
+  MaxLattice<unsigned> size() { return {this->element.size()}; }
 };
 
 #endif  // SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_
