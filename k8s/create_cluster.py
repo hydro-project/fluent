@@ -21,7 +21,7 @@ import kubernetes as k8s
 import sys
 from util import *
 
-ec2_client = boto3.client('ec2')
+ec2_client = boto3.client('ec2', 'us-east')
 
 def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
         cfile, ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
