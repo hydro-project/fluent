@@ -94,7 +94,6 @@ inline void prepare_put_tuple(KeyRequest& req, Key key,
   tp->set_payload(std::move(payload));
 }
 
-// TODO(vikram): what's the right way to check if this succeeded or not?
 inline RequestType get_request_type(const std::string& type_str) {
   RequestType type;
   RequestType_Parse(type_str, &type);

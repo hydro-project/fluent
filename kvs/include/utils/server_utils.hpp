@@ -286,7 +286,6 @@ struct PendingRequest {
       addr_(addr),
       response_id_(response_id) {}
 
-  // TODO(vikram): change these type names
   std::string type_;
   LatticeType lattice_type_;
   std::string payload_;
