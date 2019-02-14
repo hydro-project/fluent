@@ -158,4 +158,3 @@ void HashRingUtilInterface::issue_replication_factor_request(
   key_request.SerializeToString(&serialized);
   kZmqUtil->send_string(serialized, &pushers[target_address]);
 }
-

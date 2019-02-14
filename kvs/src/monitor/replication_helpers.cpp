@@ -108,7 +108,7 @@ void change_replication_factor(
   std::unordered_set<Key> failed_keys;
   for (const auto& request_pair : addr_request_map) {
     bool succeed;
-    auto res = send_request<KeyRequest, KeyResponse>(
+    auto res = make_request<KeyRequest, KeyResponse>(
         request_pair.second, pushers[request_pair.first], response_puller,
         succeed);
 

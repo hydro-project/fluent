@@ -24,7 +24,39 @@ unsigned kDefaultLocalReplication;
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
-void run(KvsClient client) {
+void handle_request(KvsClient& client, std::string input) {
+  std::vector<std::string> v;
+  split(input, ' ', v);
+
+  Key key;
+  std::string value;
+
+  if (v[0] == "GET") {
+    std::cout << client.get(key);
+  } else if (v[0] == "PUT") {
+    if (client.put(v[1], v[2])) {
+      std::cout << "Success!";
+    } else {
+      std::cout << "Failure!";
+    }
+  } else if (v[0] == "GET_ALL") {
+    auto responses = client.get_all(key);
+    for (const auto& response : responses) {
+      std::cout << response;
+    }
+  } else if (v[0] == "PUT_ALL") {
+    if (client.put_all(v[1], v[2])) {
+      std::cout << "Success!";
+    } else {
+      std::cout << "Failure!";
+    }
+  } else {
+    std::cout << "Unrecognized command " << v[0]
+              << ". Valid commands are GET, GET_ALL, PUT, and PUT_ALL.";
+  }
+}
+
+void run(KvsClient& client) {
   std::string input;
   while (true) {
     std::cout << "kvs> ";
@@ -34,41 +66,12 @@ void run(KvsClient client) {
   }
 }
 
-void run(KvsClient client, std::string filename) {
+void run(KvsClient& client, std::string filename) {
+  std::string input;
   std::ifstream infile(filename);
 
   while (getline(infile, input)) {
     handle_request(client, input);
-  }
-}
-
-void handle_request(std::string input, KvsClient client) {
-  std::vector<std::string> v;
-  split(request_line, ' ', v);
-  Key key;
-  std::string value;
-
-  if (v[0] == "GET") {
-    cout << client.get(key);
-  } else if (v[0] == "PUT") {
-    if (client.put(v[1], v[2])) {
-      cout << "Success!";
-    } else {
-      cout << "Failure!";
-    }
-  } else if (v[0] == "GET_ALL") {
-    auto responses = client.get_all(key);
-    for (const auto& response : responses) {
-      std::cout << response;
-    }
-  } else if (v[0] == "PUT_ALL") {
-    if (client.put_all(v[1], v[2])) {
-      cout << "Success!";
-    } else {
-      cout << "Failure!";
-    }
-  } else {
-    cout << "Unrecognized command " << v[0] << ". Valid commands are GET, GET_ALL, PUT, and PUT_ALL.";
   }
 }
 
@@ -89,20 +92,21 @@ int main(int argc, char* argv[]) {
   YAML::Node user = conf["user"];
   Address ip = user["ip"].as<Address>();
 
-  KvsClient client;
+  std::vector<Address> routing_addresses;
+  bool local;
   if (YAML::Node elb = user["routing-elb"]) {
-    client = (elb.as<std::string>(), kRoutingThreadCount, ip, 0);
+    routing_addresses.push_back(elb.as<std::string>());
+    local = false;
   } else {
     YAML::Node routing = user["routing"];
-    std::vector<Address> routing_addresses;
+    local = true;
 
     for (const YAML::Node& node : routing) {
       routing_addresses.push_back(node.as<Address>());
     }
-
-    client = (routing_addresses, kRoutingThreadCount, ip, 0);
   }
 
+  KvsClient client(routing_addresses, kRoutingThreadCount, ip, 0, 10000, local);
   if (argc == 1) {
     run(client);
   } else {

@@ -70,16 +70,30 @@ int sample(int n, unsigned& seed, double base,
   return zipf_value;
 }
 
-void run(unsigned thread_id, KvsClient client,
-         std::vector<MonitoringThread> monitoring_threads) {
+std::string generate_key(unsigned n) {
+  return std::string(8 - std::to_string(n).length(), '0') + std::to_string(n);
+}
+
+void run(const unsigned& thread_id,
+         const std::vector<Address>& routing_addresses,
+         const std::vector<MonitoringThread>& monitoring_threads,
+         const Address& ip, const bool& local) {
+  KvsClient client(routing_addresses, kRoutingThreadCount, ip, thread_id, 10000,
+                   local);
   std::string log_file = "log_" + std::to_string(thread_id) + ".txt";
   std::string logger_name = "benchmark_log_" + std::to_string(thread_id);
   auto logger = spdlog::basic_logger_mt(logger_name, log_file, true);
   logger->flush_on(spdlog::level::info);
 
   client.set_logger(logger);
+  unsigned seed = client.get_seed();
+
+  // observed per-key avg latency
+  std::unordered_map<Key, std::pair<double, unsigned>> observed_latency;
 
   // responsible for pulling benchmark commands
+  zmq::context_t& context = *(client.get_context());
+  SocketCache pushers(&context, ZMQ_PUSH);
   zmq::socket_t command_puller(context, ZMQ_PULL);
   command_puller.bind("tcp://*:" +
                       std::to_string(thread_id + kBenchmarkCommandBasePort));
@@ -122,12 +136,10 @@ void run(unsigned thread_id, KvsClient client,
         unsigned length = stoi(v[3]);
         unsigned report_period = stoi(v[4]);
         unsigned time = stoi(v[5]);
-        double contention = stod(v[6]);
+        double zipf = stod(v[6]);
 
         std::unordered_map<unsigned, double> sum_probs;
         double base;
-
-        double zipf = contention;
 
         if (zipf > 0) {
           logger->info("Zipf coefficient is {}.", zipf);
@@ -290,11 +302,6 @@ void run(unsigned thread_id, KvsClient client,
   }
 }
 
-std::string generate_key(unsigned n) {
-  return std::string(8 - std::to_string(i).length(), '0') +
-                std::to_string(n);
-}
-
 int main(int argc, char* argv[]) {
   if (argc != 1) {
     std::cerr << "Usage: " << argv[0] << std::endl;
@@ -304,9 +311,11 @@ int main(int argc, char* argv[]) {
   // read the YAML conf
   YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
   YAML::Node user = conf["user"];
-  std::string ip = user["ip"].as<std::string>();
+  Address ip = user["ip"].as<std::string>();
 
   std::vector<MonitoringThread> monitoring_threads;
+  std::vector<Address> routing_addresses;
+
   YAML::Node monitoring = user["monitoring"];
   for (const YAML::Node& node : monitoring) {
     monitoring_threads.push_back(MonitoringThread(node.as<Address>()));
@@ -317,33 +326,26 @@ int main(int argc, char* argv[]) {
   kBenchmarkThreadNum = threads["benchmark"].as<int>();
   kDefaultLocalReplication = conf["replication"]["local"].as<unsigned>();
 
-  KvsClient client;
   std::vector<std::thread> benchmark_threads;
 
+  bool local;
   if (YAML::Node elb = user["routing-elb"]) {
-    for (unsigned thread_id = 1; thread_id < kBenchmarkThreadNum; thread_id++) {
-      client = KvsClient(elb.as<std::string>(), kRoutingThreadCount, ip, 0);
-      benchmark_threads.push_back(
-          std::thread(run, thread_id, client, monitoring_threads));
-    }
-
-    client = KvsClient(elb.as<std::string>(), kRoutingThreadCount, ip, 0);
-    run(0, client, monitoring_threads);
+    routing_addresses.push_back(elb.as<std::string>());
+    local = false;
   } else {
     YAML::Node routing = user["routing"];
-    std::vector<Address> routing_addresses;
+    local = true;
 
     for (const YAML::Node& node : routing) {
       routing_addresses.push_back(node.as<Address>());
     }
-
-    for (unsigned thread_id = 1; thread_id < kBenchmarkThreadNum; thread_id++) {
-      client = KvsClient(routing_addresses, kRoutingThreadCount, ip, 0);
-      benchmark_threads.push_back(
-          std::thread(run, thread_id, client, monitoring_threads));
-    }
-
-    client = KvsClient(routing_addresses, kRoutingThreadCount, ip, 0);
-    run(0, client, monitoring_threads);
   }
+
+  // NOTE: We create a new client for every single thread.
+  for (unsigned thread_id = 1; thread_id < kBenchmarkThreadNum; thread_id++) {
+    benchmark_threads.push_back(std::thread(run, thread_id, routing_addresses,
+                                            monitoring_threads, ip, local));
+  }
+
+  run(0, routing_addresses, monitoring_threads, ip, local);
 }
