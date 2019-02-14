@@ -225,6 +225,21 @@ class KvsClient {
 
     return result;
   }
+ 
+  /** 
+   * Set the logger used by the client.
+   */
+  void set_logger(std::shared_ptr<spdlog::logger> logger) {
+    logger_ = logger;
+  }
+
+  /** 
+   * Clears the key address cache held by this client.
+   */
+  void clear_cache() {
+    key_address_cache_.clear();
+  }
+
 
  private: 
   /** 
