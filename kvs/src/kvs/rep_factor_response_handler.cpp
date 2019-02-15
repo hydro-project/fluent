@@ -99,7 +99,6 @@ void rep_factor_response_handler(
 
           KeyTuple* tp = response.add_tuples();
           tp->set_key(key);
-          tp->set_lattice_type(request.lattice_type_);
           tp->set_error(2);
 
           for (const ServerThread& thread : threads) {
@@ -112,8 +111,10 @@ void rep_factor_response_handler(
         } else if (responsible && request.addr_ == "") {
           // only put requests should fall into this category
           if (request.type_ == "PUT") {
-            if (key_stat_map[key].second != LatticeType::NO &&
-                key_stat_map[key].second != request.lattice_type_) {
+            if (request.lattice_type_ == LatticeType::NO) {
+              logger->error("PUT request missing lattice type.");
+            } else if (key_stat_map.find(key) != key_stat_map.end() &&
+                       key_stat_map[key].second != request.lattice_type_) {
               logger->error(
                   "Lattice type mismatch: {} from query but {} expected.",
                   LatticeType_Name(request.lattice_type_),
@@ -130,45 +131,47 @@ void rep_factor_response_handler(
             logger->error("Received a GET request with no response address.");
           }
         } else if (responsible && request.addr_ != "") {
-          if (key_stat_map[key].second != LatticeType::NO &&
-              key_stat_map[key].second != request.lattice_type_) {
-            logger->error(
-                "Lattice type mismatch: {} from query but {} expected.",
-                LatticeType_Name(request.lattice_type_),
-                key_stat_map[key].second);
-          } else {
-            KeyResponse response;
+          KeyResponse response;
 
-            if (request.response_id_ != "") {
-              response.set_response_id(request.response_id_);
-            }
+          if (request.response_id_ != "") {
+            response.set_response_id(request.response_id_);
+          }
 
-            KeyTuple* tp = response.add_tuples();
-            tp->set_key(key);
-            tp->set_lattice_type(request.lattice_type_);
+          KeyTuple* tp = response.add_tuples();
+          tp->set_key(key);
 
-            if (request.type_ == "GET") {
-              auto res = process_get(key, serializers[request.lattice_type_]);
+          if (request.type_ == "GET") {
+            if (key_stat_map.find(key) == key_stat_map.end()) {
+              tp->set_error(1);
+            } else {
+              auto res =
+                  process_get(key, serializers[key_stat_map[key].second]);
+              tp->set_lattice_type(key_stat_map[key].second);
               tp->set_payload(res.first);
               tp->set_error(res.second);
-
-              key_access_timestamp[key].insert(
-                  std::chrono::system_clock::now());
-              total_access += 1;
+            }
+          } else {
+            if (request.lattice_type_ == LatticeType::NO) {
+              logger->error("PUT request missing lattice type.");
+            } else if (key_stat_map.find(key) != key_stat_map.end() &&
+                       key_stat_map[key].second != request.lattice_type_) {
+              logger->error(
+                  "Lattice type mismatch: {} from query but {} expected.",
+                  LatticeType_Name(request.lattice_type_),
+                  key_stat_map[key].second);
             } else {
               process_put(key, request.lattice_type_, request.payload_,
                           serializers[request.lattice_type_], key_stat_map);
               tp->set_error(0);
-
-              key_access_timestamp[key].insert(now);
-              total_access += 1;
               local_changeset.insert(key);
             }
-
-            std::string serialized_response;
-            response.SerializeToString(&serialized_response);
-            kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
           }
+          key_access_timestamp[key].insert(now);
+          total_access += 1;
+
+          std::string serialized_response;
+          response.SerializeToString(&serialized_response);
+          kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
         }
       }
     } else {
@@ -188,7 +191,7 @@ void rep_factor_response_handler(
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) != threads.end()) {
         for (const PendingGossip& gossip : pending_gossip_map[key]) {
-          if (key_stat_map[key].second != LatticeType::NO &&
+          if (key_stat_map.find(key) != key_stat_map.end() &&
               key_stat_map[key].second != gossip.lattice_type_) {
             logger->error(
                 "Lattice type mismatch: {} from query but {} expected.",
