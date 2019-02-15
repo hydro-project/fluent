@@ -24,8 +24,8 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        Address private_ip,
                        std::shared_ptr<spdlog::logger> logger,
                        string& serialized,
-                       map<unsigned, GlobalHashRing>& global_hash_ring_map,
-                       map<unsigned, LocalHashRing>& local_hash_ring_map,
+                       vector<GlobalHashRing>& global_hash_rings,
+                       vector<LocalHashRing>& local_hash_rings,
                        map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
                        map<Key, KeyInfo>& placement, set<Key>& join_remove_set,
                        SocketCache& pushers, ServerThread& wt,
@@ -34,15 +34,15 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
 
 void node_depart_handler(unsigned thread_id, Address public_ip,
                          Address private_ip,
-                         map<unsigned, GlobalHashRing>& global_hash_ring_map,
+                         vector<GlobalHashRing>& global_hash_rings,
                          std::shared_ptr<spdlog::logger> logger,
                          string& serialized, SocketCache& pushers);
 
 void self_depart_handler(
     unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     map<Key, KeyInfo>& placement, vector<Address>& routing_address,
     vector<Address>& monitoring_address, ServerThread& wt, SocketCache& pushers,
@@ -51,8 +51,8 @@ void self_depart_handler(
 void user_request_handler(
     unsigned& total_access, unsigned& seed, string& serialized,
     std::shared_ptr<spdlog::logger> logger,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     PendingMap<PendingRequest>& pending_request_map,
     map<Key, std::multiset<TimePoint>>& key_access_timestamp,
@@ -62,8 +62,8 @@ void user_request_handler(
 
 void gossip_handler(
     unsigned& seed, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     PendingMap<PendingGossip>& pending_gossip_map, map<Key, KeyInfo>& placement,
     ServerThread& wt, SerializerMap& serializers,
@@ -72,8 +72,8 @@ void gossip_handler(
 void rep_factor_response_handler(
     unsigned& seed, unsigned& total_access,
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     PendingMap<PendingRequest>& pending_request_map,
     PendingMap<PendingGossip>& pending_gossip_map,
     map<Key, std::multiset<TimePoint>>& key_access_timestamp,
@@ -86,8 +86,8 @@ void rep_factor_response_handler(
 void rep_factor_change_handler(
     Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     map<Key, KeyInfo>& placement,
     map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     set<Key>& local_changeset, ServerThread& wt,
@@ -105,8 +105,8 @@ void process_put(const Key& key, LatticeType lattice_type,
                  map<Key, std::pair<unsigned, LatticeType>>& key_stat_map);
 
 bool is_primary_replica(const Key& key, map<Key, KeyInfo>& placement,
-                        map<unsigned, GlobalHashRing>& global_hash_ring_map,
-                        map<unsigned, LocalHashRing>& local_hash_ring_map,
+                        vector<GlobalHashRing>& global_hash_rings,
+                        vector<LocalHashRing>& local_hash_rings,
                         ServerThread& st);
 
 #endif  // SRC_INCLUDE_KVS_KVS_HANDLERS_HPP_

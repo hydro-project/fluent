@@ -19,8 +19,8 @@
 void rep_factor_response_handler(
     unsigned& seed, unsigned& total_access,
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     PendingMap<PendingRequest>& pending_request_map,
     PendingMap<PendingGossip>& pending_gossip_map,
     map<Key, std::multiset<TimePoint>>& key_access_timestamp,
@@ -63,7 +63,7 @@ void rep_factor_response_handler(
     // responsible for that metadata
     auto respond_address = wt.get_replication_factor_connect_addr();
     kHashRingUtil->issue_replication_factor_request(
-        respond_address, key, global_hash_ring_map[1], local_hash_ring_map[1],
+        respond_address, key, global_hash_rings[1], local_hash_rings[1],
         pushers, seed);
     return;
   } else {
@@ -77,7 +77,7 @@ void rep_factor_response_handler(
   if (pending_request_map.find(key) != pending_request_map.end()) {
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-        global_hash_ring_map, local_hash_ring_map, placement, pushers,
+        global_hash_rings, local_hash_rings, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
@@ -182,7 +182,7 @@ void rep_factor_response_handler(
   if (pending_gossip_map.find(key) != pending_gossip_map.end()) {
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-        global_hash_ring_map, local_hash_ring_map, placement, pushers,
+        global_hash_rings, local_hash_rings, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {

@@ -50,8 +50,8 @@ void prepare_replication_factor_update(
 // are valid (rep factor <= total number of nodes in a tier)
 void change_replication_factor(
     map<Key, KeyInfo>& requests,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     vector<Address>& routing_address, map<Key, KeyInfo>& placement,
     SocketCache& pushers, MonitoringThread& mt, zmq::socket_t& response_puller,
     std::shared_ptr<spdlog::logger> logger, unsigned& rid) {
@@ -98,8 +98,8 @@ void change_replication_factor(
     string serialized_rep_data;
     rep_data.SerializeToString(&serialized_rep_data);
     prepare_metadata_put_request(
-        rep_key, serialized_rep_data, global_hash_ring_map[1],
-        local_hash_ring_map[1], addr_request_map, mt, rid);
+        rep_key, serialized_rep_data, global_hash_rings[1],
+        local_hash_rings[1], addr_request_map, mt, rid);
   }
 
   // send updates to storage nodes
@@ -139,7 +139,7 @@ void change_replication_factor(
             std::max(placement[key].global_replication_map_[tier],
                      orig_placement_info[key].global_replication_map_[tier]);
         ServerThreadList threads =
-            responsible_global(key, rep, global_hash_ring_map[tier]);
+            responsible_global(key, rep, global_hash_rings[tier]);
 
         for (const ServerThread& thread : threads) {
           prepare_replication_factor_update(

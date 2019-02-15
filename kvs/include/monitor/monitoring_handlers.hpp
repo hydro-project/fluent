@@ -20,7 +20,7 @@
 
 void membership_handler(
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
     TimePoint& grace_start,
     vector<Address>& routing_address, StorageStats& memory_tier_storage,

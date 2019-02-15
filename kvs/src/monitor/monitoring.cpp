@@ -72,13 +72,13 @@ int main(int argc, char *argv[]) {
       TierData(kEbsThreadCount, kDefaultGlobalEbsReplication, kEbsNodeCapacity);
 
   // initialize hash ring maps
-  map<unsigned, GlobalHashRing> global_hash_ring_map;
-  map<unsigned, LocalHashRing> local_hash_ring_map;
+  vector<GlobalHashRing> global_hash_rings;
+  vector<LocalHashRing> local_hash_rings;
 
   // form local hash rings
   for (const auto &tier_pair : kTierDataMap) {
     for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(ip, ip, 0, tid);
+      local_hash_rings[tier_pair.first].insert(ip, ip, 0, tid);
     }
   }
 
@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
     // handle a join or depart event
     if (pollitems[0].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&notify_puller);
-      membership_handler(logger, serialized, global_hash_ring_map,
+      membership_handler(logger, serialized, global_hash_rings,
                          adding_memory_node, adding_ebs_node, grace_start,
                          routing_address, memory_tier_storage, ebs_tier_storage,
                          memory_tier_occupancy, ebs_tier_occupancy,
@@ -200,8 +200,8 @@ int main(int argc, char *argv[]) {
             .count() >= kMonitoringThreshold) {
       server_monitoring_epoch += 1;
 
-      memory_node_number = global_hash_ring_map[1].size() / kVirtualThreadNum;
-      ebs_node_number = global_hash_ring_map[2].size() / kVirtualThreadNum;
+      memory_node_number = global_hash_rings[1].size() / kVirtualThreadNum;
+      ebs_node_number = global_hash_rings[2].size() / kVirtualThreadNum;
       // clear stats
       key_access_frequency.clear();
       key_access_summary.clear();
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
 
       // collect internal statistics
       collect_internal_stats(
-          global_hash_ring_map, local_hash_ring_map, pushers, mt,
+          global_hash_rings, local_hash_rings, pushers, mt,
           response_puller, logger, rid, key_access_frequency, key_size,
           memory_tier_storage, ebs_tier_storage, memory_tier_occupancy,
           ebs_tier_occupancy, memory_tier_access, ebs_tier_access);
@@ -244,18 +244,18 @@ int main(int argc, char *argv[]) {
       }
 
       // execute policies
-      storage_policy(logger, global_hash_ring_map, grace_start, ss,
+      storage_policy(logger, global_hash_rings, grace_start, ss,
                      memory_node_number, ebs_node_number, adding_memory_node,
                      adding_ebs_node, removing_ebs_node, management_address, mt,
                      departing_node_map, pushers);
 
-      movement_policy(logger, global_hash_ring_map, local_hash_ring_map,
+      movement_policy(logger, global_hash_rings, local_hash_rings,
                       grace_start, ss, memory_node_number, ebs_node_number,
                       adding_memory_node, adding_ebs_node, management_address,
                       placement, key_access_summary, key_size, mt, pushers,
                       response_puller, routing_address, rid);
 
-      slo_policy(logger, global_hash_ring_map, local_hash_ring_map, grace_start,
+      slo_policy(logger, global_hash_rings, local_hash_rings, grace_start,
                  ss, memory_node_number, adding_memory_node,
                  removing_memory_node, management_address, placement,
                  key_access_summary, mt, departing_node_map, pushers,

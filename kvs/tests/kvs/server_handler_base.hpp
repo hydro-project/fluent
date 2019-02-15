@@ -29,8 +29,8 @@ class ServerHandlerTest : public ::testing::Test {
  protected:
   Address ip = "127.0.0.1";
   unsigned thread_id = 0;
-  map<unsigned, GlobalHashRing> global_hash_ring_map;
-  map<unsigned, LocalHashRing> local_hash_ring_map;
+  vector<GlobalHashRing> global_hash_rings;
+  vector<LocalHashRing> local_hash_rings;
   map<Key, KeyInfo> placement;
   map<Key, std::pair<unsigned, LatticeType>> key_stat_map;
   ServerThread wt;
@@ -55,7 +55,7 @@ class ServerHandlerTest : public ::testing::Test {
     serializers[LatticeType::LWW] = lww_serializer;
     serializers[LatticeType::SET] = set_serializer;
     wt = ServerThread(ip, ip, thread_id);
-    global_hash_ring_map[1].insert(ip, ip, 0, thread_id);
+    global_hash_rings[1].insert(ip, ip, 0, thread_id);
   }
 
   virtual ~ServerHandlerTest() {

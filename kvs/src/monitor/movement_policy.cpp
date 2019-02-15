@@ -17,8 +17,8 @@
 
 void movement_policy(
     std::shared_ptr<spdlog::logger> logger,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     TimePoint& grace_start,
     SummaryStats& ss, unsigned& memory_node_number, unsigned& ebs_node_number,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
@@ -57,7 +57,7 @@ void movement_policy(
     }
   }
 
-  change_replication_factor(requests, global_hash_ring_map, local_hash_ring_map,
+  change_replication_factor(requests, global_hash_rings, local_hash_rings,
                             routing_address, placement, pushers, mt,
                             response_puller, logger, rid);
   logger->info("Promoting {} keys into memory tier.", total_rep_to_change);
@@ -105,7 +105,7 @@ void movement_policy(
     }
   }
 
-  change_replication_factor(requests, global_hash_ring_map, local_hash_ring_map,
+  change_replication_factor(requests, global_hash_rings, local_hash_rings,
                             routing_address, placement, pushers, mt,
                             response_puller, logger, rid);
   logger->info("Demoting {} keys into EBS tier.", total_rep_to_change);
@@ -142,7 +142,7 @@ void movement_policy(
     }
   }
 
-  change_replication_factor(requests, global_hash_ring_map, local_hash_ring_map,
+  change_replication_factor(requests, global_hash_rings, local_hash_rings,
                             routing_address, placement, pushers, mt,
                             response_puller, logger, rid);
   requests.clear();

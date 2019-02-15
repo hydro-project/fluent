@@ -15,11 +15,11 @@
 #include "route/routing_handlers.hpp"
 
 TEST_F(RoutingHandlerTest, Seed) {
-  EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
+  EXPECT_EQ(global_hash_rings[1].size(), 3000);
 
-  string serialized = seed_handler(logger, global_hash_ring_map);
+  string serialized = seed_handler(logger, global_hash_rings);
 
-  EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
+  EXPECT_EQ(global_hash_rings[1].size(), 3000);
 
   TierMembership membership;
   membership.ParseFromString(serialized);

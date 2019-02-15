@@ -58,8 +58,8 @@ void process_put(const Key& key, LatticeType lattice_type,
 }
 
 bool is_primary_replica(const Key& key, map<Key, KeyInfo>& placement,
-                        map<unsigned, GlobalHashRing>& global_hash_ring_map,
-                        map<unsigned, LocalHashRing>& local_hash_ring_map,
+                        vector<GlobalHashRing>& global_hash_rings,
+                        vector<LocalHashRing>& local_hash_rings,
                         ServerThread& st) {
   if (placement[key].global_replication_map_[kSelfTierId] == 0) {
     return false;
@@ -76,11 +76,11 @@ bool is_primary_replica(const Key& key, map<Key, KeyInfo>& placement,
         return false;
       }
     }
-    auto global_pos = global_hash_ring_map[kSelfTierId].find(key);
-    if (global_pos != global_hash_ring_map[kSelfTierId].end() &&
+    auto global_pos = global_hash_rings[kSelfTierId].find(key);
+    if (global_pos != global_hash_rings[kSelfTierId].end() &&
         st.get_private_ip().compare(global_pos->second.get_private_ip()) == 0) {
-      auto local_pos = local_hash_ring_map[kSelfTierId].find(key);
-      if (local_pos != local_hash_ring_map[kSelfTierId].end() &&
+      auto local_pos = local_hash_rings[kSelfTierId].find(key);
+      if (local_pos != local_hash_rings[kSelfTierId].end() &&
           st.get_tid() == local_pos->second.get_tid()) {
         return true;
       }

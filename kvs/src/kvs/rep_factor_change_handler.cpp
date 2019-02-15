@@ -17,8 +17,8 @@
 void rep_factor_change_handler(
     Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     map<Key, KeyInfo>& placement,
     map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     set<Key>& local_changeset, ServerThread& wt,
@@ -52,7 +52,7 @@ void rep_factor_change_handler(
     if (key_stat_map.find(key) != key_stat_map.end()) {
       ServerThreadList orig_threads = kHashRingUtil->get_responsible_threads(
           wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-          global_hash_ring_map, local_hash_ring_map, placement, pushers,
+          global_hash_rings, local_hash_rings, placement, pushers,
           kAllTierIds, succeed, seed);
 
       if (succeed) {
@@ -81,7 +81,7 @@ void rep_factor_change_handler(
 
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
             wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-            global_hash_ring_map, local_hash_ring_map, placement, pushers,
+            global_hash_rings, local_hash_rings, placement, pushers,
             kAllTierIds, succeed, seed);
 
         if (succeed) {

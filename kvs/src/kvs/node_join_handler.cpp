@@ -18,8 +18,8 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        Address private_ip,
                        std::shared_ptr<spdlog::logger> logger,
                        string& serialized,
-                       map<unsigned, GlobalHashRing>& global_hash_ring_map,
-                       map<unsigned, LocalHashRing>& local_hash_ring_map,
+                       vector<GlobalHashRing>& global_hash_rings,
+                       vector<LocalHashRing>& local_hash_rings,
                        map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
                        map<Key, KeyInfo>& placement, set<Key>& join_remove_set,
                        SocketCache& pushers, ServerThread& wt,
@@ -33,7 +33,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
   int join_count = stoi(v[3]);
 
   // update global hash ring
-  bool inserted = global_hash_ring_map[tier].insert(
+  bool inserted = global_hash_rings[tier].insert(
       new_server_public_ip, new_server_private_ip, join_count, 0);
 
   if (inserted) {
@@ -53,7 +53,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        .get_node_join_connect_addr()]);
 
       // gossip the new node address between server nodes to ensure consistency
-      for (const auto& global_pair : global_hash_ring_map) {
+      for (const auto& global_pair : global_hash_rings) {
         GlobalHashRing hash_ring = global_pair.second;
 
         for (const ServerThread& st : hash_ring.get_unique_servers()) {
@@ -87,7 +87,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
         Key key = key_pair.first;
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
             wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-            global_hash_ring_map, local_hash_ring_map, placement, pushers,
+            global_hash_rings, local_hash_rings, placement, pushers,
             kSelfTierIdVector, succeed, seed);
 
         if (succeed) {

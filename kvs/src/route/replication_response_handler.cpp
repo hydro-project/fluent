@@ -17,8 +17,8 @@
 void replication_response_handler(
     std::shared_ptr<spdlog::logger> logger, string& serialized,
     SocketCache& pushers, RoutingThread& rt,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     map<Key, KeyInfo>& placement,
     PendingMap<std::pair<Address, string>>& pending_key_request_map,
     unsigned& seed) {
@@ -57,7 +57,7 @@ void replication_response_handler(
     // responsible for that metadata
     auto respond_address = rt.get_replication_factor_connect_addr();
     kHashRingUtil->issue_replication_factor_request(
-        respond_address, key, global_hash_ring_map[1], local_hash_ring_map[1],
+        respond_address, key, global_hash_rings[1], local_hash_rings[1],
         pushers, seed);
     return;
   } else {
@@ -75,7 +75,7 @@ void replication_response_handler(
     while (threads.size() == 0 && tier_id < kMaxTier) {
       threads = kHashRingUtil->get_responsible_threads(
           rt.get_replication_factor_connect_addr(), key, false,
-          global_hash_ring_map, local_hash_ring_map, placement, pushers,
+          global_hash_rings, local_hash_rings, placement, pushers,
           {tier_id}, succeed, seed);
 
       if (!succeed) {

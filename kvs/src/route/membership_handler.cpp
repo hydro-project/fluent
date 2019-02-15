@@ -16,7 +16,7 @@
 
 void membership_handler(std::shared_ptr<spdlog::logger> logger,
                         string& serialized, SocketCache& pushers,
-                        map<unsigned, GlobalHashRing>& global_hash_ring_map,
+                        vector<GlobalHashRing>& global_hash_rings,
                         unsigned thread_id, Address ip) {
   vector<string> v;
 
@@ -35,14 +35,14 @@ void membership_handler(std::shared_ptr<spdlog::logger> logger,
                  std::to_string(tier));
 
     // update hash ring
-    bool inserted = global_hash_ring_map[tier].insert(
+    bool inserted = global_hash_rings[tier].insert(
         new_server_public_ip, new_server_private_ip, join_count, 0);
 
     if (inserted) {
       if (thread_id == 0) {
         // gossip the new node address between server nodes to ensure
         // consistency
-        for (const auto& global_pair : global_hash_ring_map) {
+        for (const auto& global_pair : global_hash_rings) {
           unsigned tier_id = global_pair.first;
           auto hash_ring = global_pair.second;
 
@@ -71,7 +71,7 @@ void membership_handler(std::shared_ptr<spdlog::logger> logger,
       }
     }
 
-    for (const auto& global_pair : global_hash_ring_map) {
+    for (const auto& global_pair : global_hash_rings) {
       logger->info("Hash ring for tier {} size is {}.",
                    std::to_string(global_pair.first),
                    std::to_string(global_pair.second.size()));
@@ -79,7 +79,7 @@ void membership_handler(std::shared_ptr<spdlog::logger> logger,
   } else if (type == "depart") {
     logger->info("Received depart from server {}/{}.", new_server_public_ip,
                  new_server_private_ip, new_server_private_ip);
-    global_hash_ring_map[tier].remove(new_server_public_ip,
+    global_hash_rings[tier].remove(new_server_public_ip,
                                       new_server_private_ip, 0);
 
     if (thread_id == 0) {
@@ -91,7 +91,7 @@ void membership_handler(std::shared_ptr<spdlog::logger> logger,
       }
     }
 
-    for (const auto& global_pair : global_hash_ring_map) {
+    for (const auto& global_pair : global_hash_rings) {
       logger->info("Hash ring for tier {} size is {}.",
                    std::to_string(global_pair.first),
                    std::to_string(global_pair.second.size()));

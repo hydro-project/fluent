@@ -15,7 +15,7 @@
 #include "route/routing_handlers.hpp"
 
 TEST_F(RoutingHandlerTest, Address) {
-  EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
+  EXPECT_EQ(global_hash_rings[1].size(), 3000);
 
   unsigned seed = 0;
 
@@ -27,8 +27,8 @@ TEST_F(RoutingHandlerTest, Address) {
   string serialized;
   req.SerializeToString(&serialized);
 
-  address_handler(logger, serialized, pushers, rt, global_hash_ring_map,
-                  local_hash_ring_map, placement, pending_key_request_map,
+  address_handler(logger, serialized, pushers, rt, global_hash_rings,
+                  local_hash_rings, placement, pending_key_request_map,
                   seed);
 
   vector<string> messages = get_zmq_messages();

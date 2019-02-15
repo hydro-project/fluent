@@ -20,7 +20,7 @@
 
 void storage_policy(
     std::shared_ptr<spdlog::logger> logger,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    vector<unsigned, GlobalHashRing>& global_hash_rings,
     TimePoint& grace_start,
     SummaryStats& ss, unsigned& memory_node_number, unsigned& ebs_node_number,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
@@ -29,8 +29,8 @@ void storage_policy(
 
 void movement_policy(
     std::shared_ptr<spdlog::logger> logger,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     TimePoint& grace_start,
     SummaryStats& ss, unsigned& memory_node_number, unsigned& ebs_node_number,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
@@ -40,8 +40,8 @@ void movement_policy(
     vector<Address>& routing_address, unsigned& rid);
 
 void slo_policy(std::shared_ptr<spdlog::logger> logger,
-                map<unsigned, GlobalHashRing>& global_hash_ring_map,
-                map<unsigned, LocalHashRing>& local_hash_ring_map,
+                vector<GlobalHashRing>& global_hash_rings,
+                vector<LocalHashRing>& local_hash_rings,
                 TimePoint& grace_start,
                 SummaryStats& ss, unsigned& memory_node_number,
                 unsigned& adding_memory_node, bool& removing_memory_node,

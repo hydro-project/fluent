@@ -16,7 +16,7 @@
 
 void membership_handler(
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
     TimePoint& grace_start,
     vector<Address>& routing_address, StorageStats& memory_tier_storage,
@@ -36,7 +36,7 @@ void membership_handler(
                  new_server_public_ip, new_server_private_ip,
                  std::to_string(tier));
     if (tier == 1) {
-      global_hash_ring_map[tier].insert(new_server_public_ip,
+      global_hash_rings[tier].insert(new_server_public_ip,
                                         new_server_private_ip, 0, 0);
 
       if (adding_memory_node > 0) {
@@ -46,7 +46,7 @@ void membership_handler(
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();
     } else if (tier == 2) {
-      global_hash_ring_map[tier].insert(new_server_public_ip,
+      global_hash_rings[tier].insert(new_server_public_ip,
                                         new_server_private_ip, 0, 0);
 
       if (adding_ebs_node > 0) {
@@ -61,7 +61,7 @@ void membership_handler(
       logger->error("Invalid tier: {}.", std::to_string(tier));
     }
 
-    for (const auto& global_pair : global_hash_ring_map) {
+    for (const auto& global_pair : global_hash_rings) {
       logger->info("Hash ring for tier {} is size {}.",
                    std::to_string(global_pair.first),
                    std::to_string(global_pair.second.size()));
@@ -71,7 +71,7 @@ void membership_handler(
                  new_server_private_ip);
 
     // update hash ring
-    global_hash_ring_map[tier].remove(new_server_public_ip,
+    global_hash_rings[tier].remove(new_server_public_ip,
                                       new_server_private_ip, 0);
     if (tier == 1) {
       memory_tier_storage.erase(new_server_private_ip);
@@ -99,7 +99,7 @@ void membership_handler(
       logger->error("Invalid tier: {}.", std::to_string(tier));
     }
 
-    for (const auto& global_pair : global_hash_ring_map) {
+    for (const auto& global_pair : global_hash_rings) {
       logger->info("Hash ring for tier {} is size {}.",
                    std::to_string(global_pair.first),
                    std::to_string(global_pair.second.size()));

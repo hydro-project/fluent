@@ -16,8 +16,8 @@
 #include "monitor/policies.hpp"
 
 void slo_policy(std::shared_ptr<spdlog::logger> logger,
-                map<unsigned, GlobalHashRing>& global_hash_ring_map,
-                map<unsigned, LocalHashRing>& local_hash_ring_map,
+                vector<GlobalHashRing>& global_hash_rings,
+                vector<LocalHashRing>& local_hash_rings,
                 TimePoint& grace_start,
                 SummaryStats& ss, unsigned& memory_node_number,
                 unsigned& adding_memory_node, bool& removing_memory_node,
@@ -94,8 +94,8 @@ void slo_policy(std::shared_ptr<spdlog::logger> logger,
         }
       }
 
-      change_replication_factor(requests, global_hash_ring_map,
-                                local_hash_ring_map, routing_address, placement,
+      change_replication_factor(requests, global_hash_rings,
+                                local_hash_rings, routing_address, placement,
                                 pushers, mt, response_puller, logger, rid);
     }
   } else if (ss.min_memory_occupancy < 0.05 && !removing_memory_node &&
@@ -116,7 +116,7 @@ void slo_policy(std::shared_ptr<spdlog::logger> logger,
 
         if (!is_metadata(key) &&
             placement[key].global_replication_map_[1] ==
-                (global_hash_ring_map[1].size() / kVirtualThreadNum)) {
+                (global_hash_rings[1].size() / kVirtualThreadNum)) {
           unsigned new_mem_rep = placement[key].global_replication_map_[1] - 1;
           unsigned new_ebs_rep =
               std::max(kMinimumReplicaNumber - new_mem_rep, (unsigned)0);
@@ -132,8 +132,8 @@ void slo_policy(std::shared_ptr<spdlog::logger> logger,
         }
       }
 
-      change_replication_factor(requests, global_hash_ring_map,
-                                local_hash_ring_map, routing_address, placement,
+      change_replication_factor(requests, global_hash_rings,
+                                local_hash_rings, routing_address, placement,
                                 pushers, mt, response_puller, logger, rid);
 
       ServerThread node = ServerThread(ss.min_occupancy_memory_public_ip,

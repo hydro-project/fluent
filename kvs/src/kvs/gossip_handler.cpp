@@ -18,8 +18,8 @@
 
 void gossip_handler(
     unsigned& seed, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     PendingMap<PendingGossip>& pending_gossip_map, map<Key, KeyInfo>& placement,
     ServerThread& wt,
@@ -36,7 +36,7 @@ void gossip_handler(
     Key key = tuple.key();
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-        global_hash_ring_map, local_hash_ring_map, placement, pushers,
+        global_hash_rings, local_hash_rings, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
@@ -67,7 +67,7 @@ void gossip_handler(
         } else {
           kHashRingUtil->issue_replication_factor_request(
               wt.get_replication_factor_connect_addr(), key,
-              global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
+              global_hash_rings[1], local_hash_rings[1], pushers, seed);
 
           pending_gossip_map[key].push_back(
               PendingGossip(tuple.lattice_type(), tuple.payload()));

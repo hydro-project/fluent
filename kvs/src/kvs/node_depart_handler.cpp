@@ -16,7 +16,7 @@
 
 void node_depart_handler(unsigned thread_id, Address public_ip,
                          Address private_ip,
-                         map<unsigned, GlobalHashRing>& global_hash_ring_map,
+                         vector<GlobalHashRing>& global_hash_rings,
                          std::shared_ptr<spdlog::logger> logger,
                          string& serialized, SocketCache& pushers) {
   vector<string> v;
@@ -29,7 +29,7 @@ void node_depart_handler(unsigned thread_id, Address public_ip,
                departing_server_public_ip, departing_server_private_ip, tier);
 
   // update hash ring
-  global_hash_ring_map[tier].remove(departing_server_public_ip,
+  global_hash_rings[tier].remove(departing_server_public_ip,
                                     departing_server_private_ip, 0);
 
   if (thread_id == 0) {
@@ -40,7 +40,7 @@ void node_depart_handler(unsigned thread_id, Address public_ip,
                                          .get_node_depart_connect_addr()]);
     }
 
-    for (const auto& pair : global_hash_ring_map) {
+    for (const auto& pair : global_hash_rings) {
       logger->info("Hash ring for tier {} size is {}.",
                    std::to_string(pair.first),
                    std::to_string(pair.second.size()));

@@ -16,8 +16,8 @@
 #include "requests.hpp"
 
 void collect_internal_stats(
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map, SocketCache& pushers,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings, SocketCache& pushers,
     MonitoringThread& mt, zmq::socket_t& response_puller,
     std::shared_ptr<spdlog::logger> logger, unsigned& rid,
     map<Key, map<Address, unsigned>>& key_access_frequency,
@@ -27,25 +27,25 @@ void collect_internal_stats(
     AccessStats& ebs_tier_access) {
   map<Address, KeyRequest> addr_request_map;
 
-  for (const auto& global_pair : global_hash_ring_map) {
+  for (const auto& global_pair : global_hash_rings) {
     unsigned tier_id = global_pair.first;
     auto hash_ring = global_pair.second;
 
     for (const ServerThread& st : hash_ring.get_unique_servers()) {
       for (unsigned i = 0; i < kTierDataMap[tier_id].thread_number_; i++) {
         Key key = get_metadata_key(st, tier_id, i, MetadataType::server_stats);
-        prepare_metadata_get_request(key, global_hash_ring_map[1],
-                                     local_hash_ring_map[1], addr_request_map,
+        prepare_metadata_get_request(key, global_hash_rings[1],
+                                     local_hash_rings[1], addr_request_map,
                                      mt, rid);
 
         key = get_metadata_key(st, tier_id, i, MetadataType::key_access);
-        prepare_metadata_get_request(key, global_hash_ring_map[1],
-                                     local_hash_ring_map[1], addr_request_map,
+        prepare_metadata_get_request(key, global_hash_rings[1],
+                                     local_hash_rings[1], addr_request_map,
                                      mt, rid);
 
         key = get_metadata_key(st, tier_id, i, MetadataType::key_size);
-        prepare_metadata_get_request(key, global_hash_ring_map[1],
-                                     local_hash_ring_map[1], addr_request_map,
+        prepare_metadata_get_request(key, global_hash_rings[1],
+                                     local_hash_rings[1], addr_request_map,
                                      mt, rid);
       }
     }

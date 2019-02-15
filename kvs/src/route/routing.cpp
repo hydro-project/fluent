@@ -58,8 +58,8 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
   }
 
   // initialize hash ring maps
-  map<unsigned, GlobalHashRing> global_hash_ring_map;
-  map<unsigned, LocalHashRing> local_hash_ring_map;
+  vector<GlobalHashRing> global_hash_rings;
+  vector<LocalHashRing> local_hash_rings;
 
   // pending events for asynchrony
   PendingMap<std::pair<Address, string>> pending_key_request_map;
@@ -67,7 +67,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
   // form local hash rings
   for (const auto &tier_pair : kTierDataMap) {
     for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_ring_map[tier_pair.first].insert(ip, ip, 0, tid);
+      local_hash_rings[tier_pair.first].insert(ip, ip, 0, tid);
     }
   }
 
@@ -107,14 +107,14 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
     // only relavant for the seed node
     if (pollitems[0].revents & ZMQ_POLLIN) {
       kZmqUtil->recv_string(&addr_responder);
-      auto serialized = seed_handler(logger, global_hash_ring_map);
+      auto serialized = seed_handler(logger, global_hash_rings);
       kZmqUtil->send_string(serialized, &addr_responder);
     }
 
     // handle a join or depart event coming from the server side
     if (pollitems[1].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&notify_puller);
-      membership_handler(logger, serialized, pushers, global_hash_ring_map,
+      membership_handler(logger, serialized, pushers, global_hash_rings,
                          thread_id, ip);
     }
 
@@ -122,7 +122,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
     if (pollitems[2].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&replication_factor_puller);
       replication_response_handler(logger, serialized, pushers, rt,
-                                   global_hash_ring_map, local_hash_ring_map,
+                                   global_hash_rings, local_hash_rings,
                                    placement, pending_key_request_map, seed);
     }
 
@@ -135,8 +135,8 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
 
     if (pollitems[4].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&key_address_puller);
-      address_handler(logger, serialized, pushers, rt, global_hash_ring_map,
-                      local_hash_ring_map, placement, pending_key_request_map,
+      address_handler(logger, serialized, pushers, rt, global_hash_rings,
+                      local_hash_rings, placement, pending_key_request_map,
                       seed);
     }
   }

@@ -15,12 +15,12 @@
 #include "route/routing_handlers.hpp"
 
 string seed_handler(std::shared_ptr<spdlog::logger> logger,
-                    map<unsigned, GlobalHashRing>& global_hash_ring_map) {
+                    vector<GlobalHashRing>& global_hash_rings) {
   logger->info("Received an address request.");
 
   TierMembership membership;
 
-  for (const auto& global_pair : global_hash_ring_map) {
+  for (const auto& global_pair : global_hash_rings) {
     unsigned tier_id = global_pair.first;
     auto hash_ring = global_pair.second;
 

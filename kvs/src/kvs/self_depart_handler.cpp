@@ -17,14 +17,14 @@
 void self_depart_handler(
     unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     map<Key, KeyInfo>& placement, vector<Address>& routing_address,
     vector<Address>& monitoring_address, ServerThread& wt, SocketCache& pushers,
     SerializerMap& serializers) {
   logger->info("Node is departing.");
-  global_hash_ring_map[kSelfTierId].remove(public_ip, private_ip, 0);
+  global_hash_rings[kSelfTierId].remove(public_ip, private_ip, 0);
 
   // thread 0 notifies other nodes in the cluster (of all types) that it is
   // leaving the cluster
@@ -32,7 +32,7 @@ void self_depart_handler(
     string msg =
         std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip;
 
-    for (const auto& global_pair : global_hash_ring_map) {
+    for (const auto& global_pair : global_hash_rings) {
       GlobalHashRing hash_ring = global_pair.second;
 
       for (const ServerThread& st : hash_ring.get_unique_servers()) {
@@ -69,7 +69,7 @@ void self_depart_handler(
     Key key = key_pair.first;
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-        global_hash_ring_map, local_hash_ring_map, placement, pushers,
+        global_hash_rings, local_hash_rings, placement, pushers,
         kAllTierIds, succeed, seed);
 
     if (succeed) {

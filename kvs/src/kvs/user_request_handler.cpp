@@ -19,8 +19,8 @@
 void user_request_handler(
     unsigned& total_accesses, unsigned& seed, string& serialized,
     std::shared_ptr<spdlog::logger> logger,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     PendingMap<PendingRequest>& pending_request_map,
     map<Key, std::multiset<TimePoint>>& key_access_timestamp,
@@ -50,7 +50,7 @@ void user_request_handler(
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-        global_hash_ring_map, local_hash_ring_map, placement, pushers,
+        global_hash_rings, local_hash_rings, placement, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
@@ -67,7 +67,7 @@ void user_request_handler(
           // factor request and make the request pending
           kHashRingUtil->issue_replication_factor_request(
               wt.get_replication_factor_connect_addr(), key,
-              global_hash_ring_map[1], local_hash_ring_map[1], pushers, seed);
+              global_hash_rings[1], local_hash_rings[1], pushers, seed);
 
           pending_request_map[key].push_back(
               PendingRequest(request_type, tuple.lattice_type(), payload,

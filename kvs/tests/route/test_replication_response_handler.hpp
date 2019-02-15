@@ -56,7 +56,7 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   response.SerializeToString(&serialized);
 
   replication_response_handler(logger, serialized, pushers, rt,
-                               global_hash_ring_map, local_hash_ring_map,
+                               global_hash_rings, local_hash_rings,
                                placement, pending_key_request_map, seed);
 
   EXPECT_EQ(placement[key].global_replication_map_[1], 2);

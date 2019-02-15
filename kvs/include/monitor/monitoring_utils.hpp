@@ -115,8 +115,8 @@ void prepare_metadata_put_request(const Key& key, const string& value,
                                   MonitoringThread& mt, unsigned& rid);
 
 void collect_internal_stats(
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map, SocketCache& pushers,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings, SocketCache& pushers,
     MonitoringThread& mt, zmq::socket_t& response_puller,
     std::shared_ptr<spdlog::logger> logger, unsigned& rid,
     map<Key, map<Address, unsigned>>& key_access_frequency,
@@ -148,8 +148,8 @@ void prepare_replication_factor_update(
 
 void change_replication_factor(
     map<Key, KeyInfo>& requests,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
+    vector<LocalHashRing>& local_hash_rings,
     vector<Address>& routing_address, map<Key, KeyInfo>& placement,
     SocketCache& pushers, MonitoringThread& mt, zmq::socket_t& response_puller,
     std::shared_ptr<spdlog::logger> logger, unsigned& rid);

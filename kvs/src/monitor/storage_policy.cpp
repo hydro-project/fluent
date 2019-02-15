@@ -17,7 +17,7 @@
 
 void storage_policy(
     std::shared_ptr<spdlog::logger> logger,
-    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    vector<GlobalHashRing>& global_hash_rings,
     TimePoint& grace_start,
     SummaryStats& ss, unsigned& memory_node_number, unsigned& ebs_node_number,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
@@ -54,8 +54,8 @@ void storage_policy(
 
     if (time_elapsed > kGracePeriod) {
       // pick a random ebs node and send remove node command
-      auto node = next(global_hash_ring_map[2].begin(),
-                       rand() % global_hash_ring_map[2].size())
+      auto node = next(global_hash_rings[2].begin(),
+                       rand() % global_hash_rings[2].size())
                       ->second;
       remove_node(logger, node, "ebs", removing_ebs_node, pushers,
                   departing_node_map, mt);

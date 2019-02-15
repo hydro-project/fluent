@@ -27,8 +27,8 @@ class RoutingHandlerTest : public ::testing::Test {
  protected:
   Address ip = "127.0.0.1";
   unsigned thread_id = 0;
-  map<unsigned, GlobalHashRing> global_hash_ring_map;
-  map<unsigned, LocalHashRing> local_hash_ring_map;
+  vector<GlobalHashRing> global_hash_rings;
+  vector<LocalHashRing> local_hash_rings;
   map<Key, KeyInfo> placement;
   PendingMap<std::pair<Address, string>> pending_key_request_map;
   zmq::context_t context;
@@ -37,7 +37,7 @@ class RoutingHandlerTest : public ::testing::Test {
 
   RoutingHandlerTest() {
     rt = RoutingThread(ip, thread_id);
-    global_hash_ring_map[1].insert(ip, ip, 0, thread_id);
+    global_hash_rings[1].insert(ip, ip, 0, thread_id);
   }
 
  public:
