@@ -44,7 +44,7 @@ void gossip_handler(
       if (std::find(threads.begin(), threads.end(), wt) !=
           threads.end()) {  // this means this worker thread is one of the
                             // responsible threads
-        if (key_stat_map[key].second != LatticeType::NO &&
+        if (key_stat_map.find(key) != key_stat_map.end() &&
             key_stat_map[key].second != tuple.lattice_type()) {
           logger->error("Lattice type mismatch: {} from query but {} expected.",
                         LatticeType_Name(tuple.lattice_type()),

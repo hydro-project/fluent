@@ -87,8 +87,7 @@ class ServerHandlerTest : public ::testing::Test {
 
   // NOTE: Pass in an empty string to avoid putting something into the
   // serializer
-  std::string get_key_request(Key key, LatticeType lattice_type,
-                              std::string ip) {
+  std::string get_key_request(Key key, std::string ip) {
     KeyRequest request;
     request.set_type(RequestType::GET);
     request.set_response_address(
@@ -97,7 +96,6 @@ class ServerHandlerTest : public ::testing::Test {
 
     KeyTuple* tp = request.add_tuples();
     tp->set_key(std::move(key));
-    tp->set_lattice_type(std::move(lattice_type));
 
     std::string request_str;
     request.SerializeToString(&request_str);

@@ -79,39 +79,46 @@ void user_request_handler(
                              response_address, response_id));
         }
       } else {  // if we know the responsible threads, we process the request
-        if (key_stat_map[key].second != LatticeType::NO &&
-            key_stat_map[key].second != tuple.lattice_type()) {
-          logger->error("Lattice type mismatch: {} from query but {} expected.",
-                        LatticeType_Name(tuple.lattice_type()),
-                        key_stat_map[key].second);
-        } else {
-          KeyTuple* tp = response.add_tuples();
-          tp->set_key(key);
-          tp->set_lattice_type(tuple.lattice_type());
+        KeyTuple* tp = response.add_tuples();
+        tp->set_key(key);
 
-          if (request_type == "GET") {
-            auto res = process_get(key, serializers[tuple.lattice_type()]);
+        if (request_type == "GET") {
+          if (key_stat_map.find(key) == key_stat_map.end()) {
+            tp->set_error(1);
+          } else {
+            auto res = process_get(key, serializers[key_stat_map[key].second]);
+            tp->set_lattice_type(key_stat_map[key].second);
             tp->set_payload(res.first);
             tp->set_error(res.second);
-          } else if (request_type == "PUT") {
+          }
+        } else if (request_type == "PUT") {
+          if (tuple.lattice_type() == LatticeType::NO) {
+            logger->error("PUT request missing lattice type.");
+          } else if (key_stat_map.find(key) != key_stat_map.end() &&
+                     key_stat_map[key].second != tuple.lattice_type()) {
+            logger->error(
+                "Lattice type mismatch: {} from query but {} expected.",
+                LatticeType_Name(tuple.lattice_type()),
+                key_stat_map[key].second);
+          } else {
             process_put(key, tuple.lattice_type(), payload,
                         serializers[tuple.lattice_type()], key_stat_map);
 
             local_changeset.insert(key);
             tp->set_error(0);
-          } else {
-            logger->error("Unknown request type {} in user request handler.",
-                          request_type);
           }
-
-          if (tuple.has_address_cache_size() &&
-              tuple.address_cache_size() != threads.size()) {
-            tp->set_invalidate(true);
-          }
-
-          key_access_timestamp[key].insert(std::chrono::system_clock::now());
-          total_accesses += 1;
+        } else {
+          logger->error("Unknown request type {} in user request handler.",
+                        request_type);
         }
+
+        if (tuple.has_address_cache_size() &&
+            tuple.address_cache_size() != threads.size()) {
+          tp->set_invalidate(true);
+        }
+
+        key_access_timestamp[key].insert(std::chrono::system_clock::now());
+        total_accesses += 1;
       }
     } else {
       pending_request_map[key].push_back(
