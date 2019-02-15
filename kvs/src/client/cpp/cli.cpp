@@ -32,23 +32,23 @@ void handle_request(KvsClient& client, std::string input) {
   std::string value;
 
   if (v[0] == "GET") {
-    std::cout << client.get(key);
+    std::cout << client.get(key) << std::endl;
   } else if (v[0] == "PUT") {
     if (client.put(v[1], v[2])) {
-      std::cout << "Success!";
+      std::cout << "Success!" << std::endl;
     } else {
-      std::cout << "Failure!";
+      std::cout << "Failure!" << std::endl;
     }
   } else if (v[0] == "GET_ALL") {
     auto responses = client.get_all(key);
     for (const auto& response : responses) {
-      std::cout << response;
+      std::cout << response << std::endl;
     }
   } else if (v[0] == "PUT_ALL") {
     if (client.put_all(v[1], v[2])) {
-      std::cout << "Success!";
+      std::cout << "Success!" << std::endl;
     } else {
-      std::cout << "Failure!";
+      std::cout << "Failure!" << std::endl;
     }
   } else {
     std::cout << "Unrecognized command " << v[0]
@@ -76,8 +76,8 @@ void run(KvsClient& client, std::string filename) {
 }
 
 int main(int argc, char* argv[]) {
-  if (argc > 2) {
-    std::cerr << "Usage: " << argv[0] << "<filename>" << std::endl;
+  if (argc < 2 || argc > 3) {
+    std::cerr << "Usage: " << argv[0] << "conf-file <input-file>" << std::endl;
     std::cerr
         << "Filename is optional. Omit the filename to run in interactive mode."
         << std::endl;
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
   }
 
   // read the YAML conf
-  YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
+  YAML::Node conf = YAML::LoadFile(argv[1]);
   kRoutingThreadCount = conf["threads"]["routing"].as<unsigned>();
   kDefaultLocalReplication = conf["replication"]["local"].as<unsigned>();
 
@@ -107,9 +107,9 @@ int main(int argc, char* argv[]) {
   }
 
   KvsClient client(routing_addresses, kRoutingThreadCount, ip, 0, 10000, local);
-  if (argc == 1) {
+  if (argc == 2) {
     run(client);
   } else {
-    run(client, argv[1]);
+    run(client, argv[2]);
   }
 }

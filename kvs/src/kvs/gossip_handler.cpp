@@ -59,7 +59,7 @@ void gossip_handler(
             if (gossip_map.find(thread.get_gossip_connect_addr()) ==
                 gossip_map.end()) {
               gossip_map[thread.get_gossip_connect_addr()].set_type(
-                  get_request_type("PUT"));
+                  RequestType::PUT);
             }
 
             prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key,

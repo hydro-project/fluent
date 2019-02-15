@@ -102,8 +102,11 @@ class KvsClient {
    */
   std::string get(Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key);
-    request.set_type(get_request_type("GET"));
+    KeyTuple* tuple = prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
+    // NOTE: This is ignored, so it doesn't matter; would be nice to find a way
+    // to avoid it in the future.
+    tuple->set_lattice_type(LatticeType::LWW);
 
     KeyResponse response = try_request(request, trial_limit);
 
@@ -111,13 +114,13 @@ class KvsClient {
       return "";
     }
 
-    KeyTuple tuple = response.tuples(0);
-    if (tuple.error() == 1) {
+    KeyTuple rtuple = response.tuples(0);
+    if (rtuple.error() == 1) {
       logger_->info("Key {} does not exist and could not be retrieved.", key);
       return "";
     }
 
-    return tuple.payload();
+    return rtuple.payload();
   }
 
   /**
@@ -132,6 +135,7 @@ class KvsClient {
 
   /**
    * Issue a PUT request to the KVS.
+   * TODO(vikram): add set lattice support
    *
    * We return a decoded string as a response, but if no worker threads are
    * contactable from our client, we will either recurse infinitely while
@@ -141,8 +145,9 @@ class KvsClient {
   bool put(Key key, std::string value, unsigned trial_limit) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
-    request.set_type(get_request_type("PUT"));
-    tuple->set_payload(value);
+    request.set_type(RequestType::PUT);
+    tuple->set_lattice_type(LatticeType::LWW);
+    tuple->set_payload(serialize(generate_timestamp(0), value));
 
     KeyResponse response = try_request(request, trial_limit);
 
@@ -170,8 +175,9 @@ class KvsClient {
   bool put_all(Key key, std::string value, unsigned trial_limit) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
-    request.set_type(get_request_type("PUT"));
-    tuple->set_payload(value);
+    request.set_type(RequestType::PUT);
+    tuple->set_lattice_type(LatticeType::LWW);
+    tuple->set_payload(serialize(generate_timestamp(0), value));
 
     std::vector<KeyResponse> responses =
         try_multi_request(request, trial_limit);
@@ -199,8 +205,11 @@ class KvsClient {
    */
   std::vector<std::string> get_all(Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key);
-    request.set_type(get_request_type("GET"));
+    KeyTuple* tuple = prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
+    // NOTE: This is ignored, so it doesn't matter; would be nice to find a way
+    // to avoid it in the future.
+    tuple->set_lattice_type(LatticeType::LWW);
 
     std::vector<KeyResponse> responses =
         try_multi_request(request, trial_limit);
@@ -321,7 +330,9 @@ class KvsClient {
 
     // we only get NULL back for the worker thread if the query to the routing
     // tier timed out, which should never happen.
+    std::cout << "Attempting to retrieve a worker thread." << std::endl;
     Address worker = get_worker_thread(request.tuples(0).key());
+    std::cout << "Retrieved thread " << worker << std::endl;
     if (worker.length() == 0) {
       return bad_response_;
     }
@@ -443,7 +454,7 @@ class KvsClient {
    * NULL is returned.
    */
   std::unordered_set<Address> get_all_worker_threads(Key key) {
-    if (key_address_cache_.find(key) == key_address_cache_.end()) {
+    if (key_address_cache_.find(key) == key_address_cache_.end() || key_address_cache_[key].size() == 0) {
       std::unordered_set<Address> addresses = query_routing(key);
 
       if (addresses.size() == 0) {
@@ -532,8 +543,9 @@ class KvsClient {
       }
 
       // send the actual query to the routing tier
+      Address rt_thread = get_routing_thread();
       response = make_request<KeyAddressRequest, KeyAddressResponse>(
-          request, socket_cache_[get_routing_thread()], key_address_puller_,
+          request, socket_cache_[rt_thread], key_address_puller_,
           succeed);
 
       if (!succeed) {

@@ -72,9 +72,15 @@ inline void split(const std::string& s, char delim,
 }
 
 // form the timestamp given a time and a thread id
-inline unsigned long long generate_timestamp(const unsigned long long& time,
-                                             const unsigned& id) {
+inline unsigned long long get_time(){
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch())
+                    .count();
+}
+
+inline unsigned long long generate_timestamp(const unsigned& id) {
   unsigned pow = 10;
+  auto time = get_time();
   while (id >= pow) pow *= 10;
   return time * pow + id;
 }
@@ -92,13 +98,6 @@ inline void prepare_put_tuple(KeyRequest& req, Key key,
   tp->set_key(std::move(key));
   tp->set_lattice_type(std::move(lattice_type));
   tp->set_payload(std::move(payload));
-}
-
-inline RequestType get_request_type(const std::string& type_str) {
-  RequestType type;
-  RequestType_Parse(type_str, &type);
-
-  return type;
 }
 
 inline std::string serialize(const LWWPairLattice<std::string>& l) {
@@ -129,6 +128,7 @@ inline std::string serialize(const SetLattice<std::string>& l) {
   set_value.SerializeToString(&serialized);
   return serialized;
 }
+
 
 struct lattice_type_hash {
   std::size_t operator()(const LatticeType& lt) const {

@@ -90,7 +90,7 @@ class ServerHandlerTest : public ::testing::Test {
   std::string get_key_request(Key key, LatticeType lattice_type,
                               std::string ip) {
     KeyRequest request;
-    request.set_type(get_request_type("GET"));
+    request.set_type(RequestType::GET);
     request.set_response_address(
         UserThread(ip, 0).get_request_pulling_connect_addr());
     request.set_request_id(kRequestId);
@@ -108,7 +108,7 @@ class ServerHandlerTest : public ::testing::Test {
   std::string put_key_request(Key key, LatticeType lattice_type,
                               std::string payload, std::string ip) {
     KeyRequest request;
-    request.set_type(get_request_type("PUT"));
+    request.set_type(RequestType::PUT);
     request.set_response_address(
         UserThread(ip, 0).get_request_pulling_connect_addr());
     request.set_request_id(kRequestId);
