@@ -16,8 +16,8 @@
 
 TEST_F(ServerHandlerTest, SimpleGossipReceive) {
   Key key = "key";
-  std::string value = "value";
-  std::string put_request = put_key_request(key, value, ip);
+  string value = "value";
+  string put_request = put_key_request(key, value, ip);
 
   unsigned total_access = 0;
   unsigned seed = 0;
@@ -36,12 +36,12 @@ TEST_F(ServerHandlerTest, SimpleGossipReceive) {
 
 TEST_F(ServerHandlerTest, GossipUpdate) {
   Key key = "key";
-  std::string value = "value1";
+  string value = "value1";
   serializer->put(key, value, (unsigned)0);
 
   value = "value2";
 
-  std::string put_request = put_key_request(key, value, ip);
+  string put_request = put_key_request(key, value, ip);
 
   unsigned total_access = 0;
   unsigned seed = 0;

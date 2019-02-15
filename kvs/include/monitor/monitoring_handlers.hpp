@@ -19,27 +19,24 @@
 #include "spdlog/spdlog.h"
 
 void membership_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    std::chrono::time_point<std::chrono::system_clock>& grace_start,
-    std::vector<Address>& routing_address, StorageStat& memory_tier_storage,
-    StorageStat& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
+    TimePoint& grace_start,
+    vector<Address>& routing_address, StorageStats& memory_tier_storage,
+    StorageStats& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
     OccupancyStats& ebs_tier_occupancy,
-    std::unordered_map<Key, std::unordered_map<Address, unsigned>>&
-        key_access_frequency);
+    map<Key, map<Address, unsigned>>& key_access_frequency);
 
 void depart_done_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<Address, unsigned>& departing_node_map,
-    Address management_address, bool& removing_memory_node,
-    bool& removing_ebs_node, SocketCache& pushers,
-    std::chrono::time_point<std::chrono::system_clock>& grace_start);
+    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    map<Address, unsigned>& departing_node_map, Address management_address,
+    bool& removing_memory_node, bool& removing_ebs_node, SocketCache& pushers,
+    TimePoint& grace_start);
 
-void feedback_handler(std::string& serialized,
-                      std::unordered_map<std::string, double>& user_latency,
-                      std::unordered_map<std::string, double>& user_throughput,
-                      std::unordered_map<Key, std::pair<double, unsigned>>&
-                          latency_miss_ratio_map);
+void feedback_handler(
+    string& serialized, map<string, double>& user_latency,
+    map<string, double>& user_throughput,
+    map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map);
 
 #endif  // SRC_INCLUDE_MONITOR_MONITORING_HANDLERS_HPP_

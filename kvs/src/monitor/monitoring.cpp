@@ -29,7 +29,7 @@ unsigned kDefaultLocalReplication;
 unsigned kMinimumReplicaNumber;
 
 // read-only per-tier metadata
-std::unordered_map<unsigned, TierData> kTierDataMap;
+map<unsigned, TierData> kTierDataMap;
 
 ZmqUtil zmq_util;
 ZmqUtilInterface *kZmqUtil = &zmq_util;
@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
       TierData(kEbsThreadCount, kDefaultGlobalEbsReplication, kEbsNodeCapacity);
 
   // initialize hash ring maps
-  std::unordered_map<unsigned, GlobalHashRing> global_hash_ring_map;
-  std::unordered_map<unsigned, LocalHashRing> local_hash_ring_map;
+  map<unsigned, GlobalHashRing> global_hash_ring_map;
+  map<unsigned, LocalHashRing> local_hash_ring_map;
 
   // form local hash rings
   for (const auto &tier_pair : kTierDataMap) {
@@ -83,41 +83,40 @@ int main(int argc, char *argv[]) {
   }
 
   // keep track of the keys' replication info
-  std::unordered_map<Key, KeyInfo> placement;
+  map<Key, KeyInfo> placement;
   // warm up for benchmark
   // warmup_placement_to_defaults(placement);
 
   unsigned memory_node_number;
   unsigned ebs_node_number;
   // keep track of the keys' access by worker address
-  std::unordered_map<Key, std::unordered_map<Address, unsigned>>
-      key_access_frequency;
+  map<Key, map<Address, unsigned>> key_access_frequency;
   // keep track of the keys' access summary
-  std::unordered_map<Key, unsigned> key_access_summary;
+  map<Key, unsigned> key_access_summary;
   // keep track of the size of each key-value pair
-  std::unordered_map<Key, unsigned> key_size;
+  map<Key, unsigned> key_size;
   // keep track of memory tier storage consumption
-  StorageStat memory_tier_storage;
+  StorageStats memory_tier_storage;
   // keep track of ebs tier storage consumption
-  StorageStat ebs_tier_storage;
+  StorageStats ebs_tier_storage;
   // keep track of memory tier thread occupancy
   OccupancyStats memory_tier_occupancy;
   // keep track of ebs tier thread occupancy
   OccupancyStats ebs_tier_occupancy;
   // keep track of memory tier hit
-  AccessStat memory_tier_access;
+  AccessStats memory_tier_access;
   // keep track of ebs tier hit
-  AccessStat ebs_tier_access;
+  AccessStats ebs_tier_access;
   // keep track of some summary statistics
   SummaryStats ss;
   // keep track of user latency info
-  std::unordered_map<std::string, double> user_latency;
+  map<string, double> user_latency;
   // keep track of user throughput info
-  std::unordered_map<std::string, double> user_throughput;
+  map<string, double> user_throughput;
   // used for adjusting the replication factors based on feedback from the user
-  std::unordered_map<Key, std::pair<double, unsigned>> latency_miss_ratio_map;
+  map<Key, std::pair<double, unsigned>> latency_miss_ratio_map;
 
-  std::vector<Address> routing_address;
+  vector<Address> routing_address;
 
   MonitoringThread mt = MonitoringThread(ip);
 
@@ -133,7 +132,7 @@ int main(int argc, char *argv[]) {
   response_puller.bind(mt.get_request_pulling_bind_addr());
 
   // keep track of departing node status
-  std::unordered_map<Address, unsigned> departing_node_map;
+  map<Address, unsigned> departing_node_map;
 
   // responsible for both node join and departure
   zmq::socket_t notify_puller(context, ZMQ_PULL);
@@ -147,7 +146,7 @@ int main(int argc, char *argv[]) {
   zmq::socket_t feedback_puller(context, ZMQ_PULL);
   feedback_puller.bind(mt.get_latency_report_bind_addr());
 
-  std::vector<zmq::pollitem_t> pollitems = {
+  vector<zmq::pollitem_t> pollitems = {
       {static_cast<void *>(notify_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void *>(depart_done_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void *>(feedback_puller), 0, ZMQ_POLLIN, 0}};
@@ -172,7 +171,7 @@ int main(int argc, char *argv[]) {
 
     // handle a join or depart event
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      std::string serialized = kZmqUtil->recv_string(&notify_puller);
+      string serialized = kZmqUtil->recv_string(&notify_puller);
       membership_handler(logger, serialized, global_hash_ring_map,
                          adding_memory_node, adding_ebs_node, grace_start,
                          routing_address, memory_tier_storage, ebs_tier_storage,
@@ -182,14 +181,14 @@ int main(int argc, char *argv[]) {
 
     // handle a depart done notification
     if (pollitems[1].revents & ZMQ_POLLIN) {
-      std::string serialized = kZmqUtil->recv_string(&depart_done_puller);
+      string serialized = kZmqUtil->recv_string(&depart_done_puller);
       depart_done_handler(logger, serialized, departing_node_map,
                           management_address, removing_memory_node,
                           removing_ebs_node, pushers, grace_start);
     }
 
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      std::string serialized = kZmqUtil->recv_string(&feedback_puller);
+      string serialized = kZmqUtil->recv_string(&feedback_puller);
       feedback_handler(serialized, user_latency, user_throughput,
                        latency_miss_ratio_map);
     }

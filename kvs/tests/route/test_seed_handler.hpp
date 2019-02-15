@@ -17,7 +17,7 @@
 TEST_F(RoutingHandlerTest, Seed) {
   EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
 
-  std::string serialized = seed_handler(logger, global_hash_ring_map);
+  string serialized = seed_handler(logger, global_hash_ring_map);
 
   EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
 

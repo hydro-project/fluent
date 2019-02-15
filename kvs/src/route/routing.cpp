@@ -15,7 +15,7 @@
 #include "route/routing_handlers.hpp"
 #include "yaml-cpp/yaml.h"
 
-std::unordered_map<unsigned, TierData> kTierDataMap;
+map<unsigned, TierData> kTierDataMap;
 unsigned kDefaultLocalReplication;
 unsigned kRoutingThreadCount;
 
@@ -28,10 +28,9 @@ ZmqUtilInterface *kZmqUtil = &zmq_util;
 HashRingUtil hash_ring_util;
 HashRingUtilInterface *kHashRingUtil = &hash_ring_util;
 
-void run(unsigned thread_id, Address ip,
-         std::vector<Address> monitoring_addresses) {
-  std::string log_file = "log_" + std::to_string(thread_id) + ".txt";
-  std::string logger_name = "routing_logger_" + std::to_string(thread_id);
+void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
+  string log_file = "log_" + std::to_string(thread_id) + ".txt";
+  string logger_name = "routing_logger_" + std::to_string(thread_id);
   auto logger = spdlog::basic_logger_mt(logger_name, log_file, true);
   logger->flush_on(spdlog::level::info);
 
@@ -43,14 +42,14 @@ void run(unsigned thread_id, Address ip,
   // prepare the zmq context
   zmq::context_t context(1);
   SocketCache pushers(&context, ZMQ_PUSH);
-  std::unordered_map<Key, KeyInfo> placement;
+  map<Key, KeyInfo> placement;
 
   // warm up for benchmark
   // warmup_placement_to_defaults(placement);
 
   if (thread_id == 0) {
     // notify monitoring nodes
-    for (const std::string &address : monitoring_addresses) {
+    for (const string &address : monitoring_addresses) {
       kZmqUtil->send_string(
           // add null because it expects two IPs from server nodes...
           "join:0:" + ip + ":NULL",
@@ -59,11 +58,11 @@ void run(unsigned thread_id, Address ip,
   }
 
   // initialize hash ring maps
-  std::unordered_map<unsigned, GlobalHashRing> global_hash_ring_map;
-  std::unordered_map<unsigned, LocalHashRing> local_hash_ring_map;
+  map<unsigned, GlobalHashRing> global_hash_ring_map;
+  map<unsigned, LocalHashRing> local_hash_ring_map;
 
   // pending events for asynchrony
-  PendingMap<std::pair<Address, std::string>> pending_key_request_map;
+  PendingMap<std::pair<Address, string>> pending_key_request_map;
 
   // form local hash rings
   for (const auto &tier_pair : kTierDataMap) {
@@ -95,7 +94,7 @@ void run(unsigned thread_id, Address ip,
   zmq::socket_t key_address_puller(context, ZMQ_PULL);
   key_address_puller.bind(rt.get_key_address_bind_addr());
 
-  std::vector<zmq::pollitem_t> pollitems = {
+  vector<zmq::pollitem_t> pollitems = {
       {static_cast<void *>(addr_responder), 0, ZMQ_POLLIN, 0},
       {static_cast<void *>(notify_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void *>(replication_factor_puller), 0, ZMQ_POLLIN, 0},
@@ -114,29 +113,28 @@ void run(unsigned thread_id, Address ip,
 
     // handle a join or depart event coming from the server side
     if (pollitems[1].revents & ZMQ_POLLIN) {
-      std::string serialized = kZmqUtil->recv_string(&notify_puller);
+      string serialized = kZmqUtil->recv_string(&notify_puller);
       membership_handler(logger, serialized, pushers, global_hash_ring_map,
                          thread_id, ip);
     }
 
     // received replication factor response
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      std::string serialized =
-          kZmqUtil->recv_string(&replication_factor_puller);
+      string serialized = kZmqUtil->recv_string(&replication_factor_puller);
       replication_response_handler(logger, serialized, pushers, rt,
                                    global_hash_ring_map, local_hash_ring_map,
                                    placement, pending_key_request_map, seed);
     }
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
-      std::string serialized =
+      string serialized =
           kZmqUtil->recv_string(&replication_factor_change_puller);
       replication_change_handler(logger, serialized, pushers, placement,
                                  thread_id, ip);
     }
 
     if (pollitems[4].revents & ZMQ_POLLIN) {
-      std::string serialized = kZmqUtil->recv_string(&key_address_puller);
+      string serialized = kZmqUtil->recv_string(&key_address_puller);
       address_handler(logger, serialized, pushers, rt, global_hash_ring_map,
                       local_hash_ring_map, placement, pending_key_request_map,
                       seed);
@@ -167,11 +165,11 @@ int main(int argc, char *argv[]) {
   kDefaultLocalReplication = replication["local"].as<unsigned>();
 
   YAML::Node routing = conf["routing"];
-  Address ip = routing["ip"].as<std::string>();
-  std::vector<Address> monitoring_addresses;
+  Address ip = routing["ip"].as<string>();
+  vector<Address> monitoring_addresses;
 
   for (const YAML::Node &node : routing["monitoring"]) {
-    std::string address = node.as<Address>();
+    string address = node.as<Address>();
     monitoring_addresses.push_back(address);
   }
 
@@ -180,7 +178,7 @@ int main(int argc, char *argv[]) {
   kTierDataMap[2] =
       TierData(kEbsThreadCount, kDefaultGlobalEbsReplication, kEbsNodeCapacity);
 
-  std::vector<std::thread> routing_worker_threads;
+  vector<std::thread> routing_worker_threads;
 
   for (unsigned thread_id = 1; thread_id < kRoutingThreadCount; thread_id++) {
     routing_worker_threads.push_back(

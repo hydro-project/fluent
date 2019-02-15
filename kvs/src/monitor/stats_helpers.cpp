@@ -16,17 +16,16 @@
 #include "requests.hpp"
 
 void collect_internal_stats(
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    SocketCache& pushers, MonitoringThread& mt, zmq::socket_t& response_puller,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map, SocketCache& pushers,
+    MonitoringThread& mt, zmq::socket_t& response_puller,
     std::shared_ptr<spdlog::logger> logger, unsigned& rid,
-    std::unordered_map<Key, std::unordered_map<Address, unsigned>>&
-        key_access_frequency,
-    std::unordered_map<Key, unsigned>& key_size,
-    StorageStat& memory_tier_storage, StorageStat& ebs_tier_storage,
-    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
-    AccessStat& memory_tier_access, AccessStat& ebs_tier_access) {
-  std::unordered_map<Address, KeyRequest> addr_request_map;
+    map<Key, map<Address, unsigned>>& key_access_frequency,
+    map<Key, unsigned>& key_size, StorageStats& memory_tier_storage,
+    StorageStats& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
+    OccupancyStats& ebs_tier_occupancy, AccessStats& memory_tier_access,
+    AccessStats& ebs_tier_access) {
+  map<Address, KeyRequest> addr_request_map;
 
   for (const auto& global_pair : global_hash_ring_map) {
     unsigned tier_id = global_pair.first;
@@ -61,12 +60,12 @@ void collect_internal_stats(
     if (succeed) {
       for (const KeyTuple& tuple : res.tuples()) {
         if (tuple.error() == 0) {
-          std::vector<std::string> tokens = split_metadata_key(tuple.key());
+          vector<string> tokens = split_metadata_key(tuple.key());
 
           Address ip_pair = tokens[1] + "/" + tokens[2];
           unsigned tid = stoi(tokens[3]);
           unsigned tier_id = stoi(tokens[4]);
-          std::string metadata_type = tokens[5];
+          string metadata_type = tokens[5];
 
           LWWValue lww_value;
           lww_value.ParseFromString(tuple.payload());
@@ -121,12 +120,11 @@ void collect_internal_stats(
 }
 
 void compute_summary_stats(
-    std::unordered_map<Key, std::unordered_map<Address, unsigned>>&
-        key_access_frequency,
-    StorageStat& memory_tier_storage, StorageStat& ebs_tier_storage,
+    map<Key, map<Address, unsigned>>& key_access_frequency,
+    StorageStats& memory_tier_storage, StorageStats& ebs_tier_storage,
     OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
-    AccessStat& memory_tier_access, AccessStat& ebs_tier_access,
-    std::unordered_map<Key, unsigned>& key_access_summary, SummaryStats& ss,
+    AccessStats& memory_tier_access, AccessStats& ebs_tier_access,
+    map<Key, unsigned>& key_access_summary, SummaryStats& ss,
     std::shared_ptr<spdlog::logger> logger, unsigned& server_monitoring_epoch) {
   // compute key access summary
   unsigned cnt = 0;
@@ -279,7 +277,7 @@ void compute_summary_stats(
 
     if (node_occupancy < ss.min_memory_occupancy) {
       ss.min_memory_occupancy = node_occupancy;
-      std::vector<std::string> ips;
+      vector<string> ips;
       split(memory_occ.first, '/', ips);
       ss.min_occupancy_memory_public_ip = ips[0];
       ss.min_occupancy_memory_private_ip = ips[1];
@@ -338,10 +336,10 @@ void compute_summary_stats(
                std::to_string(ss.avg_ebs_occupancy));
 }
 
-void collect_external_stats(
-    std::unordered_map<std::string, double>& user_latency,
-    std::unordered_map<std::string, double>& user_throughput, SummaryStats& ss,
-    std::shared_ptr<spdlog::logger> logger) {
+void collect_external_stats(map<string, double>& user_latency,
+                            map<string, double>& user_throughput,
+                            SummaryStats& ss,
+                            std::shared_ptr<spdlog::logger> logger) {
   // gather latency info
   if (user_latency.size() > 0) {
     // compute latency from users

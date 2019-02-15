@@ -22,10 +22,10 @@
 // metadata flag = 0 means the key is  metadata; otherwise, it is  regular data
 ServerThreadList HashRingUtil::get_responsible_threads(
     Address response_address, const Key& key, bool metadata,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-    const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) {
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    map<Key, KeyInfo>& placement, SocketCache& pushers,
+    const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) {
   if (metadata) {
     succeed = true;
     return kHashRingUtil->get_responsible_threads_metadata(
@@ -47,7 +47,7 @@ ServerThreadList HashRingUtil::get_responsible_threads(
         for (const ServerThread& thread : threads) {
           Address public_ip = thread.get_public_ip();
           Address private_ip = thread.get_private_ip();
-          std::unordered_set<unsigned> tids = responsible_local(
+          set<unsigned> tids = responsible_local(
               key, placement[key].local_replication_map_[tier_id],
               local_hash_ring_map[tier_id]);
 
@@ -91,10 +91,9 @@ ServerThreadList responsible_global(const Key& key, unsigned global_rep,
 
 // assuming the replication factor will never be greater than the number of
 // worker threads return a set of tids that are responsible for a key
-std::unordered_set<unsigned> responsible_local(const Key& key,
-                                               unsigned local_rep,
-                                               LocalHashRing& local_hash_ring) {
-  std::unordered_set<unsigned> tids;
+set<unsigned> responsible_local(const Key& key, unsigned local_rep,
+                                LocalHashRing& local_hash_ring) {
+  set<unsigned> tids;
   auto pos = local_hash_ring.find(key);
 
   if (pos != local_hash_ring.end()) {
@@ -125,8 +124,8 @@ ServerThreadList HashRingUtilInterface::get_responsible_threads_metadata(
   for (const ServerThread& thread : threads) {
     Address public_ip = thread.get_public_ip();
     Address private_ip = thread.get_private_ip();
-    std::unordered_set<unsigned> tids = responsible_local(
-        key, kDefaultLocalReplication, local_memory_hash_ring);
+    set<unsigned> tids = responsible_local(key, kDefaultLocalReplication,
+                                           local_memory_hash_ring);
 
     for (const unsigned& tid : tids) {
       threads.push_back(ServerThread(public_ip, private_ip, tid));
@@ -154,7 +153,7 @@ void HashRingUtilInterface::issue_replication_factor_request(
   key_request.set_response_address(response_address);
 
   prepare_get_tuple(key_request, replication_key, LatticeType::LWW);
-  std::string serialized;
+  string serialized;
   key_request.SerializeToString(&serialized);
   kZmqUtil->send_string(serialized, &pushers[target_address]);
 }

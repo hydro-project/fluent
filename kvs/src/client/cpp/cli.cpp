@@ -13,7 +13,6 @@
 //  limitations under the License.
 
 #include <fstream>
-#include <unordered_set>
 
 #include "client.hpp"
 #include "yaml-cpp/yaml.h"
@@ -24,17 +23,17 @@ unsigned kDefaultLocalReplication;
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
-void print_set(std::unordered_set<std::string> set) {
+void print_set(set<string> set) {
   std::cout << "{ ";
-  for (const std::string& val : set) {
+  for (const string& val : set) {
     std::cout << val << " ";
   }
 
   std::cout << "}" << std::endl;
 }
 
-void handle_request(KvsClient& client, std::string input) {
-  std::vector<std::string> v;
+void handle_request(KvsClient& client, string input) {
+  vector<string> v;
   split(input, ' ', v);
 
   if (v[0] == "GET") {
@@ -48,7 +47,7 @@ void handle_request(KvsClient& client, std::string input) {
       std::cout << "Failure!" << std::endl;
     }
   } else if (v[0] == "PUT_SET") {
-    std::unordered_set<std::string> set;
+    set<string> set;
     for (int i = 2; i < v.size(); i++) {
       set.insert(v[i]);
     }
@@ -64,8 +63,7 @@ void handle_request(KvsClient& client, std::string input) {
       std::cout << response << std::endl;
     }
   } else if (v[0] == "GET_SET_ALL") {
-    std::vector<std::unordered_set<std::string>> result =
-        client.get_set_all(v[1]);
+    vector<set<string>> result = client.get_set_all(v[1]);
 
     for (const auto& set : result) {
       print_set(set);
@@ -77,7 +75,7 @@ void handle_request(KvsClient& client, std::string input) {
       std::cout << "Failure!" << std::endl;
     }
   } else if (v[0] == "PUT_SET_ALL") {
-    std::unordered_set<std::string> set;
+    set<string> set;
     for (int i = 2; i < v.size(); i++) {
       set.insert(v[i]);
     }
@@ -95,7 +93,7 @@ void handle_request(KvsClient& client, std::string input) {
 }
 
 void run(KvsClient& client) {
-  std::string input;
+  string input;
   while (true) {
     std::cout << "kvs> ";
 
@@ -104,8 +102,8 @@ void run(KvsClient& client) {
   }
 }
 
-void run(KvsClient& client, std::string filename) {
-  std::string input;
+void run(KvsClient& client, string filename) {
+  string input;
   std::ifstream infile(filename);
 
   while (getline(infile, input)) {
@@ -130,10 +128,10 @@ int main(int argc, char* argv[]) {
   YAML::Node user = conf["user"];
   Address ip = user["ip"].as<Address>();
 
-  std::vector<Address> routing_addresses;
+  vector<Address> routing_addresses;
   bool local;
   if (YAML::Node elb = user["routing-elb"]) {
-    routing_addresses.push_back(elb.as<std::string>());
+    routing_addresses.push_back(elb.as<string>());
     local = false;
   } else {
     YAML::Node routing = user["routing"];

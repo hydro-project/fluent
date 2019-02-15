@@ -28,9 +28,7 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
   ~HashRing() {}
 
  public:
-  std::unordered_set<ServerThread, ThreadHash> get_unique_servers() {
-    return unique_servers;
-  }
+  std::unordered_set<ServerThread, ThreadHash> get_unique_servers() { return unique_servers; }
 
   bool insert(Address public_ip, Address private_ip, int join_count,
               unsigned tid) {
@@ -71,7 +69,7 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
 
  private:
   std::unordered_set<ServerThread, ThreadHash> unique_servers;
-  std::unordered_map<std::string, int> server_join_count;
+  map<string, int> server_join_count;
 };
 
 typedef HashRing<GlobalHasher> GlobalHashRing;
@@ -81,10 +79,10 @@ class HashRingUtilInterface {
  public:
   virtual ServerThreadList get_responsible_threads(
       Address respond_address, const Key& key, bool metadata,
-      std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-      std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-      std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-      const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) = 0;
+      map<unsigned, GlobalHashRing>& global_hash_ring_map,
+      map<unsigned, LocalHashRing>& local_hash_ring_map,
+      map<Key, KeyInfo>& placement, SocketCache& pushers,
+      const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) = 0;
 
   ServerThreadList get_responsible_threads_metadata(
       const Key& key, GlobalHashRing& global_memory_hash_ring,
@@ -101,18 +99,17 @@ class HashRingUtil : public HashRingUtilInterface {
  public:
   virtual ServerThreadList get_responsible_threads(
       Address respond_address, const Key& key, bool metadata,
-      std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-      std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-      std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-      const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
+      map<unsigned, GlobalHashRing>& global_hash_ring_map,
+      map<unsigned, LocalHashRing>& local_hash_ring_map,
+      map<Key, KeyInfo>& placement, SocketCache& pushers,
+      const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
 };
 
 ServerThreadList responsible_global(const Key& key, unsigned global_rep,
                                     GlobalHashRing& global_hash_ring);
 
-std::unordered_set<unsigned> responsible_local(const Key& key,
-                                               unsigned local_rep,
-                                               LocalHashRing& local_hash_ring);
+set<unsigned> responsible_local(const Key& key, unsigned local_rep,
+                                LocalHashRing& local_hash_ring);
 
 extern HashRingUtilInterface* kHashRingUtil;
 

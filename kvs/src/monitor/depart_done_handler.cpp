@@ -15,12 +15,11 @@
 #include "monitor/monitoring_handlers.hpp"
 
 void depart_done_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<Address, unsigned>& departing_node_map,
-    Address management_address, bool& removing_memory_node,
-    bool& removing_ebs_node, SocketCache& pushers,
-    std::chrono::time_point<std::chrono::system_clock>& grace_start) {
-  std::vector<std::string> tokens;
+    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    map<Address, unsigned>& departing_node_map, Address management_address,
+    bool& removing_memory_node, bool& removing_ebs_node, SocketCache& pushers,
+    TimePoint& grace_start) {
+  vector<string> tokens;
   split(serialized, '_', tokens);
 
   Address departed_public_ip = tokens[0];
@@ -32,7 +31,7 @@ void depart_done_handler(
     departing_node_map[departed_private_ip] -= 1;
 
     if (departing_node_map[departed_private_ip] == 0) {
-      std::string ntype;
+      string ntype;
       if (tier_id == 1) {
         ntype = "memory";
         removing_memory_node = false;
@@ -44,8 +43,8 @@ void depart_done_handler(
       logger->info("Removing {} node {}/{}.", ntype, departed_public_ip,
                    departed_private_ip);
 
-      std::string mgmt_addr = "tcp://" + management_address + ":7001";
-      std::string message = "remove:" + departed_private_ip + ":" + ntype;
+      string mgmt_addr = "tcp://" + management_address + ":7001";
+      string message = "remove:" + departed_private_ip + ":" + ntype;
 
       kZmqUtil->send_string(message, &pushers[mgmt_addr]);
 

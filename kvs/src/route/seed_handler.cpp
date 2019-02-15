@@ -14,9 +14,8 @@
 
 #include "route/routing_handlers.hpp"
 
-std::string seed_handler(
-    std::shared_ptr<spdlog::logger> logger,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map) {
+string seed_handler(std::shared_ptr<spdlog::logger> logger,
+                    map<unsigned, GlobalHashRing>& global_hash_ring_map) {
   logger->info("Received an address request.");
 
   TierMembership membership;
@@ -35,7 +34,7 @@ std::string seed_handler(
     }
   }
 
-  std::string serialized;
+  string serialized;
   membership.SerializeToString(&serialized);
   return serialized;
 }

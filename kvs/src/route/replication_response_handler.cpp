@@ -15,12 +15,12 @@
 #include "route/routing_handlers.hpp"
 
 void replication_response_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
+    std::shared_ptr<spdlog::logger> logger, string& serialized,
     SocketCache& pushers, RoutingThread& rt,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, KeyInfo>& placement,
-    PendingMap<std::pair<Address, std::string>>& pending_key_request_map,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    map<Key, KeyInfo>& placement,
+    PendingMap<std::pair<Address, string>>& pending_key_request_map,
     unsigned& seed) {
   KeyResponse response;
   response.ParseFromString(serialized);
@@ -99,7 +99,7 @@ void replication_response_handler(
       // send the key address response
       key_res.set_error(0);
 
-      std::string serialized;
+      string serialized;
       key_res.SerializeToString(&serialized);
       kZmqUtil->send_string(serialized, &pushers[pending_key_req.first]);
     }

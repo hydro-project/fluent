@@ -18,19 +18,16 @@
 
 void rep_factor_response_handler(
     unsigned& seed, unsigned& total_access,
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
+    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map,
     PendingMap<PendingRequest>& pending_request_map,
     PendingMap<PendingGossip>& pending_gossip_map,
-    std::unordered_map<
-        Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
-        key_access_timestamp,
-    std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
-        serializers,
+    map<Key, std::multiset<TimePoint>>& key_access_timestamp,
+    map<Key, KeyInfo>& placement,
+    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
+    set<Key>& local_changeset, ServerThread& wt,
+    SerializerMap& serializers,
     SocketCache& pushers) {
   KeyResponse response;
   response.ParseFromString(serialized);
@@ -105,7 +102,7 @@ void rep_factor_response_handler(
             tp->add_addresses(thread.get_request_pulling_connect_addr());
           }
 
-          std::string serialized_response;
+          string serialized_response;
           response.SerializeToString(&serialized_response);
           kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
         } else if (responsible && request.addr_ == "") {
@@ -169,7 +166,7 @@ void rep_factor_response_handler(
           key_access_timestamp[key].insert(now);
           total_access += 1;
 
-          std::string serialized_response;
+          string serialized_response;
           response.SerializeToString(&serialized_response);
           kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
         }
@@ -203,7 +200,7 @@ void rep_factor_response_handler(
           }
         }
       } else {
-        std::unordered_map<Address, KeyRequest> gossip_map;
+        map<Address, KeyRequest> gossip_map;
 
         // forward the gossip
         for (const ServerThread& thread : threads) {
@@ -218,7 +215,7 @@ void rep_factor_response_handler(
 
         // redirect gossip
         for (const auto& gossip_pair : gossip_map) {
-          std::string serialized;
+          string serialized;
           gossip_pair.second.SerializeToString(&serialized);
           kZmqUtil->send_string(serialized, &pushers[gossip_pair.first]);
         }

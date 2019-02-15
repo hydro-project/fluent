@@ -38,7 +38,7 @@ double get_zipf_prob(unsigned rank, double skew, double base) {
 }
 
 int sample(int n, unsigned& seed, double base,
-           std::unordered_map<unsigned, double>& sum_probs) {
+           map<unsigned, double>& sum_probs) {
   double z;            // Uniform random number (0 < z < 1)
   int zipf_value;      // Computed exponential value to be returned
   int i;               // Loop counter
@@ -70,18 +70,17 @@ int sample(int n, unsigned& seed, double base,
   return zipf_value;
 }
 
-std::string generate_key(unsigned n) {
-  return std::string(8 - std::to_string(n).length(), '0') + std::to_string(n);
+string generate_key(unsigned n) {
+  return string(8 - std::to_string(n).length(), '0') + std::to_string(n);
 }
 
-void run(const unsigned& thread_id,
-         const std::vector<Address>& routing_addresses,
-         const std::vector<MonitoringThread>& monitoring_threads,
-         const Address& ip, const bool& local) {
+void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
+         const vector<MonitoringThread>& monitoring_threads, const Address& ip,
+         const bool& local) {
   KvsClient client(routing_addresses, kRoutingThreadCount, ip, thread_id, 10000,
                    local);
-  std::string log_file = "log_" + std::to_string(thread_id) + ".txt";
-  std::string logger_name = "benchmark_log_" + std::to_string(thread_id);
+  string log_file = "log_" + std::to_string(thread_id) + ".txt";
+  string logger_name = "benchmark_log_" + std::to_string(thread_id);
   auto logger = spdlog::basic_logger_mt(logger_name, log_file, true);
   logger->flush_on(spdlog::level::info);
 
@@ -89,7 +88,7 @@ void run(const unsigned& thread_id,
   unsigned seed = client.get_seed();
 
   // observed per-key avg latency
-  std::unordered_map<Key, std::pair<double, unsigned>> observed_latency;
+  map<Key, std::pair<double, unsigned>> observed_latency;
 
   // responsible for pulling benchmark commands
   zmq::context_t& context = *(client.get_context());
@@ -98,19 +97,19 @@ void run(const unsigned& thread_id,
   command_puller.bind("tcp://*:" +
                       std::to_string(thread_id + kBenchmarkCommandBasePort));
 
-  std::vector<zmq::pollitem_t> pollitems = {
+  vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(command_puller), 0, ZMQ_POLLIN, 0}};
 
   while (true) {
     kZmqUtil->poll(-1, &pollitems);
 
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      std::string msg = kZmqUtil->recv_string(&command_puller);
+      string msg = kZmqUtil->recv_string(&command_puller);
       logger->info("Received benchmark command: {}", msg);
 
-      std::vector<std::string> v;
+      vector<string> v;
       split(msg, ':', v);
-      std::string mode = v[0];
+      string mode = v[0];
 
       if (mode == "CACHE") {
         unsigned num_keys = stoi(v[1]);
@@ -131,14 +130,14 @@ void run(const unsigned& thread_id,
                                .count();
         logger->info("Cache warm-up took {} seconds.", warmup_time);
       } else if (mode == "LOAD") {
-        std::string type = v[1];
+        string type = v[1];
         unsigned num_keys = stoi(v[2]);
         unsigned length = stoi(v[3]);
         unsigned report_period = stoi(v[4]);
         unsigned time = stoi(v[5]);
         double zipf = stod(v[6]);
 
-        std::unordered_map<unsigned, double> sum_probs;
+        map<unsigned, double> sum_probs;
         double base;
 
         if (zipf > 0) {
@@ -177,12 +176,12 @@ void run(const unsigned& thread_id,
             client.get(key);
             count += 1;
           } else if (type == "P") {
-            client.put(key, std::string(length, 'a'));
+            client.put(key, string(length, 'a'));
             count += 1;
           } else if (type == "M") {
             auto req_start = std::chrono::system_clock::now();
 
-            client.put(key, std::string(length, 'a'));
+            client.put(key, string(length, 'a'));
             client.get(key);
             count += 2;
 
@@ -235,7 +234,7 @@ void run(const unsigned& thread_id,
               }
             }
 
-            std::string serialized_latency;
+            string serialized_latency;
             feedback.SerializeToString(&serialized_latency);
 
             for (const MonitoringThread& thread : monitoring_threads) {
@@ -264,7 +263,7 @@ void run(const unsigned& thread_id,
         feedback.set_uid(ip + ":" + std::to_string(thread_id));
         feedback.set_finish(true);
 
-        std::string serialized_latency;
+        string serialized_latency;
         feedback.SerializeToString(&serialized_latency);
 
         for (const MonitoringThread& thread : monitoring_threads) {
@@ -288,7 +287,7 @@ void run(const unsigned& thread_id,
             logger->info("Creating key {}.", i);
           }
 
-          client.put(generate_key(i), std::string(length, 'a'));
+          client.put(generate_key(i), string(length, 'a'));
         }
 
         auto warmup_time = std::chrono::duration_cast<std::chrono::seconds>(
@@ -311,10 +310,10 @@ int main(int argc, char* argv[]) {
   // read the YAML conf
   YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
   YAML::Node user = conf["user"];
-  Address ip = user["ip"].as<std::string>();
+  Address ip = user["ip"].as<string>();
 
-  std::vector<MonitoringThread> monitoring_threads;
-  std::vector<Address> routing_addresses;
+  vector<MonitoringThread> monitoring_threads;
+  vector<Address> routing_addresses;
 
   YAML::Node monitoring = user["monitoring"];
   for (const YAML::Node& node : monitoring) {
@@ -326,11 +325,11 @@ int main(int argc, char* argv[]) {
   kBenchmarkThreadNum = threads["benchmark"].as<int>();
   kDefaultLocalReplication = conf["replication"]["local"].as<unsigned>();
 
-  std::vector<std::thread> benchmark_threads;
+  vector<std::thread> benchmark_threads;
 
   bool local;
   if (YAML::Node elb = user["routing-elb"]) {
-    routing_addresses.push_back(elb.as<std::string>());
+    routing_addresses.push_back(elb.as<string>());
     local = false;
   } else {
     YAML::Node routing = user["routing"];

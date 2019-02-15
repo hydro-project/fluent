@@ -17,18 +17,17 @@
 
 void movement_policy(
     std::shared_ptr<spdlog::logger> logger,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::chrono::time_point<std::chrono::system_clock>& grace_start,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    TimePoint& grace_start,
     SummaryStats& ss, unsigned& memory_node_number, unsigned& ebs_node_number,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    Address management_address, std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, unsigned>& key_access_summary,
-    std::unordered_map<Key, unsigned>& key_size, MonitoringThread& mt,
-    SocketCache& pushers, zmq::socket_t& response_puller,
-    std::vector<Address>& routing_address, unsigned& rid) {
+    Address management_address, map<Key, KeyInfo>& placement,
+    map<Key, unsigned>& key_access_summary, map<Key, unsigned>& key_size,
+    MonitoringThread& mt, SocketCache& pushers, zmq::socket_t& response_puller,
+    vector<Address>& routing_address, unsigned& rid) {
   // promote hot keys to memory tier
-  std::unordered_map<Key, KeyInfo> requests;
+  map<Key, KeyInfo> requests;
   unsigned total_rep_to_change = 0;
   unsigned long long required_storage = 0;
   unsigned free_storage =

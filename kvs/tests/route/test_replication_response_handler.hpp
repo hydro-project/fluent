@@ -16,8 +16,8 @@
 
 TEST_F(RoutingHandlerTest, ReplicationResponse) {
   unsigned seed = 0;
-  std::string key = "key";
-  std::vector<std::string> keys = {"key"};
+  string key = "key";
+  vector<string> keys = {"key"};
   warmup_placement_to_defaults(keys);
 
   EXPECT_EQ(placement[key].global_replication_map_[1], 1);
@@ -31,7 +31,7 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   tp->set_lattice_type(LatticeType::LWW);
   tp->set_error(0);
 
-  std::string metakey = key;
+  string metakey = key;
   ReplicationFactor rf;
   rf.set_key(key);
 
@@ -47,12 +47,12 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
     rep_local->set_replication_factor(3);
   }
 
-  std::string repfactor;
+  string repfactor;
   rf.SerializeToString(&repfactor);
 
   tp->set_payload(serialize(0, repfactor));
 
-  std::string serialized;
+  string serialized;
   response.SerializeToString(&serialized);
 
   replication_response_handler(logger, serialized, pushers, rt,

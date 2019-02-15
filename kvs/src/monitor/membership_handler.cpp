@@ -15,19 +15,18 @@
 #include "monitor/monitoring_handlers.hpp"
 
 void membership_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    std::chrono::time_point<std::chrono::system_clock>& grace_start,
-    std::vector<Address>& routing_address, StorageStat& memory_tier_storage,
-    StorageStat& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
+    TimePoint& grace_start,
+    vector<Address>& routing_address, StorageStats& memory_tier_storage,
+    StorageStats& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
     OccupancyStats& ebs_tier_occupancy,
-    std::unordered_map<Key, std::unordered_map<Address, unsigned>>&
-        key_access_frequency) {
-  std::vector<std::string> v;
+    map<Key, map<Address, unsigned>>& key_access_frequency) {
+  vector<string> v;
 
   split(serialized, ':', v);
-  std::string type = v[0];
+  string type = v[0];
   unsigned tier = stoi(v[1]);
   Address new_server_public_ip = v[2];
   Address new_server_private_ip = v[3];

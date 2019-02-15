@@ -15,22 +15,20 @@
 #include "monitor/monitoring_utils.hpp"
 #include "monitor/policies.hpp"
 
-void slo_policy(
-    std::shared_ptr<spdlog::logger> logger,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::chrono::time_point<std::chrono::system_clock>& grace_start,
-    SummaryStats& ss, unsigned& memory_node_number,
-    unsigned& adding_memory_node, bool& removing_memory_node,
-    Address management_address, std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, unsigned>& key_access_summary, MonitoringThread& mt,
-    std::unordered_map<Address, unsigned>& departing_node_map,
-    SocketCache& pushers, zmq::socket_t& response_puller,
-    std::vector<Address>& routing_address, unsigned& rid,
-    std::unordered_map<Key, std::pair<double, unsigned>>&
-        latency_miss_ratio_map) {
+void slo_policy(std::shared_ptr<spdlog::logger> logger,
+                map<unsigned, GlobalHashRing>& global_hash_ring_map,
+                map<unsigned, LocalHashRing>& local_hash_ring_map,
+                TimePoint& grace_start,
+                SummaryStats& ss, unsigned& memory_node_number,
+                unsigned& adding_memory_node, bool& removing_memory_node,
+                Address management_address, map<Key, KeyInfo>& placement,
+                map<Key, unsigned>& key_access_summary, MonitoringThread& mt,
+                map<Address, unsigned>& departing_node_map,
+                SocketCache& pushers, zmq::socket_t& response_puller,
+                vector<Address>& routing_address, unsigned& rid,
+                map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map) {
   // check latency to trigger elasticity or selective replication
-  std::unordered_map<Key, KeyInfo> requests;
+  map<Key, KeyInfo> requests;
   if (ss.avg_latency > kSloWorst && adding_memory_node == 0) {
     logger->info("Observed latency ({}) violates SLO({}).", ss.avg_latency,
                  kSloWorst);

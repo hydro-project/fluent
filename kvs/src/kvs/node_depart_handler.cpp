@@ -14,12 +14,12 @@
 
 #include "kvs/kvs_handlers.hpp"
 
-void node_depart_handler(
-    unsigned thread_id, Address public_ip, Address private_ip,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    SocketCache& pushers) {
-  std::vector<std::string> v;
+void node_depart_handler(unsigned thread_id, Address public_ip,
+                         Address private_ip,
+                         map<unsigned, GlobalHashRing>& global_hash_ring_map,
+                         std::shared_ptr<spdlog::logger> logger,
+                         string& serialized, SocketCache& pushers) {
+  vector<string> v;
   split(serialized, ':', v);
 
   unsigned tier = stoi(v[0]);

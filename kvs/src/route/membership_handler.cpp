@@ -14,15 +14,14 @@
 
 #include "route/routing_handlers.hpp"
 
-void membership_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    SocketCache& pushers,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    unsigned thread_id, Address ip) {
-  std::vector<std::string> v;
+void membership_handler(std::shared_ptr<spdlog::logger> logger,
+                        string& serialized, SocketCache& pushers,
+                        map<unsigned, GlobalHashRing>& global_hash_ring_map,
+                        unsigned thread_id, Address ip) {
+  vector<string> v;
 
   split(serialized, ':', v);
-  std::string type = v[0];
+  string type = v[0];
   unsigned tier = stoi(v[1]);
   Address new_server_public_ip = v[2];
   Address new_server_private_ip = v[3];
@@ -51,7 +50,7 @@ void membership_handler(
           // what the server nodes expect
           // NOTE: this seems like a bit of a hack right now -- should we have
           // a less ad-hoc way of doing message generation?
-          std::string msg = v[1] + ":" + v[2] + ":" + v[3] + ":" + v[4];
+          string msg = v[1] + ":" + v[2] + ":" + v[3] + ":" + v[4];
 
           for (const ServerThread& st : hash_ring.get_unique_servers()) {
             // if the node is not the newly joined node, send the ip of the

@@ -17,25 +17,21 @@
 #include "kvs/kvs_handlers.hpp"
 
 void user_request_handler(
-    unsigned& total_accesses, unsigned& seed, std::string& serialized,
+    unsigned& total_accesses, unsigned& seed, string& serialized,
     std::shared_ptr<spdlog::logger> logger,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
     PendingMap<PendingRequest>& pending_request_map,
-    std::unordered_map<
-        Key, std::multiset<std::chrono::time_point<std::chrono::system_clock>>>&
-        key_access_timestamp,
-    std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
-        serializers,
+    map<Key, std::multiset<TimePoint>>& key_access_timestamp,
+    map<Key, KeyInfo>& placement, set<Key>& local_changeset, ServerThread& wt,
+    SerializerMap& serializers,
     SocketCache& pushers) {
   KeyRequest request;
   request.ParseFromString(serialized);
 
   KeyResponse response;
-  std::string response_id = "";
+  string response_id = "";
 
   if (request.has_request_id()) {
     response_id = request.request_id();
@@ -43,15 +39,14 @@ void user_request_handler(
   }
 
   bool succeed;
-  std::string request_type = RequestType_Name(request.type());
-  std::string response_address =
+  string request_type = RequestType_Name(request.type());
+  string response_address =
       request.has_response_address() ? request.response_address() : "";
 
   for (const auto& tuple : request.tuples()) {
     // first check if the thread is responsible for the key
     Key key = tuple.key();
-    std::string payload =
-        tuple.has_payload() ? (std::move(tuple.payload())) : "";
+    string payload = tuple.has_payload() ? (std::move(tuple.payload())) : "";
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
@@ -128,7 +123,7 @@ void user_request_handler(
   }
 
   if (response.tuples_size() > 0 && request.has_response_address()) {
-    std::string serialized_response;
+    string serialized_response;
     response.SerializeToString(&serialized_response);
     kZmqUtil->send_string(serialized_response,
                           &pushers[request.response_address()]);

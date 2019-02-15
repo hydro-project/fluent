@@ -16,11 +16,11 @@
 
 TEST_F(RoutingHandlerTest, ReplicationChange) {
   kRoutingThreadCount = 3;
-  std::vector<std::string> keys = {"key0, key1, key2"};
+  vector<string> keys = {"key0, key1, key2"};
   warmup_placement_to_defaults(keys);
 
   ReplicationFactorUpdate update;
-  for (std::string key : keys) {
+  for (string key : keys) {
     ReplicationFactor* rf = update.add_key_reps();
     rf->set_key(key);
 
@@ -37,20 +37,20 @@ TEST_F(RoutingHandlerTest, ReplicationChange) {
     }
   }
 
-  std::string serialized;
+  string serialized;
   update.SerializeToString(&serialized);
 
   replication_change_handler(logger, serialized, pushers, placement, thread_id,
                              ip);
 
-  std::vector<std::string> messages = get_zmq_messages();
+  vector<string> messages = get_zmq_messages();
 
   EXPECT_EQ(messages.size(), 2);
   for (unsigned i = 0; i < messages.size(); i++) {
     EXPECT_EQ(messages[i], serialized);
   }
 
-  for (std::string key : keys) {
+  for (string key : keys) {
     EXPECT_EQ(placement[key].global_replication_map_[1], 2);
     EXPECT_EQ(placement[key].global_replication_map_[2], 2);
     EXPECT_EQ(placement[key].local_replication_map_[1], 3);

@@ -14,17 +14,18 @@
 
 #include "kvs/kvs_handlers.hpp"
 
-void node_join_handler(
-    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_set<Key>& join_remove_set, SocketCache& pushers,
-    ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
-    int self_join_count) {
-  std::vector<std::string> v;
+void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
+                       Address private_ip,
+                       std::shared_ptr<spdlog::logger> logger,
+                       string& serialized,
+                       map<unsigned, GlobalHashRing>& global_hash_ring_map,
+                       map<unsigned, LocalHashRing>& local_hash_ring_map,
+                       map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
+                       map<Key, KeyInfo>& placement, set<Key>& join_remove_set,
+                       SocketCache& pushers, ServerThread& wt,
+                       AddressKeysetMap& join_addr_keyset_map,
+                       int self_join_count) {
+  vector<string> v;
   split(serialized, ':', v);
   unsigned tier = stoi(v[0]);
   Address new_server_public_ip = v[1];
@@ -58,7 +59,7 @@ void node_join_handler(
         for (const ServerThread& st : hash_ring.get_unique_servers()) {
           // if the node is not myself and not the newly joined node, send the
           // ip of the newly joined node in case of a race condition
-          std::string server_ip = st.get_private_ip();
+          string server_ip = st.get_private_ip();
           if (server_ip.compare(private_ip) != 0 &&
               server_ip.compare(new_server_private_ip) != 0) {
             kZmqUtil->send_string(serialized,

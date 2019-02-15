@@ -16,23 +16,20 @@
 
 void self_depart_handler(
     unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    std::unordered_map<Key, KeyInfo>& placement,
-    std::vector<Address>& routing_address,
-    std::vector<Address>& monitoring_address, ServerThread& wt,
-    SocketCache& pushers,
-    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
-        serializers) {
+    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
+    map<Key, KeyInfo>& placement, vector<Address>& routing_address,
+    vector<Address>& monitoring_address, ServerThread& wt, SocketCache& pushers,
+    SerializerMap& serializers) {
   logger->info("Node is departing.");
   global_hash_ring_map[kSelfTierId].remove(public_ip, private_ip, 0);
 
   // thread 0 notifies other nodes in the cluster (of all types) that it is
   // leaving the cluster
   if (thread_id == 0) {
-    std::string msg =
+    string msg =
         std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip;
 
     for (const auto& global_pair : global_hash_ring_map) {
@@ -46,13 +43,13 @@ void self_depart_handler(
     msg = "depart:" + msg;
 
     // notify all routing nodes
-    for (const std::string& address : routing_address) {
+    for (const string& address : routing_address) {
       kZmqUtil->send_string(
           msg, &pushers[RoutingThread(address, 0).get_notify_connect_addr()]);
     }
 
     // notify monitoring nodes
-    for (const std::string& address : monitoring_address) {
+    for (const string& address : monitoring_address) {
       kZmqUtil->send_string(
           msg, &pushers[MonitoringThread(address).get_notify_connect_addr()]);
     }

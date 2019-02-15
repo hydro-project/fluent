@@ -21,11 +21,11 @@ TEST_F(ServerHandlerTest, SimpleNodeDepart) {
   EXPECT_EQ(global_hash_ring_map[1].size(), 6000);
   EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 2);
 
-  std::string serialized = "1:127.0.0.2:127.0.0.2";
+  string serialized = "1:127.0.0.2:127.0.0.2";
   node_depart_handler(thread_id, ip, ip, global_hash_ring_map, logger,
                       serialized, pushers);
 
-  std::vector<std::string> messages = get_zmq_messages();
+  vector<string> messages = get_zmq_messages();
 
   EXPECT_EQ(messages.size(), 1);
   EXPECT_EQ(messages[0], serialized);
@@ -38,11 +38,11 @@ TEST_F(ServerHandlerTest, FakeNodeDepart) {
   EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
   EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 1);
 
-  std::string serialized = "1:127.0.0.2";
+  string serialized = "1:127.0.0.2";
   node_depart_handler(thread_id, ip, ip, global_hash_ring_map, logger,
                       serialized, pushers);
 
-  std::vector<std::string> messages = get_zmq_messages();
+  vector<string> messages = get_zmq_messages();
 
   EXPECT_EQ(messages.size(), 0);
 

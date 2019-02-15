@@ -27,10 +27,10 @@ class RoutingHandlerTest : public ::testing::Test {
  protected:
   Address ip = "127.0.0.1";
   unsigned thread_id = 0;
-  std::unordered_map<unsigned, GlobalHashRing> global_hash_ring_map;
-  std::unordered_map<unsigned, LocalHashRing> local_hash_ring_map;
-  std::unordered_map<Key, KeyInfo> placement;
-  PendingMap<std::pair<Address, std::string>> pending_key_request_map;
+  map<unsigned, GlobalHashRing> global_hash_ring_map;
+  map<unsigned, LocalHashRing> local_hash_ring_map;
+  map<Key, KeyInfo> placement;
+  PendingMap<std::pair<Address, string>> pending_key_request_map;
   zmq::context_t context;
   SocketCache pushers = SocketCache(&context, ZMQ_PUSH);
   RoutingThread rt;
@@ -54,12 +54,10 @@ class RoutingHandlerTest : public ::testing::Test {
     mock_zmq_util.sent_messages.clear();
   }
 
-  std::vector<std::string> get_zmq_messages() {
-    return mock_zmq_util.sent_messages;
-  }
+  vector<string> get_zmq_messages() { return mock_zmq_util.sent_messages; }
 
-  void warmup_placement_to_defaults(std::vector<std::string> keys) {
-    for (std::string key : keys) {
+  void warmup_placement_to_defaults(vector<string> keys) {
+    for (string key : keys) {
       placement[key].global_replication_map_[1] =
           kDefaultGlobalMemoryReplication;
       placement[key].global_replication_map_[2] = kDefaultGlobalEbsReplication;

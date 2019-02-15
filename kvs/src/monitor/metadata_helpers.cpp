@@ -14,11 +14,12 @@
 
 #include "monitor/monitoring_utils.hpp"
 
-Address prepare_metadata_request(
-    const Key& key, GlobalHashRing& global_memory_hash_ring,
-    LocalHashRing& local_memory_hash_ring,
-    std::unordered_map<Address, KeyRequest>& addr_request_map,
-    MonitoringThread& mt, unsigned& rid, RequestType type) {
+Address prepare_metadata_request(const Key& key,
+                                 GlobalHashRing& global_memory_hash_ring,
+                                 LocalHashRing& local_memory_hash_ring,
+                                 map<Address, KeyRequest>& addr_request_map,
+                                 MonitoringThread& mt, unsigned& rid,
+                                 RequestType type) {
   auto threads = kHashRingUtil->get_responsible_threads_metadata(
       key, global_memory_hash_ring, local_memory_hash_ring);
   if (threads.size() != 0) {
@@ -28,7 +29,7 @@ Address prepare_metadata_request(
       addr_request_map[target_address].set_type(type);
       addr_request_map[target_address].set_response_address(
           mt.get_request_pulling_connect_addr());
-      std::string req_id = mt.get_ip() + ":" + std::to_string(rid);
+      string req_id = mt.get_ip() + ":" + std::to_string(rid);
       addr_request_map[target_address].set_request_id(req_id);
       rid += 1;
     }
@@ -36,14 +37,14 @@ Address prepare_metadata_request(
     return target_address;
   }
 
-  return std::string();
+  return string();
 }
 
-void prepare_metadata_get_request(
-    const Key& key, GlobalHashRing& global_memory_hash_ring,
-    LocalHashRing& local_memory_hash_ring,
-    std::unordered_map<Address, KeyRequest>& addr_request_map,
-    MonitoringThread& mt, unsigned& rid) {
+void prepare_metadata_get_request(const Key& key,
+                                  GlobalHashRing& global_memory_hash_ring,
+                                  LocalHashRing& local_memory_hash_ring,
+                                  map<Address, KeyRequest>& addr_request_map,
+                                  MonitoringThread& mt, unsigned& rid) {
   Address target_address = prepare_metadata_request(
       key, global_memory_hash_ring, local_memory_hash_ring, addr_request_map,
       mt, rid, RequestType::GET);
@@ -53,12 +54,11 @@ void prepare_metadata_get_request(
   }
 }
 
-void prepare_metadata_put_request(
-    const Key& key, const std::string& value,
-    GlobalHashRing& global_memory_hash_ring,
-    LocalHashRing& local_memory_hash_ring,
-    std::unordered_map<Address, KeyRequest>& addr_request_map,
-    MonitoringThread& mt, unsigned& rid) {
+void prepare_metadata_put_request(const Key& key, const string& value,
+                                  GlobalHashRing& global_memory_hash_ring,
+                                  LocalHashRing& local_memory_hash_ring,
+                                  map<Address, KeyRequest>& addr_request_map,
+                                  MonitoringThread& mt, unsigned& rid) {
   Address target_address = prepare_metadata_request(
       key, global_memory_hash_ring, local_memory_hash_ring, addr_request_map,
       mt, rid, RequestType::PUT);

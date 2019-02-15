@@ -34,8 +34,8 @@ unsigned kDefaultLocalReplication = 1;
 unsigned kSelfTierId = 1;
 unsigned kThreadNum = 1;
 
-std::vector<unsigned> kSelfTierIdVector = {kSelfTierId};
-std::unordered_map<unsigned, TierData> kTierDataMap = {};
+vector<unsigned> kSelfTierIdVector = {kSelfTierId};
+map<unsigned, TierData> kTierDataMap = {};
 
 unsigned kEbsThreadNum = 1;
 unsigned kMemoryThreadNum = 1;

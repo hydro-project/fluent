@@ -16,6 +16,20 @@
 #define INCLUDE_TYPES_HPP_
 
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+using string = std::string;
+
+template<class K, class V>
+using map = std::unordered_map<K, V>;
+
+template<class T>
+using set = std::unordered_set<T>;
+
+template<class T>
+using vector = std::vector<T>;
 
 using Address = std::string;
 

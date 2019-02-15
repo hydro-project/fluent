@@ -17,20 +17,19 @@
 #include "kvs/kvs_handlers.hpp"
 
 void gossip_handler(
-    unsigned& seed, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    PendingMap<PendingGossip>& pending_gossip_map,
-    std::unordered_map<Key, KeyInfo>& placement, ServerThread& wt,
-    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
-        serializers,
+    unsigned& seed, string& serialized,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
+    PendingMap<PendingGossip>& pending_gossip_map, map<Key, KeyInfo>& placement,
+    ServerThread& wt,
+    SerializerMap& serializers,
     SocketCache& pushers, std::shared_ptr<spdlog::logger> logger) {
   KeyRequest gossip;
   gossip.ParseFromString(serialized);
 
   bool succeed;
-  std::unordered_map<Address, KeyRequest> gossip_map;
+  map<Address, KeyRequest> gossip_map;
 
   for (const KeyTuple& tuple : gossip.tuples()) {
     // first check if the thread is responsible for the key
@@ -82,7 +81,7 @@ void gossip_handler(
 
   // redirect gossip
   for (const auto& gossip_pair : gossip_map) {
-    std::string serialized;
+    string serialized;
     gossip_pair.second.SerializeToString(&serialized);
     kZmqUtil->send_string(serialized, &pushers[gossip_pair.first]);
   }

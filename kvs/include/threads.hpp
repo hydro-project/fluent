@@ -72,10 +72,8 @@ class ServerThread {
   Address get_private_ip() const { return private_ip_; }
   unsigned get_tid() const { return tid_; }
   unsigned get_virtual_num() const { return virtual_num_; }
-  std::string get_id() const {
-    return private_ip_ + ":" + std::to_string(tid_);
-  }
-  std::string get_virtual_id() const {
+  string get_id() const { return private_ip_ + ":" + std::to_string(tid_); }
+  string get_virtual_id() const {
     return private_ip_ + ":" + std::to_string(tid_) + "_" +
            std::to_string(virtual_num_);
   }
@@ -289,7 +287,7 @@ class BenchmarkThread {
   unsigned tid_;
 };
 
-inline std::string get_join_count_req_address(std::string mgmt_address) {
+inline string get_join_count_req_address(string mgmt_address) {
   return "tcp://" + mgmt_address + ":" +
          std::to_string(kKopsRestartCountBasePort);
 }

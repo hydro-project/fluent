@@ -13,7 +13,6 @@
 //  limitations under the License.
 
 #include <stdlib.h>
-#include <unordered_map>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -42,8 +41,8 @@
 unsigned kDefaultLocalReplication = 1;
 unsigned kSelfTierId = 1;
 unsigned kThreadNum = 1;
-std::vector<unsigned> kSelfTierIdVector = {kSelfTierId};
-std::unordered_map<unsigned, TierData> kTierDataMap = {};
+vector<unsigned> kSelfTierIdVector = {kSelfTierId};
+map<unsigned, TierData> kTierDataMap = {};
 
 unsigned kEbsThreadCount = 1;
 unsigned kMemoryThreadCount = 1;

@@ -40,8 +40,8 @@ unsigned kThreadNum = 1;
 
 unsigned kSelfTierId = 0;
 
-std::vector<unsigned> kSelfTierIdVector = {kSelfTierId};
-std::unordered_map<unsigned, TierData> kTierDataMap = {};
+vector<unsigned> kSelfTierIdVector = {kSelfTierId};
+map<unsigned, TierData> kTierDataMap = {};
 
 unsigned kEbsThreadNum = 1;
 unsigned kMemoryThreadNum = 1;

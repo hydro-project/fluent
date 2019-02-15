@@ -16,14 +16,13 @@
 
 void rep_factor_change_handler(
     Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
-        serializers,
+    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    map<Key, KeyInfo>& placement,
+    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
+    set<Key>& local_changeset, ServerThread& wt,
+    SerializerMap& serializers,
     SocketCache& pushers) {
   logger->info("Received a replication factor change.");
   if (thread_id == 0) {
@@ -40,7 +39,7 @@ void rep_factor_change_handler(
   rep_change.ParseFromString(serialized);
 
   AddressKeysetMap addr_keyset_map;
-  std::unordered_set<Key> remove_set;
+  set<Key> remove_set;
 
   // for every key, update the replication factor and check if the node is still
   // responsible for the key
@@ -151,7 +150,7 @@ void rep_factor_change_handler(
   send_gossip(addr_keyset_map, pushers, serializers, key_stat_map);
 
   // remove keys
-  for (const std::string& key : remove_set) {
+  for (const string& key : remove_set) {
     serializers[key_stat_map[key].second]->remove(key);
     key_stat_map.erase(key);
     local_changeset.erase(key);

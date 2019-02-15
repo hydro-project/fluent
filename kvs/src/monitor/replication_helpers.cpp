@@ -28,9 +28,8 @@ KeyInfo create_new_replication_vector(unsigned gm, unsigned ge, unsigned lm,
 
 void prepare_replication_factor_update(
     const Key& key,
-    std::unordered_map<Address, ReplicationFactorUpdate>&
-        replication_factor_map,
-    Address server_address, std::unordered_map<Key, KeyInfo>& placement) {
+    map<Address, ReplicationFactorUpdate>& replication_factor_map,
+    Address server_address, map<Key, KeyInfo>& placement) {
   ReplicationFactor* rf = replication_factor_map[server_address].add_key_reps();
   rf->set_key(key);
 
@@ -50,22 +49,21 @@ void prepare_replication_factor_update(
 // assume the caller has the replication factor for the keys and the requests
 // are valid (rep factor <= total number of nodes in a tier)
 void change_replication_factor(
-    std::unordered_map<Key, KeyInfo>& requests,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::vector<Address>& routing_address,
-    std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-    MonitoringThread& mt, zmq::socket_t& response_puller,
+    map<Key, KeyInfo>& requests,
+    map<unsigned, GlobalHashRing>& global_hash_ring_map,
+    map<unsigned, LocalHashRing>& local_hash_ring_map,
+    vector<Address>& routing_address, map<Key, KeyInfo>& placement,
+    SocketCache& pushers, MonitoringThread& mt, zmq::socket_t& response_puller,
     std::shared_ptr<spdlog::logger> logger, unsigned& rid) {
   // used to keep track of the original replication factors for the requested
   // keys
-  std::unordered_map<Key, KeyInfo> orig_placement_info;
+  map<Key, KeyInfo> orig_placement_info;
 
   // store the new replication factor synchronously in storage servers
-  std::unordered_map<Address, KeyRequest> addr_request_map;
+  map<Address, KeyRequest> addr_request_map;
 
   // form the placement request map
-  std::unordered_map<Address, ReplicationFactorUpdate> replication_factor_map;
+  map<Address, ReplicationFactorUpdate> replication_factor_map;
 
   for (const auto& request_pair : requests) {
     Key key = request_pair.first;
@@ -97,7 +95,7 @@ void change_replication_factor(
 
     Key rep_key = get_metadata_key(key, MetadataType::replication);
 
-    std::string serialized_rep_data;
+    string serialized_rep_data;
     rep_data.SerializeToString(&serialized_rep_data);
     prepare_metadata_put_request(
         rep_key, serialized_rep_data, global_hash_ring_map[1],
@@ -105,7 +103,7 @@ void change_replication_factor(
   }
 
   // send updates to storage nodes
-  std::unordered_set<Key> failed_keys;
+  set<Key> failed_keys;
   for (const auto& request_pair : addr_request_map) {
     bool succeed;
     auto res = make_request<KeyRequest, KeyResponse>(
@@ -151,7 +149,7 @@ void change_replication_factor(
       }
 
       // form placement requests for routing nodes
-      for (const std::string& address : routing_address) {
+      for (const string& address : routing_address) {
         prepare_replication_factor_update(
             key, replication_factor_map,
             RoutingThread(address, 0)
@@ -163,13 +161,13 @@ void change_replication_factor(
 
   // send placement info update to all relevant nodes
   for (const auto& rep_factor_pair : replication_factor_map) {
-    std::string serialized_msg;
+    string serialized_msg;
     rep_factor_pair.second.SerializeToString(&serialized_msg);
     kZmqUtil->send_string(serialized_msg, &pushers[rep_factor_pair.first]);
   }
 
   // restore rep factor for failed keys
-  for (const std::string& key : failed_keys) {
+  for (const string& key : failed_keys) {
     placement[key] = orig_placement_info[key];
   }
 }

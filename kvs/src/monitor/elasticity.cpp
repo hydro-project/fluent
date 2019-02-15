@@ -14,21 +14,21 @@
 
 #include "monitor/monitoring_utils.hpp"
 
-void add_node(std::shared_ptr<spdlog::logger> logger, std::string tier,
+void add_node(std::shared_ptr<spdlog::logger> logger, string tier,
               unsigned number, unsigned& adding, SocketCache& pushers,
               const Address& management_address) {
   logger->info("Adding {} node(s) in tier {}.", std::to_string(number), tier);
 
-  std::string mgmt_addr = "tcp://" + management_address + ":7001";
-  std::string message = "add:" + std::to_string(number) + ":" + tier;
+  string mgmt_addr = "tcp://" + management_address + ":7001";
+  string message = "add:" + std::to_string(number) + ":" + tier;
 
   kZmqUtil->send_string(message, &pushers[mgmt_addr]);
   adding = number;
 }
 
 void remove_node(std::shared_ptr<spdlog::logger> logger, ServerThread& node,
-                 std::string tier, bool& removing_flag, SocketCache& pushers,
-                 std::unordered_map<Address, unsigned>& departing_node_map,
+                 string tier, bool& removing_flag, SocketCache& pushers,
+                 map<Address, unsigned>& departing_node_map,
                  MonitoringThread& mt) {
   auto connection_addr = node.get_self_depart_connect_addr();
   departing_node_map[node.get_private_ip()] = kTierDataMap[1].thread_number_;

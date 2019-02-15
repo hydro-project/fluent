@@ -20,21 +20,21 @@
 
 class MockZmqUtil : public ZmqUtilInterface {
  public:
-  std::vector<std::string> sent_messages;
+  vector<string> sent_messages;
 
-  virtual void send_string(const std::string& s, zmq::socket_t* socket);
-  virtual std::string recv_string(zmq::socket_t* socket);
-  virtual int poll(long timeout, std::vector<zmq::pollitem_t>* items);
+  virtual void send_string(const string& s, zmq::socket_t* socket);
+  virtual string recv_string(zmq::socket_t* socket);
+  virtual int poll(long timeout, vector<zmq::pollitem_t>* items);
 };
 
 class MockHashRingUtil : public HashRingUtilInterface {
  public:
   virtual ServerThreadList get_responsible_threads(
       Address respond_address, const Key& key, bool metadata,
-      std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-      std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-      std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-      const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
+      map<unsigned, GlobalHashRing>& global_hash_ring_map,
+      map<unsigned, LocalHashRing>& local_hash_ring_map,
+      map<Key, KeyInfo>& placement, SocketCache& pushers,
+      const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
 };
 
 #endif  // TESTS_MOCKED_HPP_

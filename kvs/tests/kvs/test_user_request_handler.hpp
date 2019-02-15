@@ -16,11 +16,11 @@
 
 TEST_F(ServerHandlerTest, UserGetLWWTest) {
   Key key = "key";
-  std::string value = "value";
+  string value = "value";
   serializers[LatticeType::LWW]->put(key, serialize(0, value));
   key_stat_map[key].second = LatticeType::LWW;
 
-  std::string get_request = get_key_request(key, ip);
+  string get_request = get_key_request(key, ip);
 
   unsigned total_access = 0;
   unsigned seed = 0;
@@ -32,7 +32,7 @@ TEST_F(ServerHandlerTest, UserGetLWWTest) {
                        pending_request_map, key_access_timestamp, placement,
                        local_changeset, wt, serializers, pushers);
 
-  std::vector<std::string> messages = get_zmq_messages();
+  vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 1);
 
   KeyResponse response;
@@ -54,15 +54,14 @@ TEST_F(ServerHandlerTest, UserGetLWWTest) {
 
 TEST_F(ServerHandlerTest, UserGetSetTest) {
   Key key = "key";
-  std::unordered_set<std::string> s;
+  set<string> s;
   s.emplace("value1");
   s.emplace("value2");
   s.emplace("value3");
-  serializers[LatticeType::SET]->put(key,
-                                     serialize(SetLattice<std::string>(s)));
+  serializers[LatticeType::SET]->put(key, serialize(SetLattice<string>(s)));
   key_stat_map[key].second = LatticeType::SET;
 
-  std::string get_request = get_key_request(key, ip);
+  string get_request = get_key_request(key, ip);
 
   unsigned total_access = 0;
   unsigned seed = 0;
@@ -74,7 +73,7 @@ TEST_F(ServerHandlerTest, UserGetSetTest) {
                        pending_request_map, key_access_timestamp, placement,
                        local_changeset, wt, serializers, pushers);
 
-  std::vector<std::string> messages = get_zmq_messages();
+  vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 1);
 
   KeyResponse response;
@@ -86,7 +85,7 @@ TEST_F(ServerHandlerTest, UserGetSetTest) {
   KeyTuple rtp = response.tuples(0);
 
   EXPECT_EQ(rtp.key(), key);
-  EXPECT_EQ(rtp.payload(), serialize(SetLattice<std::string>(s)));
+  EXPECT_EQ(rtp.payload(), serialize(SetLattice<string>(s)));
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 0);
@@ -96,8 +95,8 @@ TEST_F(ServerHandlerTest, UserGetSetTest) {
 
 TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
   Key key = "key";
-  std::string value = "value";
-  std::string put_request =
+  string value = "value";
+  string put_request =
       put_key_request(key, LatticeType::LWW, serialize(0, value), ip);
 
   unsigned total_access = 0;
@@ -110,7 +109,7 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
                        pending_request_map, key_access_timestamp, placement,
                        local_changeset, wt, serializers, pushers);
 
-  std::vector<std::string> messages = get_zmq_messages();
+  vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 1);
 
   KeyResponse response;
@@ -128,7 +127,7 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
   EXPECT_EQ(total_access, 1);
   EXPECT_EQ(key_access_timestamp[key].size(), 1);
 
-  std::string get_request = get_key_request(key, ip);
+  string get_request = get_key_request(key, ip);
 
   user_request_handler(total_access, seed, get_request, logger,
                        global_hash_ring_map, local_hash_ring_map, key_stat_map,
@@ -156,12 +155,12 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
 
 TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
   Key key = "key";
-  std::unordered_set<std::string> s;
+  set<string> s;
   s.emplace("value1");
   s.emplace("value2");
   s.emplace("value3");
-  std::string put_request = put_key_request(
-      key, LatticeType::SET, serialize(SetLattice<std::string>(s)), ip);
+  string put_request = put_key_request(key, LatticeType::SET,
+                                       serialize(SetLattice<string>(s)), ip);
 
   unsigned total_access = 0;
   unsigned seed = 0;
@@ -173,7 +172,7 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
                        pending_request_map, key_access_timestamp, placement,
                        local_changeset, wt, serializers, pushers);
 
-  std::vector<std::string> messages = get_zmq_messages();
+  vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 1);
 
   KeyResponse response;
@@ -191,7 +190,7 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
   EXPECT_EQ(total_access, 1);
   EXPECT_EQ(key_access_timestamp[key].size(), 1);
 
-  std::string get_request = get_key_request(key, ip);
+  string get_request = get_key_request(key, ip);
 
   user_request_handler(total_access, seed, get_request, logger,
                        global_hash_ring_map, local_hash_ring_map, key_stat_map,
@@ -209,7 +208,7 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
   rtp = response.tuples(0);
 
   EXPECT_EQ(rtp.key(), key);
-  EXPECT_EQ(rtp.payload(), serialize(SetLattice<std::string>(s)));
+  EXPECT_EQ(rtp.payload(), serialize(SetLattice<string>(s)));
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 1);
