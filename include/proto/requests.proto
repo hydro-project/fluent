@@ -26,7 +26,7 @@ enum LatticeType {
 
 message LWWValue {
   required uint64 timestamp = 1;
-  required string value = 2;
+  required bytes value = 2;
 }
 
 message SetValue {

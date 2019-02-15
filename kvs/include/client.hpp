@@ -83,48 +83,7 @@ class KvsClient {
 
  public:
   /**
-   * Issue a GET request to the KVS.
-   *
-   * We return a decoded string as a response, but if no worker threads are
-   * contactable from our client, we will either recurse infinitely while
-   * retrying the request or return NULL. Since no trial_limit is specified, we
-   * use a default value of 10.
-   */
-  std::string get(Key key) { return get(key, 10); }
-
-  /**
-   * Issue a GET request to the KVS.
-   *
-   * We return a decoded string as a response, but if no worker threads are
-   * contactable from our client, we will either recurse infinitely while
-   * retrying the request or return NULL. We attempt this request up to
-   * trial_limit times before giving up.
-   */
-  std::string get(Key key, unsigned trial_limit) {
-    KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key);
-    request.set_type(RequestType::GET);
-    // NOTE: This is ignored, so it doesn't matter; would be nice to find a way
-    // to avoid it in the future.
-    tuple->set_lattice_type(LatticeType::LWW);
-
-    KeyResponse response = try_request(request, trial_limit);
-
-    if (is_error_response(response)) {
-      return "";
-    }
-
-    KeyTuple rtuple = response.tuples(0);
-    if (rtuple.error() == 1) {
-      logger_->info("Key {} does not exist and could not be retrieved.", key);
-      return "";
-    }
-
-    return rtuple.payload();
-  }
-
-  /**
-   * Issue a PUT request to the KVS.
+   * Issue a PUT request to the KVS for a last-writer-wins value.
    *
    * We return a decoded string as a response, but if no worker threads are
    * contactable from our client, we will either recurse infinitely while
@@ -134,8 +93,7 @@ class KvsClient {
   bool put(Key key, std::string value) { return put(key, value, 10); }
 
   /**
-   * Issue a PUT request to the KVS.
-   * TODO(vikram): add set lattice support
+   * Issue a PUT request to the KVS for a last-writer-wins value.
    *
    * We return a decoded string as a response, but if no worker threads are
    * contactable from our client, we will either recurse infinitely while
@@ -153,9 +111,39 @@ class KvsClient {
 
     return !is_error_response(response);
   }
+  
+  /**
+   * Issue a PUT request to the KVS for a set value.
+   *
+   * We return a decoded string as a response, but if no worker threads are
+   * contactable from our client, we will either recurse infinitely while
+   * retrying the request or return NULL. Since no trial_limit is specified, we
+   * use a default value of 10.
+   */
+  bool put(Key key, std::unordered_set<std::string> value) { return put(key, value, 10); }
 
   /**
-   * Issue a durable PUT request to the KVS.
+   * Issue a PUT request to the KVS for a set value.
+   *
+   * We return a decoded string as a response, but if no worker threads are
+   * contactable from our client, we will either recurse infinitely while
+   * retrying the request or return NULL. We attempt this request up to
+   * trial_limit times before giving up.
+   */
+  bool put(Key key, std::unordered_set<std::string> value, unsigned trial_limit) {
+    KeyRequest request;
+    KeyTuple* tuple = prepare_data_request(request, key);
+    request.set_type(RequestType::PUT);
+    tuple->set_lattice_type(LatticeType::SET);
+    tuple->set_payload(serialize(value));
+    
+    KeyResponse response = try_request(request, trial_limit);
+
+    return !is_error_response(response);
+  }
+
+  /**
+   * Issue a durable PUT request to the KVS with a last-writer-wins value.
    *
    * This method issues a PUT request to all of the replicas of a particular
    * key in the KVS. It only returns true if all of the requests are
@@ -165,7 +153,7 @@ class KvsClient {
   bool put_all(Key key, std::string value) { return put_all(key, value, 5); }
 
   /**
-   * Issue a durable PUT request to the KVS.
+   * Issue a durable PUT request to the KVS with a last-writer-wins value.
    *
    * This method issues a PUT request to all of the replicas of a particular
    * key in the KVS. It only returns true if all of the requests are
@@ -184,9 +172,77 @@ class KvsClient {
 
     return responses.size() != 0;
   }
+  
+  /**
+   * Issue a durable PUT request to the KVS with a set value.
+   *
+   * This method issues a PUT request to all of the replicas of a particular
+   * key in the KVS. It only returns true if all of the requests are
+   * successful. Since no trial_limit is specified, we use a default value of
+   * 5.
+   */
+  bool put_all(Key key, std::unordered_set<std::string> value) { return put_all(key, value, 5); }
 
   /**
-   * Retrieve all replicas of a key from the KVS.
+   * Issue a durable PUT request to the KVS with a set value.
+   *
+   * This method issues a PUT request to all of the replicas of a particular
+   * key in the KVS. It only returns true if all of the requests are
+   * successful. We attempt this request trial_limit times before giving up.
+   * 5.
+   */
+  bool put_all(Key key, std::unordered_set<std::string> value, unsigned trial_limit) {
+    KeyRequest request;
+    KeyTuple* tuple = prepare_data_request(request, key);
+    request.set_type(RequestType::PUT);
+    tuple->set_lattice_type(LatticeType::SET);
+    tuple->set_payload(serialize(value));
+
+    std::vector<KeyResponse> responses =
+        try_multi_request(request, trial_limit);
+
+    return responses.size() != 0;
+  }
+  
+  /**
+   * Issue a GET request to the KVS for a last-writer-wins value.
+   *
+   * We return a decoded string as a response, but if no worker threads are
+   * contactable from our client, we will return an empty string. Since no 
+   * trial_limit is specified, we use a default value of 10.
+   */
+  std::string get(Key key) { return get(key, 10); }
+
+  /**
+   * Issue a GET request to the KVS for a last-writer-wins value.
+   *
+   * We return a decoded string as a response, but if no worker threads are
+   * contactable from our client, we will return an empty string. We attempt
+   * this request trial_limit times before giving up.
+   */
+  std::string get(Key key, unsigned trial_limit) {
+    KeyRequest request;
+    prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
+
+    KeyResponse response = try_request(request, trial_limit);
+
+    if (is_error_response(response)) {
+      return "";
+    }
+
+    KeyTuple rtuple = response.tuples(0);
+    if (rtuple.error() == 1) {
+      logger_->info("Key {} does not exist and could not be retrieved.", key);
+      return "";
+    }
+
+    return deserialize_lww(rtuple.payload()).value();
+  }
+
+
+  /**
+   * Retrieve all replicas of a key from the KVS for a last-writer-wins value.
    *
    * This method issues a GET request to every replica responsible for a key.
    * If it gets a response from all, it returns a vector of the responses and
@@ -196,7 +252,7 @@ class KvsClient {
   std::vector<std::string> get_all(Key key) { return get_all(key, 5); }
 
   /**
-   * Retrieve all replicas of a key from the KVS.
+   * Retrieve all replicas of a key from the KVS for a last-writer-wins value.
    *
    * This method issues a GET request to every replica responsible for a key.
    * If it gets a response from all, it returns a vector of the responses and
@@ -205,11 +261,8 @@ class KvsClient {
    */
   std::vector<std::string> get_all(Key key, unsigned trial_limit) {
     KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key);
+    prepare_data_request(request, key);
     request.set_type(RequestType::GET);
-    // NOTE: This is ignored, so it doesn't matter; would be nice to find a way
-    // to avoid it in the future.
-    tuple->set_lattice_type(LatticeType::LWW);
 
     std::vector<KeyResponse> responses =
         try_multi_request(request, trial_limit);
@@ -227,7 +280,103 @@ class KvsClient {
         return result;
       }
 
-      result.push_back(tuple.payload());
+      result.push_back(deserialize_lww(tuple.payload()).value());
+    }
+
+    return result;
+  }
+  
+  /**
+   * Issue a GET request to the KVS for a set value.
+   *
+   * We return a decoded string as a response, but if no worker threads are
+   * contactable from our client, we will return an empty string. Since no 
+   * trial_limit is specified, we use a default value of 10.
+   */
+  std::unordered_set<std::string> get_set(Key key) { return get_set(key, 10); }
+
+  /**
+   * Issue a GET request to the KVS for a set value.
+   *
+   * We return a decoded string as a response, but if no worker threads are
+   * contactable from our client, we will return an empty string. We attempt
+   * this request trial_limit times before giving up.
+   */
+  std::unordered_set<std::string> get_set(Key key, unsigned trial_limit) {
+    KeyRequest request;
+    prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
+    std::unordered_set<std::string> result;
+
+    KeyResponse response = try_request(request, trial_limit);
+
+    if (is_error_response(response)) {
+      return result;
+    }
+
+    KeyTuple rtuple = response.tuples(0);
+    if (rtuple.error() == 1) {
+      logger_->info("Key {} does not exist and could not be retrieved.", key);
+      return result;
+    }
+
+    SetValue set_result = deserialize_set(rtuple.payload());
+    for (const std::string& val : set_result.values()) {
+      result.insert(val);
+    }
+
+    return result;
+  }
+
+
+  /**
+   * Retrieve all replicas of a key from the KVS for a set value.
+   *
+   * This method issues a GET request to every replica responsible for a key.
+   * If it gets a response from all, it returns a vector of the responses and
+   * otherwise returns an empty vector. Since no trial_limit is specified, we
+   * use a default value of 5.
+   */
+  std::vector<std::unordered_set<std::string>> get_set_all(Key key) { return get_set_all(key, 5); }
+
+  /**
+   * Retrieve all replicas of a key from the KVS for a set value.
+   *
+   * This method issues a GET request to every replica responsible for a key.
+   * If it gets a response from all, it returns a vector of the responses and
+   * otherwise returns an empty vector. We attempt this request trial_limit
+   * times before giving up.
+   */
+  std::vector<std::unordered_set<std::string>> get_set_all(Key key, unsigned trial_limit) {
+    KeyRequest request;
+    prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
+
+    std::vector<KeyResponse> responses =
+        try_multi_request(request, trial_limit);
+    std::vector<std::unordered_set<std::string>> result;
+
+    if (responses.size() == 0) {
+      return result;
+    }
+
+    for (KeyResponse response : responses) {
+      KeyTuple tuple = response.tuples(0);
+      if (tuple.error() == 1) {
+        logger_->info("Key {} does not exist and could not be retrieved.", key);
+        result.clear();
+        return result;
+      }
+
+      SetValue set_result = deserialize_set(tuple.payload());
+      std::unordered_set<std::string> deserialized;
+
+      for (const std::string& val : set_result.values()) {
+        deserialized.insert(val);
+      }
+
+
+      result.push_back(deserialized);
     }
 
     return result;
@@ -330,9 +479,7 @@ class KvsClient {
 
     // we only get NULL back for the worker thread if the query to the routing
     // tier timed out, which should never happen.
-    std::cout << "Attempting to retrieve a worker thread." << std::endl;
     Address worker = get_worker_thread(request.tuples(0).key());
-    std::cout << "Retrieved thread " << worker << std::endl;
     if (worker.length() == 0) {
       return bad_response_;
     }
@@ -437,7 +584,7 @@ class KvsClient {
    * KeyRequest and also returns a pointer to the KeyTuple contained by this
    * request.
    */
-  KeyTuple* prepare_data_request(KeyRequest& request, Key key) {
+  KeyTuple* prepare_data_request(KeyRequest& request, Key& key) {
     request.set_request_id(get_request_id());
     request.set_response_address(ut_.get_request_pulling_connect_addr());
 
@@ -454,7 +601,8 @@ class KvsClient {
    * NULL is returned.
    */
   std::unordered_set<Address> get_all_worker_threads(Key key) {
-    if (key_address_cache_.find(key) == key_address_cache_.end() || key_address_cache_[key].size() == 0) {
+    if (key_address_cache_.find(key) == key_address_cache_.end() ||
+        key_address_cache_[key].size() == 0) {
       std::unordered_set<Address> addresses = query_routing(key);
 
       if (addresses.size() == 0) {
@@ -545,8 +693,7 @@ class KvsClient {
       // send the actual query to the routing tier
       Address rt_thread = get_routing_thread();
       response = make_request<KeyAddressRequest, KeyAddressResponse>(
-          request, socket_cache_[rt_thread], key_address_puller_,
-          succeed);
+          request, socket_cache_[rt_thread], key_address_puller_, succeed);
 
       if (!succeed) {
         return result;

@@ -24,25 +24,48 @@ unsigned kDefaultLocalReplication;
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
+void print_set(std::unordered_set<std::string> set) {
+  std::cout << "{ ";
+  for (const std::string& val : set) {
+    std::cout << val << " ";
+  }
+
+  std::cout << "}" << std::endl;
+}
+
 void handle_request(KvsClient& client, std::string input) {
   std::vector<std::string> v;
   split(input, ' ', v);
 
-  Key key;
-  std::string value;
-
   if (v[0] == "GET") {
-    std::cout << client.get(key) << std::endl;
+    std::cout << client.get(v[1]) << std::endl;
+  } else if (v[0] == "GET_SET") {
+    print_set(client.get_set(v[1]));
   } else if (v[0] == "PUT") {
     if (client.put(v[1], v[2])) {
       std::cout << "Success!" << std::endl;
     } else {
       std::cout << "Failure!" << std::endl;
     }
+  } else if (v[0] == "PUT_SET") {
+    std::unordered_set<std::string> set;
+    for (int i = 1; i < v.size(); i++) { set.insert(v[1]); }
+
+    if(client.put(v[0], set)) {
+      std::cout << "Success!" << std::endl;
+    } else {
+      std::cout << "Failure!" << std::endl;
+    }
   } else if (v[0] == "GET_ALL") {
-    auto responses = client.get_all(key);
+    auto responses = client.get_all(v[1]);
     for (const auto& response : responses) {
       std::cout << response << std::endl;
+    }
+  } else if (v[0] == "GET_SET_ALL") {
+    std::vector<std::unordered_set<std::string>> result = client.get_set_all(v[0]);
+
+    for (const auto& set : result) {
+      print_set(set);
     }
   } else if (v[0] == "PUT_ALL") {
     if (client.put_all(v[1], v[2])) {
@@ -50,9 +73,18 @@ void handle_request(KvsClient& client, std::string input) {
     } else {
       std::cout << "Failure!" << std::endl;
     }
+  } else if (v[0] == "PUT_SET_ALL") {
+    std::unordered_set<std::string> set;
+    for (int i = 1; i < v.size(); i++) { set.insert(v[1]); }
+
+    if (client.put_all(v[1], set)) {
+      std::cout << "Success!" << std::endl;
+    } else {
+      std::cout << "Failure!" << std::endl;
+    }
   } else {
     std::cout << "Unrecognized command " << v[0]
-              << ". Valid commands are GET, GET_ALL, PUT, and PUT_ALL.";
+              << ". Valid commands are GET, GET_SET, GET_ALL, GET_SET_ALL, PUT, PUT_SET, PUT_ALL, and PUT_SET_ALL.";
   }
 }
 

@@ -72,10 +72,10 @@ inline void split(const std::string& s, char delim,
 }
 
 // form the timestamp given a time and a thread id
-inline unsigned long long get_time(){
+inline unsigned long long get_time() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch())
-                    .count();
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
 }
 
 inline unsigned long long generate_timestamp(const unsigned& id) {
@@ -104,6 +104,7 @@ inline std::string serialize(const LWWPairLattice<std::string>& l) {
   LWWValue lww_value;
   lww_value.set_timestamp(l.reveal().timestamp);
   lww_value.set_value(l.reveal().value);
+ 
   std::string serialized;
   lww_value.SerializeToString(&serialized);
   return serialized;
@@ -114,6 +115,7 @@ inline std::string serialize(const unsigned long long& timestamp,
   LWWValue lww_value;
   lww_value.set_timestamp(timestamp);
   lww_value.set_value(value);
+  
   std::string serialized;
   lww_value.SerializeToString(&serialized);
   return serialized;
@@ -124,11 +126,37 @@ inline std::string serialize(const SetLattice<std::string>& l) {
   for (const std::string& val : l.reveal()) {
     set_value.add_values(val);
   }
+
   std::string serialized;
   set_value.SerializeToString(&serialized);
   return serialized;
 }
 
+inline std::string serialize(const std::unordered_set<std::string>& set) {
+  SetValue set_value;
+  for (const std::string& val : set) {
+    set_value.add_values(val);
+  }
+  
+  std::string serialized;
+  set_value.SerializeToString(&serialized);
+  return serialized;
+}
+
+
+inline LWWValue deserialize_lww(const std::string& serialized) {
+  LWWValue lww;
+  lww.ParseFromString(serialized);
+
+  return lww;
+}
+
+inline SetValue deserialize_set(const std::string& serialized) {
+  SetValue set;
+  set.ParseFromString(serialized);
+
+  return set;
+}
 
 struct lattice_type_hash {
   std::size_t operator()(const LatticeType& lt) const {
