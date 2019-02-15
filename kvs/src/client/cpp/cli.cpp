@@ -49,9 +49,11 @@ void handle_request(KvsClient& client, std::string input) {
     }
   } else if (v[0] == "PUT_SET") {
     std::unordered_set<std::string> set;
-    for (int i = 1; i < v.size(); i++) { set.insert(v[1]); }
+    for (int i = 2; i < v.size(); i++) {
+      set.insert(v[i]);
+    }
 
-    if(client.put(v[0], set)) {
+    if (client.put(v[1], set)) {
       std::cout << "Success!" << std::endl;
     } else {
       std::cout << "Failure!" << std::endl;
@@ -62,7 +64,8 @@ void handle_request(KvsClient& client, std::string input) {
       std::cout << response << std::endl;
     }
   } else if (v[0] == "GET_SET_ALL") {
-    std::vector<std::unordered_set<std::string>> result = client.get_set_all(v[0]);
+    std::vector<std::unordered_set<std::string>> result =
+        client.get_set_all(v[1]);
 
     for (const auto& set : result) {
       print_set(set);
@@ -75,7 +78,9 @@ void handle_request(KvsClient& client, std::string input) {
     }
   } else if (v[0] == "PUT_SET_ALL") {
     std::unordered_set<std::string> set;
-    for (int i = 1; i < v.size(); i++) { set.insert(v[1]); }
+    for (int i = 2; i < v.size(); i++) {
+      set.insert(v[i]);
+    }
 
     if (client.put_all(v[1], set)) {
       std::cout << "Success!" << std::endl;
@@ -84,7 +89,8 @@ void handle_request(KvsClient& client, std::string input) {
     }
   } else {
     std::cout << "Unrecognized command " << v[0]
-              << ". Valid commands are GET, GET_SET, GET_ALL, GET_SET_ALL, PUT, PUT_SET, PUT_ALL, and PUT_SET_ALL.";
+              << ". Valid commands are GET, GET_SET, GET_ALL, GET_SET_ALL, "
+                 "PUT, PUT_SET, PUT_ALL, and PUT_SET_ALL.";
   }
 }
 
@@ -109,7 +115,7 @@ void run(KvsClient& client, std::string filename) {
 
 int main(int argc, char* argv[]) {
   if (argc < 2 || argc > 3) {
-    std::cerr << "Usage: " << argv[0] << "conf-file <input-file>" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " conf-file <input-file>" << std::endl;
     std::cerr
         << "Filename is optional. Omit the filename to run in interactive mode."
         << std::endl;

@@ -111,7 +111,7 @@ class KvsClient {
 
     return !is_error_response(response);
   }
-  
+
   /**
    * Issue a PUT request to the KVS for a set value.
    *
@@ -120,7 +120,9 @@ class KvsClient {
    * retrying the request or return NULL. Since no trial_limit is specified, we
    * use a default value of 10.
    */
-  bool put(Key key, std::unordered_set<std::string> value) { return put(key, value, 10); }
+  bool put(Key key, std::unordered_set<std::string> value) {
+    return put(key, value, 10);
+  }
 
   /**
    * Issue a PUT request to the KVS for a set value.
@@ -130,13 +132,14 @@ class KvsClient {
    * retrying the request or return NULL. We attempt this request up to
    * trial_limit times before giving up.
    */
-  bool put(Key key, std::unordered_set<std::string> value, unsigned trial_limit) {
+  bool put(Key key, std::unordered_set<std::string> value,
+           unsigned trial_limit) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
     tuple->set_lattice_type(LatticeType::SET);
     tuple->set_payload(serialize(value));
-    
+
     KeyResponse response = try_request(request, trial_limit);
 
     return !is_error_response(response);
@@ -172,7 +175,7 @@ class KvsClient {
 
     return responses.size() != 0;
   }
-  
+
   /**
    * Issue a durable PUT request to the KVS with a set value.
    *
@@ -181,7 +184,9 @@ class KvsClient {
    * successful. Since no trial_limit is specified, we use a default value of
    * 5.
    */
-  bool put_all(Key key, std::unordered_set<std::string> value) { return put_all(key, value, 5); }
+  bool put_all(Key key, std::unordered_set<std::string> value) {
+    return put_all(key, value, 5);
+  }
 
   /**
    * Issue a durable PUT request to the KVS with a set value.
@@ -191,7 +196,8 @@ class KvsClient {
    * successful. We attempt this request trial_limit times before giving up.
    * 5.
    */
-  bool put_all(Key key, std::unordered_set<std::string> value, unsigned trial_limit) {
+  bool put_all(Key key, std::unordered_set<std::string> value,
+               unsigned trial_limit) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
@@ -203,12 +209,12 @@ class KvsClient {
 
     return responses.size() != 0;
   }
-  
+
   /**
    * Issue a GET request to the KVS for a last-writer-wins value.
    *
    * We return a decoded string as a response, but if no worker threads are
-   * contactable from our client, we will return an empty string. Since no 
+   * contactable from our client, we will return an empty string. Since no
    * trial_limit is specified, we use a default value of 10.
    */
   std::string get(Key key) { return get(key, 10); }
@@ -239,7 +245,6 @@ class KvsClient {
 
     return deserialize_lww(rtuple.payload()).value();
   }
-
 
   /**
    * Retrieve all replicas of a key from the KVS for a last-writer-wins value.
@@ -285,12 +290,12 @@ class KvsClient {
 
     return result;
   }
-  
+
   /**
    * Issue a GET request to the KVS for a set value.
    *
    * We return a decoded string as a response, but if no worker threads are
-   * contactable from our client, we will return an empty string. Since no 
+   * contactable from our client, we will return an empty string. Since no
    * trial_limit is specified, we use a default value of 10.
    */
   std::unordered_set<std::string> get_set(Key key) { return get_set(key, 10); }
@@ -328,7 +333,6 @@ class KvsClient {
     return result;
   }
 
-
   /**
    * Retrieve all replicas of a key from the KVS for a set value.
    *
@@ -337,7 +341,9 @@ class KvsClient {
    * otherwise returns an empty vector. Since no trial_limit is specified, we
    * use a default value of 5.
    */
-  std::vector<std::unordered_set<std::string>> get_set_all(Key key) { return get_set_all(key, 5); }
+  std::vector<std::unordered_set<std::string>> get_set_all(Key key) {
+    return get_set_all(key, 5);
+  }
 
   /**
    * Retrieve all replicas of a key from the KVS for a set value.
@@ -347,7 +353,8 @@ class KvsClient {
    * otherwise returns an empty vector. We attempt this request trial_limit
    * times before giving up.
    */
-  std::vector<std::unordered_set<std::string>> get_set_all(Key key, unsigned trial_limit) {
+  std::vector<std::unordered_set<std::string>> get_set_all(
+      Key key, unsigned trial_limit) {
     KeyRequest request;
     prepare_data_request(request, key);
     request.set_type(RequestType::GET);
@@ -374,7 +381,6 @@ class KvsClient {
       for (const std::string& val : set_result.values()) {
         deserialized.insert(val);
       }
-
 
       result.push_back(deserialized);
     }
@@ -421,7 +427,7 @@ class KvsClient {
     // tier timed out, which should never happen.
     std::unordered_set<Address> workers =
         get_all_worker_threads(request.tuples(0).key());
-    if (workers.size() != 0) {
+    if (workers.size() == 0) {
       return responses;
     }
 
@@ -437,7 +443,7 @@ class KvsClient {
     bool succeed =
         receive<KeyResponse>(response_puller_, request_ids, responses);
 
-    if (succeed) {
+    if (!succeed) {
       logger_->info(
           "Request timed out while querying worker. Clearing address cache due "
           "to possible membership change and retrying request.");
