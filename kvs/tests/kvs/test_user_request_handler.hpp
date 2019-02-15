@@ -20,7 +20,7 @@ TEST_F(ServerHandlerTest, UserGetLWWTest) {
   serializers[LatticeType::LWW]->put(key, serialize(0, value));
   key_stat_map[key].second = LatticeType::LWW;
 
-  std::string get_request = get_key_request(key, LatticeType::LWW, ip);
+  std::string get_request = get_key_request(key, ip);
 
   unsigned total_access = 0;
   unsigned seed = 0;
@@ -62,7 +62,7 @@ TEST_F(ServerHandlerTest, UserGetSetTest) {
                                      serialize(SetLattice<std::string>(s)));
   key_stat_map[key].second = LatticeType::SET;
 
-  std::string get_request = get_key_request(key, LatticeType::SET, ip);
+  std::string get_request = get_key_request(key, ip);
 
   unsigned total_access = 0;
   unsigned seed = 0;
@@ -128,7 +128,7 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
   EXPECT_EQ(total_access, 1);
   EXPECT_EQ(key_access_timestamp[key].size(), 1);
 
-  std::string get_request = get_key_request(key, LatticeType::LWW, ip);
+  std::string get_request = get_key_request(key, ip);
 
   user_request_handler(total_access, seed, get_request, logger,
                        global_hash_ring_map, local_hash_ring_map, key_stat_map,
@@ -191,7 +191,7 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
   EXPECT_EQ(total_access, 1);
   EXPECT_EQ(key_access_timestamp[key].size(), 1);
 
-  std::string get_request = get_key_request(key, LatticeType::SET, ip);
+  std::string get_request = get_key_request(key, ip);
 
   user_request_handler(total_access, seed, get_request, logger,
                        global_hash_ring_map, local_hash_ring_map, key_stat_map,

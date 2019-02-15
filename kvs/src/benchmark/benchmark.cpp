@@ -134,7 +134,6 @@ void handle_request(
   rid += 1;
   KeyTuple* tp = req.add_tuples();
   tp->set_key(key);
-  tp->set_lattice_type(LatticeType::LWW);
   tp->set_address_cache_size(key_address_cache[key].size());
 
   if (value == "") {
@@ -147,6 +146,7 @@ void handle_request(
                     std::chrono::system_clock::now().time_since_epoch())
                     .count();
     auto ts = generate_timestamp(time, 0);
+    tp->set_lattice_type(LatticeType::LWW);
     tp->set_payload(serialize(ts, value));
   }
 
