@@ -18,12 +18,11 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        Address private_ip,
                        std::shared_ptr<spdlog::logger> logger,
                        string& serialized,
-                       vector<GlobalHashRing>& global_hash_rings,
-                       vector<LocalHashRing>& local_hash_rings,
-                       map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-                       map<Key, KeyInfo>& placement, set<Key>& join_remove_set,
-                       SocketCache& pushers, ServerThread& wt,
-                       AddressKeysetMap& join_addr_keyset_map,
+                       map<TierId, GlobalHashRing>& global_hash_rings,
+                       map<TierId, LocalHashRing>& local_hash_rings,
+                       map<Key, KeyMetadata>& metadata_map,
+                       set<Key>& join_remove_set, SocketCache& pushers,
+                       ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
                        int self_join_count) {
   vector<string> v;
   split(serialized, ':', v);
@@ -53,8 +52,9 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        .get_node_join_connect_addr()]);
 
       // gossip the new node address between server nodes to ensure consistency
-      for (const auto& global_pair : global_hash_rings) {
-        GlobalHashRing hash_ring = global_pair.second;
+      int index = 0;
+      for (const auto& pair : global_hash_rings) {
+        const GlobalHashRing hash_ring = pair.second;
 
         for (const ServerThread& st : hash_ring.get_unique_servers()) {
           // if the node is not myself and not the newly joined node, send the
@@ -67,9 +67,9 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
           }
         }
 
-        logger->info("Hash ring for tier {} is size {}.",
-                     std::to_string(global_pair.first),
-                     std::to_string(global_pair.second.size()));
+        logger->info("Hash ring for tier {} is size {}.", index,
+                     hash_ring.size());
+        index++;
       }
 
       // tell all worker threads about the new node join
@@ -83,11 +83,11 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
     if (tier == kSelfTierId) {
       bool succeed;
 
-      for (const auto& key_pair : key_stat_map) {
+      for (const auto& key_pair : metadata_map) {
         Key key = key_pair.first;
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
             wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-            global_hash_rings, local_hash_rings, placement, pushers,
+            global_hash_rings, local_hash_rings, metadata_map, pushers,
             kSelfTierIdVector, succeed, seed);
 
         if (succeed) {

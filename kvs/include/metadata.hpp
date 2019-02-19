@@ -21,19 +21,29 @@ const string kMetadataDelimiter = "|";
 const char kMetadataDelimiterChar = '|';
 
 // represents the replication state for each key
-struct KeyInfo {
-  map<unsigned, unsigned> global_replication_map_;
-  map<unsigned, unsigned> local_replication_map_;
+struct KeyMetadata {
+  map<TierId, unsigned> global_replication_;
+  map<TierId, unsigned> local_replication_;
+  unsigned size_;
+  LatticeType type_;
 };
 
 // per-tier metadata
-struct TierData {
-  TierData() : thread_number_(1), default_replication_(1), node_capacity_(0) {}
+struct TierMetadata {
+  TierMetadata() :
+      id_(kMemoryTierId),
+      thread_number_(1),
+      default_replication_(1),
+      node_capacity_(0) {}
 
-  TierData(unsigned t_num, unsigned rep, unsigned long long node_capacity) :
+  TierMetadata(unsigned id, unsigned t_num, unsigned rep,
+               unsigned long long node_capacity) :
+      id_(id),
       thread_number_(t_num),
       default_replication_(rep),
       node_capacity_(node_capacity) {}
+
+  unsigned id_;
 
   unsigned thread_number_;
 
@@ -53,8 +63,8 @@ inline bool is_metadata(Key key) {
   }
 }
 
-// NOTE: This needs to be here because it needs the definition of TierData
-extern map<unsigned, TierData> kTierDataMap;
+// NOTE: This needs to be here because it needs the definition of TierMetadata
+extern map<TierId, TierMetadata> kTierMetadata;
 
 enum MetadataType { replication, server_stats, key_access, key_size };
 
@@ -108,25 +118,32 @@ inline vector<string> split_metadata_key(Key key) {
   return tokens;
 }
 
-inline void warmup_placement_to_defaults(
-    map<Key, KeyInfo>& placement, unsigned& kDefaultGlobalMemoryReplication,
+inline void warmup_key_metadata_map_to_defaults(
+    map<Key, KeyMetadata>& key_metadata_map,
+    unsigned& kDefaultGlobalMemoryReplication,
     unsigned& kDefaultGlobalEbsReplication,
     unsigned& kDefaultLocalReplication) {
   for (unsigned i = 1; i <= 1000000; i++) {
     // key is 8 bytes
     Key key = string(8 - std::to_string(i).length(), '0') + std::to_string(i);
-    placement[key].global_replication_map_[1] = kDefaultGlobalMemoryReplication;
-    placement[key].global_replication_map_[2] = kDefaultGlobalEbsReplication;
-    placement[key].local_replication_map_[1] = kDefaultLocalReplication;
-    placement[key].local_replication_map_[2] = kDefaultLocalReplication;
+    key_metadata_map[key].global_replication_[kMemoryTierId] =
+        kDefaultGlobalMemoryReplication;
+    key_metadata_map[key].global_replication_[kEbsTierId] =
+        kDefaultGlobalEbsReplication;
+    key_metadata_map[key].local_replication_[kMemoryTierId] =
+        kDefaultLocalReplication;
+    key_metadata_map[key].local_replication_[kEbsTierId] =
+        kDefaultLocalReplication;
   }
 }
 
-inline void init_replication(map<Key, KeyInfo>& placement, const Key& key) {
+inline void init_replication(map<Key, KeyMetadata>& key_metadata_map,
+                             const Key& key) {
   for (const unsigned& tier_id : kAllTierIds) {
-    placement[key].global_replication_map_[tier_id] =
-        kTierDataMap[tier_id].default_replication_;
-    placement[key].local_replication_map_[tier_id] = kDefaultLocalReplication;
+    key_metadata_map[key].global_replication_[tier_id] =
+        kTierMetadata[tier_id].default_replication_;
+    key_metadata_map[key].local_replication_[tier_id] =
+        kDefaultLocalReplication;
   }
 }
 

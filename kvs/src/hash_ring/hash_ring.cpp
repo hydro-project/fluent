@@ -22,33 +22,33 @@
 // metadata flag = 0 means the key is  metadata; otherwise, it is  regular data
 ServerThreadList HashRingUtil::get_responsible_threads(
     Address response_address, const Key& key, bool metadata,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, KeyInfo>& placement, SocketCache& pushers,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map, SocketCache& pushers,
     const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) {
   if (metadata) {
     succeed = true;
     return kHashRingUtil->get_responsible_threads_metadata(
-        key, global_hash_rings[1], local_hash_rings[1]);
+        key, global_hash_rings[kMemoryTierId], local_hash_rings[kMemoryTierId]);
   } else {
     ServerThreadList result;
 
-    if (placement.find(key) == placement.end()) {
+    if (metadata_map.find(key) == metadata_map.end()) {
       kHashRingUtil->issue_replication_factor_request(
-          response_address, key, global_hash_rings[1],
-          local_hash_rings[1], pushers, seed);
+          response_address, key, global_hash_rings[kMemoryTierId],
+          local_hash_rings[kMemoryTierId], pushers, seed);
       succeed = false;
     } else {
       for (const unsigned& tier_id : tier_ids) {
         ServerThreadList threads = responsible_global(
-            key, placement[key].global_replication_map_[tier_id],
+            key, metadata_map[key].global_replication_[tier_id],
             global_hash_rings[tier_id]);
 
         for (const ServerThread& thread : threads) {
           Address public_ip = thread.get_public_ip();
           Address private_ip = thread.get_private_ip();
           set<unsigned> tids = responsible_local(
-              key, placement[key].local_replication_map_[tier_id],
+              key, metadata_map[key].local_replication_[tier_id],
               local_hash_rings[tier_id]);
 
           for (const unsigned& tid : tids) {

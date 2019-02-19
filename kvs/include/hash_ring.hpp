@@ -28,7 +28,9 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
   ~HashRing() {}
 
  public:
-  std::unordered_set<ServerThread, ThreadHash> get_unique_servers() { return unique_servers; }
+  std::unordered_set<ServerThread, ThreadHash> get_unique_servers() const {
+    return unique_servers;
+  }
 
   bool insert(Address public_ip, Address private_ip, int join_count,
               unsigned tid) {
@@ -79,9 +81,9 @@ class HashRingUtilInterface {
  public:
   virtual ServerThreadList get_responsible_threads(
       Address respond_address, const Key& key, bool metadata,
-      vector<GlobalHashRing>& global_hash_rings,
-      vector<LocalHashRing>& local_hash_rings,
-      map<Key, KeyInfo>& placement, SocketCache& pushers,
+      map<TierId, GlobalHashRing>& global_hash_rings,
+      map<TierId, LocalHashRing>& local_hash_rings,
+      map<Key, KeyMetadata>& metadata_map, SocketCache& pushers,
       const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) = 0;
 
   ServerThreadList get_responsible_threads_metadata(
@@ -99,9 +101,9 @@ class HashRingUtil : public HashRingUtilInterface {
  public:
   virtual ServerThreadList get_responsible_threads(
       Address respond_address, const Key& key, bool metadata,
-      vector<GlobalHashRing>& global_hash_rings,
-      vector<LocalHashRing>& local_hash_rings,
-      map<Key, KeyInfo>& placement, SocketCache& pushers,
+      map<TierId, GlobalHashRing>& global_hash_rings,
+      map<TierId, LocalHashRing>& local_hash_rings,
+      map<Key, KeyMetadata>& metadata_map, SocketCache& pushers,
       const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
 };
 

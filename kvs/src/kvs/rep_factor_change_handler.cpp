@@ -17,13 +17,10 @@
 void rep_factor_change_handler(
     Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, KeyInfo>& placement,
-    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    set<Key>& local_changeset, ServerThread& wt,
-    SerializerMap& serializers,
-    SocketCache& pushers) {
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
+    ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
   logger->info("Received a replication factor change.");
   if (thread_id == 0) {
     // tell all worker threads about the replication factor change
@@ -49,10 +46,10 @@ void rep_factor_change_handler(
     Key key = key_rep.key();
 
     // if this thread was responsible for the key before the change
-    if (key_stat_map.find(key) != key_stat_map.end()) {
+    if (metadata_map.find(key) != metadata_map.end()) {
       ServerThreadList orig_threads = kHashRingUtil->get_responsible_threads(
           wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-          global_hash_rings, local_hash_rings, placement, pushers,
+          global_hash_rings, local_hash_rings, metadata_map, pushers,
           kAllTierIds, succeed, seed);
 
       if (succeed) {
@@ -61,27 +58,27 @@ void rep_factor_change_handler(
 
         for (const auto& global : key_rep.global()) {
           if (global.replication_factor() <
-              placement[key].global_replication_map_[global.tier_id()]) {
+              metadata_map[key].global_replication_[global.tier_id()]) {
             decrement = true;
           }
 
-          placement[key].global_replication_map_[global.tier_id()] =
+          metadata_map[key].global_replication_[global.tier_id()] =
               global.replication_factor();
         }
 
         for (const auto& local : key_rep.local()) {
           if (local.replication_factor() <
-              placement[key].local_replication_map_[local.tier_id()]) {
+              metadata_map[key].local_replication_[local.tier_id()]) {
             decrement = true;
           }
 
-          placement[key].local_replication_map_[local.tier_id()] =
+          metadata_map[key].local_replication_[local.tier_id()] =
               local.replication_factor();
         }
 
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
             wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-            global_hash_rings, local_hash_rings, placement, pushers,
+            global_hash_rings, local_hash_rings, metadata_map, pushers,
             kAllTierIds, succeed, seed);
 
         if (succeed) {
@@ -124,35 +121,35 @@ void rep_factor_change_handler(
 
         // just update the replication factor
         for (const auto& global : key_rep.global()) {
-          placement[key].global_replication_map_[global.tier_id()] =
+          metadata_map[key].global_replication_[global.tier_id()] =
               global.replication_factor();
         }
 
         for (const auto& local : key_rep.local()) {
-          placement[key].local_replication_map_[local.tier_id()] =
+          metadata_map[key].local_replication_[local.tier_id()] =
               local.replication_factor();
         }
       }
     } else {
       // just update the replication factor
       for (const auto& global : key_rep.global()) {
-        placement[key].global_replication_map_[global.tier_id()] =
+        metadata_map[key].global_replication_[global.tier_id()] =
             global.replication_factor();
       }
 
       for (const auto& local : key_rep.local()) {
-        placement[key].local_replication_map_[local.tier_id()] =
+        metadata_map[key].local_replication_[local.tier_id()] =
             local.replication_factor();
       }
     }
   }
 
-  send_gossip(addr_keyset_map, pushers, serializers, key_stat_map);
+  send_gossip(addr_keyset_map, pushers, serializers, metadata_map);
 
   // remove keys
   for (const string& key : remove_set) {
-    serializers[key_stat_map[key].second]->remove(key);
-    key_stat_map.erase(key);
+    serializers[metadata_map[key].type_]->remove(key);
+    metadata_map.erase(key);
     local_changeset.erase(key);
   }
 }

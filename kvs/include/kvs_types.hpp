@@ -15,6 +15,7 @@
 #ifndef SRC_INCLUDE_TYPES_HPP_
 #define SRC_INCLUDE_TYPES_HPP_
 
+#include <chrono>
 #include "types.hpp"
 
 template <typename T>
@@ -27,5 +28,7 @@ using OccupancyStats = map<Address, map<unsigned, std::pair<double, unsigned>>>;
 using AccessStats = map<Address, map<unsigned, unsigned>>;
 
 using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
+
+using TierId = unsigned;
 
 #endif  // SRC_INCLUDE_TYPES_HPP_

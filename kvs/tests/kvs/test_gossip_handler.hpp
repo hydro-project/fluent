@@ -27,7 +27,7 @@ TEST_F(ServerHandlerTest, SimpleGossipReceive) {
   EXPECT_EQ(local_changeset.size(), 0);
 
   gossip_handler(seed, put_request, global_hash_rings, local_hash_rings,
-                 key_size_map, pending_gossip_map, placement, wt, serializer,
+                 key_size_map, pending_gossip_map, metadata_map, wt, serializer,
                  pushers);
 
   EXPECT_EQ(pending_gossip_map.size(), 0);
@@ -51,7 +51,7 @@ TEST_F(ServerHandlerTest, GossipUpdate) {
   EXPECT_EQ(local_changeset.size(), 0);
 
   gossip_handler(seed, put_request, global_hash_rings, local_hash_rings,
-                 key_size_map, pending_gossip_map, placement, wt, serializer,
+                 key_size_map, pending_gossip_map, metadata_map, wt, serializer,
                  pushers);
 
   EXPECT_EQ(pending_gossip_map.size(), 0);

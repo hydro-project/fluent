@@ -18,34 +18,36 @@
 #include "hash_ring.hpp"
 #include "spdlog/spdlog.h"
 
-void storage_policy(
-    std::shared_ptr<spdlog::logger> logger,
-    vector<unsigned, GlobalHashRing>& global_hash_rings,
-    TimePoint& grace_start,
-    SummaryStats& ss, unsigned& memory_node_number, unsigned& ebs_node_number,
-    unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    bool& removing_ebs_node, Address management_address, MonitoringThread& mt,
-    map<Address, unsigned>& departing_node_map, SocketCache& pushers);
+void storage_policy(std::shared_ptr<spdlog::logger> logger,
+                    map<TierId, GlobalHashRing>& global_hash_rings,
+                    TimePoint& grace_start, SummaryStats& ss,
+                    unsigned& memory_node_number, unsigned& ebs_node_number,
+                    unsigned& adding_memory_node, unsigned& adding_ebs_node,
+                    bool& removing_ebs_node, Address management_address,
+                    MonitoringThread& mt,
+                    map<Address, unsigned>& departing_node_map,
+                    SocketCache& pushers);
 
-void movement_policy(
-    std::shared_ptr<spdlog::logger> logger,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    TimePoint& grace_start,
-    SummaryStats& ss, unsigned& memory_node_number, unsigned& ebs_node_number,
-    unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    Address management_address, map<Key, KeyInfo>& placement,
-    map<Key, unsigned>& key_access_summary, map<Key, unsigned>& key_size,
-    MonitoringThread& mt, SocketCache& pushers, zmq::socket_t& response_puller,
-    vector<Address>& routing_address, unsigned& rid);
+void movement_policy(std::shared_ptr<spdlog::logger> logger,
+                     map<TierId, GlobalHashRing>& global_hash_rings,
+                     map<TierId, LocalHashRing>& local_hash_rings,
+                     TimePoint& grace_start, SummaryStats& ss,
+                     unsigned& memory_node_number, unsigned& ebs_node_number,
+                     unsigned& adding_memory_node, unsigned& adding_ebs_node,
+                     Address management_address,
+                     map<Key, KeyMetadata>& metadata_map,
+                     map<Key, unsigned>& key_access_summary,
+                     map<Key, unsigned>& key_size, MonitoringThread& mt,
+                     SocketCache& pushers, zmq::socket_t& response_puller,
+                     vector<Address>& routing_address, unsigned& rid);
 
 void slo_policy(std::shared_ptr<spdlog::logger> logger,
-                vector<GlobalHashRing>& global_hash_rings,
-                vector<LocalHashRing>& local_hash_rings,
-                TimePoint& grace_start,
-                SummaryStats& ss, unsigned& memory_node_number,
-                unsigned& adding_memory_node, bool& removing_memory_node,
-                Address management_address, map<Key, KeyInfo>& placement,
+                map<TierId, GlobalHashRing>& global_hash_rings,
+                map<TierId, LocalHashRing>& local_hash_rings,
+                TimePoint& grace_start, SummaryStats& ss,
+                unsigned& memory_node_number, unsigned& adding_memory_node,
+                bool& removing_memory_node, Address management_address,
+                map<Key, KeyMetadata>& metadata_map,
                 map<Key, unsigned>& key_access_summary, MonitoringThread& mt,
                 map<Address, unsigned>& departing_node_map,
                 SocketCache& pushers, zmq::socket_t& response_puller,

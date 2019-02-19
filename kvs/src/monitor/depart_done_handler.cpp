@@ -14,11 +14,12 @@
 
 #include "monitor/monitoring_handlers.hpp"
 
-void depart_done_handler(
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<Address, unsigned>& departing_node_map, Address management_address,
-    bool& removing_memory_node, bool& removing_ebs_node, SocketCache& pushers,
-    TimePoint& grace_start) {
+void depart_done_handler(std::shared_ptr<spdlog::logger> logger,
+                         string& serialized,
+                         map<Address, unsigned>& departing_node_map,
+                         Address management_address, bool& removing_memory_node,
+                         bool& removing_ebs_node, SocketCache& pushers,
+                         TimePoint& grace_start) {
   vector<string> tokens;
   split(serialized, '_', tokens);
 

@@ -16,7 +16,7 @@
 
 void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
                  SerializerMap& serializers,
-                 map<Key, std::pair<unsigned, LatticeType>>& key_stat_map) {
+                 map<Key, KeyMetadata>& metadata_map) {
   map<Address, KeyRequest> gossip_map;
 
   for (const auto& key_pair : addr_keyset_map) {
@@ -26,10 +26,10 @@ void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
     gossip_map[address].set_type(type);
 
     for (const auto& key : key_pair.second) {
-      auto res = process_get(key, serializers[key_stat_map[key].second]);
+      auto res = process_get(key, serializers[metadata_map[key].type_]);
 
       if (res.second == 0) {
-        prepare_put_tuple(gossip_map[address], key, key_stat_map[key].second,
+        prepare_put_tuple(gossip_map[address], key, metadata_map[key].type_,
                           res.first);
       }
     }
@@ -52,23 +52,23 @@ std::pair<string, unsigned> process_get(const Key& key,
 
 void process_put(const Key& key, LatticeType lattice_type,
                  const string& payload, Serializer* serializer,
-                 map<Key, std::pair<unsigned, LatticeType>>& key_stat_map) {
-  key_stat_map[key].first = serializer->put(key, payload);
-  key_stat_map[key].second = std::move(lattice_type);
+                 map<Key, KeyMetadata>& metadata_map) {
+  metadata_map[key].size_ = serializer->put(key, payload);
+  metadata_map[key].type_ = std::move(lattice_type);
 }
 
-bool is_primary_replica(const Key& key, map<Key, KeyInfo>& placement,
-                        vector<GlobalHashRing>& global_hash_rings,
-                        vector<LocalHashRing>& local_hash_rings,
+bool is_primary_replica(const Key& key, map<Key, KeyMetadata>& metadata_map,
+                        map<TierId, GlobalHashRing>& global_hash_rings,
+                        map<TierId, LocalHashRing>& local_hash_rings,
                         ServerThread& st) {
-  if (placement[key].global_replication_map_[kSelfTierId] == 0) {
+  if (metadata_map[key].global_replication_[kSelfTierId] == 0) {
     return false;
   } else {
     if (kSelfTierId > 1) {
       bool has_upper_tier_replica = false;
       for (const unsigned& tier_id : kAllTierIds) {
         if (tier_id < kSelfTierId &&
-            placement[key].global_replication_map_[tier_id] > 0) {
+            metadata_map[key].global_replication_[tier_id] > 0) {
           has_upper_tier_replica = true;
         }
       }

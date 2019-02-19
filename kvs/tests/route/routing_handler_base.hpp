@@ -27,9 +27,9 @@ class RoutingHandlerTest : public ::testing::Test {
  protected:
   Address ip = "127.0.0.1";
   unsigned thread_id = 0;
-  vector<GlobalHashRing> global_hash_rings;
-  vector<LocalHashRing> local_hash_rings;
-  map<Key, KeyInfo> placement;
+  map<TierId, GlobalHashRing> global_hash_rings;
+  map<TierId, LocalHashRing> local_hash_rings;
+  map<Key, KeyMetadata> metadata_map;
   PendingMap<std::pair<Address, string>> pending_key_request_map;
   zmq::context_t context;
   SocketCache pushers = SocketCache(&context, ZMQ_PUSH);
@@ -37,7 +37,7 @@ class RoutingHandlerTest : public ::testing::Test {
 
   RoutingHandlerTest() {
     rt = RoutingThread(ip, thread_id);
-    global_hash_rings[1].insert(ip, ip, 0, thread_id);
+    global_hash_rings[kMemoryTierId].insert(ip, ip, 0, thread_id);
   }
 
  public:
@@ -56,13 +56,16 @@ class RoutingHandlerTest : public ::testing::Test {
 
   vector<string> get_zmq_messages() { return mock_zmq_util.sent_messages; }
 
-  void warmup_placement_to_defaults(vector<string> keys) {
+  void warmup_metadata_map_to_defaults(vector<string> keys) {
     for (string key : keys) {
-      placement[key].global_replication_map_[1] =
+      metadata_map[key].global_replication_[kMemoryTierId] =
           kDefaultGlobalMemoryReplication;
-      placement[key].global_replication_map_[2] = kDefaultGlobalEbsReplication;
-      placement[key].local_replication_map_[1] = kDefaultLocalReplication;
-      placement[key].local_replication_map_[2] = kDefaultLocalReplication;
+      metadata_map[key].global_replication_[kEbsTierId] =
+          kDefaultGlobalEbsReplication;
+      metadata_map[key]
+          .local_replication_[kMemoryTierId] = kDefaultLocalReplication;
+      metadata_map[key].local_replication_[kEbsTierId] =
+          kDefaultLocalReplication;
     }
   }
 };

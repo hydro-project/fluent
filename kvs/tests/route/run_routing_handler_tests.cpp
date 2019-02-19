@@ -38,10 +38,10 @@ unsigned kDefaultGlobalMemoryReplication = 1;
 unsigned kDefaultGlobalEbsReplication = 1;
 unsigned kThreadNum = 1;
 
-unsigned kSelfTierId = 0;
+unsigned kSelfTierId = kRoutingTierId;
 
 vector<unsigned> kSelfTierIdVector = {kSelfTierId};
-map<unsigned, TierData> kTierDataMap = {};
+map<TierId, TierMetadata> kTierMetadata = {};
 
 unsigned kEbsThreadNum = 1;
 unsigned kMemoryThreadNum = 1;

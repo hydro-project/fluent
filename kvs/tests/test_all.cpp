@@ -39,10 +39,10 @@
 #include "include/lattices/test_set_lattice.hpp"
 
 unsigned kDefaultLocalReplication = 1;
-unsigned kSelfTierId = 1;
+unsigned kSelfTierId = kMemoryTierId;
 unsigned kThreadNum = 1;
 vector<unsigned> kSelfTierIdVector = {kSelfTierId};
-map<unsigned, TierData> kTierDataMap = {};
+map<TierId, TierMetadata> kTierMetadata = {};
 
 unsigned kEbsThreadCount = 1;
 unsigned kMemoryThreadCount = 1;

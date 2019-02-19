@@ -12,21 +12,17 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#include <chrono>
-
 #include "kvs/kvs_handlers.hpp"
 
 void user_request_handler(
     unsigned& total_accesses, unsigned& seed, string& serialized,
     std::shared_ptr<spdlog::logger> logger,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
     PendingMap<PendingRequest>& pending_request_map,
     map<Key, std::multiset<TimePoint>>& key_access_timestamp,
-    map<Key, KeyInfo>& placement, set<Key>& local_changeset, ServerThread& wt,
-    SerializerMap& serializers,
-    SocketCache& pushers) {
+    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
+    ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
   KeyRequest request;
   request.ParseFromString(serialized);
 
@@ -50,7 +46,7 @@ void user_request_handler(
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-        global_hash_rings, local_hash_rings, placement, pushers,
+        global_hash_rings, local_hash_rings, metadata_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
@@ -67,7 +63,8 @@ void user_request_handler(
           // factor request and make the request pending
           kHashRingUtil->issue_replication_factor_request(
               wt.get_replication_factor_connect_addr(), key,
-              global_hash_rings[1], local_hash_rings[1], pushers, seed);
+              global_hash_rings[kMemoryTierId], local_hash_rings[kMemoryTierId],
+              pushers, seed);
 
           pending_request_map[key].push_back(
               PendingRequest(request_type, tuple.lattice_type(), payload,
@@ -76,28 +73,28 @@ void user_request_handler(
       } else {  // if we know the responsible threads, we process the request
         KeyTuple* tp = response.add_tuples();
         tp->set_key(key);
-
         if (request_type == "GET") {
-          if (key_stat_map.find(key) == key_stat_map.end()) {
+          if (metadata_map.find(key) == metadata_map.end() || metadata_map[key].type_ == LatticeType::NO) {
             tp->set_error(1);
           } else {
-            auto res = process_get(key, serializers[key_stat_map[key].second]);
-            tp->set_lattice_type(key_stat_map[key].second);
+            auto res = process_get(key, serializers[metadata_map[key].type_]);
+            tp->set_lattice_type(metadata_map[key].type_);
             tp->set_payload(res.first);
             tp->set_error(res.second);
           }
         } else if (request_type == "PUT") {
           if (tuple.lattice_type() == LatticeType::NO) {
             logger->error("PUT request missing lattice type.");
-          } else if (key_stat_map.find(key) != key_stat_map.end() &&
-                     key_stat_map[key].second != tuple.lattice_type()) {
+          } else if (metadata_map.find(key) != metadata_map.end() &&
+                     metadata_map[key].type_ != LatticeType::NO  &&
+                     metadata_map[key].type_ != tuple.lattice_type()) {
             logger->error(
-                "Lattice type mismatch: {} from query but {} expected.",
-                LatticeType_Name(tuple.lattice_type()),
-                key_stat_map[key].second);
+                "Lattice type mismatch for key {}: query is {} but we expect {}.",
+                key, LatticeType_Name(tuple.lattice_type()),
+                LatticeType_Name(metadata_map[key].type_));
           } else {
             process_put(key, tuple.lattice_type(), payload,
-                        serializers[tuple.lattice_type()], key_stat_map);
+                        serializers[tuple.lattice_type()], metadata_map);
 
             local_changeset.insert(key);
             tp->set_error(0);

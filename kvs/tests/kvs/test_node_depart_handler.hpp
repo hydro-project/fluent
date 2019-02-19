@@ -16,36 +16,36 @@
 
 TEST_F(ServerHandlerTest, SimpleNodeDepart) {
   kThreadNum = 2;
-  global_hash_rings[1].insert("127.0.0.2", "127.0.0.2", 0, 0);
+  global_hash_rings[kMemoryTierId].insert("127.0.0.2", "127.0.0.2", 0, 0);
 
-  EXPECT_EQ(global_hash_rings[1].size(), 6000);
-  EXPECT_EQ(global_hash_rings[1].get_unique_servers().size(), 2);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 6000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 2);
 
-  string serialized = "1:127.0.0.2:127.0.0.2";
-  node_depart_handler(thread_id, ip, ip, global_hash_rings, logger,
-                      serialized, pushers);
+  string serialized = std::to_string(kMemoryTierId) + ":127.0.0.2:127.0.0.2";
+  node_depart_handler(thread_id, ip, ip, global_hash_rings, logger, serialized,
+                      pushers);
 
   vector<string> messages = get_zmq_messages();
 
   EXPECT_EQ(messages.size(), 1);
   EXPECT_EQ(messages[0], serialized);
 
-  EXPECT_EQ(global_hash_rings[1].size(), 3000);
-  EXPECT_EQ(global_hash_rings[1].get_unique_servers().size(), 1);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 }
 
 TEST_F(ServerHandlerTest, FakeNodeDepart) {
-  EXPECT_EQ(global_hash_rings[1].size(), 3000);
-  EXPECT_EQ(global_hash_rings[1].get_unique_servers().size(), 1);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 
-  string serialized = "1:127.0.0.2";
-  node_depart_handler(thread_id, ip, ip, global_hash_rings, logger,
-                      serialized, pushers);
+  string serialized = std::to_string(kMemoryTierId) + ":127.0.0.2:127.0.0.2";
+  node_depart_handler(thread_id, ip, ip, global_hash_rings, logger, serialized,
+                      pushers);
 
   vector<string> messages = get_zmq_messages();
 
   EXPECT_EQ(messages.size(), 0);
 
-  EXPECT_EQ(global_hash_rings[1].size(), 3000);
-  EXPECT_EQ(global_hash_rings[1].get_unique_servers().size(), 1);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 }

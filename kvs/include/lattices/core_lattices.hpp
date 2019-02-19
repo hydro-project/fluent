@@ -15,8 +15,8 @@
 #ifndef SRC_INCLUDE_LATTICES_CORE_LATTICES_HPP_
 #define SRC_INCLUDE_LATTICES_CORE_LATTICES_HPP_
 
-#include "types.hpp"
 #include "base_lattices.hpp"
+#include "types.hpp"
 
 class BoolLattice : public Lattice<bool> {
  protected:

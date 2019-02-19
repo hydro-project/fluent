@@ -19,33 +19,33 @@
 #include "spdlog/spdlog.h"
 
 string seed_handler(std::shared_ptr<spdlog::logger> logger,
-                    vector<GlobalHashRing>& global_hash_rings);
+                    map<TierId, GlobalHashRing>& global_hash_rings);
 
 void membership_handler(std::shared_ptr<spdlog::logger> logger,
                         string& serialized, SocketCache& pushers,
-                        vectorGlobalHashRing>& global_hash_rings,
+                        map<TierId, GlobalHashRing>& global_hash_rings,
                         unsigned thread_id, Address ip);
 
 void replication_response_handler(
     std::shared_ptr<spdlog::logger> logger, string& serialized,
     SocketCache& pushers, RoutingThread& rt,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, KeyInfo>& placement,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map,
     PendingMap<std::pair<Address, string>>& pending_key_request_map,
     unsigned& seed);
 
 void replication_change_handler(std::shared_ptr<spdlog::logger> logger,
                                 string& serialized, SocketCache& pushers,
-                                map<Key, KeyInfo>& placement,
+                                map<Key, KeyMetadata>& metadata_map,
                                 unsigned thread_id, Address ip);
 
 void address_handler(
     std::shared_ptr<spdlog::logger> logger, string& serialized,
     SocketCache& pushers, RoutingThread& rt,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, KeyInfo>& placement,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map,
     PendingMap<std::pair<Address, string>>& pending_key_request_map,
     unsigned& seed);
 

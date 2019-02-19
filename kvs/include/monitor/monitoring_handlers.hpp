@@ -20,19 +20,19 @@
 
 void membership_handler(
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    vector<GlobalHashRing>& global_hash_rings,
+    map<TierId, GlobalHashRing>& global_hash_rings,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    TimePoint& grace_start,
-    vector<Address>& routing_address, StorageStats& memory_tier_storage,
-    StorageStats& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
-    OccupancyStats& ebs_tier_occupancy,
+    TimePoint& grace_start, vector<Address>& routing_address,
+    StorageStats& memory_tier_storage, StorageStats& ebs_tier_storage,
+    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
     map<Key, map<Address, unsigned>>& key_access_frequency);
 
-void depart_done_handler(
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<Address, unsigned>& departing_node_map, Address management_address,
-    bool& removing_memory_node, bool& removing_ebs_node, SocketCache& pushers,
-    TimePoint& grace_start);
+void depart_done_handler(std::shared_ptr<spdlog::logger> logger,
+                         string& serialized,
+                         map<Address, unsigned>& departing_node_map,
+                         Address management_address, bool& removing_memory_node,
+                         bool& removing_ebs_node, SocketCache& pushers,
+                         TimePoint& grace_start);
 
 void feedback_handler(
     string& serialized, map<string, double>& user_latency,

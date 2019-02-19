@@ -12,19 +12,15 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#include <chrono>
-
 #include "kvs/kvs_handlers.hpp"
 
-void gossip_handler(
-    unsigned& seed, string& serialized,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    PendingMap<PendingGossip>& pending_gossip_map, map<Key, KeyInfo>& placement,
-    ServerThread& wt,
-    SerializerMap& serializers,
-    SocketCache& pushers, std::shared_ptr<spdlog::logger> logger) {
+void gossip_handler(unsigned& seed, string& serialized,
+                    map<TierId, GlobalHashRing>& global_hash_rings,
+                    map<TierId, LocalHashRing>& local_hash_rings,
+                    PendingMap<PendingGossip>& pending_gossip_map,
+                    map<Key, KeyMetadata>& metadata_map, ServerThread& wt,
+                    SerializerMap& serializers, SocketCache& pushers,
+                    std::shared_ptr<spdlog::logger> logger) {
   KeyRequest gossip;
   gossip.ParseFromString(serialized);
 
@@ -36,21 +32,21 @@ void gossip_handler(
     Key key = tuple.key();
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-        global_hash_rings, local_hash_rings, placement, pushers,
+        global_hash_rings, local_hash_rings, metadata_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) !=
           threads.end()) {  // this means this worker thread is one of the
                             // responsible threads
-        if (key_stat_map.find(key) != key_stat_map.end() &&
-            key_stat_map[key].second != tuple.lattice_type()) {
+        if (metadata_map.find(key) != metadata_map.end() &&
+            metadata_map[key].type_ != tuple.lattice_type()) {
           logger->error("Lattice type mismatch: {} from query but {} expected.",
                         LatticeType_Name(tuple.lattice_type()),
-                        key_stat_map[key].second);
+                        metadata_map[key].type_);
         } else {
           process_put(tuple.key(), tuple.lattice_type(), tuple.payload(),
-                      serializers[tuple.lattice_type()], key_stat_map);
+                      serializers[tuple.lattice_type()], metadata_map);
         }
       } else {
         if (is_metadata(key)) {  // forward the gossip
@@ -67,7 +63,8 @@ void gossip_handler(
         } else {
           kHashRingUtil->issue_replication_factor_request(
               wt.get_replication_factor_connect_addr(), key,
-              global_hash_rings[1], local_hash_rings[1], pushers, seed);
+              global_hash_rings[kMemoryTierId], local_hash_rings[kMemoryTierId],
+              pushers, seed);
 
           pending_gossip_map[key].push_back(
               PendingGossip(tuple.lattice_type(), tuple.payload()));

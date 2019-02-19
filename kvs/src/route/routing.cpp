@@ -15,7 +15,7 @@
 #include "route/routing_handlers.hpp"
 #include "yaml-cpp/yaml.h"
 
-map<unsigned, TierData> kTierDataMap;
+map<TierId, TierMetadata> kTierMetadata;
 unsigned kDefaultLocalReplication;
 unsigned kRoutingThreadCount;
 
@@ -42,32 +42,30 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
   // prepare the zmq context
   zmq::context_t context(1);
   SocketCache pushers(&context, ZMQ_PUSH);
-  map<Key, KeyInfo> placement;
-
-  // warm up for benchmark
-  // warmup_placement_to_defaults(placement);
+  map<Key, KeyMetadata> metadata_map;
 
   if (thread_id == 0) {
     // notify monitoring nodes
     for (const string &address : monitoring_addresses) {
       kZmqUtil->send_string(
           // add null because it expects two IPs from server nodes...
-          "join:0:" + ip + ":NULL",
+          "join:" + std::to_string(kRoutingTierId) + ":" + ip + ":NULL",
           &pushers[MonitoringThread(address).get_notify_connect_addr()]);
     }
   }
 
   // initialize hash ring maps
-  vector<GlobalHashRing> global_hash_rings;
-  vector<LocalHashRing> local_hash_rings;
+  map<TierId, GlobalHashRing> global_hash_rings;
+  map<TierId, LocalHashRing> local_hash_rings;
 
   // pending events for asynchrony
   PendingMap<std::pair<Address, string>> pending_key_request_map;
 
   // form local hash rings
-  for (const auto &tier_pair : kTierDataMap) {
-    for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_rings[tier_pair.first].insert(ip, ip, 0, tid);
+  for (const auto &pair : kTierMetadata) {
+    TierMetadata tier = pair.second;
+    for (unsigned tid = 0; tid < tier.thread_number_; tid++) {
+      local_hash_rings[tier.id_].insert(ip, ip, 0, tid);
     }
   }
 
@@ -123,20 +121,20 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
       string serialized = kZmqUtil->recv_string(&replication_factor_puller);
       replication_response_handler(logger, serialized, pushers, rt,
                                    global_hash_rings, local_hash_rings,
-                                   placement, pending_key_request_map, seed);
+                                   metadata_map, pending_key_request_map, seed);
     }
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
       string serialized =
           kZmqUtil->recv_string(&replication_factor_change_puller);
-      replication_change_handler(logger, serialized, pushers, placement,
+      replication_change_handler(logger, serialized, pushers, metadata_map,
                                  thread_id, ip);
     }
 
     if (pollitems[4].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&key_address_puller);
       address_handler(logger, serialized, pushers, rt, global_hash_rings,
-                      local_hash_rings, placement, pending_key_request_map,
+                      local_hash_rings, metadata_map, pending_key_request_map,
                       seed);
     }
   }
@@ -173,10 +171,12 @@ int main(int argc, char *argv[]) {
     monitoring_addresses.push_back(address);
   }
 
-  kTierDataMap[1] = TierData(
-      kMemoryThreadCount, kDefaultGlobalMemoryReplication, kMemoryNodeCapacity);
-  kTierDataMap[2] =
-      TierData(kEbsThreadCount, kDefaultGlobalEbsReplication, kEbsNodeCapacity);
+  kTierMetadata[kMemoryTierId] =
+      TierMetadata(kMemoryTierId, kMemoryThreadCount,
+                   kDefaultGlobalMemoryReplication, kMemoryNodeCapacity);
+  kTierMetadata[kEbsTierId] =
+      TierMetadata(kEbsTierId, kEbsThreadCount, kDefaultGlobalEbsReplication,
+                   kEbsNodeCapacity);
 
   vector<std::thread> routing_worker_threads;
 

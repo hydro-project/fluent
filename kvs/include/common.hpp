@@ -33,12 +33,14 @@ const unsigned kMetadataLocalReplicationFactor = 1;
 
 const unsigned kVirtualThreadNum = 3000;
 
-const unsigned kMinTier = 1;
-const unsigned kMaxTier = 2;
-const vector<unsigned> kAllTierIds = {1, 2};
+const unsigned kMemoryTierId = 0;
+const unsigned kEbsTierId = 1;
+const unsigned kRoutingTierId = 100;
+
+const unsigned kMaxTier = 1;
+const vector<unsigned> kAllTierIds = {0, 1};
 
 const unsigned kSloWorst = 3000;
-const unsigned SLO_BEST = 1500;
 
 // run-time constants
 extern unsigned kSelfTierId;

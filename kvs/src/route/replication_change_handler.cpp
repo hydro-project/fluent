@@ -16,7 +16,7 @@
 
 void replication_change_handler(std::shared_ptr<spdlog::logger> logger,
                                 string& serialized, SocketCache& pushers,
-                                map<Key, KeyInfo>& placement,
+                                map<Key, KeyMetadata>& metadata_map,
                                 unsigned thread_id, Address ip) {
   logger->info("Received a replication factor change.");
 
@@ -38,12 +38,12 @@ void replication_change_handler(std::shared_ptr<spdlog::logger> logger,
     // update the replication factor
 
     for (const Replication& global : key_rep.global()) {
-      placement[key].global_replication_map_[global.tier_id()] =
+      metadata_map[key].global_replication_[global.tier_id()] =
           global.replication_factor();
     }
 
     for (const Replication& local : key_rep.local()) {
-      placement[key].local_replication_map_[local.tier_id()] =
+      metadata_map[key].local_replication_[local.tier_id()] =
           local.replication_factor();
     }
   }

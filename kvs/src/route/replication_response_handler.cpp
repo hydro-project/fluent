@@ -17,14 +17,13 @@
 void replication_response_handler(
     std::shared_ptr<spdlog::logger> logger, string& serialized,
     SocketCache& pushers, RoutingThread& rt,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, KeyInfo>& placement,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map,
     PendingMap<std::pair<Address, string>>& pending_key_request_map,
     unsigned& seed) {
   KeyResponse response;
   response.ParseFromString(serialized);
-
   // we assume tuple 0 because there should only be one tuple responding to a
   // replication factor request
   KeyTuple tuple = response.tuples(0);
@@ -40,25 +39,25 @@ void replication_response_handler(
     rep_data.ParseFromString(lww_value.value());
 
     for (const auto& global : rep_data.global()) {
-      placement[key].global_replication_map_[global.tier_id()] =
+      metadata_map[key].global_replication_[global.tier_id()] =
           global.replication_factor();
     }
 
     for (const auto& local : rep_data.local()) {
-      placement[key].local_replication_map_[local.tier_id()] =
+      metadata_map[key].local_replication_[local.tier_id()] =
           local.replication_factor();
     }
   } else if (error == 1) {
     // error 1 means that the receiving thread was responsible for the metadata
     // but didn't have any values stored -- we use the default rep factor
-    init_replication(placement, key);
+    init_replication(metadata_map, key);
   } else if (error == 2) {
     // error 2 means that the node that received the rep factor request was not
     // responsible for that metadata
     auto respond_address = rt.get_replication_factor_connect_addr();
     kHashRingUtil->issue_replication_factor_request(
-        respond_address, key, global_hash_rings[1], local_hash_rings[1],
-        pushers, seed);
+        respond_address, key, global_hash_rings[kMemoryTierId],
+        local_hash_rings[kMemoryTierId], pushers, seed);
     return;
   } else {
     logger->error("Unexpected error type {} in replication factor response.",
@@ -69,14 +68,14 @@ void replication_response_handler(
   // process pending key address requests
   if (pending_key_request_map.find(key) != pending_key_request_map.end()) {
     bool succeed;
-    unsigned tier_id = 1;
+    unsigned tier_id = 0;
     ServerThreadList threads = {};
 
     while (threads.size() == 0 && tier_id < kMaxTier) {
       threads = kHashRingUtil->get_responsible_threads(
           rt.get_replication_factor_connect_addr(), key, false,
-          global_hash_rings, local_hash_rings, placement, pushers,
-          {tier_id}, succeed, seed);
+          global_hash_rings, local_hash_rings, metadata_map, pushers, {tier_id},
+          succeed, seed);
 
       if (!succeed) {
         logger->error("Missing replication factor for key {}.", key);

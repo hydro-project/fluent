@@ -28,9 +28,9 @@ int MockZmqUtil::poll(long timeout, vector<zmq::pollitem_t>* items) {
 // metadata flag = 0 means the key is  metadata; otherwise, it is  regular data
 ServerThreadList MockHashRingUtil::get_responsible_threads(
     Address respond_address, const Key& key, bool metadata,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, KeyInfo>& placement, SocketCache& pushers,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map, SocketCache& pushers,
     const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) {
   ServerThreadList threads;
   succeed = true;

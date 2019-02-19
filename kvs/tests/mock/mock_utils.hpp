@@ -31,9 +31,9 @@ class MockHashRingUtil : public HashRingUtilInterface {
  public:
   virtual ServerThreadList get_responsible_threads(
       Address respond_address, const Key& key, bool metadata,
-      vector<GlobalHashRing>& global_hash_rings,
-      vector<LocalHashRing>& local_hash_rings,
-      map<Key, KeyInfo>& placement, SocketCache& pushers,
+      map<TierId, GlobalHashRing>& global_hash_rings,
+      map<TierId, LocalHashRing>& local_hash_rings,
+      map<Key, KeyMetadata>& metadata_map, SocketCache& pushers,
       const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
 };
 

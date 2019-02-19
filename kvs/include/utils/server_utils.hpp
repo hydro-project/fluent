@@ -276,7 +276,8 @@ class EBSSetSerializer : public Serializer {
   }
 };
 
-using SerializerMap = std::unordered_map<LatticeType, Serializer*, lattice_type_hash>;
+using SerializerMap =
+    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>;
 
 struct PendingRequest {
   PendingRequest() {}

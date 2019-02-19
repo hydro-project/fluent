@@ -15,14 +15,15 @@
 #include "monitor/monitoring_utils.hpp"
 #include "monitor/policies.hpp"
 
-void storage_policy(
-    std::shared_ptr<spdlog::logger> logger,
-    vector<GlobalHashRing>& global_hash_rings,
-    TimePoint& grace_start,
-    SummaryStats& ss, unsigned& memory_node_number, unsigned& ebs_node_number,
-    unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    bool& removing_ebs_node, Address management_address, MonitoringThread& mt,
-    map<Address, unsigned>& departing_node_map, SocketCache& pushers) {
+void storage_policy(std::shared_ptr<spdlog::logger> logger,
+                    map<TierId, GlobalHashRing>& global_hash_rings,
+                    TimePoint& grace_start, SummaryStats& ss,
+                    unsigned& memory_node_number, unsigned& ebs_node_number,
+                    unsigned& adding_memory_node, unsigned& adding_ebs_node,
+                    bool& removing_ebs_node, Address management_address,
+                    MonitoringThread& mt,
+                    map<Address, unsigned>& departing_node_map,
+                    SocketCache& pushers) {
   // check storage consumption and trigger elasticity if necessary
   if (adding_memory_node == 0 && ss.required_memory_node > memory_node_number) {
     auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
@@ -54,8 +55,8 @@ void storage_policy(
 
     if (time_elapsed > kGracePeriod) {
       // pick a random ebs node and send remove node command
-      auto node = next(global_hash_rings[2].begin(),
-                       rand() % global_hash_rings[2].size())
+      auto node = next(global_hash_rings[kEbsTierId].begin(),
+                       rand() % global_hash_rings[kEbsTierId].size())
                       ->second;
       remove_node(logger, node, "ebs", removing_ebs_node, pushers,
                   departing_node_map, mt);

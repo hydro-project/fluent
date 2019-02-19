@@ -17,9 +17,9 @@
 void address_handler(
     std::shared_ptr<spdlog::logger> logger, string& serialized,
     SocketCache& pushers, RoutingThread& rt,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, KeyInfo>& placement,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map,
     PendingMap<std::pair<Address, string>>& pending_key_request_map,
     unsigned& seed) {
   logger->info("Received key address request.");
@@ -31,8 +31,8 @@ void address_handler(
   bool succeed;
 
   int num_servers = 0;
-  for (const auto& global_pair : global_hash_rings) {
-    num_servers += global_pair.second.size();
+  for (const auto& pair : global_hash_rings) {
+    num_servers += pair.second.size();
   }
 
   bool respond = false;
@@ -42,13 +42,13 @@ void address_handler(
     respond = true;
   } else {  // if there are servers, attempt to return the correct threads
     for (const Key& key : addr_request.keys()) {
-      unsigned tier_id = 1;
+      unsigned tier_id = 0;
       ServerThreadList threads = {};
 
       while (threads.size() == 0 && tier_id < kMaxTier) {
         threads = kHashRingUtil->get_responsible_threads(
             rt.get_replication_factor_connect_addr(), key, false,
-            global_hash_rings, local_hash_rings, placement, pushers,
+            global_hash_rings, local_hash_rings, metadata_map, pushers,
             {tier_id}, succeed, seed);
 
         if (!succeed) {  // this means we don't have the replication factor for

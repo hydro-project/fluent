@@ -29,7 +29,7 @@ unsigned kDefaultLocalReplication;
 unsigned kMinimumReplicaNumber;
 
 // read-only per-tier metadata
-map<unsigned, TierData> kTierDataMap;
+map<TierId, TierMetadata> kTierMetadata;
 
 ZmqUtil zmq_util;
 ZmqUtilInterface *kZmqUtil = &zmq_util;
@@ -66,26 +66,27 @@ int main(int argc, char *argv[]) {
   kDefaultLocalReplication = replication["local"].as<unsigned>();
   kMinimumReplicaNumber = replication["minimum"].as<unsigned>();
 
-  kTierDataMap[1] = TierData(
-      kMemoryThreadCount, kDefaultGlobalMemoryReplication, kMemoryNodeCapacity);
-  kTierDataMap[2] =
-      TierData(kEbsThreadCount, kDefaultGlobalEbsReplication, kEbsNodeCapacity);
+  kTierMetadata[kMemoryTierId] =
+      TierMetadata(kMemoryTierId, kMemoryThreadCount,
+                   kDefaultGlobalMemoryReplication, kMemoryNodeCapacity);
+  kTierMetadata[kEbsTierId] = TierMetadata(kEbsTierId, kEbsThreadCount,
+                                       kDefaultGlobalEbsReplication,
+                                       kEbsNodeCapacity);
 
   // initialize hash ring maps
-  vector<GlobalHashRing> global_hash_rings;
-  vector<LocalHashRing> local_hash_rings;
+  map<TierId, GlobalHashRing> global_hash_rings;
+  map<TierId, LocalHashRing> local_hash_rings;
 
   // form local hash rings
-  for (const auto &tier_pair : kTierDataMap) {
-    for (unsigned tid = 0; tid < tier_pair.second.thread_number_; tid++) {
-      local_hash_rings[tier_pair.first].insert(ip, ip, 0, tid);
+  for (const auto &pair : kTierMetadata) {
+    TierMetadata tier = pair.second;
+    for (unsigned tid = 0; tid < tier.thread_number_; tid++) {
+      local_hash_rings[tier.id_].insert(ip, ip, 0, tid);
     }
   }
 
   // keep track of the keys' replication info
-  map<Key, KeyInfo> placement;
-  // warm up for benchmark
-  // warmup_placement_to_defaults(placement);
+  map<Key, KeyMetadata> metadata_map;
 
   unsigned memory_node_number;
   unsigned ebs_node_number;
@@ -200,7 +201,8 @@ int main(int argc, char *argv[]) {
             .count() >= kMonitoringThreshold) {
       server_monitoring_epoch += 1;
 
-      memory_node_number = global_hash_rings[1].size() / kVirtualThreadNum;
+      memory_node_number =
+          global_hash_rings[kMemoryTierId].size() / kVirtualThreadNum;
       ebs_node_number = global_hash_rings[2].size() / kVirtualThreadNum;
       // clear stats
       key_access_frequency.clear();
@@ -219,11 +221,11 @@ int main(int argc, char *argv[]) {
       latency_miss_ratio_map.clear();
 
       // collect internal statistics
-      collect_internal_stats(
-          global_hash_rings, local_hash_rings, pushers, mt,
-          response_puller, logger, rid, key_access_frequency, key_size,
-          memory_tier_storage, ebs_tier_storage, memory_tier_occupancy,
-          ebs_tier_occupancy, memory_tier_access, ebs_tier_access);
+      collect_internal_stats(global_hash_rings, local_hash_rings, pushers, mt,
+                             response_puller, logger, rid, key_access_frequency,
+                             key_size, memory_tier_storage, ebs_tier_storage,
+                             memory_tier_occupancy, ebs_tier_occupancy,
+                             memory_tier_access, ebs_tier_access);
 
       // compute summary statistics
       compute_summary_stats(key_access_frequency, memory_tier_storage,
@@ -238,8 +240,8 @@ int main(int argc, char *argv[]) {
       // initialize replication factor for new keys
       for (const auto &key_access_pair : key_access_summary) {
         Key key = key_access_pair.first;
-        if (!is_metadata(key) && placement.find(key) == placement.end()) {
-          init_replication(placement, key);
+        if (!is_metadata(key) && metadata_map.find(key) == metadata_map.end()) {
+          init_replication(metadata_map, key);
         }
       }
 
@@ -249,17 +251,17 @@ int main(int argc, char *argv[]) {
                      adding_ebs_node, removing_ebs_node, management_address, mt,
                      departing_node_map, pushers);
 
-      movement_policy(logger, global_hash_rings, local_hash_rings,
-                      grace_start, ss, memory_node_number, ebs_node_number,
+      movement_policy(logger, global_hash_rings, local_hash_rings, grace_start,
+                      ss, memory_node_number, ebs_node_number,
                       adding_memory_node, adding_ebs_node, management_address,
-                      placement, key_access_summary, key_size, mt, pushers,
+                      metadata_map, key_access_summary, key_size, mt, pushers,
                       response_puller, routing_address, rid);
 
-      slo_policy(logger, global_hash_rings, local_hash_rings, grace_start,
-                 ss, memory_node_number, adding_memory_node,
-                 removing_memory_node, management_address, placement,
-                 key_access_summary, mt, departing_node_map, pushers,
-                 response_puller, routing_address, rid, latency_miss_ratio_map);
+      slo_policy(logger, global_hash_rings, local_hash_rings, grace_start, ss,
+                 memory_node_number, adding_memory_node, removing_memory_node,
+                 management_address, metadata_map, key_access_summary, mt,
+                 departing_node_map, pushers, response_puller, routing_address,
+                 rid, latency_miss_ratio_map);
 
       report_start = std::chrono::system_clock::now();
     }

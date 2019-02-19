@@ -29,10 +29,9 @@ class ServerHandlerTest : public ::testing::Test {
  protected:
   Address ip = "127.0.0.1";
   unsigned thread_id = 0;
-  vector<GlobalHashRing> global_hash_rings;
-  vector<LocalHashRing> local_hash_rings;
-  map<Key, KeyInfo> placement;
-  map<Key, std::pair<unsigned, LatticeType>> key_stat_map;
+  map<TierId, GlobalHashRing> global_hash_rings;
+  map<TierId, LocalHashRing> local_hash_rings;
+  map<Key, KeyMetadata> metadata_map;
   ServerThread wt;
   PendingMap<PendingRequest> pending_request_map;
   PendingMap<PendingGossip> pending_gossip_map;
@@ -55,7 +54,7 @@ class ServerHandlerTest : public ::testing::Test {
     serializers[LatticeType::LWW] = lww_serializer;
     serializers[LatticeType::SET] = set_serializer;
     wt = ServerThread(ip, ip, thread_id);
-    global_hash_rings[1].insert(ip, ip, 0, thread_id);
+    global_hash_rings[kMemoryTierId].insert(ip, ip, 0, thread_id);
   }
 
   virtual ~ServerHandlerTest() {
@@ -69,7 +68,7 @@ class ServerHandlerTest : public ::testing::Test {
   void SetUp() {
     // reset all global variables
     kDefaultLocalReplication = 1;
-    kSelfTierId = 1;
+    kSelfTierId = kMemoryTierId;
     kThreadNum = 1;
     kSelfTierIdVector = {kSelfTierId};
   }

@@ -24,89 +24,80 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        Address private_ip,
                        std::shared_ptr<spdlog::logger> logger,
                        string& serialized,
-                       vector<GlobalHashRing>& global_hash_rings,
-                       vector<LocalHashRing>& local_hash_rings,
-                       map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-                       map<Key, KeyInfo>& placement, set<Key>& join_remove_set,
-                       SocketCache& pushers, ServerThread& wt,
-                       AddressKeysetMap& join_addr_keyset_map,
+                       map<TierId, GlobalHashRing>& global_hash_rings,
+                       map<TierId, LocalHashRing>& local_hash_rings,
+                       map<Key, KeyMetadata>& metadata_map,
+                       set<Key>& join_remove_set, SocketCache& pushers,
+                       ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
                        int self_join_count);
 
 void node_depart_handler(unsigned thread_id, Address public_ip,
                          Address private_ip,
-                         vector<GlobalHashRing>& global_hash_rings,
+                         map<TierId, GlobalHashRing>& global_hash_rings,
                          std::shared_ptr<spdlog::logger> logger,
                          string& serialized, SocketCache& pushers);
 
-void self_depart_handler(
-    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    map<Key, KeyInfo>& placement, vector<Address>& routing_address,
-    vector<Address>& monitoring_address, ServerThread& wt, SocketCache& pushers,
-    SerializerMap& serializers);
+void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
+                         Address private_ip,
+                         std::shared_ptr<spdlog::logger> logger,
+                         string& serialized,
+                         map<TierId, GlobalHashRing>& global_hash_rings,
+                         map<TierId, LocalHashRing>& local_hash_rings,
+                         map<Key, KeyMetadata>& metadata_map,
+                         vector<Address>& routing_address,
+                         vector<Address>& monitoring_address, ServerThread& wt,
+                         SocketCache& pushers, SerializerMap& serializers);
 
 void user_request_handler(
     unsigned& total_access, unsigned& seed, string& serialized,
     std::shared_ptr<spdlog::logger> logger,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
     PendingMap<PendingRequest>& pending_request_map,
     map<Key, std::multiset<TimePoint>>& key_access_timestamp,
-    map<Key, KeyInfo>& placement, set<Key>& local_changeset, ServerThread& wt,
-    SerializerMap& serializers,
-    SocketCache& pushers);
+    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
+    ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
 
-void gossip_handler(
-    unsigned& seed, string& serialized,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    PendingMap<PendingGossip>& pending_gossip_map, map<Key, KeyInfo>& placement,
-    ServerThread& wt, SerializerMap& serializers,
-    SocketCache& pushers, std::shared_ptr<spdlog::logger> logger);
+void gossip_handler(unsigned& seed, string& serialized,
+                    map<TierId, GlobalHashRing>& global_hash_rings,
+                    map<TierId, LocalHashRing>& local_hash_rings,
+                    PendingMap<PendingGossip>& pending_gossip_map,
+                    map<Key, KeyMetadata>& metadata_map, ServerThread& wt,
+                    SerializerMap& serializers, SocketCache& pushers,
+                    std::shared_ptr<spdlog::logger> logger);
 
 void rep_factor_response_handler(
     unsigned& seed, unsigned& total_access,
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
     PendingMap<PendingRequest>& pending_request_map,
     PendingMap<PendingGossip>& pending_gossip_map,
     map<Key, std::multiset<TimePoint>>& key_access_timestamp,
-    map<Key, KeyInfo>& placement,
-    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    set<Key>& local_changeset, ServerThread& wt,
-    SerializerMap& serializers,
-    SocketCache& pushers);
+    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
+    ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
 
 void rep_factor_change_handler(
     Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
     std::shared_ptr<spdlog::logger> logger, string& serialized,
-    vector<GlobalHashRing>& global_hash_rings,
-    vector<LocalHashRing>& local_hash_rings,
-    map<Key, KeyInfo>& placement,
-    map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    set<Key>& local_changeset, ServerThread& wt,
-    SerializerMap& serializers,
-    SocketCache& pushers);
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
+    ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
 
 void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
                  SerializerMap& serializers,
-                 map<Key, std::pair<unsigned, LatticeType>>& key_stat_map);
+                 map<Key, KeyMetadata>& metadata_map);
 
 std::pair<string, unsigned> process_get(const Key& key, Serializer* serializer);
 
 void process_put(const Key& key, LatticeType lattice_type,
                  const string& payload, Serializer* serializer,
-                 map<Key, std::pair<unsigned, LatticeType>>& key_stat_map);
+                 map<Key, KeyMetadata>& metadata_map);
 
-bool is_primary_replica(const Key& key, map<Key, KeyInfo>& placement,
-                        vector<GlobalHashRing>& global_hash_rings,
-                        vector<LocalHashRing>& local_hash_rings,
+bool is_primary_replica(const Key& key, map<Key, KeyMetadata>& metadata_map,
+                        map<TierId, GlobalHashRing>& global_hash_rings,
+                        map<TierId, LocalHashRing>& local_hash_rings,
                         ServerThread& st);
 
 #endif  // SRC_INCLUDE_KVS_KVS_HANDLERS_HPP_

@@ -20,14 +20,13 @@ TEST_F(ServerHandlerTest, BasicNodeJoin) {
   set<Key> join_remove_set;
   AddressKeysetMap join_addr_keyset_map;
 
-  EXPECT_EQ(global_hash_rings[1].size(), 3000);
-  EXPECT_EQ(global_hash_rings[1].get_unique_servers().size(), 1);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 
-  string serialized = "1:127.0.0.2:127.0.0.2:0";
+  string serialized = std::to_string(kMemoryTierId) + ":127.0.0.2:127.0.0.2:0";
   node_join_handler(thread_id, seed, ip, ip, logger, serialized,
-                    global_hash_rings, local_hash_rings, key_stat_map,
-                    placement, join_remove_set, pushers, wt,
-                    join_addr_keyset_map, 0);
+                    global_hash_rings, local_hash_rings, metadata_map,
+                    join_remove_set, pushers, wt, join_addr_keyset_map, 0);
 
   vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 2);
@@ -35,8 +34,8 @@ TEST_F(ServerHandlerTest, BasicNodeJoin) {
             std::to_string(kSelfTierId) + ":" + ip + ":" + ip + ":0");
   EXPECT_EQ(messages[1], serialized);
 
-  EXPECT_EQ(global_hash_rings[1].size(), 6000);
-  EXPECT_EQ(global_hash_rings[1].get_unique_servers().size(), 2);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 6000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 2);
 }
 
 TEST_F(ServerHandlerTest, DuplicateNodeJoin) {
@@ -44,17 +43,17 @@ TEST_F(ServerHandlerTest, DuplicateNodeJoin) {
   set<Key> join_remove_set;
   AddressKeysetMap join_addr_keyset_map;
 
-  EXPECT_EQ(global_hash_rings[1].size(), 3000);
-  EXPECT_EQ(global_hash_rings[1].get_unique_servers().size(), 1);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 
-  string serialized = "1:" + ip + ":" + ip + ":0";
+  string serialized =
+      std::to_string(kMemoryTierId) + ":" + ip + ":" + ip + ":0";
   node_join_handler(thread_id, seed, ip, ip, logger, serialized,
-                    global_hash_rings, local_hash_rings, key_stat_map,
-                    placement, join_remove_set, pushers, wt,
-                    join_addr_keyset_map, 0);
+                    global_hash_rings, local_hash_rings, metadata_map,
+                    join_remove_set, pushers, wt, join_addr_keyset_map, 0);
 
   vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 0);
-  EXPECT_EQ(global_hash_rings[1].size(), 3000);
-  EXPECT_EQ(global_hash_rings[1].get_unique_servers().size(), 1);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 }

@@ -18,12 +18,12 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   unsigned seed = 0;
   string key = "key";
   vector<string> keys = {"key"};
-  warmup_placement_to_defaults(keys);
+  warmup_metadata_map_to_defaults(keys);
 
-  EXPECT_EQ(placement[key].global_replication_map_[1], 1);
-  EXPECT_EQ(placement[key].global_replication_map_[2], 1);
-  EXPECT_EQ(placement[key].local_replication_map_[1], 1);
-  EXPECT_EQ(placement[key].local_replication_map_[2], 1);
+  EXPECT_EQ(metadata_map[key].global_replication_[kMemoryTierId], 1);
+  EXPECT_EQ(metadata_map[key].global_replication_[kEbsTierId], 1);
+  EXPECT_EQ(metadata_map[key].local_replication_[kMemoryTierId], 1);
+  EXPECT_EQ(metadata_map[key].local_replication_[kEbsTierId], 1);
 
   KeyResponse response;
   KeyTuple* tp = response.add_tuples();
@@ -35,15 +35,15 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   ReplicationFactor rf;
   rf.set_key(key);
 
-  for (unsigned i = 1; i < 3; i++) {
+  for (const unsigned& tier_id : kAllTierIds) {
     Replication* rep_global = rf.add_global();
-    rep_global->set_tier_id(i);
+    rep_global->set_tier_id(tier_id);
     rep_global->set_replication_factor(2);
   }
 
-  for (unsigned i = 1; i < 3; i++) {
+  for (const unsigned& tier_id : kAllTierIds) {
     Replication* rep_local = rf.add_local();
-    rep_local->set_tier_id(i);
+    rep_local->set_tier_id(tier_id);
     rep_local->set_replication_factor(3);
   }
 
@@ -57,10 +57,10 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
 
   replication_response_handler(logger, serialized, pushers, rt,
                                global_hash_rings, local_hash_rings,
-                               placement, pending_key_request_map, seed);
+                               metadata_map, pending_key_request_map, seed);
 
-  EXPECT_EQ(placement[key].global_replication_map_[1], 2);
-  EXPECT_EQ(placement[key].global_replication_map_[2], 2);
-  EXPECT_EQ(placement[key].local_replication_map_[1], 3);
-  EXPECT_EQ(placement[key].local_replication_map_[2], 3);
+  EXPECT_EQ(metadata_map[key].global_replication_[kMemoryTierId], 2);
+  EXPECT_EQ(metadata_map[key].global_replication_[kEbsTierId], 2);
+  EXPECT_EQ(metadata_map[key].local_replication_[kMemoryTierId], 3);
+  EXPECT_EQ(metadata_map[key].local_replication_[kEbsTierId], 3);
 }
