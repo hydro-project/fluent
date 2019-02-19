@@ -27,7 +27,7 @@ TEST_F(RoutingHandlerTest, Address) {
   string serialized;
   req.SerializeToString(&serialized);
 
-  address_handler(logger, serialized, pushers, rt, global_hash_rings,
+  address_handler(log_, serialized, pushers, rt, global_hash_rings,
                   local_hash_rings, metadata_map, pending_key_request_map,
                   seed);
 

@@ -15,8 +15,7 @@
 #include "monitor/monitoring_utils.hpp"
 #include "monitor/policies.hpp"
 
-void storage_policy(std::shared_ptr<spdlog::logger> logger,
-                    map<TierId, GlobalHashRing>& global_hash_rings,
+void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                     TimePoint& grace_start, SummaryStats& ss,
                     unsigned& memory_node_number, unsigned& ebs_node_number,
                     unsigned& adding_memory_node, unsigned& adding_ebs_node,
@@ -30,7 +29,7 @@ void storage_policy(std::shared_ptr<spdlog::logger> logger,
                             std::chrono::system_clock::now() - grace_start)
                             .count();
     if (time_elapsed > kGracePeriod) {
-      add_node(logger, "memory", kNodeAdditionBatchSize, adding_memory_node,
+      add_node(log, "memory", kNodeAdditionBatchSize, adding_memory_node,
                pushers, management_address);
     }
   }
@@ -40,7 +39,7 @@ void storage_policy(std::shared_ptr<spdlog::logger> logger,
                             std::chrono::system_clock::now() - grace_start)
                             .count();
     if (time_elapsed > kGracePeriod) {
-      add_node(logger, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
+      add_node(log, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
                management_address);
     }
   }
@@ -58,7 +57,7 @@ void storage_policy(std::shared_ptr<spdlog::logger> logger,
       auto node = next(global_hash_rings[kEbsTierId].begin(),
                        rand() % global_hash_rings[kEbsTierId].size())
                       ->second;
-      remove_node(logger, node, "ebs", removing_ebs_node, pushers,
+      remove_node(log, node, "ebs", removing_ebs_node, pushers,
                   departing_node_map, mt);
     }
   }

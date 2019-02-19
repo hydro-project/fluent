@@ -14,8 +14,7 @@
 
 #include "route/routing_handlers.hpp"
 
-void membership_handler(std::shared_ptr<spdlog::logger> logger,
-                        string& serialized, SocketCache& pushers,
+void membership_handler(logger log, string& serialized, SocketCache& pushers,
                         map<TierId, GlobalHashRing>& global_hash_rings,
                         unsigned thread_id, Address ip) {
   vector<string> v;
@@ -30,9 +29,9 @@ void membership_handler(std::shared_ptr<spdlog::logger> logger,
     // we only read the join count if it's a join message, not if it's a depart
     // message because the latter does not send a join count
     int join_count = stoi(v[4]);
-    logger->info("Received join from server {}/{} in tier {}.",
-                 new_server_public_ip, new_server_private_ip,
-                 std::to_string(tier));
+    log->info("Received join from server {}/{} in tier {}.",
+              new_server_public_ip, new_server_private_ip,
+              std::to_string(tier));
 
     // update hash ring
     bool inserted = global_hash_rings[tier].insert(
@@ -71,12 +70,12 @@ void membership_handler(std::shared_ptr<spdlog::logger> logger,
     }
 
     for (const auto& pair : global_hash_rings) {
-      logger->info("Hash ring for tier {} size is {}.", pair.first,
-                   pair.second.size());
+      log->info("Hash ring for tier {} size is {}.", pair.first,
+                pair.second.size());
     }
   } else if (type == "depart") {
-    logger->info("Received depart from server {}/{}.", new_server_public_ip,
-                 new_server_private_ip, new_server_private_ip);
+    log->info("Received depart from server {}/{}.", new_server_public_ip,
+              new_server_private_ip, new_server_private_ip);
     global_hash_rings[tier].remove(new_server_public_ip, new_server_private_ip,
                                    0);
 
@@ -90,8 +89,8 @@ void membership_handler(std::shared_ptr<spdlog::logger> logger,
     }
 
     for (int i = 0; i < global_hash_rings.size(); i++) {
-      logger->info("Hash ring for tier {} size is {}.", i,
-                   global_hash_rings[i].size());
+      log->info("Hash ring for tier {} size is {}.", i,
+                global_hash_rings[i].size());
     }
   }
 }

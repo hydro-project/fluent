@@ -14,9 +14,9 @@
 
 #include "route/routing_handlers.hpp"
 
-string seed_handler(std::shared_ptr<spdlog::logger> logger,
+string seed_handler(logger log,
                     map<TierId, GlobalHashRing>& global_hash_rings) {
-  logger->info("Received an address request.");
+  log->info("Received an address request.");
 
   TierMembership membership;
 

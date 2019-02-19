@@ -16,10 +16,8 @@
 #define SRC_INCLUDE_MONITOR_POLICIES_HPP_
 
 #include "hash_ring.hpp"
-#include "spdlog/spdlog.h"
 
-void storage_policy(std::shared_ptr<spdlog::logger> logger,
-                    map<TierId, GlobalHashRing>& global_hash_rings,
+void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                     TimePoint& grace_start, SummaryStats& ss,
                     unsigned& memory_node_number, unsigned& ebs_node_number,
                     unsigned& adding_memory_node, unsigned& adding_ebs_node,
@@ -28,8 +26,7 @@ void storage_policy(std::shared_ptr<spdlog::logger> logger,
                     map<Address, unsigned>& departing_node_map,
                     SocketCache& pushers);
 
-void movement_policy(std::shared_ptr<spdlog::logger> logger,
-                     map<TierId, GlobalHashRing>& global_hash_rings,
+void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                      map<TierId, LocalHashRing>& local_hash_rings,
                      TimePoint& grace_start, SummaryStats& ss,
                      unsigned& memory_node_number, unsigned& ebs_node_number,
@@ -41,8 +38,7 @@ void movement_policy(std::shared_ptr<spdlog::logger> logger,
                      SocketCache& pushers, zmq::socket_t& response_puller,
                      vector<Address>& routing_address, unsigned& rid);
 
-void slo_policy(std::shared_ptr<spdlog::logger> logger,
-                map<TierId, GlobalHashRing>& global_hash_rings,
+void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 map<TierId, LocalHashRing>& local_hash_rings,
                 TimePoint& grace_start, SummaryStats& ss,
                 unsigned& memory_node_number, unsigned& adding_memory_node,

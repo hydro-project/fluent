@@ -17,7 +17,6 @@
 
 #include "hash_ring.hpp"
 #include "requests.hpp"
-#include "spdlog/spdlog.h"
 
 // define monitoring threshold (in second)
 const unsigned kMonitoringThreshold = 30;
@@ -117,9 +116,8 @@ void prepare_metadata_put_request(const Key& key, const string& value,
 void collect_internal_stats(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings, SocketCache& pushers,
-    MonitoringThread& mt, zmq::socket_t& response_puller,
-    std::shared_ptr<spdlog::logger> logger, unsigned& rid,
-    map<Key, map<Address, unsigned>>& key_access_frequency,
+    MonitoringThread& mt, zmq::socket_t& response_puller, logger log,
+    unsigned& rid, map<Key, map<Address, unsigned>>& key_access_frequency,
     map<Key, unsigned>& key_size, StorageStats& memory_tier_storage,
     StorageStats& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
     OccupancyStats& ebs_tier_occupancy, AccessStats& memory_tier_access,
@@ -130,13 +128,12 @@ void compute_summary_stats(
     StorageStats& memory_tier_storage, StorageStats& ebs_tier_storage,
     OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
     AccessStats& memory_tier_access, AccessStats& ebs_tier_access,
-    map<Key, unsigned>& key_access_summary, SummaryStats& ss,
-    std::shared_ptr<spdlog::logger> logger, unsigned& server_monitoring_epoch);
+    map<Key, unsigned>& key_access_summary, SummaryStats& ss, logger log,
+    unsigned& server_monitoring_epoch);
 
 void collect_external_stats(map<string, double>& user_latency,
                             map<string, double>& user_throughput,
-                            SummaryStats& ss,
-                            std::shared_ptr<spdlog::logger> logger);
+                            SummaryStats& ss, logger log);
 
 KeyMetadata create_new_replication_vector(unsigned gm, unsigned ge, unsigned lm,
                                           unsigned le);
@@ -152,16 +149,14 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
                                vector<Address>& routing_address,
                                map<Key, KeyMetadata>& metadata_map,
                                SocketCache& pushers, MonitoringThread& mt,
-                               zmq::socket_t& response_puller,
-                               std::shared_ptr<spdlog::logger> logger,
+                               zmq::socket_t& response_puller, logger log,
                                unsigned& rid);
 
-void add_node(std::shared_ptr<spdlog::logger> logger, string tier,
-              unsigned number, unsigned& adding, SocketCache& pushers,
-              const Address& management_address);
+void add_node(logger log, string tier, unsigned number, unsigned& adding,
+              SocketCache& pushers, const Address& management_address);
 
-void remove_node(std::shared_ptr<spdlog::logger> logger, ServerThread& node,
-                 string tier, bool& removing_flag, SocketCache& pushers,
+void remove_node(logger log, ServerThread& node, string tier,
+                 bool& removing_flag, SocketCache& pushers,
                  map<Address, unsigned>& departing_node_map,
                  MonitoringThread& mt);
 

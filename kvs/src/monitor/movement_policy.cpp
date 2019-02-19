@@ -15,8 +15,7 @@
 #include "monitor/monitoring_utils.hpp"
 #include "monitor/policies.hpp"
 
-void movement_policy(std::shared_ptr<spdlog::logger> logger,
-                     map<TierId, GlobalHashRing>& global_hash_rings,
+void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                      map<TierId, LocalHashRing>& local_hash_rings,
                      TimePoint& grace_start, SummaryStats& ss,
                      unsigned& memory_node_number, unsigned& ebs_node_number,
@@ -60,8 +59,8 @@ void movement_policy(std::shared_ptr<spdlog::logger> logger,
 
   change_replication_factor(requests, global_hash_rings, local_hash_rings,
                             routing_address, metadata_map, pushers, mt,
-                            response_puller, logger, rid);
-  logger->info("Promoting {} keys into memory tier.", total_rep_to_change);
+                            response_puller, log, rid);
+  log->info("Promoting {} keys into memory tier.", total_rep_to_change);
   auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                           std::chrono::system_clock::now() - grace_start)
                           .count();
@@ -74,7 +73,7 @@ void movement_policy(std::shared_ptr<spdlog::logger> logger,
 
     if (total_memory_node_needed > memory_node_number) {
       unsigned node_to_add = (total_memory_node_needed - memory_node_number);
-      add_node(logger, "memory", node_to_add, adding_memory_node, pushers,
+      add_node(log, "memory", node_to_add, adding_memory_node, pushers,
                management_address);
     }
   }
@@ -110,8 +109,8 @@ void movement_policy(std::shared_ptr<spdlog::logger> logger,
 
   change_replication_factor(requests, global_hash_rings, local_hash_rings,
                             routing_address, metadata_map, pushers, mt,
-                            response_puller, logger, rid);
-  logger->info("Demoting {} keys into EBS tier.", total_rep_to_change);
+                            response_puller, log, rid);
+  log->info("Demoting {} keys into EBS tier.", total_rep_to_change);
   if (overflow && adding_ebs_node == 0 && time_elapsed > kGracePeriod) {
     unsigned total_ebs_node_needed = ceil(
         (ss.total_ebs_consumption + required_storage) /
@@ -119,7 +118,7 @@ void movement_policy(std::shared_ptr<spdlog::logger> logger,
 
     if (total_ebs_node_needed > ebs_node_number) {
       unsigned node_to_add = (total_ebs_node_needed - ebs_node_number);
-      add_node(logger, "ebs", node_to_add, adding_ebs_node, pushers,
+      add_node(log, "ebs", node_to_add, adding_ebs_node, pushers,
                management_address);
     }
   }
@@ -133,20 +132,20 @@ void movement_policy(std::shared_ptr<spdlog::logger> logger,
     unsigned total_access = key_access_pair.second;
 
     if (!is_metadata(key) && total_access <= ss.key_access_mean) {
-      logger->info("Key {} accessed {} times (threshold is {}).", key,
-                   total_access, ss.key_access_mean);
+      log->info("Key {} accessed {} times (threshold is {}).", key,
+                total_access, ss.key_access_mean);
       requests[key] =
           create_new_replication_vector(1, kMinimumReplicaNumber - 1, 1, 1);
-      logger->info("Dereplication for key {}. M: {}->{}. E: {}->{}", key,
-                   metadata_map[key].global_replication_[kMemoryTierId],
-                   requests[key].global_replication_[kMemoryTierId],
-                   metadata_map[key].global_replication_[kEbsTierId],
-                   requests[key].global_replication_[kEbsTierId]);
+      log->info("Dereplication for key {}. M: {}->{}. E: {}->{}", key,
+                metadata_map[key].global_replication_[kMemoryTierId],
+                requests[key].global_replication_[kMemoryTierId],
+                metadata_map[key].global_replication_[kEbsTierId],
+                requests[key].global_replication_[kEbsTierId]);
     }
   }
 
   change_replication_factor(requests, global_hash_rings, local_hash_rings,
                             routing_address, metadata_map, pushers, mt,
-                            response_puller, logger, rid);
+                            response_puller, log, rid);
   requests.clear();
 }

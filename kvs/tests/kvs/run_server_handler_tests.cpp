@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "spdlog/spdlog.h"
 
 #include "misc.pb.h"
 #include "replication.pb.h"
@@ -42,7 +41,7 @@ unsigned kMemoryThreadNum = 1;
 unsigned kRoutingThreadNum = 1;
 
 int main(int argc, char* argv[]) {
-  logger->set_level(spdlog::level::info);
+  log_->set_level(spdlog::level::info);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

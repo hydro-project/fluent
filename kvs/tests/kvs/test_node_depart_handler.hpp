@@ -22,7 +22,7 @@ TEST_F(ServerHandlerTest, SimpleNodeDepart) {
   EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 2);
 
   string serialized = std::to_string(kMemoryTierId) + ":127.0.0.2:127.0.0.2";
-  node_depart_handler(thread_id, ip, ip, global_hash_rings, logger, serialized,
+  node_depart_handler(thread_id, ip, ip, global_hash_rings, log_, serialized,
                       pushers);
 
   vector<string> messages = get_zmq_messages();
@@ -39,7 +39,7 @@ TEST_F(ServerHandlerTest, FakeNodeDepart) {
   EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 
   string serialized = std::to_string(kMemoryTierId) + ":127.0.0.2:127.0.0.2";
-  node_depart_handler(thread_id, ip, ip, global_hash_rings, logger, serialized,
+  node_depart_handler(thread_id, ip, ip, global_hash_rings, log_, serialized,
                       pushers);
 
   vector<string> messages = get_zmq_messages();

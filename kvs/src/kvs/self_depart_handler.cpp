@@ -15,16 +15,14 @@
 #include "kvs/kvs_handlers.hpp"
 
 void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
-                         Address private_ip,
-                         std::shared_ptr<spdlog::logger> logger,
-                         string& serialized,
+                         Address private_ip, logger log, string& serialized,
                          map<TierId, GlobalHashRing>& global_hash_rings,
                          map<TierId, LocalHashRing>& local_hash_rings,
                          map<Key, KeyMetadata>& metadata_map,
                          vector<Address>& routing_address,
                          vector<Address>& monitoring_address, ServerThread& wt,
                          SocketCache& pushers, SerializerMap& serializers) {
-  logger->info("Node is departing.");
+  log->info("Node is departing.");
   global_hash_rings[kSelfTierId].remove(public_ip, private_ip, 0);
 
   // thread 0 notifies other nodes in the cluster (of all types) that it is
@@ -80,7 +78,7 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
         addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
       }
     } else {
-      logger->error("Missing key replication factor in node depart routine");
+      log->error("Missing key replication factor in node depart routine");
     }
   }
 

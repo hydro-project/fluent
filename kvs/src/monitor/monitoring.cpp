@@ -38,8 +38,8 @@ HashRingUtil hash_ring_util;
 HashRingUtilInterface *kHashRingUtil = &hash_ring_util;
 
 int main(int argc, char *argv[]) {
-  auto logger = spdlog::basic_logger_mt("monitoring_logger", "log.txt", true);
-  logger->flush_on(spdlog::level::info);
+  auto log = spdlog::basic_logger_mt("monitoring_log", "log.txt", true);
+  log->flush_on(spdlog::level::info);
 
   if (argc != 1) {
     std::cerr << "Usage: " << argv[0] << std::endl;
@@ -69,9 +69,9 @@ int main(int argc, char *argv[]) {
   kTierMetadata[kMemoryTierId] =
       TierMetadata(kMemoryTierId, kMemoryThreadCount,
                    kDefaultGlobalMemoryReplication, kMemoryNodeCapacity);
-  kTierMetadata[kEbsTierId] = TierMetadata(kEbsTierId, kEbsThreadCount,
-                                       kDefaultGlobalEbsReplication,
-                                       kEbsNodeCapacity);
+  kTierMetadata[kEbsTierId] =
+      TierMetadata(kEbsTierId, kEbsThreadCount, kDefaultGlobalEbsReplication,
+                   kEbsNodeCapacity);
 
   // initialize hash ring maps
   map<TierId, GlobalHashRing> global_hash_rings;
@@ -173,9 +173,9 @@ int main(int argc, char *argv[]) {
     // handle a join or depart event
     if (pollitems[0].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&notify_puller);
-      membership_handler(logger, serialized, global_hash_rings,
-                         adding_memory_node, adding_ebs_node, grace_start,
-                         routing_address, memory_tier_storage, ebs_tier_storage,
+      membership_handler(log, serialized, global_hash_rings, adding_memory_node,
+                         adding_ebs_node, grace_start, routing_address,
+                         memory_tier_storage, ebs_tier_storage,
                          memory_tier_occupancy, ebs_tier_occupancy,
                          key_access_frequency);
     }
@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
     // handle a depart done notification
     if (pollitems[1].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&depart_done_puller);
-      depart_done_handler(logger, serialized, departing_node_map,
+      depart_done_handler(log, serialized, departing_node_map,
                           management_address, removing_memory_node,
                           removing_ebs_node, pushers, grace_start);
     }
@@ -222,7 +222,7 @@ int main(int argc, char *argv[]) {
 
       // collect internal statistics
       collect_internal_stats(global_hash_rings, local_hash_rings, pushers, mt,
-                             response_puller, logger, rid, key_access_frequency,
+                             response_puller, log, rid, key_access_frequency,
                              key_size, memory_tier_storage, ebs_tier_storage,
                              memory_tier_occupancy, ebs_tier_occupancy,
                              memory_tier_access, ebs_tier_access);
@@ -231,11 +231,11 @@ int main(int argc, char *argv[]) {
       compute_summary_stats(key_access_frequency, memory_tier_storage,
                             ebs_tier_storage, memory_tier_occupancy,
                             ebs_tier_occupancy, memory_tier_access,
-                            ebs_tier_access, key_access_summary, ss, logger,
+                            ebs_tier_access, key_access_summary, ss, log,
                             server_monitoring_epoch);
 
       // collect external statistics
-      collect_external_stats(user_latency, user_throughput, ss, logger);
+      collect_external_stats(user_latency, user_throughput, ss, log);
 
       // initialize replication factor for new keys
       for (const auto &key_access_pair : key_access_summary) {
@@ -246,18 +246,18 @@ int main(int argc, char *argv[]) {
       }
 
       // execute policies
-      storage_policy(logger, global_hash_rings, grace_start, ss,
+      storage_policy(log, global_hash_rings, grace_start, ss,
                      memory_node_number, ebs_node_number, adding_memory_node,
                      adding_ebs_node, removing_ebs_node, management_address, mt,
                      departing_node_map, pushers);
 
-      movement_policy(logger, global_hash_rings, local_hash_rings, grace_start,
-                      ss, memory_node_number, ebs_node_number,
-                      adding_memory_node, adding_ebs_node, management_address,
-                      metadata_map, key_access_summary, key_size, mt, pushers,
+      movement_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
+                      memory_node_number, ebs_node_number, adding_memory_node,
+                      adding_ebs_node, management_address, metadata_map,
+                      key_access_summary, key_size, mt, pushers,
                       response_puller, routing_address, rid);
 
-      slo_policy(logger, global_hash_rings, local_hash_rings, grace_start, ss,
+      slo_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
                  memory_node_number, adding_memory_node, removing_memory_node,
                  management_address, metadata_map, key_access_summary, mt,
                  departing_node_map, pushers, response_puller, routing_address,

@@ -3,8 +3,7 @@
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
+// //      http://www.apache.org/licenses/LICENSE-2.0
 //
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,13 +16,10 @@
 
 #include "hash_ring.hpp"
 #include "requests.hpp"
-#include "spdlog/spdlog.h"
 #include "utils/server_utils.hpp"
 
 void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
-                       Address private_ip,
-                       std::shared_ptr<spdlog::logger> logger,
-                       string& serialized,
+                       Address private_ip, logger log, string& serialized,
                        map<TierId, GlobalHashRing>& global_hash_rings,
                        map<TierId, LocalHashRing>& local_hash_rings,
                        map<Key, KeyMetadata>& metadata_map,
@@ -34,13 +30,10 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
 void node_depart_handler(unsigned thread_id, Address public_ip,
                          Address private_ip,
                          map<TierId, GlobalHashRing>& global_hash_rings,
-                         std::shared_ptr<spdlog::logger> logger,
-                         string& serialized, SocketCache& pushers);
+                         logger log, string& serialized, SocketCache& pushers);
 
 void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
-                         Address private_ip,
-                         std::shared_ptr<spdlog::logger> logger,
-                         string& serialized,
+                         Address private_ip, logger log, string& serialized,
                          map<TierId, GlobalHashRing>& global_hash_rings,
                          map<TierId, LocalHashRing>& local_hash_rings,
                          map<Key, KeyMetadata>& metadata_map,
@@ -49,8 +42,7 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                          SocketCache& pushers, SerializerMap& serializers);
 
 void user_request_handler(
-    unsigned& total_access, unsigned& seed, string& serialized,
-    std::shared_ptr<spdlog::logger> logger,
+    unsigned& total_access, unsigned& seed, string& serialized, logger log,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     PendingMap<PendingRequest>& pending_request_map,
@@ -64,11 +56,10 @@ void gossip_handler(unsigned& seed, string& serialized,
                     PendingMap<PendingGossip>& pending_gossip_map,
                     map<Key, KeyMetadata>& metadata_map, ServerThread& wt,
                     SerializerMap& serializers, SocketCache& pushers,
-                    std::shared_ptr<spdlog::logger> logger);
+                    logger log);
 
 void rep_factor_response_handler(
-    unsigned& seed, unsigned& total_access,
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    unsigned& seed, unsigned& total_access, logger log, string& serialized,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     PendingMap<PendingRequest>& pending_request_map,
@@ -77,13 +68,15 @@ void rep_factor_response_handler(
     map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
 
-void rep_factor_change_handler(
-    Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<TierId, GlobalHashRing>& global_hash_rings,
-    map<TierId, LocalHashRing>& local_hash_rings,
-    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
-    ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
+void rep_factor_change_handler(Address public_ip, Address private_ip,
+                               unsigned thread_id, unsigned& seed, logger log,
+                               string& serialized,
+                               map<TierId, GlobalHashRing>& global_hash_rings,
+                               map<TierId, LocalHashRing>& local_hash_rings,
+                               map<Key, KeyMetadata>& metadata_map,
+                               set<Key>& local_changeset, ServerThread& wt,
+                               SerializerMap& serializers,
+                               SocketCache& pushers);
 
 void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
                  SerializerMap& serializers,

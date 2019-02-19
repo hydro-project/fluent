@@ -48,9 +48,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
          Address seed_ip, vector<Address> routing_addresses,
          vector<Address> monitoring_addresses, Address mgmt_address) {
   string log_file = "log_" + std::to_string(thread_id) + ".txt";
-  string logger_name = "server_logger_" + std::to_string(thread_id);
-  auto logger = spdlog::basic_logger_mt(logger_name, log_file, true);
-  logger->flush_on(spdlog::level::info);
+  string log_name = "server_log_" + std::to_string(thread_id);
+  auto log = spdlog::basic_logger_mt(log_name, log_file, true);
+  log->flush_on(spdlog::level::info);
 
   // each thread has a handle to itself
   ServerThread wt = ServerThread(public_ip, private_ip, thread_id);
@@ -169,7 +169,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     lww_serializer = new EBSLWWSerializer(thread_id);
     set_serializer = new EBSSetSerializer(thread_id);
   } else {
-    logger->info("Invalid node type");
+    log->info("Invalid node type");
     exit(1);
   }
 
@@ -243,10 +243,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&join_puller);
-      node_join_handler(thread_id, seed, public_ip, private_ip, logger,
-                        serialized, global_hash_rings, local_hash_rings,
-                        metadata_map, join_remove_set, pushers, wt,
-                        join_addr_keyset_map, self_join_count);
+      node_join_handler(thread_id, seed, public_ip, private_ip, log, serialized,
+                        global_hash_rings, local_hash_rings, metadata_map,
+                        join_remove_set, pushers, wt, join_addr_keyset_map,
+                        self_join_count);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -260,7 +260,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       string serialized = kZmqUtil->recv_string(&depart_puller);
       node_depart_handler(thread_id, public_ip, private_ip, global_hash_rings,
-                          logger, serialized, pushers);
+                          log, serialized, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -271,7 +271,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
     if (pollitems[2].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&self_depart_puller);
-      self_depart_handler(thread_id, seed, public_ip, private_ip, logger,
+      self_depart_handler(thread_id, seed, public_ip, private_ip, log,
                           serialized, global_hash_rings, local_hash_rings,
                           metadata_map, routing_addresses, monitoring_addresses,
                           wt, pushers, serializers);
@@ -284,7 +284,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       string serialized = kZmqUtil->recv_string(&request_puller);
       user_request_handler(
-          total_accesses, seed, serialized, logger, global_hash_rings,
+          total_accesses, seed, serialized, log, global_hash_rings,
           local_hash_rings, pending_request_map, key_access_timestamp,
           metadata_map, local_changeset, wt, serializers, pushers);
 
@@ -302,7 +302,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       string serialized = kZmqUtil->recv_string(&gossip_puller);
       gossip_handler(seed, serialized, global_hash_rings, local_hash_rings,
                      pending_gossip_map, metadata_map, wt, serializers, pushers,
-                     logger);
+                     log);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -316,7 +316,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&replication_factor_puller);
-      rep_factor_response_handler(seed, total_accesses, logger, serialized,
+      rep_factor_response_handler(seed, total_accesses, log, serialized,
                                   global_hash_rings, local_hash_rings,
                                   pending_request_map, pending_gossip_map,
                                   key_access_timestamp, metadata_map,
@@ -335,7 +335,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       string serialized =
           kZmqUtil->recv_string(&replication_factor_change_puller);
-      rep_factor_change_handler(public_ip, private_ip, thread_id, seed, logger,
+      rep_factor_change_handler(public_ip, private_ip, thread_id, seed, log,
                                 serialized, global_hash_rings, local_hash_rings,
                                 metadata_map, local_changeset, wt, serializers,
                                 pushers);
@@ -369,7 +369,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
               addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
             }
           } else {
-            logger->error("Missing key replication factor in gossip routine.");
+            log->error("Missing key replication factor in gossip routine.");
           }
         }
 
@@ -411,14 +411,14 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         double event_occupancy = (double)time / ((double)duration * 1000000);
 
         if (event_occupancy > 0.02) {
-          logger->info("Event {} occupancy is {}.", std::to_string(index++),
-                       std::to_string(event_occupancy));
+          log->info("Event {} occupancy is {}.", std::to_string(index++),
+                    std::to_string(event_occupancy));
         }
       }
 
       double occupancy = (double)working_time / ((double)duration * 1000000);
       if (occupancy > 0.02) {
-        logger->info("Occupancy is {}.", std::to_string(occupancy));
+        log->info("Occupancy is {}.", std::to_string(occupancy));
       }
 
       ServerThreadStatistics stat;
@@ -600,7 +600,8 @@ int main(int argc, char* argv[]) {
     } else if (strncmp(stype, "ebs", 3) == 0) {
       kSelfTierId = kEbsTierId;
     } else {
-      std::cout << "Unrecognized server type " << stype << ". Valid types are memory or ebs." << std::endl;
+      std::cout << "Unrecognized server type " << stype
+                << ". Valid types are memory or ebs." << std::endl;
       return 1;
     }
   } else {

@@ -27,8 +27,8 @@ TEST_F(ServerHandlerTest, UserGetLWWTest) {
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  user_request_handler(total_access, seed, get_request, logger,
-                       global_hash_rings, local_hash_rings, pending_request_map,
+  user_request_handler(total_access, seed, get_request, log_, global_hash_rings,
+                       local_hash_rings, pending_request_map,
                        key_access_timestamp, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
@@ -68,8 +68,8 @@ TEST_F(ServerHandlerTest, UserGetSetTest) {
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  user_request_handler(total_access, seed, get_request, logger,
-                       global_hash_rings, local_hash_rings, pending_request_map,
+  user_request_handler(total_access, seed, get_request, log_, global_hash_rings,
+                       local_hash_rings, pending_request_map,
                        key_access_timestamp, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
@@ -104,8 +104,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  user_request_handler(total_access, seed, put_request, logger,
-                       global_hash_rings, local_hash_rings, pending_request_map,
+  user_request_handler(total_access, seed, put_request, log_, global_hash_rings,
+                       local_hash_rings, pending_request_map,
                        key_access_timestamp, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
@@ -129,8 +129,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
 
   string get_request = get_key_request(key, ip);
 
-  user_request_handler(total_access, seed, get_request, logger,
-                       global_hash_rings, local_hash_rings, pending_request_map,
+  user_request_handler(total_access, seed, get_request, log_, global_hash_rings,
+                       local_hash_rings, pending_request_map,
                        key_access_timestamp, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
@@ -167,8 +167,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  user_request_handler(total_access, seed, put_request, logger,
-                       global_hash_rings, local_hash_rings, pending_request_map,
+  user_request_handler(total_access, seed, put_request, log_, global_hash_rings,
+                       local_hash_rings, pending_request_map,
                        key_access_timestamp, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
@@ -192,8 +192,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
 
   string get_request = get_key_request(key, ip);
 
-  user_request_handler(total_access, seed, get_request, logger,
-                       global_hash_rings, local_hash_rings, pending_request_map,
+  user_request_handler(total_access, seed, get_request, log_, global_hash_rings,
+                       local_hash_rings, pending_request_map,
                        key_access_timestamp, metadata_map, local_changeset, wt,
                        serializers, pushers);
 

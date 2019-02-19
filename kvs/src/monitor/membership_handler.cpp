@@ -15,7 +15,7 @@
 #include "monitor/monitoring_handlers.hpp"
 
 void membership_handler(
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    logger log, string& serialized,
     map<TierId, GlobalHashRing>& global_hash_rings,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
     TimePoint& grace_start, vector<Address>& routing_address,
@@ -31,9 +31,9 @@ void membership_handler(
   Address new_server_private_ip = v[3];
 
   if (type == "join") {
-    logger->info("Received join from server {}/{} in tier {}.",
-                 new_server_public_ip, new_server_private_ip,
-                 std::to_string(tier));
+    log->info("Received join from server {}/{} in tier {}.",
+              new_server_public_ip, new_server_private_ip,
+              std::to_string(tier));
     if (tier == 1) {
       global_hash_rings[tier].insert(new_server_public_ip,
                                      new_server_private_ip, 0, 0);
@@ -57,16 +57,16 @@ void membership_handler(
     } else if (tier == 0) {
       routing_address.push_back(new_server_public_ip);
     } else {
-      logger->error("Invalid tier: {}.", std::to_string(tier));
+      log->error("Invalid tier: {}.", std::to_string(tier));
     }
 
     for (const auto& pair : global_hash_rings) {
-      logger->info("Hash ring for tier {} is size {}.", pair.first,
-                   pair.second.size());
+      log->info("Hash ring for tier {} is size {}.", pair.first,
+                pair.second.size());
     }
   } else if (type == "depart") {
-    logger->info("Received depart from server {}/{}.", new_server_public_ip,
-                 new_server_private_ip);
+    log->info("Received depart from server {}/{}.", new_server_public_ip,
+              new_server_private_ip);
 
     // update hash ring
     global_hash_rings[tier].remove(new_server_public_ip, new_server_private_ip,
@@ -94,12 +94,12 @@ void membership_handler(
         }
       }
     } else {
-      logger->error("Invalid tier: {}.", std::to_string(tier));
+      log->error("Invalid tier: {}.", std::to_string(tier));
     }
 
     for (const auto& pair : global_hash_rings) {
-      logger->info("Hash ring for tier {} is size {}.", pair.first,
-                   pair.second.size());
+      log->info("Hash ring for tier {} is size {}.", pair.first,
+                pair.second.size());
     }
   }
 }

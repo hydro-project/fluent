@@ -22,7 +22,7 @@ TEST_F(RoutingHandlerTest, Membership) {
       std::to_string(kMemoryTierId) + ":127.0.0.2:127.0.0.2:0";
 
   string serialized = "join:" + message_base;
-  membership_handler(logger, serialized, pushers, global_hash_rings, thread_id,
+  membership_handler(log_, serialized, pushers, global_hash_rings, thread_id,
                      ip);
 
   vector<string> messages = get_zmq_messages();

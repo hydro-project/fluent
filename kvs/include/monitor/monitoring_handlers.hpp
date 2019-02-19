@@ -16,19 +16,19 @@
 #define SRC_INCLUDE_MONITOR_MONITORING_HANDLERS_HPP_
 
 #include "hash_ring.hpp"
-#include "spdlog/spdlog.h"
 
-void membership_handler(
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<TierId, GlobalHashRing>& global_hash_rings,
-    unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    TimePoint& grace_start, vector<Address>& routing_address,
-    StorageStats& memory_tier_storage, StorageStats& ebs_tier_storage,
-    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
-    map<Key, map<Address, unsigned>>& key_access_frequency);
+void membership_handler(logger log, string& serialized,
+                        map<TierId, GlobalHashRing>& global_hash_rings,
+                        unsigned& adding_memory_node, unsigned& adding_ebs_node,
+                        TimePoint& grace_start,
+                        vector<Address>& routing_address,
+                        StorageStats& memory_tier_storage,
+                        StorageStats& ebs_tier_storage,
+                        OccupancyStats& memory_tier_occupancy,
+                        OccupancyStats& ebs_tier_occupancy,
+                        map<Key, map<Address, unsigned>>& key_access_frequency);
 
-void depart_done_handler(std::shared_ptr<spdlog::logger> logger,
-                         string& serialized,
+void depart_done_handler(logger log, string& serialized,
                          map<Address, unsigned>& departing_node_map,
                          Address management_address, bool& removing_memory_node,
                          bool& removing_ebs_node, SocketCache& pushers,

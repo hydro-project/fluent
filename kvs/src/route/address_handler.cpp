@@ -15,14 +15,13 @@
 #include "route/routing_handlers.hpp"
 
 void address_handler(
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    SocketCache& pushers, RoutingThread& rt,
+    logger log, string& serialized, SocketCache& pushers, RoutingThread& rt,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
     PendingMap<std::pair<Address, string>>& pending_key_request_map,
     unsigned& seed) {
-  logger->info("Received key address request.");
+  log->info("Received key address request.");
   KeyAddressRequest addr_request;
   addr_request.ParseFromString(serialized);
 

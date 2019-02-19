@@ -17,7 +17,7 @@
 TEST_F(RoutingHandlerTest, Seed) {
   EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
 
-  string serialized = seed_handler(logger, global_hash_rings);
+  string serialized = seed_handler(log_, global_hash_rings);
 
   EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
 

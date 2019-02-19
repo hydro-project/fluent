@@ -15,8 +15,7 @@
 #include "route/routing_handlers.hpp"
 
 void replication_response_handler(
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    SocketCache& pushers, RoutingThread& rt,
+    logger log, string& serialized, SocketCache& pushers, RoutingThread& rt,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
@@ -60,8 +59,8 @@ void replication_response_handler(
         local_hash_rings[kMemoryTierId], pushers, seed);
     return;
   } else {
-    logger->error("Unexpected error type {} in replication factor response.",
-                  error);
+    log->error("Unexpected error type {} in replication factor response.",
+               error);
     return;
   }
 
@@ -78,7 +77,7 @@ void replication_response_handler(
           succeed, seed);
 
       if (!succeed) {
-        logger->error("Missing replication factor for key {}.", key);
+        log->error("Missing replication factor for key {}.", key);
         return;
       }
 

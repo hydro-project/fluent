@@ -15,8 +15,7 @@
 #include "kvs/kvs_handlers.hpp"
 
 void user_request_handler(
-    unsigned& total_accesses, unsigned& seed, string& serialized,
-    std::shared_ptr<spdlog::logger> logger,
+    unsigned& total_accesses, unsigned& seed, string& serialized, logger log,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     PendingMap<PendingRequest>& pending_request_map,
@@ -74,7 +73,8 @@ void user_request_handler(
         KeyTuple* tp = response.add_tuples();
         tp->set_key(key);
         if (request_type == "GET") {
-          if (metadata_map.find(key) == metadata_map.end() || metadata_map[key].type_ == LatticeType::NO) {
+          if (metadata_map.find(key) == metadata_map.end() ||
+              metadata_map[key].type_ == LatticeType::NO) {
             tp->set_error(1);
           } else {
             auto res = process_get(key, serializers[metadata_map[key].type_]);
@@ -84,12 +84,13 @@ void user_request_handler(
           }
         } else if (request_type == "PUT") {
           if (tuple.lattice_type() == LatticeType::NO) {
-            logger->error("PUT request missing lattice type.");
+            log->error("PUT request missing lattice type.");
           } else if (metadata_map.find(key) != metadata_map.end() &&
-                     metadata_map[key].type_ != LatticeType::NO  &&
+                     metadata_map[key].type_ != LatticeType::NO &&
                      metadata_map[key].type_ != tuple.lattice_type()) {
-            logger->error(
-                "Lattice type mismatch for key {}: query is {} but we expect {}.",
+            log->error(
+                "Lattice type mismatch for key {}: query is {} but we expect "
+                "{}.",
                 key, LatticeType_Name(tuple.lattice_type()),
                 LatticeType_Name(metadata_map[key].type_));
           } else {
@@ -100,8 +101,8 @@ void user_request_handler(
             tp->set_error(0);
           }
         } else {
-          logger->error("Unknown request type {} in user request handler.",
-                        request_type);
+          log->error("Unknown request type {} in user request handler.",
+                     request_type);
         }
 
         if (tuple.has_address_cache_size() &&

@@ -40,8 +40,8 @@ TEST_F(RoutingHandlerTest, ReplicationChange) {
   string serialized;
   update.SerializeToString(&serialized);
 
-  replication_change_handler(logger, serialized, pushers, metadata_map,
-                             thread_id, ip);
+  replication_change_handler(log_, serialized, pushers, metadata_map, thread_id,
+                             ip);
 
   vector<string> messages = get_zmq_messages();
 

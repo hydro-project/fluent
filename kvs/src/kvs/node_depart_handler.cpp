@@ -17,16 +17,15 @@
 void node_depart_handler(unsigned thread_id, Address public_ip,
                          Address private_ip,
                          map<TierId, GlobalHashRing>& global_hash_rings,
-                         std::shared_ptr<spdlog::logger> logger,
-                         string& serialized, SocketCache& pushers) {
+                         logger log, string& serialized, SocketCache& pushers) {
   vector<string> v;
   split(serialized, ':', v);
 
   unsigned tier = stoi(v[0]);
   Address departing_public_ip = v[1];
   Address departing_private_ip = v[2];
-  logger->info("Received departure for node {}/{} on tier {}.",
-               departing_public_ip, departing_private_ip, tier);
+  log->info("Received departure for node {}/{} on tier {}.",
+            departing_public_ip, departing_private_ip, tier);
 
   // update hash ring
   global_hash_rings[tier].remove(departing_public_ip, departing_private_ip, 0);
@@ -40,8 +39,8 @@ void node_depart_handler(unsigned thread_id, Address public_ip,
     }
 
     for (const auto& pair : global_hash_rings) {
-      logger->info("Hash ring for tier {} size is {}.", pair.first,
-                   pair.second.size());
+      log->info("Hash ring for tier {} size is {}.", pair.first,
+                pair.second.size());
     }
   }
 }

@@ -15,7 +15,6 @@
 #include <stdlib.h>
 
 #include "client.hpp"
-#include "spdlog/spdlog.h"
 #include "yaml-cpp/yaml.h"
 
 unsigned kBenchmarkThreadNum;
@@ -81,10 +80,10 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
                    local);
   string log_file = "log_" + std::to_string(thread_id) + ".txt";
   string logger_name = "benchmark_log_" + std::to_string(thread_id);
-  auto logger = spdlog::basic_logger_mt(logger_name, log_file, true);
-  logger->flush_on(spdlog::level::info);
+  auto log = spdlog::basic_logger_mt(logger_name, log_file, true);
+  log->flush_on(spdlog::level::info);
 
-  client.set_logger(logger);
+  client.set_logger(log);
   unsigned seed = client.get_seed();
 
   // observed per-key avg latency
@@ -105,7 +104,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
 
     if (pollitems[0].revents & ZMQ_POLLIN) {
       string msg = kZmqUtil->recv_string(&command_puller);
-      logger->info("Received benchmark command: {}", msg);
+      log->info("Received benchmark command: {}", msg);
 
       vector<string> v;
       split(msg, ':', v);
@@ -119,7 +118,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
 
         for (unsigned i = 1; i <= num_keys; i++) {
           if (i % 50000 == 0) {
-            logger->info("Warming up cache for key {}.", i);
+            log->info("Warming up cache for key {}.", i);
           }
 
           client.get(generate_key(i));
@@ -128,7 +127,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
         auto warmup_time = std::chrono::duration_cast<std::chrono::seconds>(
                                std::chrono::system_clock::now() - warmup_start)
                                .count();
-        logger->info("Cache warm-up took {} seconds.", warmup_time);
+        log->info("Cache warm-up took {} seconds.", warmup_time);
       } else if (mode == "LOAD") {
         string type = v[1];
         unsigned num_keys = stoi(v[2]);
@@ -141,7 +140,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
         double base;
 
         if (zipf > 0) {
-          logger->info("Zipf coefficient is {}.", zipf);
+          log->info("Zipf coefficient is {}.", zipf);
           base = get_base(num_keys, zipf);
           sum_probs[0] = 0;
 
@@ -149,7 +148,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
             sum_probs[i] = sum_probs[i - 1] + base / pow((double)i, zipf);
           }
         } else {
-          logger->info("Using a uniform random distribution.");
+          log->info("Using a uniform random distribution.");
         }
 
         size_t count = 0;
@@ -204,7 +203,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
               observed_latency[key].second += 1;
             }
           } else {
-            logger->info("{} is an invalid request type.", type);
+            log->info("{} is an invalid request type.", type);
           }
 
           epoch_end = std::chrono::system_clock::now();
@@ -215,8 +214,8 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
           // report throughput every report_period seconds
           if (time_elapsed >= report_period) {
             double throughput = (double)count / (double)time_elapsed;
-            logger->info("[Epoch {}] Throughput is {} ops/seconds.", epoch,
-                         throughput);
+            log->info("[Epoch {}] Throughput is {} ops/seconds.", epoch,
+                      throughput);
             epoch += 1;
 
             auto latency = (double)1000000 / throughput;
@@ -257,7 +256,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
           }
         }
 
-        logger->info("Finished");
+        log->info("Finished");
         UserFeedback feedback;
 
         feedback.set_uid(ip + ":" + std::to_string(thread_id));
@@ -284,7 +283,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
 
         for (unsigned i = start; i < end; i++) {
           if (i % 50000 == 0) {
-            logger->info("Creating key {}.", i);
+            log->info("Creating key {}.", i);
           }
 
           client.put(generate_key(i), string(length, 'a'));
@@ -293,9 +292,9 @@ void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
         auto warmup_time = std::chrono::duration_cast<std::chrono::seconds>(
                                std::chrono::system_clock::now() - warmup_start)
                                .count();
-        logger->info("Warming up data took {} seconds.", warmup_time);
+        log->info("Warming up data took {} seconds.", warmup_time);
       } else {
-        logger->info("{} is an invalid mode.", mode);
+        log->info("{} is an invalid mode.", mode);
       }
     }
   }

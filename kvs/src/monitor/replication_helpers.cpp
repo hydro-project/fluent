@@ -33,13 +33,13 @@ void prepare_replication_factor_update(
   ReplicationFactor* rf = replication_factor_map[server_address].add_key_reps();
   rf->set_key(key);
 
-  for(const auto& pair : metadata_map[key].global_replication_) {
+  for (const auto& pair : metadata_map[key].global_replication_) {
     Replication* global = rf->add_global();
     global->set_tier_id(pair.first);
     global->set_replication_factor(pair.second);
   }
 
-  for(const auto& pair : metadata_map[key].local_replication_) {
+  for (const auto& pair : metadata_map[key].local_replication_) {
     Replication* local = rf->add_local();
     local->set_tier_id(pair.first);
     local->set_replication_factor(pair.second);
@@ -54,8 +54,7 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
                                vector<Address>& routing_address,
                                map<Key, KeyMetadata>& metadata_map,
                                SocketCache& pushers, MonitoringThread& mt,
-                               zmq::socket_t& response_puller,
-                               std::shared_ptr<spdlog::logger> logger,
+                               zmq::socket_t& response_puller, logger log,
                                unsigned& rid) {
   // used to keep track of the original replication factors for the requested
   // keys
@@ -110,7 +109,7 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
         succeed);
 
     if (!succeed) {
-      logger->error("Replication factor put timed out!");
+      log->error("Replication factor put timed out!");
 
       for (const auto& tuple : request_pair.second.tuples()) {
         failed_keys.insert(get_key_from_metadata(tuple.key()));
@@ -118,7 +117,7 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
     } else {
       for (const auto& tuple : res.tuples()) {
         if (tuple.error() == 2) {
-          logger->error(
+          log->error(
               "Replication factor put for key {} rejected due to incorrect "
               "address.",
               tuple.key());

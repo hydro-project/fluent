@@ -14,11 +14,11 @@
 
 #include "route/routing_handlers.hpp"
 
-void replication_change_handler(std::shared_ptr<spdlog::logger> logger,
-                                string& serialized, SocketCache& pushers,
+void replication_change_handler(logger log, string& serialized,
+                                SocketCache& pushers,
                                 map<Key, KeyMetadata>& metadata_map,
                                 unsigned thread_id, Address ip) {
-  logger->info("Received a replication factor change.");
+  log->info("Received a replication factor change.");
 
   if (thread_id == 0) {
     // tell all worker threads about the replication factor change

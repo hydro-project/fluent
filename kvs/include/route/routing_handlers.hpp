@@ -16,33 +16,28 @@
 #define SRC_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_
 
 #include "hash_ring.hpp"
-#include "spdlog/spdlog.h"
 
-string seed_handler(std::shared_ptr<spdlog::logger> logger,
-                    map<TierId, GlobalHashRing>& global_hash_rings);
+string seed_handler(logger log, map<TierId, GlobalHashRing>& global_hash_rings);
 
-void membership_handler(std::shared_ptr<spdlog::logger> logger,
-                        string& serialized, SocketCache& pushers,
+void membership_handler(logger log, string& serialized, SocketCache& pushers,
                         map<TierId, GlobalHashRing>& global_hash_rings,
                         unsigned thread_id, Address ip);
 
 void replication_response_handler(
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    SocketCache& pushers, RoutingThread& rt,
+    logger log, string& serialized, SocketCache& pushers, RoutingThread& rt,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
     PendingMap<std::pair<Address, string>>& pending_key_request_map,
     unsigned& seed);
 
-void replication_change_handler(std::shared_ptr<spdlog::logger> logger,
-                                string& serialized, SocketCache& pushers,
+void replication_change_handler(logger log, string& serialized,
+                                SocketCache& pushers,
                                 map<Key, KeyMetadata>& metadata_map,
                                 unsigned thread_id, Address ip);
 
 void address_handler(
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    SocketCache& pushers, RoutingThread& rt,
+    logger log, string& serialized, SocketCache& pushers, RoutingThread& rt,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,

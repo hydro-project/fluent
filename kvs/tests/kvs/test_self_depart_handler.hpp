@@ -24,7 +24,7 @@ TEST_F(ServerHandlerTest, SelfDepart) {
 
   string serialized = "tcp://127.0.0.2:6560";
 
-  self_depart_handler(thread_id, seed, ip, ip, logger, serialized,
+  self_depart_handler(thread_id, seed, ip, ip, log_, serialized,
                       global_hash_rings, local_hash_rings, metadata_map,
                       routing_address, monitoring_address, wt, pushers,
                       serializers);

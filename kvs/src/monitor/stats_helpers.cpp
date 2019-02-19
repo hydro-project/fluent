@@ -18,9 +18,8 @@
 void collect_internal_stats(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings, SocketCache& pushers,
-    MonitoringThread& mt, zmq::socket_t& response_puller,
-    std::shared_ptr<spdlog::logger> logger, unsigned& rid,
-    map<Key, map<Address, unsigned>>& key_access_frequency,
+    MonitoringThread& mt, zmq::socket_t& response_puller, logger log,
+    unsigned& rid, map<Key, map<Address, unsigned>>& key_access_frequency,
     map<Key, unsigned>& key_size, StorageStats& memory_tier_storage,
     StorageStats& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
     OccupancyStats& ebs_tier_occupancy, AccessStats& memory_tier_access,
@@ -105,14 +104,14 @@ void collect_internal_stats(
             }
           }
         } else if (tuple.error() == 1) {
-          logger->error("Key {} doesn't exist.", tuple.key());
+          log->error("Key {} doesn't exist.", tuple.key());
         } else {
           // The hash ring should never be inconsistent.
-          logger->error("Hash ring is inconsistent for key {}.", tuple.key());
+          log->error("Hash ring is inconsistent for key {}.", tuple.key());
         }
       }
     } else {
-      logger->error("Request timed out.");
+      log->error("Request timed out.");
       continue;
     }
   }
@@ -123,8 +122,8 @@ void compute_summary_stats(
     StorageStats& memory_tier_storage, StorageStats& ebs_tier_storage,
     OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
     AccessStats& memory_tier_access, AccessStats& ebs_tier_access,
-    map<Key, unsigned>& key_access_summary, SummaryStats& ss,
-    std::shared_ptr<spdlog::logger> logger, unsigned& server_monitoring_epoch) {
+    map<Key, unsigned>& key_access_summary, SummaryStats& ss, logger log,
+    unsigned& server_monitoring_epoch) {
   // compute key access summary
   unsigned cnt = 0;
   double mean = 0;
@@ -154,8 +153,7 @@ void compute_summary_stats(
   ss.key_access_mean = mean;
   ss.key_access_std = sqrt((double)ms / cnt);
 
-  logger->info("Access: mean={}, std={}", ss.key_access_mean,
-               ss.key_access_std);
+  log->info("Access: mean={}, std={}", ss.key_access_mean, ss.key_access_std);
 
   // compute tier access summary
   for (const auto& memory_access : memory_tier_access) {
@@ -170,8 +168,8 @@ void compute_summary_stats(
     }
   }
 
-  logger->info("Total accesses: memory={}, ebs={}", ss.total_memory_access,
-               ss.total_ebs_access);
+  log->info("Total accesses: memory={}, ebs={}", ss.total_memory_access,
+            ss.total_ebs_access);
 
   // compute storage consumption related statistics
   unsigned m_count = 0;
@@ -187,8 +185,8 @@ void compute_summary_stats(
 
     double percentage = (double)total_thread_consumption /
                         (double)kTierMetadata[kMemoryTierId].node_capacity_;
-    logger->info("Memory node {} storage consumption is {}.",
-                 memory_storage.first, percentage);
+    log->info("Memory node {} storage consumption is {}.", memory_storage.first,
+              percentage);
 
     if (percentage > ss.max_memory_consumption_percentage) {
       ss.max_memory_consumption_percentage = percentage;
@@ -207,8 +205,8 @@ void compute_summary_stats(
 
     double percentage = (double)total_thread_consumption /
                         (double)kTierMetadata[kEbsTierId].node_capacity_;
-    logger->info("EBS node {} storage consumption is {}.", ebs_storage.first,
-                 percentage);
+    log->info("EBS node {} storage consumption is {}.", ebs_storage.first,
+              percentage);
 
     if (percentage > ss.max_ebs_consumption_percentage) {
       ss.max_ebs_consumption_percentage = percentage;
@@ -220,20 +218,20 @@ void compute_summary_stats(
     ss.avg_memory_consumption_percentage =
         (double)ss.total_memory_consumption /
         ((double)m_count * kTierMetadata[kMemoryTierId].node_capacity_);
-    logger->info("Average memory node consumption is {}.",
-                 ss.avg_memory_consumption_percentage);
-    logger->info("Max memory node consumption is {}.",
-                 ss.max_memory_consumption_percentage);
+    log->info("Average memory node consumption is {}.",
+              ss.avg_memory_consumption_percentage);
+    log->info("Max memory node consumption is {}.",
+              ss.max_memory_consumption_percentage);
   }
 
   if (e_count != 0) {
     ss.avg_ebs_consumption_percentage =
         (double)ss.total_ebs_consumption /
         ((double)e_count * kTierMetadata[kEbsTierId].node_capacity_);
-    logger->info("Average EBS node consumption is {}.",
-                 ss.avg_ebs_consumption_percentage);
-    logger->info("Max EBS node consumption is {}.",
-                 ss.max_ebs_consumption_percentage);
+    log->info("Average EBS node consumption is {}.",
+              ss.avg_ebs_consumption_percentage);
+    log->info("Max EBS node consumption is {}.",
+              ss.max_ebs_consumption_percentage);
   }
 
   ss.required_memory_node = ceil(ss.total_memory_consumption /
@@ -243,9 +241,9 @@ void compute_summary_stats(
       ceil(ss.total_ebs_consumption /
            (kMaxEbsNodeConsumption * kTierMetadata[kEbsTierId].node_capacity_));
 
-  logger->info("The system requires {} new memory nodes.",
-               ss.required_memory_node);
-  logger->info("The system requires {} new EBS nodes.", ss.required_ebs_node);
+  log->info("The system requires {} new memory nodes.",
+            ss.required_memory_node);
+  log->info("The system requires {} new EBS nodes.", ss.required_ebs_node);
 
   // compute occupancy related statistics
   double sum_memory_occupancy = 0.0;
@@ -257,7 +255,7 @@ void compute_summary_stats(
     unsigned thread_count = 0;
 
     for (const auto& thread_occ : memory_occ.second) {
-      logger->info(
+      log->info(
           "Memory node {} thread {} occupancy is {} at epoch {} (monitoring "
           "epoch {}).",
           memory_occ.first, thread_occ.first, thread_occ.second.first,
@@ -286,12 +284,12 @@ void compute_summary_stats(
   }
 
   ss.avg_memory_occupancy = sum_memory_occupancy / count;
-  logger->info("Max memory node occupancy is {}.",
-               std::to_string(ss.max_memory_occupancy));
-  logger->info("Min memory node occupancy is {}.",
-               std::to_string(ss.min_memory_occupancy));
-  logger->info("Average memory node occupancy is {}.",
-               std::to_string(ss.avg_memory_occupancy));
+  log->info("Max memory node occupancy is {}.",
+            std::to_string(ss.max_memory_occupancy));
+  log->info("Min memory node occupancy is {}.",
+            std::to_string(ss.min_memory_occupancy));
+  log->info("Average memory node occupancy is {}.",
+            std::to_string(ss.avg_memory_occupancy));
 
   double sum_ebs_occupancy = 0.0;
 
@@ -302,7 +300,7 @@ void compute_summary_stats(
     unsigned thread_count = 0;
 
     for (const auto& thread_occ : ebs_occ.second) {
-      logger->info(
+      log->info(
           "EBS node {} thread {} occupancy is {} at epoch {} (monitoring epoch "
           "{}).",
           ebs_occ.first, thread_occ.first, thread_occ.second.first,
@@ -327,18 +325,17 @@ void compute_summary_stats(
   }
 
   ss.avg_ebs_occupancy = sum_ebs_occupancy / count;
-  logger->info("Max EBS node occupancy is {}.",
-               std::to_string(ss.max_ebs_occupancy));
-  logger->info("Min EBS node occupancy is {}.",
-               std::to_string(ss.min_ebs_occupancy));
-  logger->info("Average EBS node occupancy is {}.",
-               std::to_string(ss.avg_ebs_occupancy));
+  log->info("Max EBS node occupancy is {}.",
+            std::to_string(ss.max_ebs_occupancy));
+  log->info("Min EBS node occupancy is {}.",
+            std::to_string(ss.min_ebs_occupancy));
+  log->info("Average EBS node occupancy is {}.",
+            std::to_string(ss.avg_ebs_occupancy));
 }
 
 void collect_external_stats(map<string, double>& user_latency,
                             map<string, double>& user_throughput,
-                            SummaryStats& ss,
-                            std::shared_ptr<spdlog::logger> logger) {
+                            SummaryStats& ss, logger log) {
   // gather latency info
   if (user_latency.size() > 0) {
     // compute latency from users
@@ -353,7 +350,7 @@ void collect_external_stats(map<string, double>& user_latency,
     ss.avg_latency = sum_latency / count;
   }
 
-  logger->info("Average latency is {}.", ss.avg_latency);
+  log->info("Average latency is {}.", ss.avg_latency);
 
   // gather throughput info
   if (user_throughput.size() > 0) {
@@ -363,5 +360,5 @@ void collect_external_stats(map<string, double>& user_latency,
     }
   }
 
-  logger->info("Total throughput is {}.", ss.total_throughput);
+  log->info("Total throughput is {}.", ss.total_throughput);
 }

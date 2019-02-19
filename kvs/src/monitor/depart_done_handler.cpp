@@ -14,8 +14,7 @@
 
 #include "monitor/monitoring_handlers.hpp"
 
-void depart_done_handler(std::shared_ptr<spdlog::logger> logger,
-                         string& serialized,
+void depart_done_handler(logger log, string& serialized,
                          map<Address, unsigned>& departing_node_map,
                          Address management_address, bool& removing_memory_node,
                          bool& removing_ebs_node, SocketCache& pushers,
@@ -41,8 +40,8 @@ void depart_done_handler(std::shared_ptr<spdlog::logger> logger,
         removing_ebs_node = false;
       }
 
-      logger->info("Removing {} node {}/{}.", ntype, departed_public_ip,
-                   departed_private_ip);
+      log->info("Removing {} node {}/{}.", ntype, departed_public_ip,
+                departed_private_ip);
 
       string mgmt_addr = "tcp://" + management_address + ":7001";
       string message = "remove:" + departed_private_ip + ":" + ntype;
@@ -54,6 +53,6 @@ void depart_done_handler(std::shared_ptr<spdlog::logger> logger,
       departing_node_map.erase(departed_private_ip);
     }
   } else {
-    logger->error("Missing entry in the depart done map.");
+    log->error("Missing entry in the depart done map.");
   }
 }

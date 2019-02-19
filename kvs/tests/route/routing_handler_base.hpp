@@ -20,8 +20,8 @@ ZmqUtilInterface* kZmqUtil = &mock_zmq_util;
 MockHashRingUtil mock_hash_ring_util;
 HashRingUtilInterface* kHashRingUtil = &mock_hash_ring_util;
 
-std::shared_ptr<spdlog::logger> logger =
-    spdlog::basic_logger_mt("mock_logger", "mock_log.txt", true);
+std::shared_ptr<spdlog::logger> log_ =
+    spdlog::basic_logger_mt("mock_log", "mock_log.txt", true);
 
 class RoutingHandlerTest : public ::testing::Test {
  protected:
@@ -62,8 +62,8 @@ class RoutingHandlerTest : public ::testing::Test {
           kDefaultGlobalMemoryReplication;
       metadata_map[key].global_replication_[kEbsTierId] =
           kDefaultGlobalEbsReplication;
-      metadata_map[key]
-          .local_replication_[kMemoryTierId] = kDefaultLocalReplication;
+      metadata_map[key].local_replication_[kMemoryTierId] =
+          kDefaultLocalReplication;
       metadata_map[key].local_replication_[kEbsTierId] =
           kDefaultLocalReplication;
     }

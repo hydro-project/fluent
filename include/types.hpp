@@ -19,20 +19,23 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "spdlog/spdlog.h"
 
 using string = std::string;
 
-template<class K, class V>
+template <class K, class V>
 using map = std::unordered_map<K, V>;
 
-template<class T>
+template <class T>
 using set = std::unordered_set<T>;
 
-template<class T>
+template <class T>
 using vector = std::vector<T>;
 
 using Address = std::string;
 
 using Key = std::string;
+
+using logger = std::shared_ptr<spdlog::logger>;
 
 #endif  // INCLUDE_TYPES_HPP_

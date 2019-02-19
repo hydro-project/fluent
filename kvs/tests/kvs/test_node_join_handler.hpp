@@ -24,7 +24,7 @@ TEST_F(ServerHandlerTest, BasicNodeJoin) {
   EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 
   string serialized = std::to_string(kMemoryTierId) + ":127.0.0.2:127.0.0.2:0";
-  node_join_handler(thread_id, seed, ip, ip, logger, serialized,
+  node_join_handler(thread_id, seed, ip, ip, log_, serialized,
                     global_hash_rings, local_hash_rings, metadata_map,
                     join_remove_set, pushers, wt, join_addr_keyset_map, 0);
 
@@ -48,7 +48,7 @@ TEST_F(ServerHandlerTest, DuplicateNodeJoin) {
 
   string serialized =
       std::to_string(kMemoryTierId) + ":" + ip + ":" + ip + ":0";
-  node_join_handler(thread_id, seed, ip, ip, logger, serialized,
+  node_join_handler(thread_id, seed, ip, ip, log_, serialized,
                     global_hash_rings, local_hash_rings, metadata_map,
                     join_remove_set, pushers, wt, join_addr_keyset_map, 0);
 

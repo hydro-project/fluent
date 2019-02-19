@@ -14,14 +14,16 @@
 
 #include "kvs/kvs_handlers.hpp"
 
-void rep_factor_change_handler(
-    Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
-    map<TierId, GlobalHashRing>& global_hash_rings,
-    map<TierId, LocalHashRing>& local_hash_rings,
-    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
-    ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
-  logger->info("Received a replication factor change.");
+void rep_factor_change_handler(Address public_ip, Address private_ip,
+                               unsigned thread_id, unsigned& seed, logger log,
+                               string& serialized,
+                               map<TierId, GlobalHashRing>& global_hash_rings,
+                               map<TierId, LocalHashRing>& local_hash_rings,
+                               map<Key, KeyMetadata>& metadata_map,
+                               set<Key>& local_changeset, ServerThread& wt,
+                               SerializerMap& serializers,
+                               SocketCache& pushers) {
+  log->info("Received a replication factor change.");
   if (thread_id == 0) {
     // tell all worker threads about the replication factor change
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
@@ -112,11 +114,11 @@ void rep_factor_change_handler(
             }
           }
         } else {
-          logger->error(
+          log->error(
               "Missing key replication factor in rep factor change routine.");
         }
       } else {
-        logger->error(
+        log->error(
             "Missing key replication factor in rep factor change routine.");
 
         // just update the replication factor

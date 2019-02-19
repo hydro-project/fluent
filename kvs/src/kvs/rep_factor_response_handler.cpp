@@ -15,8 +15,7 @@
 #include "kvs/kvs_handlers.hpp"
 
 void rep_factor_response_handler(
-    unsigned& seed, unsigned& total_access,
-    std::shared_ptr<spdlog::logger> logger, string& serialized,
+    unsigned& seed, unsigned& total_access, logger log, string& serialized,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     PendingMap<PendingRequest>& pending_request_map,
@@ -26,7 +25,6 @@ void rep_factor_response_handler(
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
   KeyResponse response;
   response.ParseFromString(serialized);
-
 
   // we assume tuple 0 because there should only be one tuple responding to a
   // replication factor request
@@ -63,8 +61,8 @@ void rep_factor_response_handler(
         local_hash_rings[kMemoryTierId], pushers, seed);
     return;
   } else {
-    logger->error("Unexpected error type {} in replication factor response.",
-                  error);
+    log->error("Unexpected error type {} in replication factor response.",
+               error);
     return;
   }
 
@@ -105,12 +103,13 @@ void rep_factor_response_handler(
           // only put requests should fall into this category
           if (request.type_ == "PUT") {
             if (request.lattice_type_ == LatticeType::NO) {
-              logger->error("PUT request missing lattice type.");
+              log->error("PUT request missing lattice type.");
             } else if (metadata_map.find(key) != metadata_map.end() &&
-                       metadata_map[key].type_ != LatticeType::NO  &&
+                       metadata_map[key].type_ != LatticeType::NO &&
                        metadata_map[key].type_ != request.lattice_type_) {
-              logger->error(
-                  "Lattice type mismatch for key {}: query is {} but we expect {}.",
+              log->error(
+                  "Lattice type mismatch for key {}: query is {} but we expect "
+                  "{}.",
                   key, LatticeType_Name(request.lattice_type_),
                   LatticeType_Name(metadata_map[key].type_));
             } else {
@@ -122,7 +121,7 @@ void rep_factor_response_handler(
               local_changeset.insert(key);
             }
           } else {
-            logger->error("Received a GET request with no response address.");
+            log->error("Received a GET request with no response address.");
           }
         } else if (responsible && request.addr_ != "") {
           KeyResponse response;
@@ -135,7 +134,8 @@ void rep_factor_response_handler(
           tp->set_key(key);
 
           if (request.type_ == "GET") {
-            if (metadata_map.find(key) == metadata_map.end() || metadata_map[key].type_ == LatticeType::NO) {
+            if (metadata_map.find(key) == metadata_map.end() ||
+                metadata_map[key].type_ == LatticeType::NO) {
               tp->set_error(1);
             } else {
               auto res = process_get(key, serializers[metadata_map[key].type_]);
@@ -145,12 +145,13 @@ void rep_factor_response_handler(
             }
           } else {
             if (request.lattice_type_ == LatticeType::NO) {
-              logger->error("PUT request missing lattice type.");
+              log->error("PUT request missing lattice type.");
             } else if (metadata_map.find(key) != metadata_map.end() &&
-                       metadata_map[key].type_ != LatticeType::NO  &&
+                       metadata_map[key].type_ != LatticeType::NO &&
                        metadata_map[key].type_ != request.lattice_type_) {
-              logger->error(
-                  "Lattice type mismatch for key {}: {} from query but {} expected.",
+              log->error(
+                  "Lattice type mismatch for key {}: {} from query but {} "
+                  "expected.",
                   key, LatticeType_Name(request.lattice_type_),
                   LatticeType_Name(metadata_map[key].type_));
             } else {
@@ -169,7 +170,7 @@ void rep_factor_response_handler(
         }
       }
     } else {
-      logger->error(
+      log->error(
           "Missing key replication factor in process pending request routine.");
     }
 
@@ -186,10 +187,11 @@ void rep_factor_response_handler(
       if (std::find(threads.begin(), threads.end(), wt) != threads.end()) {
         for (const PendingGossip& gossip : pending_gossip_map[key]) {
           if (metadata_map.find(key) != metadata_map.end() &&
-              metadata_map[key].type_ != LatticeType::NO  &&
+              metadata_map[key].type_ != LatticeType::NO &&
               metadata_map[key].type_ != gossip.lattice_type_) {
-            logger->error(
-                "Lattice type mismatch for key {}: {} from query but {} expected.",
+            log->error(
+                "Lattice type mismatch for key {}: {} from query but {} "
+                "expected.",
                 key, LatticeType_Name(gossip.lattice_type_),
                 LatticeType_Name(metadata_map[key].type_));
           } else {
@@ -219,7 +221,7 @@ void rep_factor_response_handler(
         }
       }
     } else {
-      logger->error(
+      log->error(
           "Missing key replication factor in process pending gossip routine.");
     }
 

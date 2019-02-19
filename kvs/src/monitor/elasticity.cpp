@@ -14,10 +14,9 @@
 
 #include "monitor/monitoring_utils.hpp"
 
-void add_node(std::shared_ptr<spdlog::logger> logger, string tier,
-              unsigned number, unsigned& adding, SocketCache& pushers,
-              const Address& management_address) {
-  logger->info("Adding {} node(s) in tier {}.", std::to_string(number), tier);
+void add_node(logger log, string tier, unsigned number, unsigned& adding,
+              SocketCache& pushers, const Address& management_address) {
+  log->info("Adding {} node(s) in tier {}.", std::to_string(number), tier);
 
   string mgmt_addr = "tcp://" + management_address + ":7001";
   string message = "add:" + std::to_string(number) + ":" + tier;
@@ -26,8 +25,8 @@ void add_node(std::shared_ptr<spdlog::logger> logger, string tier,
   adding = number;
 }
 
-void remove_node(std::shared_ptr<spdlog::logger> logger, ServerThread& node,
-                 string tier, bool& removing_flag, SocketCache& pushers,
+void remove_node(logger log, ServerThread& node, string tier,
+                 bool& removing_flag, SocketCache& pushers,
                  map<Address, unsigned>& departing_node_map,
                  MonitoringThread& mt) {
   auto connection_addr = node.get_self_depart_connect_addr();

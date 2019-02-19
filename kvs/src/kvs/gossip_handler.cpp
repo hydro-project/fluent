@@ -20,7 +20,7 @@ void gossip_handler(unsigned& seed, string& serialized,
                     PendingMap<PendingGossip>& pending_gossip_map,
                     map<Key, KeyMetadata>& metadata_map, ServerThread& wt,
                     SerializerMap& serializers, SocketCache& pushers,
-                    std::shared_ptr<spdlog::logger> logger) {
+                    logger log) {
   KeyRequest gossip;
   gossip.ParseFromString(serialized);
 
@@ -41,9 +41,9 @@ void gossip_handler(unsigned& seed, string& serialized,
                             // responsible threads
         if (metadata_map.find(key) != metadata_map.end() &&
             metadata_map[key].type_ != tuple.lattice_type()) {
-          logger->error("Lattice type mismatch: {} from query but {} expected.",
-                        LatticeType_Name(tuple.lattice_type()),
-                        metadata_map[key].type_);
+          log->error("Lattice type mismatch: {} from query but {} expected.",
+                     LatticeType_Name(tuple.lattice_type()),
+                     metadata_map[key].type_);
         } else {
           process_put(tuple.key(), tuple.lattice_type(), tuple.payload(),
                       serializers[tuple.lattice_type()], metadata_map);

@@ -18,7 +18,6 @@
 #include "hash_ring.hpp"
 #include "requests.hpp"
 #include "requests.pb.h"
-#include "spdlog/spdlog.h"
 #include "threads.hpp"
 #include "types.hpp"
 #include "zmq/socket_cache.hpp"
@@ -53,9 +52,9 @@ class KvsClient {
       socket_cache_(SocketCache(&context_, ZMQ_PUSH)),
       key_address_puller_(zmq::socket_t(context_, ZMQ_PULL)),
       response_puller_(zmq::socket_t(context_, ZMQ_PULL)),
-      logger_(spdlog::basic_logger_mt("client_log", "client_log.txt", true)) {
+      log_(spdlog::basic_logger_mt("client_log", "client_log.txt", true)) {
     // initialize logger
-    logger_->flush_on(spdlog::level::info);
+    log_->flush_on(spdlog::level::info);
 
     // set class variables
     local_ = true;
@@ -65,7 +64,7 @@ class KvsClient {
     seed_ = time(NULL);
     seed_ += hasher(ip);
     seed_ += tid;
-    logger_->info("Random seed is {}.", seed_);
+    log_->info("Random seed is {}.", seed_);
 
     // bind the two sockets we listen on
     key_address_puller_.bind(ut_.get_key_address_bind_addr());
@@ -230,7 +229,7 @@ class KvsClient {
 
     KeyTuple rtuple = response.tuples(0);
     if (rtuple.error() == 1) {
-      logger_->info("Key {} does not exist and could not be retrieved.", key);
+      log_->info("Key {} does not exist and could not be retrieved.", key);
       return "";
     }
 
@@ -270,7 +269,7 @@ class KvsClient {
     for (KeyResponse response : responses) {
       KeyTuple tuple = response.tuples(0);
       if (tuple.error() == 1) {
-        logger_->info("Key {} does not exist and could not be retrieved.", key);
+        log_->info("Key {} does not exist and could not be retrieved.", key);
         result.clear();
         return result;
       }
@@ -311,7 +310,7 @@ class KvsClient {
 
     KeyTuple rtuple = response.tuples(0);
     if (rtuple.error() == 1) {
-      logger_->info("Key {} does not exist and could not be retrieved.", key);
+      log_->info("Key {} does not exist and could not be retrieved.", key);
       return result;
     }
 
@@ -356,7 +355,7 @@ class KvsClient {
     for (KeyResponse response : responses) {
       KeyTuple tuple = response.tuples(0);
       if (tuple.error() == 1) {
-        logger_->info("Key {} does not exist and could not be retrieved.", key);
+        log_->info("Key {} does not exist and could not be retrieved.", key);
         result.clear();
         return result;
       }
@@ -377,7 +376,7 @@ class KvsClient {
   /**
    * Set the logger used by the client.
    */
-  void set_logger(std::shared_ptr<spdlog::logger> logger) { logger_ = logger; }
+  void set_logger(logger log) { log_ = log; }
 
   /**
    * Clears the key address cache held by this client.
@@ -429,7 +428,7 @@ class KvsClient {
         receive<KeyResponse>(response_puller_, request_ids, responses);
 
     if (!succeed) {
-      logger_->info(
+      log_->info(
           "Request timed out while querying worker. Clearing address cache due "
           "to possible membership change and retrying request.");
       for (Address worker : workers) {
@@ -480,7 +479,7 @@ class KvsClient {
         request, socket_cache_[worker], response_puller_, succeed);
 
     while (!succeed) {
-      logger_->info(
+      log_->info(
           "Request timed out while querying worker. Clearing address cache due "
           "to possible membership change and retrying request.");
       invalidate_cache_for_worker(worker);
@@ -505,7 +504,7 @@ class KvsClient {
   bool check_tuple(KeyTuple tuple) {
     Key key = tuple.key();
     if (tuple.error() == 2) {
-      logger_->info(
+      log_->info(
           "Server ordered invalidation of key address cache for key {}. "
           "Retrying request.",
           key);
@@ -517,8 +516,8 @@ class KvsClient {
     if (tuple.has_invalidate() && tuple.invalidate()) {
       invalidate_cache_for_key(key, tuple);
 
-      logger_->info(
-          "Server ordered invalidation of key address cache for key {}", key);
+      log_->info("Server ordered invalidation of key address cache for key {}",
+                 key);
     }
 
     return false;
@@ -597,7 +596,7 @@ class KvsClient {
       set<Address> addresses = query_routing(key);
 
       if (addresses.size() == 0) {
-        logger_->error(
+        log_->error(
             "Request to routing tier unexpectedly timed out. This should never "
             "happen!");
         return addresses;
@@ -749,7 +748,7 @@ class KvsClient {
   map<Key, set<Address>> key_address_cache_;
 
   // class logger
-  std::shared_ptr<spdlog::logger> logger_;
+  logger log_;
 
   // create a default response for a local error (ie, timeout or trial limit)
   KeyResponse bad_response_;

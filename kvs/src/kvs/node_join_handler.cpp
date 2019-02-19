@@ -15,9 +15,7 @@
 #include "kvs/kvs_handlers.hpp"
 
 void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
-                       Address private_ip,
-                       std::shared_ptr<spdlog::logger> logger,
-                       string& serialized,
+                       Address private_ip, logger log, string& serialized,
                        map<TierId, GlobalHashRing>& global_hash_rings,
                        map<TierId, LocalHashRing>& local_hash_rings,
                        map<Key, KeyMetadata>& metadata_map,
@@ -36,7 +34,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
       new_server_public_ip, new_server_private_ip, join_count, 0);
 
   if (inserted) {
-    logger->info(
+    log->info(
         "Received a node join for tier {}. New node is {}. It's join counter "
         "is {}.",
         tier, new_server_public_ip, join_count);
@@ -67,8 +65,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
           }
         }
 
-        logger->info("Hash ring for tier {} is size {}.", index,
-                     hash_ring.size());
+        log->info("Hash ring for tier {} is size {}.", index, hash_ring.size());
         index++;
       }
 
@@ -120,7 +117,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
             }
           }
         } else {
-          logger->error(
+          log->error(
               "Missing key replication factor in node join "
               "routine. This should never happen.");
         }
