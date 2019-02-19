@@ -18,7 +18,7 @@ void membership_handler(
     logger log, string& serialized,
     map<TierId, GlobalHashRing>& global_hash_rings,
     unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    TimePoint& grace_start, vector<Address>& routing_address,
+    TimePoint& grace_start, vector<Address>& routing_ips,
     StorageStats& memory_tier_storage, StorageStats& ebs_tier_storage,
     OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
     map<Key, map<Address, unsigned>>& key_access_frequency) {
@@ -55,7 +55,7 @@ void membership_handler(
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();
     } else if (tier == 0) {
-      routing_address.push_back(new_server_public_ip);
+      routing_ips.push_back(new_server_public_ip);
     } else {
       log->error("Invalid tier: {}.", std::to_string(tier));
     }

@@ -19,7 +19,7 @@ void address_handler(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
-    PendingMap<std::pair<Address, string>>& pending_key_request_map,
+    map<Key, std::pair<Address, string>>& pending_requests,
     unsigned& seed) {
   log->info("Received key address request.");
   KeyAddressRequest addr_request;
@@ -52,7 +52,7 @@ void address_handler(
 
         if (!succeed) {  // this means we don't have the replication factor for
                          // the key
-          pending_key_request_map[key].push_back(std::pair<Address, string>(
+          pending_requests[key].push_back(std::pair<Address, string>(
               addr_request.response_address(), addr_request.request_id()));
           return;
         }

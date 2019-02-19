@@ -19,8 +19,8 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                          map<TierId, GlobalHashRing>& global_hash_rings,
                          map<TierId, LocalHashRing>& local_hash_rings,
                          map<Key, KeyMetadata>& metadata_map,
-                         vector<Address>& routing_address,
-                         vector<Address>& monitoring_address, ServerThread& wt,
+                         vector<Address>& routing_ips,
+                         vector<Address>& monitoring_ips, ServerThread& wt,
                          SocketCache& pushers, SerializerMap& serializers) {
   log->info("Node is departing.");
   global_hash_rings[kSelfTierId].remove(public_ip, private_ip, 0);
@@ -42,13 +42,13 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
     msg = "depart:" + msg;
 
     // notify all routing nodes
-    for (const string& address : routing_address) {
+    for (const string& address : routing_ips) {
       kZmqUtil->send_string(
           msg, &pushers[RoutingThread(address, 0).get_notify_connect_addr()]);
     }
 
     // notify monitoring nodes
-    for (const string& address : monitoring_address) {
+    for (const string& address : monitoring_ips) {
       kZmqUtil->send_string(
           msg, &pushers[MonitoringThread(address).get_notify_connect_addr()]);
     }

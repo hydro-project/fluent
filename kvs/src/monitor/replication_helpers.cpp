@@ -51,7 +51,7 @@ void prepare_replication_factor_update(
 void change_replication_factor(map<Key, KeyMetadata>& requests,
                                map<TierId, GlobalHashRing>& global_hash_rings,
                                map<TierId, LocalHashRing>& local_hash_rings,
-                               vector<Address>& routing_address,
+                               vector<Address>& routing_ips,
                                map<Key, KeyMetadata>& metadata_map,
                                SocketCache& pushers, MonitoringThread& mt,
                                zmq::socket_t& response_puller, logger log,
@@ -148,7 +148,7 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
       }
 
       // form metadata_map requests for routing nodes
-      for (const string& address : routing_address) {
+      for (const string& address : routing_ips) {
         prepare_replication_factor_update(
             key, replication_factor_map,
             RoutingThread(address, 0)

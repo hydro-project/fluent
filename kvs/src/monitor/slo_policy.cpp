@@ -19,12 +19,12 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 map<TierId, LocalHashRing>& local_hash_rings,
                 TimePoint& grace_start, SummaryStats& ss,
                 unsigned& memory_node_number, unsigned& adding_memory_node,
-                bool& removing_memory_node, Address management_address,
+                bool& removing_memory_node, Address management_ip,
                 map<Key, KeyMetadata>& metadata_map,
                 map<Key, unsigned>& key_access_summary, MonitoringThread& mt,
                 map<Address, unsigned>& departing_node_map,
                 SocketCache& pushers, zmq::socket_t& response_puller,
-                vector<Address>& routing_address, unsigned& rid,
+                vector<Address>& routing_ips, unsigned& rid,
                 map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map) {
   // check latency to trigger elasticity or selective replication
   map<Key, KeyMetadata> requests;
@@ -43,20 +43,20 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                               .count();
       if (time_elapsed > kGracePeriod) {
         add_node(log, "memory", node_to_add, adding_memory_node, pushers,
-                 management_address);
+                 management_ip);
       }
     } else {  // hot key replication
       // find hot keys
       log->info("Classifying hot keys...");
       for (const auto& key_access_pair : key_access_summary) {
         Key key = key_access_pair.first;
-        unsigned total_access = key_access_pair.second;
+        unsigned access_count = key_access_pair.second;
 
         if (!is_metadata(key) &&
-            total_access > ss.key_access_mean + ss.key_access_std &&
+            access_count > ss.key_access_mean + ss.key_access_std &&
             latency_miss_ratio_map.find(key) != latency_miss_ratio_map.end()) {
           log->info("Key {} accessed {} times (threshold is {}).", key,
-                    total_access, ss.key_access_mean + ss.key_access_std);
+                    access_count, ss.key_access_mean + ss.key_access_std);
           unsigned target_rep_factor =
               metadata_map[key].global_replication_[kMemoryTierId] *
               latency_miss_ratio_map[key].first;
@@ -98,7 +98,7 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
       }
 
       change_replication_factor(requests, global_hash_rings, local_hash_rings,
-                                routing_address, metadata_map, pushers, mt,
+                                routing_ips, metadata_map, pushers, mt,
                                 response_puller, log, rid);
     }
   } else if (ss.min_memory_occupancy < 0.05 && !removing_memory_node &&
@@ -137,7 +137,7 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
       }
 
       change_replication_factor(requests, global_hash_rings, local_hash_rings,
-                                routing_address, metadata_map, pushers, mt,
+                                routing_ips, metadata_map, pushers, mt,
                                 response_puller, log, rid);
 
       ServerThread node = ServerThread(ss.min_occupancy_memory_public_ip,

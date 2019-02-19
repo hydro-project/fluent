@@ -15,11 +15,11 @@
 #include "kvs/kvs_handlers.hpp"
 
 void user_request_handler(
-    unsigned& total_accesses, unsigned& seed, string& serialized, logger log,
+    unsigned& access_count, unsigned& seed, string& serialized, logger log,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
-    PendingMap<PendingRequest>& pending_request_map,
-    map<Key, std::multiset<TimePoint>>& key_access_timestamp,
+    map<Key, PendingRequest>& pending_requests,
+    map<Key, std::multiset<TimePoint>>& key_access_tracker,
     map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
   KeyRequest request;
@@ -65,7 +65,7 @@ void user_request_handler(
               global_hash_rings[kMemoryTierId], local_hash_rings[kMemoryTierId],
               pushers, seed);
 
-          pending_request_map[key].push_back(
+          pending_requests[key].push_back(
               PendingRequest(request_type, tuple.lattice_type(), payload,
                              response_address, response_id));
         }
@@ -110,11 +110,11 @@ void user_request_handler(
           tp->set_invalidate(true);
         }
 
-        key_access_timestamp[key].insert(std::chrono::system_clock::now());
-        total_accesses += 1;
+        key_access_tracker[key].insert(std::chrono::system_clock::now());
+        access_count+= 1;
       }
     } else {
-      pending_request_map[key].push_back(
+      pending_requests[key].push_back(
           PendingRequest(request_type, tuple.lattice_type(), payload,
                          response_address, response_id));
     }

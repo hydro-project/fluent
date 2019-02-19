@@ -19,8 +19,7 @@ void replication_response_handler(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
-    PendingMap<std::pair<Address, string>>& pending_key_request_map,
-    unsigned& seed) {
+    map<Key, std::pair<Address, string>>& pending_requests, unsigned& seed) {
   KeyResponse response;
   response.ParseFromString(serialized);
   // we assume tuple 0 because there should only be one tuple responding to a
@@ -65,7 +64,7 @@ void replication_response_handler(
   }
 
   // process pending key address requests
-  if (pending_key_request_map.find(key) != pending_key_request_map.end()) {
+  if (pending_requests.find(key) != pending_requests.end()) {
     bool succeed;
     unsigned tier_id = 0;
     ServerThreadList threads = {};
@@ -84,7 +83,7 @@ void replication_response_handler(
       tier_id++;
     }
 
-    for (const auto& pending_key_req : pending_key_request_map[key]) {
+    for (const auto& pending_key_req : pending_requests[key]) {
       KeyAddressResponse key_res;
       key_res.set_response_id(pending_key_req.second);
       auto* tp = key_res.add_addresses();
@@ -102,6 +101,6 @@ void replication_response_handler(
       kZmqUtil->send_string(serialized, &pushers[pending_key_req.first]);
     }
 
-    pending_key_request_map.erase(key);
+    pending_requests.erase(key);
   }
 }

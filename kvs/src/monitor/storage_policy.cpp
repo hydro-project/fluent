@@ -19,7 +19,7 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                     TimePoint& grace_start, SummaryStats& ss,
                     unsigned& memory_node_number, unsigned& ebs_node_number,
                     unsigned& adding_memory_node, unsigned& adding_ebs_node,
-                    bool& removing_ebs_node, Address management_address,
+                    bool& removing_ebs_node, Address management_ip,
                     MonitoringThread& mt,
                     map<Address, unsigned>& departing_node_map,
                     SocketCache& pushers) {
@@ -30,7 +30,7 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                             .count();
     if (time_elapsed > kGracePeriod) {
       add_node(log, "memory", kNodeAdditionBatchSize, adding_memory_node,
-               pushers, management_address);
+               pushers, management_ip);
     }
   }
 
@@ -40,7 +40,7 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                             .count();
     if (time_elapsed > kGracePeriod) {
       add_node(log, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
-               management_address);
+               management_ip);
     }
   }
 

@@ -22,14 +22,14 @@ TEST_F(ServerHandlerTest, UserGetLWWTest) {
 
   string get_request = get_key_request(key, ip);
 
-  unsigned total_access = 0;
+  unsigned access_count = 0;
   unsigned seed = 0;
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  user_request_handler(total_access, seed, get_request, log_, global_hash_rings,
-                       local_hash_rings, pending_request_map,
-                       key_access_timestamp, metadata_map, local_changeset, wt,
+  user_request_handler(access_count, seed, get_request, log_, global_hash_rings,
+                       local_hash_rings, pending_requests,
+                       key_access_tracker, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
   vector<string> messages = get_zmq_messages();
@@ -48,8 +48,8 @@ TEST_F(ServerHandlerTest, UserGetLWWTest) {
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 0);
-  EXPECT_EQ(total_access, 1);
-  EXPECT_EQ(key_access_timestamp[key].size(), 1);
+  EXPECT_EQ(access_count, 1);
+  EXPECT_EQ(key_access_tracker[key].size(), 1);
 }
 
 TEST_F(ServerHandlerTest, UserGetSetTest) {
@@ -63,14 +63,14 @@ TEST_F(ServerHandlerTest, UserGetSetTest) {
 
   string get_request = get_key_request(key, ip);
 
-  unsigned total_access = 0;
+  unsigned access_count = 0;
   unsigned seed = 0;
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  user_request_handler(total_access, seed, get_request, log_, global_hash_rings,
-                       local_hash_rings, pending_request_map,
-                       key_access_timestamp, metadata_map, local_changeset, wt,
+  user_request_handler(access_count, seed, get_request, log_, global_hash_rings,
+                       local_hash_rings, pending_requests,
+                       key_access_tracker, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
   vector<string> messages = get_zmq_messages();
@@ -89,8 +89,8 @@ TEST_F(ServerHandlerTest, UserGetSetTest) {
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 0);
-  EXPECT_EQ(total_access, 1);
-  EXPECT_EQ(key_access_timestamp[key].size(), 1);
+  EXPECT_EQ(access_count, 1);
+  EXPECT_EQ(key_access_tracker[key].size(), 1);
 }
 
 TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
@@ -99,14 +99,14 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
   string put_request =
       put_key_request(key, LatticeType::LWW, serialize(0, value), ip);
 
-  unsigned total_access = 0;
+  unsigned access_count = 0;
   unsigned seed = 0;
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  user_request_handler(total_access, seed, put_request, log_, global_hash_rings,
-                       local_hash_rings, pending_request_map,
-                       key_access_timestamp, metadata_map, local_changeset, wt,
+  user_request_handler(access_count, seed, put_request, log_, global_hash_rings,
+                       local_hash_rings, pending_requests,
+                       key_access_tracker, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
   vector<string> messages = get_zmq_messages();
@@ -124,14 +124,14 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 1);
-  EXPECT_EQ(total_access, 1);
-  EXPECT_EQ(key_access_timestamp[key].size(), 1);
+  EXPECT_EQ(access_count, 1);
+  EXPECT_EQ(key_access_tracker[key].size(), 1);
 
   string get_request = get_key_request(key, ip);
 
-  user_request_handler(total_access, seed, get_request, log_, global_hash_rings,
-                       local_hash_rings, pending_request_map,
-                       key_access_timestamp, metadata_map, local_changeset, wt,
+  user_request_handler(access_count, seed, get_request, log_, global_hash_rings,
+                       local_hash_rings, pending_requests,
+                       key_access_tracker, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
   messages = get_zmq_messages();
@@ -149,8 +149,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 1);
-  EXPECT_EQ(total_access, 2);
-  EXPECT_EQ(key_access_timestamp[key].size(), 2);
+  EXPECT_EQ(access_count, 2);
+  EXPECT_EQ(key_access_tracker[key].size(), 2);
 }
 
 TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
@@ -162,14 +162,14 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
   string put_request = put_key_request(key, LatticeType::SET,
                                        serialize(SetLattice<string>(s)), ip);
 
-  unsigned total_access = 0;
+  unsigned access_count = 0;
   unsigned seed = 0;
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  user_request_handler(total_access, seed, put_request, log_, global_hash_rings,
-                       local_hash_rings, pending_request_map,
-                       key_access_timestamp, metadata_map, local_changeset, wt,
+  user_request_handler(access_count, seed, put_request, log_, global_hash_rings,
+                       local_hash_rings, pending_requests,
+                       key_access_tracker, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
   vector<string> messages = get_zmq_messages();
@@ -187,14 +187,14 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 1);
-  EXPECT_EQ(total_access, 1);
-  EXPECT_EQ(key_access_timestamp[key].size(), 1);
+  EXPECT_EQ(access_count, 1);
+  EXPECT_EQ(key_access_tracker[key].size(), 1);
 
   string get_request = get_key_request(key, ip);
 
-  user_request_handler(total_access, seed, get_request, log_, global_hash_rings,
-                       local_hash_rings, pending_request_map,
-                       key_access_timestamp, metadata_map, local_changeset, wt,
+  user_request_handler(access_count, seed, get_request, log_, global_hash_rings,
+                       local_hash_rings, pending_requests,
+                       key_access_tracker, metadata_map, local_changeset, wt,
                        serializers, pushers);
 
   messages = get_zmq_messages();
@@ -212,8 +212,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
   EXPECT_EQ(rtp.error(), 0);
 
   EXPECT_EQ(local_changeset.size(), 1);
-  EXPECT_EQ(total_access, 2);
-  EXPECT_EQ(key_access_timestamp[key].size(), 2);
+  EXPECT_EQ(access_count, 2);
+  EXPECT_EQ(key_access_tracker[key].size(), 2);
 }
 
 // TODO: Test key address cache invalidation

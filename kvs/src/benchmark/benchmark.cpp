@@ -73,10 +73,10 @@ string generate_key(unsigned n) {
   return string(8 - std::to_string(n).length(), '0') + std::to_string(n);
 }
 
-void run(const unsigned& thread_id, const vector<Address>& routing_addresses,
+void run(const unsigned& thread_id, const vector<Address>& routing_ips,
          const vector<MonitoringThread>& monitoring_threads, const Address& ip,
          const bool& local) {
-  KvsClient client(routing_addresses, kRoutingThreadCount, ip, thread_id, 10000,
+  KvsClient client(routing_ips, kRoutingThreadCount, ip, thread_id, 10000,
                    local);
   string log_file = "log_" + std::to_string(thread_id) + ".txt";
   string logger_name = "benchmark_log_" + std::to_string(thread_id);
@@ -312,7 +312,7 @@ int main(int argc, char* argv[]) {
   Address ip = user["ip"].as<string>();
 
   vector<MonitoringThread> monitoring_threads;
-  vector<Address> routing_addresses;
+  vector<Address> routing_ips;
 
   YAML::Node monitoring = user["monitoring"];
   for (const YAML::Node& node : monitoring) {
@@ -328,22 +328,22 @@ int main(int argc, char* argv[]) {
 
   bool local;
   if (YAML::Node elb = user["routing-elb"]) {
-    routing_addresses.push_back(elb.as<string>());
+    routing_ips.push_back(elb.as<string>());
     local = false;
   } else {
     YAML::Node routing = user["routing"];
     local = true;
 
     for (const YAML::Node& node : routing) {
-      routing_addresses.push_back(node.as<Address>());
+      routing_ips.push_back(node.as<Address>());
     }
   }
 
   // NOTE: We create a new client for every single thread.
   for (unsigned thread_id = 1; thread_id < kBenchmarkThreadNum; thread_id++) {
-    benchmark_threads.push_back(std::thread(run, thread_id, routing_addresses,
+    benchmark_threads.push_back(std::thread(run, thread_id, routing_ips,
                                             monitoring_threads, ip, local));
   }
 
-  run(0, routing_addresses, monitoring_threads, ip, local);
+  run(0, routing_ips, monitoring_threads, ip, local);
 }

@@ -32,9 +32,9 @@ class ServerHandlerTest : public ::testing::Test {
   map<TierId, LocalHashRing> local_hash_rings;
   map<Key, KeyMetadata> metadata_map;
   ServerThread wt;
-  PendingMap<PendingRequest> pending_request_map;
-  PendingMap<PendingGossip> pending_gossip_map;
-  map<Key, std::multiset<TimePoint>> key_access_timestamp;
+  map<Key, PendingRequest> pending_requests;
+  map<Key, PendingGossip> pending_gossip;
+  map<Key, std::multiset<TimePoint>> key_access_tracker;
   set<Key> local_changeset;
 
   zmq::context_t context;

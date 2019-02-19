@@ -77,12 +77,12 @@ void collect_internal_stats(
               memory_tier_storage[ip_pair][tid] = stat.storage_consumption();
               memory_tier_occupancy[ip_pair][tid] =
                   std::pair<double, unsigned>(stat.occupancy(), stat.epoch());
-              memory_tier_access[ip_pair][tid] = stat.total_accesses();
+              memory_tier_access[ip_pair][tid] = stat.access_count();
             } else {
               ebs_tier_storage[ip_pair][tid] = stat.storage_consumption();
               ebs_tier_occupancy[ip_pair][tid] =
                   std::pair<double, unsigned>(stat.occupancy(), stat.epoch());
-              ebs_tier_access[ip_pair][tid] = stat.total_accesses();
+              ebs_tier_access[ip_pair][tid] = stat.access_count();
             }
           } else if (metadata_type == "access") {
             // deserialized the value
@@ -131,21 +131,21 @@ void compute_summary_stats(
 
   for (const auto& key_access_pair : key_access_frequency) {
     Key key = key_access_pair.first;
-    unsigned total_access = 0;
+    unsigned access_count = 0;
 
     for (const auto& per_machine_pair : key_access_pair.second) {
-      total_access += per_machine_pair.second;
+      access_count += per_machine_pair.second;
     }
 
-    key_access_summary[key] = total_access;
+    key_access_summary[key] = access_count;
 
-    if (total_access > 0) {
+    if (access_count > 0) {
       cnt += 1;
 
-      double delta = total_access - mean;
+      double delta = access_count - mean;
       mean += (double)delta / cnt;
 
-      double delta2 = total_access - mean;
+      double delta2 = access_count - mean;
       ms += delta * delta2;
     }
   }

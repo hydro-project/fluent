@@ -28,7 +28,7 @@ ZmqUtilInterface *kZmqUtil = &zmq_util;
 HashRingUtil hash_ring_util;
 HashRingUtilInterface *kHashRingUtil = &hash_ring_util;
 
-void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
+void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
   string log_file = "log_" + std::to_string(thread_id) + ".txt";
   string log_name = "routing_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
@@ -46,7 +46,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
 
   if (thread_id == 0) {
     // notify monitoring nodes
-    for (const string &address : monitoring_addresses) {
+    for (const string &address : monitoring_ips) {
       kZmqUtil->send_string(
           // add null because it expects two IPs from server nodes...
           "join:" + std::to_string(kRoutingTierId) + ":" + ip + ":NULL",
@@ -59,7 +59,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
   map<TierId, LocalHashRing> local_hash_rings;
 
   // pending events for asynchrony
-  PendingMap<std::pair<Address, string>> pending_key_request_map;
+  map<Key, std::pair<Address, string>> pending_requests;
 
   // form local hash rings
   for (const auto &pair : kTierMetadata) {
@@ -121,7 +121,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
       string serialized = kZmqUtil->recv_string(&replication_factor_puller);
       replication_response_handler(log, serialized, pushers, rt,
                                    global_hash_rings, local_hash_rings,
-                                   metadata_map, pending_key_request_map, seed);
+                                   metadata_map, pending_requests, seed);
     }
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
@@ -134,7 +134,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_addresses) {
     if (pollitems[4].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&key_address_puller);
       address_handler(log, serialized, pushers, rt, global_hash_rings,
-                      local_hash_rings, metadata_map, pending_key_request_map,
+                      local_hash_rings, metadata_map, pending_requests,
                       seed);
     }
   }
@@ -164,11 +164,11 @@ int main(int argc, char *argv[]) {
 
   YAML::Node routing = conf["routing"];
   Address ip = routing["ip"].as<string>();
-  vector<Address> monitoring_addresses;
+  vector<Address> monitoring_ips;
 
   for (const YAML::Node &node : routing["monitoring"]) {
     string address = node.as<Address>();
-    monitoring_addresses.push_back(address);
+    monitoring_ips.push_back(address);
   }
 
   kTierMetadata[kMemoryTierId] =
@@ -182,8 +182,8 @@ int main(int argc, char *argv[]) {
 
   for (unsigned thread_id = 1; thread_id < kRoutingThreadCount; thread_id++) {
     routing_worker_threads.push_back(
-        std::thread(run, thread_id, ip, monitoring_addresses));
+        std::thread(run, thread_id, ip, monitoring_ips));
   }
 
-  run(0, ip, monitoring_addresses);
+  run(0, ip, monitoring_ips);
 }

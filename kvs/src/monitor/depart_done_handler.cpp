@@ -16,7 +16,7 @@
 
 void depart_done_handler(logger log, string& serialized,
                          map<Address, unsigned>& departing_node_map,
-                         Address management_address, bool& removing_memory_node,
+                         Address management_ip, bool& removing_memory_node,
                          bool& removing_ebs_node, SocketCache& pushers,
                          TimePoint& grace_start) {
   vector<string> tokens;
@@ -43,7 +43,7 @@ void depart_done_handler(logger log, string& serialized,
       log->info("Removing {} node {}/{}.", ntype, departed_public_ip,
                 departed_private_ip);
 
-      string mgmt_addr = "tcp://" + management_address + ":7001";
+      string mgmt_addr = "tcp://" + management_ip + ":7001";
       string message = "remove:" + departed_private_ip + ":" + ntype;
 
       kZmqUtil->send_string(message, &pushers[mgmt_addr]);

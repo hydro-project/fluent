@@ -28,7 +28,7 @@ void replication_response_handler(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
-    PendingMap<std::pair<Address, string>>& pending_key_request_map,
+    map<Key, std::pair<Address, string>>& pending_requests,
     unsigned& seed);
 
 void replication_change_handler(logger log, string& serialized,
@@ -41,7 +41,7 @@ void address_handler(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
-    PendingMap<std::pair<Address, string>>& pending_key_request_map,
+    map<Key, std::pair<Address, string>>& pending_requests,
     unsigned& seed);
 
 #endif  // SRC_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_

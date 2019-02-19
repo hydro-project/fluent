@@ -15,12 +15,12 @@
 #include "kvs/kvs_handlers.hpp"
 
 void rep_factor_response_handler(
-    unsigned& seed, unsigned& total_access, logger log, string& serialized,
+    unsigned& seed, unsigned& access_count, logger log, string& serialized,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
-    PendingMap<PendingRequest>& pending_request_map,
-    PendingMap<PendingGossip>& pending_gossip_map,
-    map<Key, std::multiset<TimePoint>>& key_access_timestamp,
+    map<Key, PendingRequest>& pending_requests,
+    map<Key, PendingGossip>& pending_gossip,
+    map<Key, std::multiset<TimePoint>>& key_access_tracker,
     map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
   KeyResponse response;
@@ -68,7 +68,7 @@ void rep_factor_response_handler(
 
   bool succeed;
 
-  if (pending_request_map.find(key) != pending_request_map.end()) {
+  if (pending_requests.find(key) != pending_requests.end()) {
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
         global_hash_rings, local_hash_rings, metadata_map, pushers,
@@ -78,7 +78,7 @@ void rep_factor_response_handler(
       bool responsible =
           std::find(threads.begin(), threads.end(), wt) != threads.end();
 
-      for (const PendingRequest& request : pending_request_map[key]) {
+      for (const PendingRequest& request : pending_requests[key]) {
         auto now = std::chrono::system_clock::now();
 
         if (!responsible && request.addr_ != "") {
@@ -115,9 +115,9 @@ void rep_factor_response_handler(
             } else {
               process_put(key, request.lattice_type_, request.payload_,
                           serializers[request.lattice_type_], metadata_map);
-              key_access_timestamp[key].insert(now);
+              key_access_tracker[key].insert(now);
 
-              total_access += 1;
+              access_count += 1;
               local_changeset.insert(key);
             }
           } else {
@@ -161,8 +161,8 @@ void rep_factor_response_handler(
               local_changeset.insert(key);
             }
           }
-          key_access_timestamp[key].insert(now);
-          total_access += 1;
+          key_access_tracker[key].insert(now);
+          access_count += 1;
 
           string serialized_response;
           response.SerializeToString(&serialized_response);
@@ -174,10 +174,10 @@ void rep_factor_response_handler(
           "Missing key replication factor in process pending request routine.");
     }
 
-    pending_request_map.erase(key);
+    pending_requests.erase(key);
   }
 
-  if (pending_gossip_map.find(key) != pending_gossip_map.end()) {
+  if (pending_gossip.find(key) != pending_gossip.end()) {
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.get_replication_factor_connect_addr(), key, is_metadata(key),
         global_hash_rings, local_hash_rings, metadata_map, pushers,
@@ -185,7 +185,7 @@ void rep_factor_response_handler(
 
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) != threads.end()) {
-        for (const PendingGossip& gossip : pending_gossip_map[key]) {
+        for (const PendingGossip& gossip : pending_gossip[key]) {
           if (metadata_map.find(key) != metadata_map.end() &&
               metadata_map[key].type_ != LatticeType::NO &&
               metadata_map[key].type_ != gossip.lattice_type_) {
@@ -207,7 +207,7 @@ void rep_factor_response_handler(
           gossip_map[thread.get_gossip_connect_addr()].set_type(
               RequestType::PUT);
 
-          for (const PendingGossip& gossip : pending_gossip_map[key]) {
+          for (const PendingGossip& gossip : pending_gossip[key]) {
             prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key,
                               gossip.lattice_type_, gossip.payload_);
           }
@@ -225,6 +225,6 @@ void rep_factor_response_handler(
           "Missing key replication factor in process pending gossip routine.");
     }
 
-    pending_gossip_map.erase(key);
+    pending_gossip.erase(key);
   }
 }

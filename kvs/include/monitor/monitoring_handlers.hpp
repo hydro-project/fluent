@@ -21,7 +21,7 @@ void membership_handler(logger log, string& serialized,
                         map<TierId, GlobalHashRing>& global_hash_rings,
                         unsigned& adding_memory_node, unsigned& adding_ebs_node,
                         TimePoint& grace_start,
-                        vector<Address>& routing_address,
+                        vector<Address>& routing_ips,
                         StorageStats& memory_tier_storage,
                         StorageStats& ebs_tier_storage,
                         OccupancyStats& memory_tier_occupancy,
@@ -30,7 +30,7 @@ void membership_handler(logger log, string& serialized,
 
 void depart_done_handler(logger log, string& serialized,
                          map<Address, unsigned>& departing_node_map,
-                         Address management_address, bool& removing_memory_node,
+                         Address management_ip, bool& removing_memory_node,
                          bool& removing_ebs_node, SocketCache& pushers,
                          TimePoint& grace_start);
 

@@ -128,21 +128,21 @@ int main(int argc, char* argv[]) {
   YAML::Node user = conf["user"];
   Address ip = user["ip"].as<Address>();
 
-  vector<Address> routing_addresses;
+  vector<Address> routing_ips;
   bool local;
   if (YAML::Node elb = user["routing-elb"]) {
-    routing_addresses.push_back(elb.as<string>());
+    routing_ips.push_back(elb.as<string>());
     local = false;
   } else {
     YAML::Node routing = user["routing"];
     local = true;
 
     for (const YAML::Node& node : routing) {
-      routing_addresses.push_back(node.as<Address>());
+      routing_ips.push_back(node.as<Address>());
     }
   }
 
-  KvsClient client(routing_addresses, kRoutingThreadCount, ip, 0, 10000, local);
+  KvsClient client(routing_ips, kRoutingThreadCount, ip, 0, 10000, local);
   if (argc == 2) {
     run(client);
   } else {

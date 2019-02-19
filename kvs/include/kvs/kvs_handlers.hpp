@@ -37,34 +37,34 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                          map<TierId, GlobalHashRing>& global_hash_rings,
                          map<TierId, LocalHashRing>& local_hash_rings,
                          map<Key, KeyMetadata>& metadata_map,
-                         vector<Address>& routing_address,
-                         vector<Address>& monitoring_address, ServerThread& wt,
+                         vector<Address>& routing_ips,
+                         vector<Address>& monitoring_ips, ServerThread& wt,
                          SocketCache& pushers, SerializerMap& serializers);
 
 void user_request_handler(
-    unsigned& total_access, unsigned& seed, string& serialized, logger log,
+    unsigned& access_count, unsigned& seed, string& serialized, logger log,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
-    PendingMap<PendingRequest>& pending_request_map,
-    map<Key, std::multiset<TimePoint>>& key_access_timestamp,
+    map<Key, PendingRequest>& pending_requests,
+    map<Key, std::multiset<TimePoint>>& key_access_tracker,
     map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
 
 void gossip_handler(unsigned& seed, string& serialized,
                     map<TierId, GlobalHashRing>& global_hash_rings,
                     map<TierId, LocalHashRing>& local_hash_rings,
-                    PendingMap<PendingGossip>& pending_gossip_map,
+                    map<Key, PendingGossip>& pending_gossip,
                     map<Key, KeyMetadata>& metadata_map, ServerThread& wt,
                     SerializerMap& serializers, SocketCache& pushers,
                     logger log);
 
 void rep_factor_response_handler(
-    unsigned& seed, unsigned& total_access, logger log, string& serialized,
+    unsigned& seed, unsigned& access_count, logger log, string& serialized,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
-    PendingMap<PendingRequest>& pending_request_map,
-    PendingMap<PendingGossip>& pending_gossip_map,
-    map<Key, std::multiset<TimePoint>>& key_access_timestamp,
+    map<Key, PendingRequest>& pending_requests,
+    map<Key, PendingGossip>& pending_gossip,
+    map<Key, std::multiset<TimePoint>>& key_access_tracker,
     map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
 

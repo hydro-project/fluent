@@ -17,7 +17,7 @@
 void gossip_handler(unsigned& seed, string& serialized,
                     map<TierId, GlobalHashRing>& global_hash_rings,
                     map<TierId, LocalHashRing>& local_hash_rings,
-                    PendingMap<PendingGossip>& pending_gossip_map,
+                    map<Key, PendingGossip>& pending_gossip,
                     map<Key, KeyMetadata>& metadata_map, ServerThread& wt,
                     SerializerMap& serializers, SocketCache& pushers,
                     logger log) {
@@ -66,12 +66,12 @@ void gossip_handler(unsigned& seed, string& serialized,
               global_hash_rings[kMemoryTierId], local_hash_rings[kMemoryTierId],
               pushers, seed);
 
-          pending_gossip_map[key].push_back(
+          pending_gossip[key].push_back(
               PendingGossip(tuple.lattice_type(), tuple.payload()));
         }
       }
     } else {
-      pending_gossip_map[key].push_back(
+      pending_gossip[key].push_back(
           PendingGossip(tuple.lattice_type(), tuple.payload()));
     }
   }

@@ -16,8 +16,8 @@
 
 TEST_F(ServerHandlerTest, SelfDepart) {
   unsigned seed = 0;
-  vector<Address> routing_address;
-  vector<Address> monitoring_address;
+  vector<Address> routing_ips;
+  vector<Address> monitoring_ips;
 
   EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
   EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
@@ -26,7 +26,7 @@ TEST_F(ServerHandlerTest, SelfDepart) {
 
   self_depart_handler(thread_id, seed, ip, ip, log_, serialized,
                       global_hash_rings, local_hash_rings, metadata_map,
-                      routing_address, monitoring_address, wt, pushers,
+                      routing_ips, monitoring_ips, wt, pushers,
                       serializers);
 
   EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 0);

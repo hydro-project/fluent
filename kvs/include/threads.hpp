@@ -287,8 +287,8 @@ class BenchmarkThread {
   unsigned tid_;
 };
 
-inline string get_join_count_req_address(string mgmt_address) {
-  return "tcp://" + mgmt_address + ":" +
+inline string get_join_count_req_address(string management_ip) {
+  return "tcp://" + management_ip + ":" +
          std::to_string(kKopsRestartCountBasePort);
 }
 

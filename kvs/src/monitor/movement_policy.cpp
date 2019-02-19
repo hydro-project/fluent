@@ -20,12 +20,12 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                      TimePoint& grace_start, SummaryStats& ss,
                      unsigned& memory_node_number, unsigned& ebs_node_number,
                      unsigned& adding_memory_node, unsigned& adding_ebs_node,
-                     Address management_address,
+                     Address management_ip,
                      map<Key, KeyMetadata>& metadata_map,
                      map<Key, unsigned>& key_access_summary,
                      map<Key, unsigned>& key_size, MonitoringThread& mt,
                      SocketCache& pushers, zmq::socket_t& response_puller,
-                     vector<Address>& routing_address, unsigned& rid) {
+                     vector<Address>& routing_ips, unsigned& rid) {
   // promote hot keys to memory tier
   map<Key, KeyMetadata> requests;
   unsigned total_rep_to_change = 0;
@@ -38,9 +38,9 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
 
   for (const auto& key_access_pair : key_access_summary) {
     Key key = key_access_pair.first;
-    unsigned total_access = key_access_pair.second;
+    unsigned access_count = key_access_pair.second;
 
-    if (!is_metadata(key) && total_access > kKeyPromotionThreshold &&
+    if (!is_metadata(key) && access_count > kKeyPromotionThreshold &&
         metadata_map[key].global_replication_[kMemoryTierId] == 0 &&
         key_size.find(key) != key_size.end()) {
       required_storage += key_size[key];
@@ -58,7 +58,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   }
 
   change_replication_factor(requests, global_hash_rings, local_hash_rings,
-                            routing_address, metadata_map, pushers, mt,
+                            routing_ips, metadata_map, pushers, mt,
                             response_puller, log, rid);
   log->info("Promoting {} keys into memory tier.", total_rep_to_change);
   auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
@@ -74,7 +74,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
     if (total_memory_node_needed > memory_node_number) {
       unsigned node_to_add = (total_memory_node_needed - memory_node_number);
       add_node(log, "memory", node_to_add, adding_memory_node, pushers,
-               management_address);
+               management_ip);
     }
   }
 
@@ -91,9 +91,9 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
 
   for (const auto& key_access_pair : key_access_summary) {
     Key key = key_access_pair.first;
-    unsigned total_access = key_access_pair.second;
+    unsigned access_count = key_access_pair.second;
 
-    if (!is_metadata(key) && total_access < kKeyDemotionThreshold &&
+    if (!is_metadata(key) && access_count < kKeyDemotionThreshold &&
         metadata_map[key].global_replication_[kMemoryTierId] > 0 &&
         key_size.find(key) != key_size.end()) {
       required_storage += key_size[key];
@@ -108,7 +108,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   }
 
   change_replication_factor(requests, global_hash_rings, local_hash_rings,
-                            routing_address, metadata_map, pushers, mt,
+                            routing_ips, metadata_map, pushers, mt,
                             response_puller, log, rid);
   log->info("Demoting {} keys into EBS tier.", total_rep_to_change);
   if (overflow && adding_ebs_node == 0 && time_elapsed > kGracePeriod) {
@@ -119,7 +119,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
     if (total_ebs_node_needed > ebs_node_number) {
       unsigned node_to_add = (total_ebs_node_needed - ebs_node_number);
       add_node(log, "ebs", node_to_add, adding_ebs_node, pushers,
-               management_address);
+               management_ip);
     }
   }
 
@@ -129,11 +129,11 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   // reduce the replication factor of some keys that are not so hot anymore
   for (const auto& key_access_pair : key_access_summary) {
     Key key = key_access_pair.first;
-    unsigned total_access = key_access_pair.second;
+    unsigned access_count = key_access_pair.second;
 
-    if (!is_metadata(key) && total_access <= ss.key_access_mean) {
+    if (!is_metadata(key) && access_count <= ss.key_access_mean) {
       log->info("Key {} accessed {} times (threshold is {}).", key,
-                total_access, ss.key_access_mean);
+                access_count, ss.key_access_mean);
       requests[key] =
           create_new_replication_vector(1, kMinimumReplicaNumber - 1, 1, 1);
       log->info("Dereplication for key {}. M: {}->{}. E: {}->{}", key,
@@ -145,7 +145,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   }
 
   change_replication_factor(requests, global_hash_rings, local_hash_rings,
-                            routing_address, metadata_map, pushers, mt,
+                            routing_ips, metadata_map, pushers, mt,
                             response_puller, log, rid);
   requests.clear();
 }

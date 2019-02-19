@@ -45,8 +45,8 @@ HashRingUtil hash_ring_util;
 HashRingUtilInterface* kHashRingUtil = &hash_ring_util;
 
 void run(unsigned thread_id, Address public_ip, Address private_ip,
-         Address seed_ip, vector<Address> routing_addresses,
-         vector<Address> monitoring_addresses, Address mgmt_address) {
+         Address seed_ip, vector<Address> routing_ips,
+         vector<Address> monitoring_ips, Address management_ip) {
   string log_file = "log_" + std::to_string(thread_id) + ".txt";
   string log_name = "server_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
@@ -73,8 +73,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   set<Key> join_remove_set;
 
   // pending events for asynchrony
-  PendingMap<PendingRequest> pending_request_map;
-  PendingMap<PendingGossip> pending_gossip_map;
+  map<Key, PendingRequest> pending_requests;
+  map<Key, PendingGossip> pending_gossip;
 
   map<Key, KeyMetadata> metadata_map;
 
@@ -94,9 +94,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // if we are running the system outside of Kubernetes, we need to set the
   // management address to NULL in the conf file, otherwise we will hang
   // forever waiting to hear back about a restart count
-  if (mgmt_address != "NULL") {
+  if (management_ip != "NULL") {
     zmq::socket_t join_count_requester(context, ZMQ_REQ);
-    join_count_requester.connect(get_join_count_req_address(mgmt_address));
+    join_count_requester.connect(get_join_count_req_address(management_ip));
     kZmqUtil->send_string("restart:" + private_ip, &join_count_requester);
     count_str = kZmqUtil->recv_string(&join_count_requester);
   } else {
@@ -143,13 +143,13 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     msg = "join:" + msg;
 
     // notify proxies that this node has joined
-    for (const string& address : routing_addresses) {
+    for (const string& address : routing_ips) {
       kZmqUtil->send_string(
           msg, &pushers[RoutingThread(address, 0).get_notify_connect_addr()]);
     }
 
     // notify monitoring nodes that this node has joined
-    for (const string& address : monitoring_addresses) {
+    for (const string& address : monitoring_ips) {
       kZmqUtil->send_string(
           msg, &pushers[MonitoringThread(address).get_notify_connect_addr()]);
     }
@@ -183,9 +183,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // the first entry is the size of the key,
   // the second entry is its lattice type.
   // keep track of key access timestamp
-  map<Key, std::multiset<TimePoint>> key_access_timestamp;
+  map<Key, std::multiset<TimePoint>> key_access_tracker;
   // keep track of total access
-  unsigned total_accesses;
+  unsigned access_count;
 
   // listens for a new node joining
   zmq::socket_t join_puller(context, ZMQ_PULL);
@@ -273,7 +273,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       string serialized = kZmqUtil->recv_string(&self_depart_puller);
       self_depart_handler(thread_id, seed, public_ip, private_ip, log,
                           serialized, global_hash_rings, local_hash_rings,
-                          metadata_map, routing_addresses, monitoring_addresses,
+                          metadata_map, routing_ips, monitoring_ips,
                           wt, pushers, serializers);
 
       return;
@@ -284,8 +284,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       string serialized = kZmqUtil->recv_string(&request_puller);
       user_request_handler(
-          total_accesses, seed, serialized, log, global_hash_rings,
-          local_hash_rings, pending_request_map, key_access_timestamp,
+          access_count, seed, serialized, log, global_hash_rings,
+          local_hash_rings, pending_requests, key_access_tracker,
           metadata_map, local_changeset, wt, serializers, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -301,7 +301,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       string serialized = kZmqUtil->recv_string(&gossip_puller);
       gossip_handler(seed, serialized, global_hash_rings, local_hash_rings,
-                     pending_gossip_map, metadata_map, wt, serializers, pushers,
+                     pending_gossip, metadata_map, wt, serializers, pushers,
                      log);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -316,10 +316,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&replication_factor_puller);
-      rep_factor_response_handler(seed, total_accesses, log, serialized,
+      rep_factor_response_handler(seed, access_count, log, serialized,
                                   global_hash_rings, local_hash_rings,
-                                  pending_request_map, pending_gossip_map,
-                                  key_access_timestamp, metadata_map,
+                                  pending_requests, pending_gossip,
+                                  key_access_tracker, metadata_map,
                                   local_changeset, wt, serializers, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -425,7 +425,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       stat.set_storage_consumption(consumption / 1000);  // cast to KB
       stat.set_occupancy(occupancy);
       stat.set_epoch(epoch);
-      stat.set_total_accesses(total_accesses);
+      stat.set_access_count(access_count);
 
       string serialized_stat;
       stat.SerializeToString(&serialized_stat);
@@ -451,7 +451,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       KeyAccessData access;
       auto current_time = std::chrono::system_clock::now();
 
-      for (const auto& key_access_pair : key_access_timestamp) {
+      for (const auto& key_access_pair : key_access_tracker) {
         Key key = key_access_pair.first;
         auto access_times = key_access_pair.second;
 
@@ -534,7 +534,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       // reset stats tracked in memory
       working_time = 0;
-      total_accesses = 0;
+      access_count = 0;
       memset(working_time_map, 0, sizeof(working_time_map));
     }
 
@@ -633,8 +633,8 @@ int main(int argc, char* argv[]) {
   Address public_ip = server["public_ip"].as<string>();
   Address private_ip = server["private_ip"].as<string>();
 
-  vector<Address> routing_addresses;
-  vector<Address> monitoring_addresses;
+  vector<Address> routing_ips;
+  vector<Address> monitoring_ips;
 
   Address seed_ip = server["seed_ip"].as<string>();
   Address mgmt_ip = server["mgmt_ip"].as<string>();
@@ -642,11 +642,11 @@ int main(int argc, char* argv[]) {
   YAML::Node routing = server["routing"];
 
   for (const YAML::Node& address : routing) {
-    routing_addresses.push_back(address.as<Address>());
+    routing_ips.push_back(address.as<Address>());
   }
 
   for (const YAML::Node& address : monitoring) {
-    monitoring_addresses.push_back(address.as<Address>());
+    monitoring_ips.push_back(address.as<Address>());
   }
 
   kTierMetadata[kMemoryTierId] =
@@ -662,12 +662,12 @@ int main(int argc, char* argv[]) {
   vector<std::thread> worker_threads;
   for (unsigned thread_id = 1; thread_id < kThreadNum; thread_id++) {
     worker_threads.push_back(std::thread(run, thread_id, public_ip, private_ip,
-                                         seed_ip, routing_addresses,
-                                         monitoring_addresses, mgmt_ip));
+                                         seed_ip, routing_ips,
+                                         monitoring_ips, mgmt_ip));
   }
 
-  run(0, public_ip, private_ip, seed_ip, routing_addresses,
-      monitoring_addresses, mgmt_ip);
+  run(0, public_ip, private_ip, seed_ip, routing_ips,
+      monitoring_ips, mgmt_ip);
 
   // join on all threads to make sure they finish before exiting
   for (unsigned tid = 1; tid < kThreadNum; tid++) {

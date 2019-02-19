@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
   YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
   YAML::Node monitoring = conf["monitoring"];
   Address ip = monitoring["ip"].as<Address>();
-  Address management_address = monitoring["mgmt_ip"].as<Address>();
+  Address management_ip = monitoring["mgmt_ip"].as<Address>();
 
   YAML::Node threads = conf["threads"];
   kMemoryThreadCount = threads["memory"].as<unsigned>();
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
   // used for adjusting the replication factors based on feedback from the user
   map<Key, std::pair<double, unsigned>> latency_miss_ratio_map;
 
-  vector<Address> routing_address;
+  vector<Address> routing_ips;
 
   MonitoringThread mt = MonitoringThread(ip);
 
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
     if (pollitems[0].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&notify_puller);
       membership_handler(log, serialized, global_hash_rings, adding_memory_node,
-                         adding_ebs_node, grace_start, routing_address,
+                         adding_ebs_node, grace_start, routing_ips,
                          memory_tier_storage, ebs_tier_storage,
                          memory_tier_occupancy, ebs_tier_occupancy,
                          key_access_frequency);
@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
     if (pollitems[1].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&depart_done_puller);
       depart_done_handler(log, serialized, departing_node_map,
-                          management_address, removing_memory_node,
+                          management_ip, removing_memory_node,
                           removing_ebs_node, pushers, grace_start);
     }
 
@@ -248,19 +248,19 @@ int main(int argc, char *argv[]) {
       // execute policies
       storage_policy(log, global_hash_rings, grace_start, ss,
                      memory_node_number, ebs_node_number, adding_memory_node,
-                     adding_ebs_node, removing_ebs_node, management_address, mt,
+                     adding_ebs_node, removing_ebs_node, management_ip, mt,
                      departing_node_map, pushers);
 
       movement_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
                       memory_node_number, ebs_node_number, adding_memory_node,
-                      adding_ebs_node, management_address, metadata_map,
+                      adding_ebs_node, management_ip, metadata_map,
                       key_access_summary, key_size, mt, pushers,
-                      response_puller, routing_address, rid);
+                      response_puller, routing_ips, rid);
 
       slo_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
                  memory_node_number, adding_memory_node, removing_memory_node,
-                 management_address, metadata_map, key_access_summary, mt,
-                 departing_node_map, pushers, response_puller, routing_address,
+                 management_ip, metadata_map, key_access_summary, mt,
+                 departing_node_map, pushers, response_puller, routing_ips,
                  rid, latency_miss_ratio_map);
 
       report_start = std::chrono::system_clock::now();

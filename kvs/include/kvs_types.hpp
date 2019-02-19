@@ -18,9 +18,6 @@
 #include <chrono>
 #include "types.hpp"
 
-template <typename T>
-using PendingMap = map<string, vector<T>>;
-
 using StorageStats = map<Address, map<unsigned, unsigned long long>>;
 
 using OccupancyStats = map<Address, map<unsigned, std::pair<double, unsigned>>>;

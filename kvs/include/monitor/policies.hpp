@@ -21,7 +21,7 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                     TimePoint& grace_start, SummaryStats& ss,
                     unsigned& memory_node_number, unsigned& ebs_node_number,
                     unsigned& adding_memory_node, unsigned& adding_ebs_node,
-                    bool& removing_ebs_node, Address management_address,
+                    bool& removing_ebs_node, Address management_ip,
                     MonitoringThread& mt,
                     map<Address, unsigned>& departing_node_map,
                     SocketCache& pushers);
@@ -31,23 +31,23 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                      TimePoint& grace_start, SummaryStats& ss,
                      unsigned& memory_node_number, unsigned& ebs_node_number,
                      unsigned& adding_memory_node, unsigned& adding_ebs_node,
-                     Address management_address,
+                     Address management_ip,
                      map<Key, KeyMetadata>& metadata_map,
                      map<Key, unsigned>& key_access_summary,
                      map<Key, unsigned>& key_size, MonitoringThread& mt,
                      SocketCache& pushers, zmq::socket_t& response_puller,
-                     vector<Address>& routing_address, unsigned& rid);
+                     vector<Address>& routing_ips, unsigned& rid);
 
 void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 map<TierId, LocalHashRing>& local_hash_rings,
                 TimePoint& grace_start, SummaryStats& ss,
                 unsigned& memory_node_number, unsigned& adding_memory_node,
-                bool& removing_memory_node, Address management_address,
+                bool& removing_memory_node, Address management_ip,
                 map<Key, KeyMetadata>& metadata_map,
                 map<Key, unsigned>& key_access_summary, MonitoringThread& mt,
                 map<Address, unsigned>& departing_node_map,
                 SocketCache& pushers, zmq::socket_t& response_puller,
-                vector<Address>& routing_address, unsigned& rid,
+                vector<Address>& routing_ips, unsigned& rid,
                 map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map);
 
 #endif  // SRC_INCLUDE_MONITOR_POLICIES_HPP_
