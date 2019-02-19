@@ -49,25 +49,24 @@ const unsigned kKopsRestartCountPort = 7000;
 
 const string kBindBase = "tcp://*:";
 
-// TODO(vikram): All the return "tcp://" + ip_ should be made into one command
-// to reduce string addition
 class ServerThread {
   Address public_ip_;
   Address public_base_;
-  
+
   Address private_ip_;
   Address private_base_;
-  
+
   unsigned tid_;
   unsigned virtual_num_;
 
  public:
   ServerThread() {}
   ServerThread(Address public_ip, Address private_ip, unsigned tid) :
-      public_ip_(public_ip), private_ip_(private_ip), 
+      public_ip_(public_ip),
+      private_ip_(private_ip),
       private_base_("tcp://" + private_ip_ + ":"),
       public_base_("tcp://" + public_ip_ + ":"),
-      tid_(tid) { }
+      tid_(tid) {}
 
   ServerThread(Address public_ip, Address private_ip, unsigned tid,
                unsigned virtual_num) :
@@ -79,13 +78,13 @@ class ServerThread {
       virtual_num_(virtual_num) {}
 
   Address public_ip() const { return public_ip_; }
-  
+
   Address private_ip() const { return private_ip_; }
-  
+
   unsigned tid() const { return tid_; }
-  
+
   unsigned virtual_num() const { return virtual_num_; }
-  
+
   string id() const { return private_ip_ + ":" + std::to_string(tid_); }
 
   string virtual_id() const {
@@ -112,7 +111,7 @@ class ServerThread {
   Address self_depart_connect_address() const {
     return private_base_ + std::to_string(tid_ + kSelfDepartPort);
   }
-  
+
   Address self_depart_bind_address() const {
     return kBindBase + std::to_string(tid_ + kSelfDepartPort);
   }
@@ -143,8 +142,7 @@ class ServerThread {
   }
 
   Address replication_change_connect_address() const {
-    return private_base_ +
-           std::to_string(tid_ + kServerReplicationChangePort);
+    return private_base_ + std::to_string(tid_ + kServerReplicationChangePort);
   }
 
   Address replication_change_bind_address() const {
@@ -168,7 +166,10 @@ class RoutingThread {
  public:
   RoutingThread() {}
 
-  RoutingThread(Address ip, unsigned tid) : ip_(ip), tid_(tid), ip_base_("tcp://" + ip_ + ":") {}
+  RoutingThread(Address ip, unsigned tid) :
+      ip_(ip),
+      tid_(tid),
+      ip_base_("tcp://" + ip_ + ":") {}
 
   Address ip() const { return ip_; }
 
@@ -265,7 +266,10 @@ class UserThread {
 
  public:
   UserThread() {}
-  UserThread(Address ip, unsigned tid) : ip_(ip), tid_(tid), ip_base_("tcp://" + ip_ + ":") {}
+  UserThread(Address ip, unsigned tid) :
+      ip_(ip),
+      tid_(tid),
+      ip_base_("tcp://" + ip_ + ":") {}
 
   Address ip() const { return ip_; }
 
@@ -307,8 +311,7 @@ class BenchmarkThread {
 };
 
 inline string get_join_count_req_address(string management_ip) {
-  return "tcp://" + management_ip + ":" +
-         std::to_string(kKopsRestartCountPort);
+  return "tcp://" + management_ip + ":" + std::to_string(kKopsRestartCountPort);
 }
 
 #endif  // SRC_INCLUDE_THREADS_HPP_

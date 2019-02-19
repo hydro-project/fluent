@@ -213,7 +213,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   // responsible for listening for key replication factor change
   zmq::socket_t replication_change_puller(context, ZMQ_PULL);
-  replication_change_puller.bind( wt.replication_change_bind_address());
+  replication_change_puller.bind(wt.replication_change_bind_address());
 
   //  Initialize poll set
   vector<zmq::pollitem_t> pollitems = {
@@ -272,8 +272,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       string serialized = kZmqUtil->recv_string(&self_depart_puller);
       self_depart_handler(thread_id, seed, public_ip, private_ip, log,
                           serialized, global_hash_rings, local_hash_rings,
-                          metadata_map, routing_ips, monitoring_ips,
-                          wt, pushers, serializers);
+                          metadata_map, routing_ips, monitoring_ips, wt,
+                          pushers, serializers);
 
       return;
     }
@@ -282,10 +282,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&request_puller);
-      user_request_handler(
-          access_count, seed, serialized, log, global_hash_rings,
-          local_hash_rings, pending_requests, key_access_tracker,
-          metadata_map, local_changeset, wt, serializers, pushers);
+      user_request_handler(access_count, seed, serialized, log,
+                           global_hash_rings, local_hash_rings,
+                           pending_requests, key_access_tracker, metadata_map,
+                           local_changeset, wt, serializers, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -332,8 +332,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (pollitems[6].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
 
-      string serialized =
-          kZmqUtil->recv_string(&replication_change_puller);
+      string serialized = kZmqUtil->recv_string(&replication_change_puller);
       rep_factor_change_handler(public_ip, private_ip, thread_id, seed, log,
                                 serialized, global_hash_rings, local_hash_rings,
                                 metadata_map, local_changeset, wt, serializers,
@@ -471,8 +470,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       }
 
       // report key access stats
-      key = get_metadata_key(wt, kSelfTierId, wt.tid(),
-                             MetadataType::key_access);
+      key =
+          get_metadata_key(wt, kSelfTierId, wt.tid(), MetadataType::key_access);
       string serialized_access;
       access.SerializeToString(&serialized_access);
 
@@ -505,8 +504,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         }
       }
 
-      key = get_metadata_key(wt, kSelfTierId, wt.tid(),
-                             MetadataType::key_size);
+      key = get_metadata_key(wt, kSelfTierId, wt.tid(), MetadataType::key_size);
 
       string serialized_size;
       primary_key_size.SerializeToString(&serialized_size);
@@ -661,12 +659,11 @@ int main(int argc, char* argv[]) {
   vector<std::thread> worker_threads;
   for (unsigned thread_id = 1; thread_id < kThreadNum; thread_id++) {
     worker_threads.push_back(std::thread(run, thread_id, public_ip, private_ip,
-                                         seed_ip, routing_ips,
-                                         monitoring_ips, mgmt_ip));
+                                         seed_ip, routing_ips, monitoring_ips,
+                                         mgmt_ip));
   }
 
-  run(0, public_ip, private_ip, seed_ip, routing_ips,
-      monitoring_ips, mgmt_ip);
+  run(0, public_ip, private_ip, seed_ip, routing_ips, monitoring_ips, mgmt_ip);
 
   // join on all threads to make sure they finish before exiting
   for (unsigned tid = 1; tid < kThreadNum; tid++) {

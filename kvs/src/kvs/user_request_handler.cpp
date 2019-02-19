@@ -111,7 +111,7 @@ void user_request_handler(
         }
 
         key_access_tracker[key].insert(std::chrono::system_clock::now());
-        access_count+= 1;
+        access_count += 1;
       }
     } else {
       pending_requests[key].push_back(

@@ -14,13 +14,13 @@
 
 #include "route/routing_handlers.hpp"
 
-void address_handler(
-    logger log, string& serialized, SocketCache& pushers, RoutingThread& rt,
-    map<TierId, GlobalHashRing>& global_hash_rings,
-    map<TierId, LocalHashRing>& local_hash_rings,
-    map<Key, KeyMetadata>& metadata_map,
-    map<Key, vector<pair<Address, string>>>& pending_requests,
-    unsigned& seed) {
+void address_handler(logger log, string& serialized, SocketCache& pushers,
+                     RoutingThread& rt,
+                     map<TierId, GlobalHashRing>& global_hash_rings,
+                     map<TierId, LocalHashRing>& local_hash_rings,
+                     map<Key, KeyMetadata>& metadata_map,
+                     map<Key, vector<pair<Address, string>>>& pending_requests,
+                     unsigned& seed) {
   log->info("Received key address request.");
   KeyAddressRequest addr_request;
   addr_request.ParseFromString(serialized);

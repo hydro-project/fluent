@@ -28,9 +28,8 @@ TEST_F(ServerHandlerTest, UserGetLWWTest) {
   EXPECT_EQ(local_changeset.size(), 0);
 
   user_request_handler(access_count, seed, get_request, log_, global_hash_rings,
-                       local_hash_rings, pending_requests,
-                       key_access_tracker, metadata_map, local_changeset, wt,
-                       serializers, pushers);
+                       local_hash_rings, pending_requests, key_access_tracker,
+                       metadata_map, local_changeset, wt, serializers, pushers);
 
   vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 1);
@@ -69,9 +68,8 @@ TEST_F(ServerHandlerTest, UserGetSetTest) {
   EXPECT_EQ(local_changeset.size(), 0);
 
   user_request_handler(access_count, seed, get_request, log_, global_hash_rings,
-                       local_hash_rings, pending_requests,
-                       key_access_tracker, metadata_map, local_changeset, wt,
-                       serializers, pushers);
+                       local_hash_rings, pending_requests, key_access_tracker,
+                       metadata_map, local_changeset, wt, serializers, pushers);
 
   vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 1);
@@ -105,9 +103,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
   EXPECT_EQ(local_changeset.size(), 0);
 
   user_request_handler(access_count, seed, put_request, log_, global_hash_rings,
-                       local_hash_rings, pending_requests,
-                       key_access_tracker, metadata_map, local_changeset, wt,
-                       serializers, pushers);
+                       local_hash_rings, pending_requests, key_access_tracker,
+                       metadata_map, local_changeset, wt, serializers, pushers);
 
   vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 1);
@@ -130,9 +127,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetLWWTest) {
   string get_request = get_key_request(key, ip);
 
   user_request_handler(access_count, seed, get_request, log_, global_hash_rings,
-                       local_hash_rings, pending_requests,
-                       key_access_tracker, metadata_map, local_changeset, wt,
-                       serializers, pushers);
+                       local_hash_rings, pending_requests, key_access_tracker,
+                       metadata_map, local_changeset, wt, serializers, pushers);
 
   messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 2);
@@ -168,9 +164,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
   EXPECT_EQ(local_changeset.size(), 0);
 
   user_request_handler(access_count, seed, put_request, log_, global_hash_rings,
-                       local_hash_rings, pending_requests,
-                       key_access_tracker, metadata_map, local_changeset, wt,
-                       serializers, pushers);
+                       local_hash_rings, pending_requests, key_access_tracker,
+                       metadata_map, local_changeset, wt, serializers, pushers);
 
   vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 1);
@@ -193,9 +188,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
   string get_request = get_key_request(key, ip);
 
   user_request_handler(access_count, seed, get_request, log_, global_hash_rings,
-                       local_hash_rings, pending_requests,
-                       key_access_tracker, metadata_map, local_changeset, wt,
-                       serializers, pushers);
+                       local_hash_rings, pending_requests, key_access_tracker,
+                       metadata_map, local_changeset, wt, serializers, pushers);
 
   messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 2);

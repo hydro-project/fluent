@@ -634,8 +634,7 @@ class KvsClient {
 
     if (local_) {
       Address routing_ip = route_addrs_[rand_r(&seed_) % route_addrs_.size()];
-      return RoutingThread(routing_ip, thread_id)
-          .key_address_connect_address();
+      return RoutingThread(routing_ip, thread_id).key_address_connect_address();
     } else {
       Address routing_ip = route_addrs_[0];
 

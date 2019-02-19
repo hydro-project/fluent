@@ -28,9 +28,8 @@ void rep_factor_change_handler(Address public_ip, Address private_ip,
     // tell all worker threads about the replication factor change
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
       kZmqUtil->send_string(
-          serialized,
-          &pushers[ServerThread(public_ip, private_ip, tid)
-                       .replication_change_connect_address()]);
+          serialized, &pushers[ServerThread(public_ip, private_ip, tid)
+                                   .replication_change_connect_address()]);
     }
   }
 

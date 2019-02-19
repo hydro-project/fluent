@@ -24,9 +24,8 @@ void replication_change_handler(logger log, string& serialized,
     // tell all worker threads about the replication factor change
     for (unsigned tid = 1; tid < kRoutingThreadCount; tid++) {
       kZmqUtil->send_string(
-          serialized,
-          &pushers[RoutingThread(ip, tid)
-                       .replication_change_connect_address()]);
+          serialized, &pushers[RoutingThread(ip, tid)
+                                   .replication_change_connect_address()]);
     }
   }
 

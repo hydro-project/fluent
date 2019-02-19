@@ -183,9 +183,9 @@ int main(int argc, char *argv[]) {
     // handle a depart done notification
     if (pollitems[1].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&depart_done_puller);
-      depart_done_handler(log, serialized, departing_node_map,
-                          management_ip, removing_memory_node,
-                          removing_ebs_node, pushers, grace_start);
+      depart_done_handler(log, serialized, departing_node_map, management_ip,
+                          removing_memory_node, removing_ebs_node, pushers,
+                          grace_start);
     }
 
     if (pollitems[2].revents & ZMQ_POLLIN) {
@@ -260,8 +260,8 @@ int main(int argc, char *argv[]) {
       slo_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
                  memory_node_number, adding_memory_node, removing_memory_node,
                  management_ip, metadata_map, key_access_summary, mt,
-                 departing_node_map, pushers, response_puller, routing_ips,
-                 rid, latency_miss_ratio_map);
+                 departing_node_map, pushers, response_puller, routing_ips, rid,
+                 latency_miss_ratio_map);
 
       report_start = std::chrono::system_clock::now();
     }

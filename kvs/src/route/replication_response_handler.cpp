@@ -19,8 +19,7 @@ void replication_response_handler(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
-    map<Key, vector<pair<Address, string>>>& pending_requests,
-    unsigned& seed) {
+    map<Key, vector<pair<Address, string>>>& pending_requests, unsigned& seed) {
   KeyResponse response;
   response.ParseFromString(serialized);
   // we assume tuple 0 because there should only be one tuple responding to a
