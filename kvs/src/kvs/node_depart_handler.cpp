@@ -35,7 +35,7 @@ void node_depart_handler(unsigned thread_id, Address public_ip,
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
       kZmqUtil->send_string(serialized,
                             &pushers[ServerThread(public_ip, private_ip, tid)
-                                         .get_node_depart_connect_addr()]);
+                                         .node_depart_connect_address()]);
     }
 
     for (const auto& pair : global_hash_rings) {

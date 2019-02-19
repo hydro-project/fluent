@@ -19,7 +19,8 @@ void replication_response_handler(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
-    map<Key, std::pair<Address, string>>& pending_requests, unsigned& seed) {
+    map<Key, vector<pair<Address, string>>>& pending_requests,
+    unsigned& seed) {
   KeyResponse response;
   response.ParseFromString(serialized);
   // we assume tuple 0 because there should only be one tuple responding to a
@@ -52,7 +53,7 @@ void replication_response_handler(
   } else if (error == 2) {
     // error 2 means that the node that received the rep factor request was not
     // responsible for that metadata
-    auto respond_address = rt.get_replication_factor_connect_addr();
+    auto respond_address = rt.replication_response_connect_address();
     kHashRingUtil->issue_replication_factor_request(
         respond_address, key, global_hash_rings[kMemoryTierId],
         local_hash_rings[kMemoryTierId], pushers, seed);
@@ -71,7 +72,7 @@ void replication_response_handler(
 
     while (threads.size() == 0 && tier_id < kMaxTier) {
       threads = kHashRingUtil->get_responsible_threads(
-          rt.get_replication_factor_connect_addr(), key, false,
+          rt.replication_response_connect_address(), key, false,
           global_hash_rings, local_hash_rings, metadata_map, pushers, {tier_id},
           succeed, seed);
 
@@ -90,7 +91,7 @@ void replication_response_handler(
       tp->set_key(key);
 
       for (const ServerThread& thread : threads) {
-        tp->add_ips(thread.get_request_pulling_connect_addr());
+        tp->add_ips(thread.key_request_connect_address());
       }
 
       // send the key address response

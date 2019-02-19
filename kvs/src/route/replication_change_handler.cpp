@@ -26,7 +26,7 @@ void replication_change_handler(logger log, string& serialized,
       kZmqUtil->send_string(
           serialized,
           &pushers[RoutingThread(ip, tid)
-                       .get_replication_factor_change_connect_addr()]);
+                       .replication_change_connect_address()]);
     }
   }
 

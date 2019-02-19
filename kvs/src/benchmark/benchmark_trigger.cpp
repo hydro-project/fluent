@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
         BenchmarkThread bt = BenchmarkThread(address, tid);
 
         kZmqUtil->send_string(command,
-                              &pushers[bt.get_benchmark_command_port_addr()]);
+                              &pushers[bt.benchmark_command_address()]);
       }
     }
   }

@@ -29,10 +29,10 @@ void remove_node(logger log, ServerThread& node, string tier,
                  bool& removing_flag, SocketCache& pushers,
                  map<Address, unsigned>& departing_node_map,
                  MonitoringThread& mt) {
-  auto connection_addr = node.get_self_depart_connect_addr();
-  departing_node_map[node.get_private_ip()] =
+  auto connection_addr = node.self_depart_connect_address();
+  departing_node_map[node.private_ip()] =
       kTierMetadata[kMemoryTierId].thread_number_;
-  auto ack_addr = mt.get_depart_done_connect_addr();
+  auto ack_addr = mt.depart_done_connect_address();
 
   kZmqUtil->send_string(ack_addr, &pushers[connection_addr]);
   removing_flag = true;

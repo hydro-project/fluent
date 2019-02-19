@@ -18,8 +18,8 @@ void rep_factor_response_handler(
     unsigned& seed, unsigned& access_count, logger log, string& serialized,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
-    map<Key, PendingRequest>& pending_requests,
-    map<Key, PendingGossip>& pending_gossip,
+    map<Key, vector<PendingRequest>>& pending_requests,
+    map<Key, vector<PendingGossip>>& pending_gossip,
     map<Key, std::multiset<TimePoint>>& key_access_tracker,
     map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
@@ -55,7 +55,7 @@ void rep_factor_response_handler(
   } else if (error == 2) {
     // error 2 means that the node that received the rep factor request was not
     // responsible for that metadata
-    auto respond_address = wt.get_replication_factor_connect_addr();
+    auto respond_address = wt.replication_response_connect_address();
     kHashRingUtil->issue_replication_factor_request(
         respond_address, key, global_hash_rings[kMemoryTierId],
         local_hash_rings[kMemoryTierId], pushers, seed);
@@ -70,7 +70,7 @@ void rep_factor_response_handler(
 
   if (pending_requests.find(key) != pending_requests.end()) {
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt.replication_response_connect_address(), key, is_metadata(key),
         global_hash_rings, local_hash_rings, metadata_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
@@ -93,7 +93,7 @@ void rep_factor_response_handler(
           tp->set_error(2);
 
           for (const ServerThread& thread : threads) {
-            tp->add_addresses(thread.get_request_pulling_connect_addr());
+            tp->add_addresses(thread.key_request_connect_address());
           }
 
           string serialized_response;
@@ -179,7 +179,7 @@ void rep_factor_response_handler(
 
   if (pending_gossip.find(key) != pending_gossip.end()) {
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt.replication_response_connect_address(), key, is_metadata(key),
         global_hash_rings, local_hash_rings, metadata_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
@@ -204,11 +204,11 @@ void rep_factor_response_handler(
 
         // forward the gossip
         for (const ServerThread& thread : threads) {
-          gossip_map[thread.get_gossip_connect_addr()].set_type(
+          gossip_map[thread.gossip_connect_address()].set_type(
               RequestType::PUT);
 
           for (const PendingGossip& gossip : pending_gossip[key]) {
-            prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key,
+            prepare_put_tuple(gossip_map[thread.gossip_connect_address()], key,
                               gossip.lattice_type_, gossip.payload_);
           }
         }

@@ -19,7 +19,7 @@ void address_handler(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, KeyMetadata>& metadata_map,
-    map<Key, std::pair<Address, string>>& pending_requests,
+    map<Key, vector<pair<Address, string>>>& pending_requests,
     unsigned& seed) {
   log->info("Received key address request.");
   KeyAddressRequest addr_request;
@@ -46,7 +46,7 @@ void address_handler(
 
       while (threads.size() == 0 && tier_id < kMaxTier) {
         threads = kHashRingUtil->get_responsible_threads(
-            rt.get_replication_factor_connect_addr(), key, false,
+            rt.replication_response_connect_address(), key, false,
             global_hash_rings, local_hash_rings, metadata_map, pushers,
             {tier_id}, succeed, seed);
 
@@ -66,7 +66,7 @@ void address_handler(
       addr_response.set_error(0);
 
       for (const ServerThread& thread : threads) {
-        tp->add_ips(thread.get_request_pulling_connect_addr());
+        tp->add_ips(thread.key_request_connect_address());
       }
     }
   }

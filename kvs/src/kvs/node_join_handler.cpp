@@ -47,7 +47,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
           std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip +
               ":" + std::to_string(self_join_count),
           &pushers[ServerThread(new_server_public_ip, new_server_private_ip, 0)
-                       .get_node_join_connect_addr()]);
+                       .node_join_connect_address()]);
 
       // gossip the new node address between server nodes to ensure consistency
       int index = 0;
@@ -57,11 +57,11 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
         for (const ServerThread& st : hash_ring.get_unique_servers()) {
           // if the node is not myself and not the newly joined node, send the
           // ip of the newly joined node in case of a race condition
-          string server_ip = st.get_private_ip();
+          string server_ip = st.private_ip();
           if (server_ip.compare(private_ip) != 0 &&
               server_ip.compare(new_server_private_ip) != 0) {
             kZmqUtil->send_string(serialized,
-                                  &pushers[st.get_node_join_connect_addr()]);
+                                  &pushers[st.node_join_connect_address()]);
           }
         }
 
@@ -73,7 +73,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
       for (unsigned tid = 1; tid < kThreadNum; tid++) {
         kZmqUtil->send_string(serialized,
                               &pushers[ServerThread(public_ip, private_ip, tid)
-                                           .get_node_join_connect_addr()]);
+                                           .node_join_connect_address()]);
       }
     }
 
@@ -83,7 +83,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
       for (const auto& key_pair : metadata_map) {
         Key key = key_pair.first;
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-            wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+            wt.replication_response_connect_address(), key, is_metadata(key),
             global_hash_rings, local_hash_rings, metadata_map, pushers,
             kSelfTierIdVector, succeed, seed);
 
@@ -101,8 +101,8 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
           bool rejoin_responsible = false;
           if (join_count > 0) {
             for (const ServerThread& thread : threads) {
-              if (thread.get_private_ip().compare(new_server_private_ip) == 0) {
-                join_addr_keyset_map[thread.get_gossip_connect_addr()].insert(
+              if (thread.private_ip().compare(new_server_private_ip) == 0) {
+                join_addr_keyset_map[thread.gossip_connect_address()].insert(
                     key);
               }
             }
@@ -112,8 +112,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
             join_remove_set.insert(key);
 
             for (const ServerThread& thread : threads) {
-              join_addr_keyset_map[thread.get_gossip_connect_addr()].insert(
-                  key);
+              join_addr_keyset_map[thread.gossip_connect_address()].insert(key);
             }
           }
         } else {

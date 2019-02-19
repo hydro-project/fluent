@@ -67,10 +67,10 @@ class KvsClient {
     log_->info("Random seed is {}.", seed_);
 
     // bind the two sockets we listen on
-    key_address_puller_.bind(ut_.get_key_address_bind_addr());
+    key_address_puller_.bind(ut_.key_address_bind_address());
     key_address_puller_.setsockopt(ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
 
-    response_puller_.bind(ut_.get_request_pulling_bind_addr());
+    response_puller_.bind(ut_.response_bind_address());
     response_puller_.setsockopt(ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
 
     // set the request ID to 0
@@ -576,7 +576,7 @@ class KvsClient {
    */
   KeyTuple* prepare_data_request(KeyRequest& request, Key& key) {
     request.set_request_id(get_request_id());
-    request.set_response_address(ut_.get_request_pulling_connect_addr());
+    request.set_response_address(ut_.response_connect_address());
 
     KeyTuple* tp = request.add_tuples();
     tp->set_key(key);
@@ -635,7 +635,7 @@ class KvsClient {
     if (local_) {
       Address routing_ip = route_addrs_[rand_r(&seed_) % route_addrs_.size()];
       return RoutingThread(routing_ip, thread_id)
-          .get_key_address_connect_addr();
+          .key_address_connect_address();
     } else {
       Address routing_ip = route_addrs_[0];
 
@@ -659,7 +659,7 @@ class KvsClient {
 
     // populate request with response address, request id, etc.
     request.set_request_id(get_request_id());
-    request.set_response_address(ut_.get_key_address_connect_addr());
+    request.set_response_address(ut_.key_address_connect_address());
     request.add_keys(key);
 
     set<Address> result;
@@ -707,7 +707,7 @@ class KvsClient {
    */
   string get_request_id() {
     if (++rid_ % 10000 == 0) rid_ = 0;
-    return ut_.get_ip() + ":" + std::to_string(ut_.get_tid()) + "_" +
+    return ut_.ip() + ":" + std::to_string(ut_.tid()) + "_" +
            std::to_string(rid_++);
   }
 

@@ -29,8 +29,8 @@ string seed_handler(logger log,
 
     for (const ServerThread& st : hash_ring.get_unique_servers()) {
       auto server = tier->add_servers();
-      server->set_private_ip(st.get_private_ip());
-      server->set_public_ip(st.get_public_ip());
+      server->set_private_ip(st.private_ip());
+      server->set_public_ip(st.public_ip());
     }
   }
 

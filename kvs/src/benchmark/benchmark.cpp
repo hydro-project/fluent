@@ -94,7 +94,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_ips,
   SocketCache pushers(&context, ZMQ_PUSH);
   zmq::socket_t command_puller(context, ZMQ_PULL);
   command_puller.bind("tcp://*:" +
-                      std::to_string(thread_id + kBenchmarkCommandBasePort));
+                      std::to_string(thread_id + kBenchmarkCommandPort));
 
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(command_puller), 0, ZMQ_POLLIN, 0}};
@@ -239,7 +239,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_ips,
             for (const MonitoringThread& thread : monitoring_threads) {
               kZmqUtil->send_string(
                   serialized_latency,
-                  &pushers[thread.get_latency_report_connect_addr()]);
+                  &pushers[thread.latency_report_connect_address()]);
             }
 
             count = 0;
@@ -268,7 +268,7 @@ void run(const unsigned& thread_id, const vector<Address>& routing_ips,
         for (const MonitoringThread& thread : monitoring_threads) {
           kZmqUtil->send_string(
               serialized_latency,
-              &pushers[thread.get_latency_report_connect_addr()]);
+              &pushers[thread.latency_report_connect_address()]);
         }
       } else if (mode == "WARM") {
         unsigned num_keys = stoi(v[1]);

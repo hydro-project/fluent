@@ -35,7 +35,7 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
       GlobalHashRing hash_ring = pair.second;
 
       for (const ServerThread& st : hash_ring.get_unique_servers()) {
-        kZmqUtil->send_string(msg, &pushers[st.get_node_depart_connect_addr()]);
+        kZmqUtil->send_string(msg, &pushers[st.node_depart_connect_address()]);
       }
     }
 
@@ -44,20 +44,20 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
     // notify all routing nodes
     for (const string& address : routing_ips) {
       kZmqUtil->send_string(
-          msg, &pushers[RoutingThread(address, 0).get_notify_connect_addr()]);
+          msg, &pushers[RoutingThread(address, 0).notify_connect_address()]);
     }
 
     // notify monitoring nodes
     for (const string& address : monitoring_ips) {
       kZmqUtil->send_string(
-          msg, &pushers[MonitoringThread(address).get_notify_connect_addr()]);
+          msg, &pushers[MonitoringThread(address).notify_connect_address()]);
     }
 
     // tell all worker threads about the self departure
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
       kZmqUtil->send_string(serialized,
                             &pushers[ServerThread(public_ip, private_ip, tid)
-                                         .get_self_depart_connect_addr()]);
+                                         .self_depart_connect_address()]);
     }
   }
 
@@ -67,7 +67,7 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
   for (const auto& key_pair : metadata_map) {
     Key key = key_pair.first;
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt.replication_response_connect_address(), key, is_metadata(key),
         global_hash_rings, local_hash_rings, metadata_map, pushers, kAllTierIds,
         succeed, seed);
 
@@ -75,7 +75,7 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
       // since we already removed this node from the hash ring, no need to
       // exclude it explicitly
       for (const ServerThread& thread : threads) {
-        addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
+        addr_keyset_map[thread.gossip_connect_address()].insert(key);
       }
     } else {
       log->error("Missing key replication factor in node depart routine");

@@ -130,22 +130,22 @@ int main(int argc, char *argv[]) {
   int timeout = 10000;
 
   response_puller.setsockopt(ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
-  response_puller.bind(mt.get_request_pulling_bind_addr());
+  response_puller.bind(mt.response_bind_address());
 
   // keep track of departing node status
   map<Address, unsigned> departing_node_map;
 
   // responsible for both node join and departure
   zmq::socket_t notify_puller(context, ZMQ_PULL);
-  notify_puller.bind(mt.get_notify_bind_addr());
+  notify_puller.bind(mt.notify_bind_address());
 
   // responsible for receiving depart done notice
   zmq::socket_t depart_done_puller(context, ZMQ_PULL);
-  depart_done_puller.bind(mt.get_depart_done_bind_addr());
+  depart_done_puller.bind(mt.depart_done_bind_address());
 
   // responsible for receiving feedback from users
   zmq::socket_t feedback_puller(context, ZMQ_PULL);
-  feedback_puller.bind(mt.get_latency_report_bind_addr());
+  feedback_puller.bind(mt.latency_report_bind_address());
 
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void *>(notify_puller), 0, ZMQ_POLLIN, 0},

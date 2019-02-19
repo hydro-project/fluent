@@ -30,7 +30,7 @@ void rep_factor_change_handler(Address public_ip, Address private_ip,
       kZmqUtil->send_string(
           serialized,
           &pushers[ServerThread(public_ip, private_ip, tid)
-                       .get_replication_factor_change_connect_addr()]);
+                       .replication_change_connect_address()]);
     }
   }
 
@@ -50,7 +50,7 @@ void rep_factor_change_handler(Address public_ip, Address private_ip,
     // if this thread was responsible for the key before the change
     if (metadata_map.find(key) != metadata_map.end()) {
       ServerThreadList orig_threads = kHashRingUtil->get_responsible_threads(
-          wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+          wt.replication_response_connect_address(), key, is_metadata(key),
           global_hash_rings, local_hash_rings, metadata_map, pushers,
           kAllTierIds, succeed, seed);
 
@@ -79,7 +79,7 @@ void rep_factor_change_handler(Address public_ip, Address private_ip,
         }
 
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-            wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+            wt.replication_response_connect_address(), key, is_metadata(key),
             global_hash_rings, local_hash_rings, metadata_map, pushers,
             kAllTierIds, succeed, seed);
 
@@ -91,7 +91,7 @@ void rep_factor_change_handler(Address public_ip, Address private_ip,
 
             // add all the new threads that this key should be sent to
             for (const ServerThread& thread : threads) {
-              addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
+              addr_keyset_map[thread.gossip_connect_address()].insert(key);
             }
           }
 
@@ -99,7 +99,7 @@ void rep_factor_change_handler(Address public_ip, Address private_ip,
           // has been reduced; if that's not the case, and I am the "first"
           // thread responsible for this key, then I gossip it to the new
           // threads that are responsible for it
-          if (!decrement && orig_threads.begin()->get_id() == wt.get_id()) {
+          if (!decrement && orig_threads.begin()->id() == wt.id()) {
             std::unordered_set<ServerThread, ThreadHash> new_threads;
 
             for (const ServerThread& thread : threads) {
@@ -110,7 +110,7 @@ void rep_factor_change_handler(Address public_ip, Address private_ip,
             }
 
             for (const ServerThread& thread : new_threads) {
-              addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
+              addr_keyset_map[thread.gossip_connect_address()].insert(key);
             }
           }
         } else {

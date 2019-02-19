@@ -17,7 +17,7 @@
 void gossip_handler(unsigned& seed, string& serialized,
                     map<TierId, GlobalHashRing>& global_hash_rings,
                     map<TierId, LocalHashRing>& local_hash_rings,
-                    map<Key, PendingGossip>& pending_gossip,
+                    map<Key, vector<PendingGossip>>& pending_gossip,
                     map<Key, KeyMetadata>& metadata_map, ServerThread& wt,
                     SerializerMap& serializers, SocketCache& pushers,
                     logger log) {
@@ -31,7 +31,7 @@ void gossip_handler(unsigned& seed, string& serialized,
     // first check if the thread is responsible for the key
     Key key = tuple.key();
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt.replication_response_connect_address(), key, is_metadata(key),
         global_hash_rings, local_hash_rings, metadata_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
@@ -51,18 +51,18 @@ void gossip_handler(unsigned& seed, string& serialized,
       } else {
         if (is_metadata(key)) {  // forward the gossip
           for (const ServerThread& thread : threads) {
-            if (gossip_map.find(thread.get_gossip_connect_addr()) ==
+            if (gossip_map.find(thread.gossip_connect_address()) ==
                 gossip_map.end()) {
-              gossip_map[thread.get_gossip_connect_addr()].set_type(
+              gossip_map[thread.gossip_connect_address()].set_type(
                   RequestType::PUT);
             }
 
-            prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key,
+            prepare_put_tuple(gossip_map[thread.gossip_connect_address()], key,
                               tuple.lattice_type(), tuple.payload());
           }
         } else {
           kHashRingUtil->issue_replication_factor_request(
-              wt.get_replication_factor_connect_addr(), key,
+              wt.replication_response_connect_address(), key,
               global_hash_rings[kMemoryTierId], local_hash_rings[kMemoryTierId],
               pushers, seed);
 

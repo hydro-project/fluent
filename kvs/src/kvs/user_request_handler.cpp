@@ -18,7 +18,7 @@ void user_request_handler(
     unsigned& access_count, unsigned& seed, string& serialized, logger log,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
-    map<Key, PendingRequest>& pending_requests,
+    map<Key, vector<PendingRequest>>& pending_requests,
     map<Key, std::multiset<TimePoint>>& key_access_tracker,
     map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
@@ -44,7 +44,7 @@ void user_request_handler(
     string payload = tuple.has_payload() ? (std::move(tuple.payload())) : "";
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
+        wt.replication_response_connect_address(), key, is_metadata(key),
         global_hash_rings, local_hash_rings, metadata_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
@@ -61,7 +61,7 @@ void user_request_handler(
           // if we don't know what threads are responsible, we issue a rep
           // factor request and make the request pending
           kHashRingUtil->issue_replication_factor_request(
-              wt.get_replication_factor_connect_addr(), key,
+              wt.replication_response_connect_address(), key,
               global_hash_rings[kMemoryTierId], local_hash_rings[kMemoryTierId],
               pushers, seed);
 

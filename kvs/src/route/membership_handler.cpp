@@ -53,9 +53,9 @@ void membership_handler(logger log, string& serialized, SocketCache& pushers,
           for (const ServerThread& st : hash_ring.get_unique_servers()) {
             // if the node is not the newly joined node, send the ip of the
             // newly joined node
-            if (st.get_private_ip().compare(new_server_private_ip) != 0) {
+            if (st.private_ip().compare(new_server_private_ip) != 0) {
               kZmqUtil->send_string(msg,
-                                    &pushers[st.get_node_join_connect_addr()]);
+                                    &pushers[st.node_join_connect_address()]);
             }
           }
         }
@@ -64,7 +64,7 @@ void membership_handler(logger log, string& serialized, SocketCache& pushers,
         for (unsigned tid = 1; tid < kRoutingThreadCount; tid++) {
           kZmqUtil->send_string(
               serialized,
-              &pushers[RoutingThread(ip, tid).get_notify_connect_addr()]);
+              &pushers[RoutingThread(ip, tid).notify_connect_address()]);
         }
       }
     }
@@ -84,7 +84,7 @@ void membership_handler(logger log, string& serialized, SocketCache& pushers,
       for (unsigned tid = 1; tid < kRoutingThreadCount; tid++) {
         kZmqUtil->send_string(
             serialized,
-            &pushers[RoutingThread(ip, tid).get_notify_connect_addr()]);
+            &pushers[RoutingThread(ip, tid).notify_connect_address()]);
       }
     }
 

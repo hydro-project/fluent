@@ -44,13 +44,14 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
   SocketCache pushers(&context, ZMQ_PUSH);
   map<Key, KeyMetadata> metadata_map;
 
+
   if (thread_id == 0) {
     // notify monitoring nodes
     for (const string &address : monitoring_ips) {
       kZmqUtil->send_string(
           // add null because it expects two IPs from server nodes...
           "join:" + std::to_string(kRoutingTierId) + ":" + ip + ":NULL",
-          &pushers[MonitoringThread(address).get_notify_connect_addr()]);
+          &pushers[MonitoringThread(address).notify_connect_address()]);
     }
   }
 
@@ -59,7 +60,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
   map<TierId, LocalHashRing> local_hash_rings;
 
   // pending events for asynchrony
-  map<Key, std::pair<Address, string>> pending_requests;
+  map<Key, vector<pair<Address, string>>> pending_requests;
 
   // form local hash rings
   for (const auto &pair : kTierMetadata) {
@@ -72,31 +73,30 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
   // responsible for sending existing server addresses to a new node (relevant
   // to seed node)
   zmq::socket_t addr_responder(context, ZMQ_REP);
-  addr_responder.bind(rt.get_seed_bind_addr());
+  addr_responder.bind(rt.seed_bind_address());
 
   // responsible for both node join and departure
   zmq::socket_t notify_puller(context, ZMQ_PULL);
-  notify_puller.bind(rt.get_notify_bind_addr());
+  notify_puller.bind(rt.notify_bind_address());
 
   // responsible for listening for key replication factor response
-  zmq::socket_t replication_factor_puller(context, ZMQ_PULL);
-  replication_factor_puller.bind(rt.get_replication_factor_bind_addr());
+  zmq::socket_t replication_response_puller(context, ZMQ_PULL);
+  replication_response_puller.bind(rt.replication_response_bind_address());
 
   // responsible for handling key replication factor change requests from server
   // nodes
-  zmq::socket_t replication_factor_change_puller(context, ZMQ_PULL);
-  replication_factor_change_puller.bind(
-      rt.get_replication_factor_change_bind_addr());
+  zmq::socket_t replication_change_puller(context, ZMQ_PULL);
+  replication_change_puller.bind(rt.replication_change_bind_address());
 
   // responsible for handling key address request from users
   zmq::socket_t key_address_puller(context, ZMQ_PULL);
-  key_address_puller.bind(rt.get_key_address_bind_addr());
+  key_address_puller.bind(rt.key_address_bind_address());
 
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void *>(addr_responder), 0, ZMQ_POLLIN, 0},
       {static_cast<void *>(notify_puller), 0, ZMQ_POLLIN, 0},
-      {static_cast<void *>(replication_factor_puller), 0, ZMQ_POLLIN, 0},
-      {static_cast<void *>(replication_factor_change_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void *>(replication_response_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void *>(replication_change_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void *>(key_address_puller), 0, ZMQ_POLLIN, 0}};
 
   while (true) {
@@ -118,7 +118,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
 
     // received replication factor response
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      string serialized = kZmqUtil->recv_string(&replication_factor_puller);
+      string serialized = kZmqUtil->recv_string(&replication_response_puller);
       replication_response_handler(log, serialized, pushers, rt,
                                    global_hash_rings, local_hash_rings,
                                    metadata_map, pending_requests, seed);
@@ -126,7 +126,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
       string serialized =
-          kZmqUtil->recv_string(&replication_factor_change_puller);
+          kZmqUtil->recv_string(&replication_change_puller);
       replication_change_handler(log, serialized, pushers, metadata_map,
                                  thread_id, ip);
     }

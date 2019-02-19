@@ -45,8 +45,8 @@ ServerThreadList HashRingUtil::get_responsible_threads(
             global_hash_rings[tier_id]);
 
         for (const ServerThread& thread : threads) {
-          Address public_ip = thread.get_public_ip();
-          Address private_ip = thread.get_private_ip();
+          Address public_ip = thread.public_ip();
+          Address private_ip = thread.private_ip();
           set<unsigned> tids = responsible_local(
               key, metadata_map[key].local_replication_[tier_id],
               local_hash_rings[tier_id]);
@@ -101,7 +101,7 @@ set<unsigned> responsible_local(const Key& key, unsigned local_rep,
     unsigned i = 0;
 
     while (i < local_rep) {
-      bool succeed = tids.insert(pos->second.get_tid()).second;
+      bool succeed = tids.insert(pos->second.tid()).second;
       if (++pos == local_hash_ring.end()) {
         pos = local_hash_ring.begin();
       }
@@ -122,8 +122,8 @@ ServerThreadList HashRingUtilInterface::get_responsible_threads_metadata(
                                                 global_memory_hash_ring);
 
   for (const ServerThread& thread : threads) {
-    Address public_ip = thread.get_public_ip();
-    Address private_ip = thread.get_private_ip();
+    Address public_ip = thread.public_ip();
+    Address private_ip = thread.private_ip();
     set<unsigned> tids = responsible_local(key, kDefaultLocalReplication,
                                            local_memory_hash_ring);
 
@@ -146,7 +146,7 @@ void HashRingUtilInterface::issue_replication_factor_request(
 
   Address target_address =
       std::next(begin(threads), rand_r(&seed) % threads.size())
-          ->get_request_pulling_connect_addr();
+          ->key_request_connect_address();
 
   KeyRequest key_request;
   key_request.set_type(RequestType::GET);

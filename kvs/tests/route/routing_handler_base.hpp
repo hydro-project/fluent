@@ -30,7 +30,7 @@ class RoutingHandlerTest : public ::testing::Test {
   map<TierId, GlobalHashRing> global_hash_rings;
   map<TierId, LocalHashRing> local_hash_rings;
   map<Key, KeyMetadata> metadata_map;
-  map<Key, std::pair<Address, string>> pending_requests;
+  map<Key, vector<pair<Address, string>>> pending_requests;
   zmq::context_t context;
   SocketCache pushers = SocketCache(&context, ZMQ_PUSH);
   RoutingThread rt;

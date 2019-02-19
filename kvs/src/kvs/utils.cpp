@@ -78,10 +78,10 @@ bool is_primary_replica(const Key& key, map<Key, KeyMetadata>& metadata_map,
     }
     auto global_pos = global_hash_rings[kSelfTierId].find(key);
     if (global_pos != global_hash_rings[kSelfTierId].end() &&
-        st.get_private_ip().compare(global_pos->second.get_private_ip()) == 0) {
+        st.private_ip().compare(global_pos->second.private_ip()) == 0) {
       auto local_pos = local_hash_rings[kSelfTierId].find(key);
       if (local_pos != local_hash_rings[kSelfTierId].end() &&
-          st.get_tid() == local_pos->second.get_tid()) {
+          st.tid() == local_pos->second.tid()) {
         return true;
       }
     }

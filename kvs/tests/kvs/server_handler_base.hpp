@@ -32,8 +32,8 @@ class ServerHandlerTest : public ::testing::Test {
   map<TierId, LocalHashRing> local_hash_rings;
   map<Key, KeyMetadata> metadata_map;
   ServerThread wt;
-  map<Key, PendingRequest> pending_requests;
-  map<Key, PendingGossip> pending_gossip;
+  map<Key, vector<PendingRequest>> pending_requests;
+  map<Key, vector<PendingGossip>> pending_gossip;
   map<Key, std::multiset<TimePoint>> key_access_tracker;
   set<Key> local_changeset;
 
@@ -85,8 +85,7 @@ class ServerHandlerTest : public ::testing::Test {
   string get_key_request(Key key, string ip) {
     KeyRequest request;
     request.set_type(RequestType::GET);
-    request.set_response_address(
-        UserThread(ip, 0).get_request_pulling_connect_addr());
+    request.set_response_address(UserThread(ip, 0).response_connect_address());
     request.set_request_id(kRequestId);
 
     KeyTuple* tp = request.add_tuples();
@@ -102,8 +101,7 @@ class ServerHandlerTest : public ::testing::Test {
                          string ip) {
     KeyRequest request;
     request.set_type(RequestType::PUT);
-    request.set_response_address(
-        UserThread(ip, 0).get_request_pulling_connect_addr());
+    request.set_response_address(UserThread(ip, 0).response_connect_address());
     request.set_request_id(kRequestId);
 
     KeyTuple* tp = request.add_tuples();

@@ -24,12 +24,12 @@ Address prepare_metadata_request(const Key& key,
       key, global_memory_hash_ring, local_memory_hash_ring);
   if (threads.size() != 0) {
     Address target_address = std::next(begin(threads), rand() % threads.size())
-                                 ->get_request_pulling_connect_addr();
+                                 ->key_request_connect_address();
     if (addr_request_map.find(target_address) == addr_request_map.end()) {
       addr_request_map[target_address].set_type(type);
       addr_request_map[target_address].set_response_address(
-          mt.get_request_pulling_connect_addr());
-      string req_id = mt.get_ip() + ":" + std::to_string(rid);
+          mt.response_connect_address());
+      string req_id = mt.ip() + ":" + std::to_string(rid);
       addr_request_map[target_address].set_request_id(req_id);
       rid += 1;
     }

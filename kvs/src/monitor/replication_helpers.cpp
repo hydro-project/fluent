@@ -142,7 +142,7 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
         for (const ServerThread& thread : threads) {
           prepare_replication_factor_update(
               key, replication_factor_map,
-              thread.get_replication_factor_change_connect_addr(),
+              thread.replication_change_connect_address(),
               metadata_map);
         }
       }
@@ -152,7 +152,7 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
         prepare_replication_factor_update(
             key, replication_factor_map,
             RoutingThread(address, 0)
-                .get_replication_factor_change_connect_addr(),
+                .replication_change_connect_address(),
             metadata_map);
       }
     }
