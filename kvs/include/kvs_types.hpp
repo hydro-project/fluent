@@ -20,7 +20,7 @@
 
 using StorageStats = map<Address, map<unsigned, unsigned long long>>;
 
-using OccupancyStats = map<Address, map<unsigned, std::pair<double, unsigned>>>;
+using OccupancyStats = map<Address, map<unsigned, pair<double, unsigned>>>;
 
 using AccessStats = map<Address, map<unsigned, unsigned>>;
 

@@ -32,6 +32,9 @@ using set = std::unordered_set<T>;
 template <class T>
 using vector = std::vector<T>;
 
+template <class F, class S>
+using pair = std::pair<F, S>;
+
 using Address = std::string;
 
 using Key = std::string;
