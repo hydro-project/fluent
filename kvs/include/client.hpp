@@ -583,10 +583,11 @@ class KvsClient {
    * KeyRequest and also returns a pointer to the KeyTuple contained by this
    * request.
    */
-  KeyTuple* prepare_data_request(KeyRequest& request, Key& key, RequestType type) {
+  KeyTuple* prepare_data_request(KeyRequest& request, Key& key,
+                                 RequestType type) {
     request.set_request_id(get_request_id());
     request.set_response_address(ut_.get_request_pulling_connect_addr());
-    request.set_request_type(type);
+    request.set_type(type);
 
     KeyTuple* tp = request.add_tuples();
     tp->set_key(key);
