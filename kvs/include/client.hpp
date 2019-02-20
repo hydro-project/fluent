@@ -102,8 +102,7 @@ class KvsClient {
    */
   bool put(Key key, std::string value, unsigned trial_limit) {
     KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key);
-    request.set_type(RequestType::PUT);
+    KeyTuple* tuple = prepare_data_request(request, key, RequestType::PUT);
     tuple->set_lattice_type(LatticeType::LWW);
     tuple->set_payload(serialize(generate_timestamp(0), value));
 
@@ -135,8 +134,7 @@ class KvsClient {
   bool put(Key key, std::unordered_set<std::string> value,
            unsigned trial_limit) {
     KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key);
-    request.set_type(RequestType::PUT);
+    KeyTuple* tuple = prepare_data_request(request, key, RequestType::PUT);
     tuple->set_lattice_type(LatticeType::SET);
     tuple->set_payload(serialize(value));
 
@@ -165,8 +163,7 @@ class KvsClient {
    */
   bool put_all(Key key, std::string value, unsigned trial_limit) {
     KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key);
-    request.set_type(RequestType::PUT);
+    KeyTuple* tuple = prepare_data_request(request, key, RequestType::PUT);
     tuple->set_lattice_type(LatticeType::LWW);
     tuple->set_payload(serialize(generate_timestamp(0), value));
 
@@ -199,7 +196,7 @@ class KvsClient {
   bool put_all(Key key, std::unordered_set<std::string> value,
                unsigned trial_limit) {
     KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key);
+    KeyTuple* tuple = prepare_data_request(request, key, RequestType::PUT);
     request.set_type(RequestType::PUT);
     tuple->set_lattice_type(LatticeType::SET);
     tuple->set_payload(serialize(value));
@@ -228,8 +225,7 @@ class KvsClient {
    */
   std::string get(Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key);
-    request.set_type(RequestType::GET);
+    prepare_data_request(request, key, RequestType::GET);
 
     KeyResponse response = try_request(request, trial_limit);
 
@@ -266,8 +262,7 @@ class KvsClient {
    */
   std::vector<std::string> get_all(Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key);
-    request.set_type(RequestType::GET);
+    prepare_data_request(request, key, RequestType::GET);
 
     std::vector<KeyResponse> responses =
         try_multi_request(request, trial_limit);
@@ -309,8 +304,7 @@ class KvsClient {
    */
   std::unordered_set<std::string> get_set(Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key);
-    request.set_type(RequestType::GET);
+    prepare_data_request(request, key, RequestType::GET);
     std::unordered_set<std::string> result;
 
     KeyResponse response = try_request(request, trial_limit);
@@ -356,8 +350,7 @@ class KvsClient {
   std::vector<std::unordered_set<std::string>> get_set_all(
       Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key);
-    request.set_type(RequestType::GET);
+    prepare_data_request(request, key, RequestType::GET);
 
     std::vector<KeyResponse> responses =
         try_multi_request(request, trial_limit);
@@ -590,9 +583,10 @@ class KvsClient {
    * KeyRequest and also returns a pointer to the KeyTuple contained by this
    * request.
    */
-  KeyTuple* prepare_data_request(KeyRequest& request, Key& key) {
+  KeyTuple* prepare_data_request(KeyRequest& request, Key& key, RequestType type) {
     request.set_request_id(get_request_id());
     request.set_response_address(ut_.get_request_pulling_connect_addr());
+    request.set_request_type(type);
 
     KeyTuple* tp = request.add_tuples();
     tp->set_key(key);
