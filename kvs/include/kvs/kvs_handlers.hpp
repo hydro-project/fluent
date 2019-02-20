@@ -24,7 +24,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        map<TierId, LocalHashRing>& local_hash_rings,
                        map<Key, KeyMetadata>& metadata_map,
                        set<Key>& join_remove_set, SocketCache& pushers,
-                       ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
+                       ServerThread& wt, AddressKeysetMap& join_gossip_map,
                        int self_join_count);
 
 void node_depart_handler(unsigned thread_id, Address public_ip,
@@ -58,7 +58,7 @@ void gossip_handler(unsigned& seed, string& serialized,
                     SerializerMap& serializers, SocketCache& pushers,
                     logger log);
 
-void rep_factor_response_handler(
+void replication_response_handler(
     unsigned& seed, unsigned& access_count, logger log, string& serialized,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
@@ -68,15 +68,15 @@ void rep_factor_response_handler(
     map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
 
-void rep_factor_change_handler(Address public_ip, Address private_ip,
-                               unsigned thread_id, unsigned& seed, logger log,
-                               string& serialized,
-                               map<TierId, GlobalHashRing>& global_hash_rings,
-                               map<TierId, LocalHashRing>& local_hash_rings,
-                               map<Key, KeyMetadata>& metadata_map,
-                               set<Key>& local_changeset, ServerThread& wt,
-                               SerializerMap& serializers,
-                               SocketCache& pushers);
+void replication_change_handler(Address public_ip, Address private_ip,
+                                unsigned thread_id, unsigned& seed, logger log,
+                                string& serialized,
+                                map<TierId, GlobalHashRing>& global_hash_rings,
+                                map<TierId, LocalHashRing>& local_hash_rings,
+                                map<Key, KeyMetadata>& metadata_map,
+                                set<Key>& local_changeset, ServerThread& wt,
+                                SerializerMap& serializers,
+                                SocketCache& pushers);
 
 void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
                  SerializerMap& serializers,

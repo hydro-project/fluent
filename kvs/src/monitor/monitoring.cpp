@@ -97,17 +97,17 @@ int main(int argc, char *argv[]) {
   // keep track of the size of each key-value pair
   map<Key, unsigned> key_size;
   // keep track of memory tier storage consumption
-  StorageStats memory_tier_storage;
+  StorageStats memory_storage;
   // keep track of ebs tier storage consumption
-  StorageStats ebs_tier_storage;
+  StorageStats ebs_storage;
   // keep track of memory tier thread occupancy
-  OccupancyStats memory_tier_occupancy;
+  OccupancyStats memory_occupancy;
   // keep track of ebs tier thread occupancy
-  OccupancyStats ebs_tier_occupancy;
+  OccupancyStats ebs_occupancy;
   // keep track of memory tier hit
-  AccessStats memory_tier_access;
+  AccessStats memory_accesses;
   // keep track of ebs tier hit
-  AccessStats ebs_tier_access;
+  AccessStats ebs_accesses;
   // keep track of some summary statistics
   SummaryStats ss;
   // keep track of user latency info
@@ -175,9 +175,8 @@ int main(int argc, char *argv[]) {
       string serialized = kZmqUtil->recv_string(&notify_puller);
       membership_handler(log, serialized, global_hash_rings, adding_memory_node,
                          adding_ebs_node, grace_start, routing_ips,
-                         memory_tier_storage, ebs_tier_storage,
-                         memory_tier_occupancy, ebs_tier_occupancy,
-                         key_access_frequency);
+                         memory_storage, ebs_storage, memory_occupancy,
+                         ebs_occupancy, key_access_frequency);
     }
 
     // handle a depart done notification
@@ -208,11 +207,11 @@ int main(int argc, char *argv[]) {
       key_access_frequency.clear();
       key_access_summary.clear();
 
-      memory_tier_storage.clear();
-      ebs_tier_storage.clear();
+      memory_storage.clear();
+      ebs_storage.clear();
 
-      memory_tier_occupancy.clear();
-      ebs_tier_occupancy.clear();
+      memory_occupancy.clear();
+      ebs_occupancy.clear();
 
       ss.clear();
 
@@ -221,17 +220,15 @@ int main(int argc, char *argv[]) {
       latency_miss_ratio_map.clear();
 
       // collect internal statistics
-      collect_internal_stats(global_hash_rings, local_hash_rings, pushers, mt,
-                             response_puller, log, rid, key_access_frequency,
-                             key_size, memory_tier_storage, ebs_tier_storage,
-                             memory_tier_occupancy, ebs_tier_occupancy,
-                             memory_tier_access, ebs_tier_access);
+      collect_internal_stats(
+          global_hash_rings, local_hash_rings, pushers, mt, response_puller,
+          log, rid, key_access_frequency, key_size, memory_storage, ebs_storage,
+          memory_occupancy, ebs_occupancy, memory_accesses, ebs_accesses);
 
       // compute summary statistics
-      compute_summary_stats(key_access_frequency, memory_tier_storage,
-                            ebs_tier_storage, memory_tier_occupancy,
-                            ebs_tier_occupancy, memory_tier_access,
-                            ebs_tier_access, key_access_summary, ss, log,
+      compute_summary_stats(key_access_frequency, memory_storage, ebs_storage,
+                            memory_occupancy, ebs_occupancy, memory_accesses,
+                            ebs_accesses, key_access_summary, ss, log,
                             server_monitoring_epoch);
 
       // collect external statistics

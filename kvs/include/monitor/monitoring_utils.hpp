@@ -118,16 +118,16 @@ void collect_internal_stats(
     map<TierId, LocalHashRing>& local_hash_rings, SocketCache& pushers,
     MonitoringThread& mt, zmq::socket_t& response_puller, logger log,
     unsigned& rid, map<Key, map<Address, unsigned>>& key_access_frequency,
-    map<Key, unsigned>& key_size, StorageStats& memory_tier_storage,
-    StorageStats& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
-    OccupancyStats& ebs_tier_occupancy, AccessStats& memory_tier_access,
-    AccessStats& ebs_tier_access);
+    map<Key, unsigned>& key_size, StorageStats& memory_storage,
+    StorageStats& ebs_storage, OccupancyStats& memory_occupancy,
+    OccupancyStats& ebs_occupancy, AccessStats& memory_access,
+    AccessStats& ebs_access);
 
 void compute_summary_stats(
     map<Key, map<Address, unsigned>>& key_access_frequency,
-    StorageStats& memory_tier_storage, StorageStats& ebs_tier_storage,
-    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
-    AccessStats& memory_tier_access, AccessStats& ebs_tier_access,
+    StorageStats& memory_storage, StorageStats& ebs_storage,
+    OccupancyStats& memory_occupancy, OccupancyStats& ebs_occupancy,
+    AccessStats& memory_access, AccessStats& ebs_access,
     map<Key, unsigned>& key_access_summary, SummaryStats& ss, logger log,
     unsigned& server_monitoring_epoch);
 

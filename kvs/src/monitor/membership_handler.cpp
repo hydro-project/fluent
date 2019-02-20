@@ -16,11 +16,11 @@
 
 void membership_handler(
     logger log, string& serialized,
-    map<TierId, GlobalHashRing>& global_hash_rings,
-    unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    TimePoint& grace_start, vector<Address>& routing_ips,
-    StorageStats& memory_tier_storage, StorageStats& ebs_tier_storage,
-    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
+    map<TierId, GlobalHashRing>& global_hash_rings, unsigned& new_memory_count,
+    unsigned& new_ebs_count, TimePoint& grace_start,
+    vector<Address>& routing_ips, StorageStats& memory_storage,
+    StorageStats& ebs_storage, OccupancyStats& memory_occupancy,
+    OccupancyStats& ebs_occupancy,
     map<Key, map<Address, unsigned>>& key_access_frequency) {
   vector<string> v;
 
@@ -38,8 +38,8 @@ void membership_handler(
       global_hash_rings[tier].insert(new_server_public_ip,
                                      new_server_private_ip, 0, 0);
 
-      if (adding_memory_node > 0) {
-        adding_memory_node -= 1;
+      if (new_memory_count > 0) {
+        new_memory_count -= 1;
       }
 
       // reset grace period timer
@@ -48,8 +48,8 @@ void membership_handler(
       global_hash_rings[tier].insert(new_server_public_ip,
                                      new_server_private_ip, 0, 0);
 
-      if (adding_ebs_node > 0) {
-        adding_ebs_node -= 1;
+      if (new_ebs_count > 0) {
+        new_ebs_count -= 1;
       }
 
       // reset grace period timer
@@ -72,8 +72,8 @@ void membership_handler(
     global_hash_rings[tier].remove(new_server_public_ip, new_server_private_ip,
                                    0);
     if (tier == 1) {
-      memory_tier_storage.erase(new_server_private_ip);
-      memory_tier_occupancy.erase(new_server_private_ip);
+      memory_storage.erase(new_server_private_ip);
+      memory_occupancy.erase(new_server_private_ip);
 
       // NOTE: No const here because we are calling erase
       for (auto& key_access_pair : key_access_frequency) {
@@ -83,8 +83,8 @@ void membership_handler(
         }
       }
     } else if (tier == 2) {
-      ebs_tier_storage.erase(new_server_private_ip);
-      ebs_tier_occupancy.erase(new_server_private_ip);
+      ebs_storage.erase(new_server_private_ip);
+      ebs_occupancy.erase(new_server_private_ip);
 
       // NOTE: No const here because we are calling erase
       for (auto& key_access_pair : key_access_frequency) {

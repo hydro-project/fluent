@@ -20,7 +20,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        map<TierId, LocalHashRing>& local_hash_rings,
                        map<Key, KeyMetadata>& metadata_map,
                        set<Key>& join_remove_set, SocketCache& pushers,
-                       ServerThread& wt, AddressKeysetMap& join_addr_keyset_map,
+                       ServerThread& wt, AddressKeysetMap& join_gossip_map,
                        int self_join_count) {
   vector<string> v;
   split(serialized, ':', v);
@@ -102,8 +102,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
           if (join_count > 0) {
             for (const ServerThread& thread : threads) {
               if (thread.private_ip().compare(new_server_private_ip) == 0) {
-                join_addr_keyset_map[thread.gossip_connect_address()].insert(
-                    key);
+                join_gossip_map[thread.gossip_connect_address()].insert(key);
               }
             }
           } else if ((join_count == 0 &&
@@ -112,7 +111,7 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
             join_remove_set.insert(key);
 
             for (const ServerThread& thread : threads) {
-              join_addr_keyset_map[thread.gossip_connect_address()].insert(key);
+              join_gossip_map[thread.gossip_connect_address()].insert(key);
             }
           }
         } else {

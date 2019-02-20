@@ -14,7 +14,7 @@
 
 #include "kvs/kvs_handlers.hpp"
 
-void rep_factor_response_handler(
+void replication_response_handler(
     unsigned& seed, unsigned& access_count, logger log, string& serialized,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,

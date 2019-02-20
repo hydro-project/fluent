@@ -14,15 +14,15 @@
 
 #include "kvs/kvs_handlers.hpp"
 
-void rep_factor_change_handler(Address public_ip, Address private_ip,
-                               unsigned thread_id, unsigned& seed, logger log,
-                               string& serialized,
-                               map<TierId, GlobalHashRing>& global_hash_rings,
-                               map<TierId, LocalHashRing>& local_hash_rings,
-                               map<Key, KeyMetadata>& metadata_map,
-                               set<Key>& local_changeset, ServerThread& wt,
-                               SerializerMap& serializers,
-                               SocketCache& pushers) {
+void replication_change_handler(Address public_ip, Address private_ip,
+                                unsigned thread_id, unsigned& seed, logger log,
+                                string& serialized,
+                                map<TierId, GlobalHashRing>& global_hash_rings,
+                                map<TierId, LocalHashRing>& local_hash_rings,
+                                map<Key, KeyMetadata>& metadata_map,
+                                set<Key>& local_changeset, ServerThread& wt,
+                                SerializerMap& serializers,
+                                SocketCache& pushers) {
   log->info("Received a replication factor change.");
   if (thread_id == 0) {
     // tell all worker threads about the replication factor change

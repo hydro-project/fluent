@@ -19,12 +19,11 @@
 
 void membership_handler(logger log, string& serialized,
                         map<TierId, GlobalHashRing>& global_hash_rings,
-                        unsigned& adding_memory_node, unsigned& adding_ebs_node,
+                        unsigned& new_memory_count, unsigned& new_ebs_count,
                         TimePoint& grace_start, vector<Address>& routing_ips,
-                        StorageStats& memory_tier_storage,
-                        StorageStats& ebs_tier_storage,
-                        OccupancyStats& memory_tier_occupancy,
-                        OccupancyStats& ebs_tier_occupancy,
+                        StorageStats& memory_storage, StorageStats& ebs_storage,
+                        OccupancyStats& memory_occupancy,
+                        OccupancyStats& ebs_occupancy,
                         map<Key, map<Address, unsigned>>& key_access_frequency);
 
 void depart_done_handler(logger log, string& serialized,

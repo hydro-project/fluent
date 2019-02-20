@@ -67,7 +67,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   map<TierId, LocalHashRing> local_hash_rings;
 
   // for periodically redistributing data when node joins
-  AddressKeysetMap join_addr_keyset_map;
+  AddressKeysetMap join_gossip_map;
 
   // keep track of which key should be removed when node joins
   set<Key> join_remove_set;
@@ -244,7 +244,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       string serialized = kZmqUtil->recv_string(&join_puller);
       node_join_handler(thread_id, seed, public_ip, private_ip, log, serialized,
                         global_hash_rings, local_hash_rings, metadata_map,
-                        join_remove_set, pushers, wt, join_addr_keyset_map,
+                        join_remove_set, pushers, wt, join_gossip_map,
                         self_join_count);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -315,11 +315,11 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&replication_response_puller);
-      rep_factor_response_handler(seed, access_count, log, serialized,
-                                  global_hash_rings, local_hash_rings,
-                                  pending_requests, pending_gossip,
-                                  key_access_tracker, metadata_map,
-                                  local_changeset, wt, serializers, pushers);
+      replication_response_handler(seed, access_count, log, serialized,
+                                   global_hash_rings, local_hash_rings,
+                                   pending_requests, pending_gossip,
+                                   key_access_tracker, metadata_map,
+                                   local_changeset, wt, serializers, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -333,10 +333,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&replication_change_puller);
-      rep_factor_change_handler(public_ip, private_ip, thread_id, seed, log,
-                                serialized, global_hash_rings, local_hash_rings,
-                                metadata_map, local_changeset, wt, serializers,
-                                pushers);
+      replication_change_handler(public_ip, private_ip, thread_id, seed, log,
+                                 serialized, global_hash_rings,
+                                 local_hash_rings, metadata_map,
+                                 local_changeset, wt, serializers, pushers);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -536,12 +536,12 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     }
 
     // redistribute data after node joins
-    if (join_addr_keyset_map.size() != 0) {
+    if (join_gossip_map.size() != 0) {
       set<Address> remove_address_set;
 
       // assemble gossip
       AddressKeysetMap addr_keyset_map;
-      for (const auto& join_pair : join_addr_keyset_map) {
+      for (const auto& join_pair : join_gossip_map) {
         Address address = join_pair.first;
         set<Key> key_set = join_pair.second;
         // track all sent keys because we cannot modify the key_set while
@@ -567,13 +567,13 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       }
 
       for (const Address& remove_address : remove_address_set) {
-        join_addr_keyset_map.erase(remove_address);
+        join_gossip_map.erase(remove_address);
       }
 
       send_gossip(addr_keyset_map, pushers, serializers, metadata_map);
 
       // remove keys
-      if (join_addr_keyset_map.size() == 0) {
+      if (join_gossip_map.size() == 0) {
         for (const string& key : join_remove_set) {
           serializers[metadata_map[key].type_]->remove(key);
           metadata_map.erase(key);

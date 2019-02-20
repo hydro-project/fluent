@@ -20,10 +20,10 @@ void collect_internal_stats(
     map<TierId, LocalHashRing>& local_hash_rings, SocketCache& pushers,
     MonitoringThread& mt, zmq::socket_t& response_puller, logger log,
     unsigned& rid, map<Key, map<Address, unsigned>>& key_access_frequency,
-    map<Key, unsigned>& key_size, StorageStats& memory_tier_storage,
-    StorageStats& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
-    OccupancyStats& ebs_tier_occupancy, AccessStats& memory_tier_access,
-    AccessStats& ebs_tier_access) {
+    map<Key, unsigned>& key_size, StorageStats& memory_storage,
+    StorageStats& ebs_storage, OccupancyStats& memory_occupancy,
+    OccupancyStats& ebs_occupancy, AccessStats& memory_accesses,
+    AccessStats& ebs_accesses) {
   map<Address, KeyRequest> addr_request_map;
 
   for (int tier_id = 0; tier_id < global_hash_rings.size(); tier_id++) {
@@ -74,15 +74,15 @@ void collect_internal_stats(
             stat.ParseFromString(lww_value.value());
 
             if (tier_id == 1) {
-              memory_tier_storage[ip_pair][tid] = stat.storage_consumption();
-              memory_tier_occupancy[ip_pair][tid] =
+              memory_storage[ip_pair][tid] = stat.storage_consumption();
+              memory_occupancy[ip_pair][tid] =
                   std::pair<double, unsigned>(stat.occupancy(), stat.epoch());
-              memory_tier_access[ip_pair][tid] = stat.access_count();
+              memory_accesses[ip_pair][tid] = stat.access_count();
             } else {
-              ebs_tier_storage[ip_pair][tid] = stat.storage_consumption();
-              ebs_tier_occupancy[ip_pair][tid] =
+              ebs_storage[ip_pair][tid] = stat.storage_consumption();
+              ebs_occupancy[ip_pair][tid] =
                   std::pair<double, unsigned>(stat.occupancy(), stat.epoch());
-              ebs_tier_access[ip_pair][tid] = stat.access_count();
+              ebs_accesses[ip_pair][tid] = stat.access_count();
             }
           } else if (metadata_type == "access") {
             // deserialized the value
@@ -119,9 +119,9 @@ void collect_internal_stats(
 
 void compute_summary_stats(
     map<Key, map<Address, unsigned>>& key_access_frequency,
-    StorageStats& memory_tier_storage, StorageStats& ebs_tier_storage,
-    OccupancyStats& memory_tier_occupancy, OccupancyStats& ebs_tier_occupancy,
-    AccessStats& memory_tier_access, AccessStats& ebs_tier_access,
+    StorageStats& memory_storage, StorageStats& ebs_storage,
+    OccupancyStats& memory_occupancy, OccupancyStats& ebs_occupancy,
+    AccessStats& memory_accesses, AccessStats& ebs_accesses,
     map<Key, unsigned>& key_access_summary, SummaryStats& ss, logger log,
     unsigned& server_monitoring_epoch) {
   // compute key access summary
@@ -156,14 +156,14 @@ void compute_summary_stats(
   log->info("Access: mean={}, std={}", ss.key_access_mean, ss.key_access_std);
 
   // compute tier access summary
-  for (const auto& memory_access : memory_tier_access) {
-    for (const auto& thread_access : memory_access.second) {
+  for (const auto& accesses : memory_accesses) {
+    for (const auto& thread_access : accesses.second) {
       ss.total_memory_access += thread_access.second;
     }
   }
 
-  for (const auto& ebs_access : ebs_tier_access) {
-    for (const auto& thread_access : ebs_access.second) {
+  for (const auto& access : ebs_accesses) {
+    for (const auto& thread_access : access.second) {
       ss.total_ebs_access += thread_access.second;
     }
   }
@@ -175,7 +175,7 @@ void compute_summary_stats(
   unsigned m_count = 0;
   unsigned e_count = 0;
 
-  for (const auto& memory_storage : memory_tier_storage) {
+  for (const auto& memory_storage : memory_storage) {
     unsigned total_thread_consumption = 0;
 
     for (const auto& thread_storage : memory_storage.second) {
@@ -195,7 +195,7 @@ void compute_summary_stats(
     m_count += 1;
   }
 
-  for (const auto& ebs_storage : ebs_tier_storage) {
+  for (const auto& ebs_storage : ebs_storage) {
     unsigned total_thread_consumption = 0;
 
     for (const auto& thread_storage : ebs_storage.second) {
@@ -250,7 +250,7 @@ void compute_summary_stats(
 
   unsigned count = 0;
 
-  for (const auto& memory_occ : memory_tier_occupancy) {
+  for (const auto& memory_occ : memory_occupancy) {
     double sum_thread_occupancy = 0.0;
     unsigned thread_count = 0;
 
@@ -295,7 +295,7 @@ void compute_summary_stats(
 
   count = 0;
 
-  for (const auto& ebs_occ : ebs_tier_occupancy) {
+  for (const auto& ebs_occ : ebs_occupancy) {
     double sum_thread_occupancy = 0.0;
     unsigned thread_count = 0;
 
