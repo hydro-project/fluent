@@ -18,14 +18,14 @@ Address prepare_metadata_request(
     const Key& key, GlobalHashRing& global_memory_hash_ring,
     LocalHashRing& local_memory_hash_ring,
     std::unordered_map<Address, KeyRequest>& addr_request_map,
-    MonitoringThread& mt, unsigned& rid, std::string type) {
+    MonitoringThread& mt, unsigned& rid, RequestType type) {
   auto threads = kHashRingUtil->get_responsible_threads_metadata(
       key, global_memory_hash_ring, local_memory_hash_ring);
   if (threads.size() != 0) {
     Address target_address = std::next(begin(threads), rand() % threads.size())
                                  ->get_request_pulling_connect_addr();
     if (addr_request_map.find(target_address) == addr_request_map.end()) {
-      addr_request_map[target_address].set_type(get_request_type(type));
+      addr_request_map[target_address].set_type(type);
       addr_request_map[target_address].set_response_address(
           mt.get_request_pulling_connect_addr());
       std::string req_id = mt.get_ip() + ":" + std::to_string(rid);
@@ -46,7 +46,7 @@ void prepare_metadata_get_request(
     MonitoringThread& mt, unsigned& rid) {
   Address target_address = prepare_metadata_request(
       key, global_memory_hash_ring, local_memory_hash_ring, addr_request_map,
-      mt, rid, "GET");
+      mt, rid, RequestType::GET);
 
   if (!target_address.empty()) {
     prepare_get_tuple(addr_request_map[target_address], key, LatticeType::LWW);
@@ -61,13 +61,10 @@ void prepare_metadata_put_request(
     MonitoringThread& mt, unsigned& rid) {
   Address target_address = prepare_metadata_request(
       key, global_memory_hash_ring, local_memory_hash_ring, addr_request_map,
-      mt, rid, "PUT");
+      mt, rid, RequestType::PUT);
 
   if (!target_address.empty()) {
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch())
-                    .count();
-    auto ts = generate_timestamp(time, 0);
+    auto ts = generate_timestamp(0);
     prepare_put_tuple(addr_request_map[target_address], key, LatticeType::LWW,
                       serialize(ts, value));
   }

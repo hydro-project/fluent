@@ -150,72 +150,11 @@ void HashRingUtilInterface::issue_replication_factor_request(
           ->get_request_pulling_connect_addr();
 
   KeyRequest key_request;
-  key_request.set_type(get_request_type("GET"));
+  key_request.set_type(RequestType::GET);
   key_request.set_response_address(response_address);
 
   prepare_get_tuple(key_request, replication_key, LatticeType::LWW);
   std::string serialized;
   key_request.SerializeToString(&serialized);
   kZmqUtil->send_string(serialized, &pushers[target_address]);
-}
-
-// query the routing for a key and return all address
-std::vector<Address> HashRingUtilInterface::get_address_from_routing(
-    UserThread& ut, const Key& key, zmq::socket_t& sending_socket,
-    zmq::socket_t& receiving_socket, bool& succeed, Address& ip,
-    unsigned& thread_id, unsigned& rid) {
-  int count = 0;
-
-  KeyAddressRequest address_request;
-  KeyAddressResponse address_response;
-  address_request.set_response_address(ut.get_key_address_connect_addr());
-  address_request.add_keys(key);
-
-  std::string req_id =
-      ip + ":" + std::to_string(thread_id) + "_" + std::to_string(rid);
-  address_request.set_request_id(req_id);
-  std::vector<Address> result;
-
-  int error = -1;
-
-  while (error != 0) {
-    if (error == 1) {
-      std::cerr << "No servers have joined the cluster yet. Retrying request."
-                << std::endl;
-    }
-
-    if (count > 0 && count % 5 == 0) {
-      std::cerr
-          << "Pausing for 5 seconds before continuing to query routing layer..."
-          << std::endl;
-      usleep(5000000);
-    }
-
-    rid += 1;
-
-    address_response = send_request<KeyAddressRequest, KeyAddressResponse>(
-        address_request, sending_socket, receiving_socket, succeed);
-
-    if (!succeed) {
-      return result;
-    } else {
-      error = address_response.error();
-    }
-
-    count++;
-  }
-
-  for (const std::string& ip : address_response.addresses(0).ips()) {
-    result.push_back(ip);
-  }
-
-  return result;
-}
-
-RoutingThread HashRingUtilInterface::get_random_routing_thread(
-    std::vector<Address>& routing_address, unsigned& seed,
-    unsigned& kRoutingThreadCount) {
-  Address routing_ip = routing_address[rand_r(&seed) % routing_address.size()];
-  unsigned tid = rand_r(&seed) % kRoutingThreadCount;
-  return RoutingThread(routing_ip, tid);
 }

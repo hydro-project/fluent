@@ -402,11 +402,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
     if (duration >= kServerReportThreshold) {
       epoch += 1;
-
-      auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                      std::chrono::system_clock::now().time_since_epoch())
-                      .count();
-      auto ts = generate_timestamp(time, wt.get_tid());
+      auto ts = generate_timestamp(wt.get_tid());
 
       Key key = get_metadata_key(wt, kSelfTierId, wt.get_tid(),
                                  MetadataType::server_stats);
@@ -443,7 +439,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       stat.SerializeToString(&serialized_stat);
 
       KeyRequest req;
-      req.set_type(get_request_type("PUT"));
+      req.set_type(RequestType::PUT);
       prepare_put_tuple(req, key, LatticeType::LWW,
                         serialize(ts, serialized_stat));
 
@@ -489,7 +485,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       access.SerializeToString(&serialized_access);
 
       req.Clear();
-      req.set_type(get_request_type("PUT"));
+      req.set_type(RequestType::PUT);
       prepare_put_tuple(req, key, LatticeType::LWW,
                         serialize(ts, serialized_access));
 
@@ -523,7 +519,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       primary_key_size.SerializeToString(&serialized_size);
 
       req.Clear();
-      req.set_type(get_request_type("PUT"));
+      req.set_type(RequestType::PUT);
       prepare_put_tuple(req, key, LatticeType::LWW,
                         serialize(ts, serialized_size));
 

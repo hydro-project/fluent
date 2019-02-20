@@ -208,7 +208,7 @@ void rep_factor_response_handler(
         // forward the gossip
         for (const ServerThread& thread : threads) {
           gossip_map[thread.get_gossip_connect_addr()].set_type(
-              get_request_type("PUT"));
+              RequestType::PUT);
 
           for (const PendingGossip& gossip : pending_gossip_map[key]) {
             prepare_put_tuple(gossip_map[thread.get_gossip_connect_addr()], key,
