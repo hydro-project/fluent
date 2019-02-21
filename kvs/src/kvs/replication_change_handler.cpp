@@ -14,25 +14,22 @@
 
 #include "kvs/kvs_handlers.hpp"
 
-void rep_factor_change_handler(
-    Address public_ip, Address private_ip, unsigned thread_id, unsigned& seed,
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, KeyInfo>& placement,
-    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    std::unordered_set<Key>& local_changeset, ServerThread& wt,
-    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
-        serializers,
-    SocketCache& pushers) {
-  logger->info("Received a replication factor change.");
+void replication_change_handler(Address public_ip, Address private_ip,
+                                unsigned thread_id, unsigned& seed, logger log,
+                                string& serialized,
+                                map<TierId, GlobalHashRing>& global_hash_rings,
+                                map<TierId, LocalHashRing>& local_hash_rings,
+                                map<Key, KeyMetadata>& metadata_map,
+                                set<Key>& local_changeset, ServerThread& wt,
+                                SerializerMap& serializers,
+                                SocketCache& pushers) {
+  log->info("Received a replication factor change.");
   if (thread_id == 0) {
     // tell all worker threads about the replication factor change
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
       kZmqUtil->send_string(
-          serialized,
-          &pushers[ServerThread(public_ip, private_ip, tid)
-                       .get_replication_factor_change_connect_addr()]);
+          serialized, &pushers[ServerThread(public_ip, private_ip, tid)
+                                   .replication_change_connect_address()]);
     }
   }
 
@@ -40,7 +37,7 @@ void rep_factor_change_handler(
   rep_change.ParseFromString(serialized);
 
   AddressKeysetMap addr_keyset_map;
-  std::unordered_set<Key> remove_set;
+  set<Key> remove_set;
 
   // for every key, update the replication factor and check if the node is still
   // responsible for the key
@@ -50,10 +47,10 @@ void rep_factor_change_handler(
     Key key = key_rep.key();
 
     // if this thread was responsible for the key before the change
-    if (key_stat_map.find(key) != key_stat_map.end()) {
+    if (metadata_map.find(key) != metadata_map.end()) {
       ServerThreadList orig_threads = kHashRingUtil->get_responsible_threads(
-          wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-          global_hash_ring_map, local_hash_ring_map, placement, pushers,
+          wt.replication_response_connect_address(), key, is_metadata(key),
+          global_hash_rings, local_hash_rings, metadata_map, pushers,
           kAllTierIds, succeed, seed);
 
       if (succeed) {
@@ -62,27 +59,27 @@ void rep_factor_change_handler(
 
         for (const auto& global : key_rep.global()) {
           if (global.replication_factor() <
-              placement[key].global_replication_map_[global.tier_id()]) {
+              metadata_map[key].global_replication_[global.tier_id()]) {
             decrement = true;
           }
 
-          placement[key].global_replication_map_[global.tier_id()] =
+          metadata_map[key].global_replication_[global.tier_id()] =
               global.replication_factor();
         }
 
         for (const auto& local : key_rep.local()) {
           if (local.replication_factor() <
-              placement[key].local_replication_map_[local.tier_id()]) {
+              metadata_map[key].local_replication_[local.tier_id()]) {
             decrement = true;
           }
 
-          placement[key].local_replication_map_[local.tier_id()] =
+          metadata_map[key].local_replication_[local.tier_id()] =
               local.replication_factor();
         }
 
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-            wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-            global_hash_ring_map, local_hash_ring_map, placement, pushers,
+            wt.replication_response_connect_address(), key, is_metadata(key),
+            global_hash_rings, local_hash_rings, metadata_map, pushers,
             kAllTierIds, succeed, seed);
 
         if (succeed) {
@@ -93,7 +90,7 @@ void rep_factor_change_handler(
 
             // add all the new threads that this key should be sent to
             for (const ServerThread& thread : threads) {
-              addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
+              addr_keyset_map[thread.gossip_connect_address()].insert(key);
             }
           }
 
@@ -101,7 +98,7 @@ void rep_factor_change_handler(
           // has been reduced; if that's not the case, and I am the "first"
           // thread responsible for this key, then I gossip it to the new
           // threads that are responsible for it
-          if (!decrement && orig_threads.begin()->get_id() == wt.get_id()) {
+          if (!decrement && orig_threads.begin()->id() == wt.id()) {
             std::unordered_set<ServerThread, ThreadHash> new_threads;
 
             for (const ServerThread& thread : threads) {
@@ -112,48 +109,48 @@ void rep_factor_change_handler(
             }
 
             for (const ServerThread& thread : new_threads) {
-              addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
+              addr_keyset_map[thread.gossip_connect_address()].insert(key);
             }
           }
         } else {
-          logger->error(
+          log->error(
               "Missing key replication factor in rep factor change routine.");
         }
       } else {
-        logger->error(
+        log->error(
             "Missing key replication factor in rep factor change routine.");
 
         // just update the replication factor
         for (const auto& global : key_rep.global()) {
-          placement[key].global_replication_map_[global.tier_id()] =
+          metadata_map[key].global_replication_[global.tier_id()] =
               global.replication_factor();
         }
 
         for (const auto& local : key_rep.local()) {
-          placement[key].local_replication_map_[local.tier_id()] =
+          metadata_map[key].local_replication_[local.tier_id()] =
               local.replication_factor();
         }
       }
     } else {
       // just update the replication factor
       for (const auto& global : key_rep.global()) {
-        placement[key].global_replication_map_[global.tier_id()] =
+        metadata_map[key].global_replication_[global.tier_id()] =
             global.replication_factor();
       }
 
       for (const auto& local : key_rep.local()) {
-        placement[key].local_replication_map_[local.tier_id()] =
+        metadata_map[key].local_replication_[local.tier_id()] =
             local.replication_factor();
       }
     }
   }
 
-  send_gossip(addr_keyset_map, pushers, serializers, key_stat_map);
+  send_gossip(addr_keyset_map, pushers, serializers, metadata_map);
 
   // remove keys
-  for (const std::string& key : remove_set) {
-    serializers[key_stat_map[key].second]->remove(key);
-    key_stat_map.erase(key);
+  for (const string& key : remove_set) {
+    serializers[metadata_map[key].type_]->remove(key);
+    metadata_map.erase(key);
     local_changeset.erase(key);
   }
 }

@@ -16,9 +16,8 @@
 #define SRC_INCLUDE_REQUESTS_HPP_
 
 template <typename RES>
-bool receive(zmq::socket_t& recv_socket,
-             std::unordered_set<std::string>& request_ids,
-             std::vector<RES>& responses) {
+bool receive(zmq::socket_t& recv_socket, set<string>& request_ids,
+             vector<RES>& responses) {
   zmq::message_t message;
 
   // We allow as many timeouts as there are requests that we made. We may want
@@ -29,9 +28,9 @@ bool receive(zmq::socket_t& recv_socket,
     RES response;
 
     if (recv_socket.recv(&message)) {
-      std::string serialized_resp = kZmqUtil->message_to_string(message);
+      string serialized_resp = kZmqUtil->message_to_string(message);
       response.ParseFromString(serialized_resp);
-      std::string resp_id = response.response_id();
+      string resp_id = response.response_id();
 
       if (request_ids.find(resp_id) != request_ids.end()) {
         request_ids.erase(resp_id);
@@ -57,7 +56,7 @@ bool receive(zmq::socket_t& recv_socket,
 
 template <typename REQ>
 void send_request(const REQ& request, zmq::socket_t& send_socket) {
-  std::string serialized_req;
+  string serialized_req;
   request.SerializeToString(&serialized_req);
   kZmqUtil->send_string(serialized_req, &send_socket);
 }
@@ -67,8 +66,8 @@ RES make_request(const REQ& request, zmq::socket_t& send_socket,
                  zmq::socket_t& recv_socket, bool& succeed) {
   send_request<REQ>(request, send_socket);
 
-  std::vector<RES> responses;
-  std::unordered_set<std::string> req_ids{request.request_id()};
+  vector<RES> responses;
+  set<string> req_ids{request.request_id()};
   succeed = receive<RES>(recv_socket, req_ids, responses);
   return responses[0];
 }

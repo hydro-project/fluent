@@ -16,39 +16,31 @@
 #define SRC_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_
 
 #include "hash_ring.hpp"
-#include "spdlog/spdlog.h"
 
-std::string seed_handler(
-    std::shared_ptr<spdlog::logger> logger,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map);
+string seed_handler(logger log, map<TierId, GlobalHashRing>& global_hash_rings);
 
-void membership_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    SocketCache& pushers,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    unsigned thread_id, Address ip);
+void membership_handler(logger log, string& serialized, SocketCache& pushers,
+                        map<TierId, GlobalHashRing>& global_hash_rings,
+                        unsigned thread_id, Address ip);
 
 void replication_response_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    SocketCache& pushers, RoutingThread& rt,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, KeyInfo>& placement,
-    PendingMap<std::pair<Address, std::string>>& pending_key_request_map,
-    unsigned& seed);
+    logger log, string& serialized, SocketCache& pushers, RoutingThread& rt,
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map,
+    map<Key, vector<pair<Address, string>>>& pending_requests, unsigned& seed);
 
-void replication_change_handler(std::shared_ptr<spdlog::logger> logger,
-                                std::string& serialized, SocketCache& pushers,
-                                std::unordered_map<Key, KeyInfo>& placement,
+void replication_change_handler(logger log, string& serialized,
+                                SocketCache& pushers,
+                                map<Key, KeyMetadata>& metadata_map,
                                 unsigned thread_id, Address ip);
 
-void address_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    SocketCache& pushers, RoutingThread& rt,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, KeyInfo>& placement,
-    PendingMap<std::pair<Address, std::string>>& pending_key_request_map,
-    unsigned& seed);
+void address_handler(logger log, string& serialized, SocketCache& pushers,
+                     RoutingThread& rt,
+                     map<TierId, GlobalHashRing>& global_hash_rings,
+                     map<TierId, LocalHashRing>& local_hash_rings,
+                     map<Key, KeyMetadata>& metadata_map,
+                     map<Key, vector<pair<Address, string>>>& pending_requests,
+                     unsigned& seed);
 
 #endif  // SRC_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_

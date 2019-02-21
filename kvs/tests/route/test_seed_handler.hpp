@@ -15,11 +15,11 @@
 #include "route/routing_handlers.hpp"
 
 TEST_F(RoutingHandlerTest, Seed) {
-  EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
 
-  std::string serialized = seed_handler(logger, global_hash_ring_map);
+  string serialized = seed_handler(log_, global_hash_rings);
 
-  EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
 
   TierMembership membership;
   membership.ParseFromString(serialized);
@@ -28,7 +28,7 @@ TEST_F(RoutingHandlerTest, Seed) {
   EXPECT_EQ(membership.tiers_size(), 1);
   for (const auto& tier : membership.tiers()) {
     for (const auto& other : tier.servers()) {
-      EXPECT_EQ(tier.tier_id(), 1);
+      EXPECT_EQ(tier.tier_id(), kMemoryTierId);
       EXPECT_EQ(other.private_ip(), ip);
       EXPECT_EQ(other.public_ip(), ip);
     }

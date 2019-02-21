@@ -18,7 +18,6 @@
 #include "hash_ring.hpp"
 #include "requests.hpp"
 #include "requests.pb.h"
-#include "spdlog/spdlog.h"
 #include "threads.hpp"
 #include "types.hpp"
 #include "zmq/socket_cache.hpp"
@@ -43,9 +42,8 @@ class KvsClient {
    * @local Whether the client is running within the Kubernetes cluster (true)
    * or not (false)
    */
-  KvsClient(std::vector<Address> addrs, unsigned routing_thread_count,
-            std::string ip, unsigned tid = 0, unsigned timeout = 10000,
-            bool local = false) :
+  KvsClient(vector<Address> addrs, unsigned routing_thread_count, string ip,
+            unsigned tid = 0, unsigned timeout = 10000, bool local = false) :
       route_addrs_(addrs),
       ut_(UserThread(ip, tid)),
       local_(local),
@@ -54,25 +52,25 @@ class KvsClient {
       socket_cache_(SocketCache(&context_, ZMQ_PUSH)),
       key_address_puller_(zmq::socket_t(context_, ZMQ_PULL)),
       response_puller_(zmq::socket_t(context_, ZMQ_PULL)),
-      logger_(spdlog::basic_logger_mt("client_log", "client_log.txt", true)) {
+      log_(spdlog::basic_logger_mt("client_log", "client_log.txt", true)) {
     // initialize logger
-    logger_->flush_on(spdlog::level::info);
+    log_->flush_on(spdlog::level::info);
 
     // set class variables
     local_ = true;
     bad_response_.set_response_id("NULL_ERROR");
 
-    std::hash<std::string> hasher;
+    std::hash<string> hasher;
     seed_ = time(NULL);
     seed_ += hasher(ip);
     seed_ += tid;
-    logger_->info("Random seed is {}.", seed_);
+    log_->info("Random seed is {}.", seed_);
 
     // bind the two sockets we listen on
-    key_address_puller_.bind(ut_.get_key_address_bind_addr());
+    key_address_puller_.bind(ut_.key_address_bind_address());
     key_address_puller_.setsockopt(ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
 
-    response_puller_.bind(ut_.get_request_pulling_bind_addr());
+    response_puller_.bind(ut_.response_bind_address());
     response_puller_.setsockopt(ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
 
     // set the request ID to 0
@@ -90,7 +88,7 @@ class KvsClient {
    * retrying the request or return NULL. Since no trial_limit is specified, we
    * use a default value of 10.
    */
-  bool put(Key key, std::string value) { return put(key, value, 10); }
+  bool put(Key key, string value) { return put(key, value, 10); }
 
   /**
    * Issue a PUT request to the KVS for a last-writer-wins value.
@@ -100,9 +98,10 @@ class KvsClient {
    * retrying the request or return NULL. We attempt this request up to
    * trial_limit times before giving up.
    */
-  bool put(Key key, std::string value, unsigned trial_limit) {
+  bool put(Key key, string value, unsigned trial_limit) {
     KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key, RequestType::PUT);
+    KeyTuple* tuple = prepare_data_request(request, key);
+    request.set_type(RequestType::PUT);
     tuple->set_lattice_type(LatticeType::LWW);
     tuple->set_payload(serialize(generate_timestamp(0), value));
 
@@ -119,9 +118,7 @@ class KvsClient {
    * retrying the request or return NULL. Since no trial_limit is specified, we
    * use a default value of 10.
    */
-  bool put(Key key, std::unordered_set<std::string> value) {
-    return put(key, value, 10);
-  }
+  bool put(Key key, set<string> value) { return put(key, value, 10); }
 
   /**
    * Issue a PUT request to the KVS for a set value.
@@ -131,10 +128,10 @@ class KvsClient {
    * retrying the request or return NULL. We attempt this request up to
    * trial_limit times before giving up.
    */
-  bool put(Key key, std::unordered_set<std::string> value,
-           unsigned trial_limit) {
+  bool put(Key key, set<string> value, unsigned trial_limit) {
     KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key, RequestType::PUT);
+    KeyTuple* tuple = prepare_data_request(request, key);
+    request.set_type(RequestType::PUT);
     tuple->set_lattice_type(LatticeType::SET);
     tuple->set_payload(serialize(value));
 
@@ -151,7 +148,7 @@ class KvsClient {
    * successful. Since no trial_limit is specified, we use a default value of
    * 5.
    */
-  bool put_all(Key key, std::string value) { return put_all(key, value, 5); }
+  bool put_all(Key key, string value) { return put_all(key, value, 5); }
 
   /**
    * Issue a durable PUT request to the KVS with a last-writer-wins value.
@@ -161,14 +158,14 @@ class KvsClient {
    * successful. We attempt this request trial_limit times before giving up.
    * 5.
    */
-  bool put_all(Key key, std::string value, unsigned trial_limit) {
+  bool put_all(Key key, string value, unsigned trial_limit) {
     KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key, RequestType::PUT);
+    KeyTuple* tuple = prepare_data_request(request, key);
+    request.set_type(RequestType::PUT);
     tuple->set_lattice_type(LatticeType::LWW);
     tuple->set_payload(serialize(generate_timestamp(0), value));
 
-    std::vector<KeyResponse> responses =
-        try_multi_request(request, trial_limit);
+    vector<KeyResponse> responses = try_multi_request(request, trial_limit);
 
     return responses.size() != 0;
   }
@@ -181,9 +178,7 @@ class KvsClient {
    * successful. Since no trial_limit is specified, we use a default value of
    * 5.
    */
-  bool put_all(Key key, std::unordered_set<std::string> value) {
-    return put_all(key, value, 5);
-  }
+  bool put_all(Key key, set<string> value) { return put_all(key, value, 5); }
 
   /**
    * Issue a durable PUT request to the KVS with a set value.
@@ -193,16 +188,14 @@ class KvsClient {
    * successful. We attempt this request trial_limit times before giving up.
    * 5.
    */
-  bool put_all(Key key, std::unordered_set<std::string> value,
-               unsigned trial_limit) {
+  bool put_all(Key key, set<string> value, unsigned trial_limit) {
     KeyRequest request;
-    KeyTuple* tuple = prepare_data_request(request, key, RequestType::PUT);
+    KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
     tuple->set_lattice_type(LatticeType::SET);
     tuple->set_payload(serialize(value));
 
-    std::vector<KeyResponse> responses =
-        try_multi_request(request, trial_limit);
+    vector<KeyResponse> responses = try_multi_request(request, trial_limit);
 
     return responses.size() != 0;
   }
@@ -214,7 +207,7 @@ class KvsClient {
    * contactable from our client, we will return an empty string. Since no
    * trial_limit is specified, we use a default value of 10.
    */
-  std::string get(Key key) { return get(key, 10); }
+  string get(Key key) { return get(key, 10); }
 
   /**
    * Issue a GET request to the KVS for a last-writer-wins value.
@@ -223,9 +216,10 @@ class KvsClient {
    * contactable from our client, we will return an empty string. We attempt
    * this request trial_limit times before giving up.
    */
-  std::string get(Key key, unsigned trial_limit) {
+  string get(Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key, RequestType::GET);
+    prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
 
     KeyResponse response = try_request(request, trial_limit);
 
@@ -235,7 +229,7 @@ class KvsClient {
 
     KeyTuple rtuple = response.tuples(0);
     if (rtuple.error() == 1) {
-      logger_->info("Key {} does not exist and could not be retrieved.", key);
+      log_->info("Key {} does not exist and could not be retrieved.", key);
       return "";
     }
 
@@ -250,7 +244,7 @@ class KvsClient {
    * otherwise returns an empty vector. Since no trial_limit is specified, we
    * use a default value of 5.
    */
-  std::vector<std::string> get_all(Key key) { return get_all(key, 5); }
+  vector<string> get_all(Key key) { return get_all(key, 5); }
 
   /**
    * Retrieve all replicas of a key from the KVS for a last-writer-wins value.
@@ -260,13 +254,13 @@ class KvsClient {
    * otherwise returns an empty vector. We attempt this request trial_limit
    * times before giving up.
    */
-  std::vector<std::string> get_all(Key key, unsigned trial_limit) {
+  vector<string> get_all(Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key, RequestType::GET);
+    prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
 
-    std::vector<KeyResponse> responses =
-        try_multi_request(request, trial_limit);
-    std::vector<std::string> result;
+    vector<KeyResponse> responses = try_multi_request(request, trial_limit);
+    vector<string> result;
 
     if (responses.size() == 0) {
       return result;
@@ -275,7 +269,7 @@ class KvsClient {
     for (KeyResponse response : responses) {
       KeyTuple tuple = response.tuples(0);
       if (tuple.error() == 1) {
-        logger_->info("Key {} does not exist and could not be retrieved.", key);
+        log_->info("Key {} does not exist and could not be retrieved.", key);
         result.clear();
         return result;
       }
@@ -293,7 +287,7 @@ class KvsClient {
    * contactable from our client, we will return an empty string. Since no
    * trial_limit is specified, we use a default value of 10.
    */
-  std::unordered_set<std::string> get_set(Key key) { return get_set(key, 10); }
+  set<string> get_set(Key key) { return get_set(key, 10); }
 
   /**
    * Issue a GET request to the KVS for a set value.
@@ -302,10 +296,11 @@ class KvsClient {
    * contactable from our client, we will return an empty string. We attempt
    * this request trial_limit times before giving up.
    */
-  std::unordered_set<std::string> get_set(Key key, unsigned trial_limit) {
+  set<string> get_set(Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key, RequestType::GET);
-    std::unordered_set<std::string> result;
+    prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
+    set<string> result;
 
     KeyResponse response = try_request(request, trial_limit);
 
@@ -315,12 +310,12 @@ class KvsClient {
 
     KeyTuple rtuple = response.tuples(0);
     if (rtuple.error() == 1) {
-      logger_->info("Key {} does not exist and could not be retrieved.", key);
+      log_->info("Key {} does not exist and could not be retrieved.", key);
       return result;
     }
 
     SetValue set_result = deserialize_set(rtuple.payload());
-    for (const std::string& val : set_result.values()) {
+    for (const string& val : set_result.values()) {
       result.insert(val);
     }
 
@@ -335,9 +330,7 @@ class KvsClient {
    * otherwise returns an empty vector. Since no trial_limit is specified, we
    * use a default value of 5.
    */
-  std::vector<std::unordered_set<std::string>> get_set_all(Key key) {
-    return get_set_all(key, 5);
-  }
+  vector<set<string>> get_set_all(Key key) { return get_set_all(key, 5); }
 
   /**
    * Retrieve all replicas of a key from the KVS for a set value.
@@ -347,14 +340,13 @@ class KvsClient {
    * otherwise returns an empty vector. We attempt this request trial_limit
    * times before giving up.
    */
-  std::vector<std::unordered_set<std::string>> get_set_all(
-      Key key, unsigned trial_limit) {
+  vector<set<string>> get_set_all(Key key, unsigned trial_limit) {
     KeyRequest request;
-    prepare_data_request(request, key, RequestType::GET);
+    prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
 
-    std::vector<KeyResponse> responses =
-        try_multi_request(request, trial_limit);
-    std::vector<std::unordered_set<std::string>> result;
+    vector<KeyResponse> responses = try_multi_request(request, trial_limit);
+    vector<set<string>> result;
 
     if (responses.size() == 0) {
       return result;
@@ -363,15 +355,15 @@ class KvsClient {
     for (KeyResponse response : responses) {
       KeyTuple tuple = response.tuples(0);
       if (tuple.error() == 1) {
-        logger_->info("Key {} does not exist and could not be retrieved.", key);
+        log_->info("Key {} does not exist and could not be retrieved.", key);
         result.clear();
         return result;
       }
 
       SetValue set_result = deserialize_set(tuple.payload());
-      std::unordered_set<std::string> deserialized;
+      set<string> deserialized;
 
-      for (const std::string& val : set_result.values()) {
+      for (const string& val : set_result.values()) {
         deserialized.insert(val);
       }
 
@@ -384,7 +376,7 @@ class KvsClient {
   /**
    * Set the logger used by the client.
    */
-  void set_logger(std::shared_ptr<spdlog::logger> logger) { logger_ = logger; }
+  void set_logger(logger log) { log_ = log; }
 
   /**
    * Clears the key address cache held by this client.
@@ -409,24 +401,23 @@ class KvsClient {
    * invalidation). If there are no issues, it returns the set of responses to
    * the respective implementations for them to deal with.
    */
-  std::vector<KeyResponse> try_multi_request(KeyRequest request,
-                                             unsigned trial_limit) {
-    std::vector<KeyResponse> responses;
+  vector<KeyResponse> try_multi_request(KeyRequest request,
+                                        unsigned trial_limit) {
+    vector<KeyResponse> responses;
     if (trial_limit == 0) {
       return responses;
     }
 
     // we only get NULL back for the worker thread if the query to the routing
     // tier timed out, which should never happen.
-    std::unordered_set<Address> workers =
-        get_all_worker_threads(request.tuples(0).key());
+    set<Address> workers = get_all_worker_threads(request.tuples(0).key());
     if (workers.size() == 0) {
       return responses;
     }
 
-    std::unordered_set<std::string> request_ids;
+    set<string> request_ids;
     for (const Address& worker : workers) {
-      std::string rid_str = get_request_id();
+      string rid_str = get_request_id();
       request.set_request_id(rid_str);
       request_ids.insert(rid_str);
 
@@ -437,7 +428,7 @@ class KvsClient {
         receive<KeyResponse>(response_puller_, request_ids, responses);
 
     if (!succeed) {
-      logger_->info(
+      log_->info(
           "Request timed out while querying worker. Clearing address cache due "
           "to possible membership change and retrying request.");
       for (Address worker : workers) {
@@ -488,7 +479,7 @@ class KvsClient {
         request, socket_cache_[worker], response_puller_, succeed);
 
     while (!succeed) {
-      logger_->info(
+      log_->info(
           "Request timed out while querying worker. Clearing address cache due "
           "to possible membership change and retrying request.");
       invalidate_cache_for_worker(worker);
@@ -513,7 +504,7 @@ class KvsClient {
   bool check_tuple(KeyTuple tuple) {
     Key key = tuple.key();
     if (tuple.error() == 2) {
-      logger_->info(
+      log_->info(
           "Server ordered invalidation of key address cache for key {}. "
           "Retrying request.",
           key);
@@ -525,8 +516,8 @@ class KvsClient {
     if (tuple.has_invalidate() && tuple.invalidate()) {
       invalidate_cache_for_key(key, tuple);
 
-      logger_->info(
-          "Server ordered invalidation of key address cache for key {}", key);
+      log_->info("Server ordered invalidation of key address cache for key {}",
+                 key);
     }
 
     return false;
@@ -540,7 +531,7 @@ class KvsClient {
    */
   void invalidate_cache_for_key(Key key, KeyTuple tuple) {
     key_address_cache_.erase(key);
-    std::unordered_set<Address> new_cache;
+    set<Address> new_cache;
 
     for (const Address address : tuple.addresses()) {
       new_cache.insert(address);
@@ -556,14 +547,14 @@ class KvsClient {
    * the key we were querying and any other key.
    */
   void invalidate_cache_for_worker(Address worker) {
-    std::vector<std::string> tokens;
+    vector<string> tokens;
     split(worker, ':', tokens);
-    std::string signature = tokens[1];
-    std::unordered_set<Key> remove_set;
+    string signature = tokens[1];
+    set<Key> remove_set;
 
     for (const auto& key_pair : key_address_cache_) {
-      for (const std::string& address : key_pair.second) {
-        std::vector<std::string> v;
+      for (const string& address : key_pair.second) {
+        vector<string> v;
         split(address, ':', v);
 
         if (v[1] == signature) {
@@ -572,7 +563,7 @@ class KvsClient {
       }
     }
 
-    for (const std::string& key : remove_set) {
+    for (const string& key : remove_set) {
       key_address_cache_.erase(key);
     }
   }
@@ -583,11 +574,9 @@ class KvsClient {
    * KeyRequest and also returns a pointer to the KeyTuple contained by this
    * request.
    */
-  KeyTuple* prepare_data_request(KeyRequest& request, Key& key,
-                                 RequestType type) {
+  KeyTuple* prepare_data_request(KeyRequest& request, Key& key) {
     request.set_request_id(get_request_id());
-    request.set_response_address(ut_.get_request_pulling_connect_addr());
-    request.set_type(type);
+    request.set_response_address(ut_.response_connect_address());
 
     KeyTuple* tp = request.add_tuples();
     tp->set_key(key);
@@ -601,13 +590,13 @@ class KvsClient {
    * threads, a request is sent to the routing tier. If the query times out,
    * NULL is returned.
    */
-  std::unordered_set<Address> get_all_worker_threads(Key key) {
+  set<Address> get_all_worker_threads(Key key) {
     if (key_address_cache_.find(key) == key_address_cache_.end() ||
         key_address_cache_[key].size() == 0) {
-      std::unordered_set<Address> addresses = query_routing(key);
+      set<Address> addresses = query_routing(key);
 
       if (addresses.size() == 0) {
-        logger_->error(
+        log_->error(
             "Request to routing tier unexpectedly timed out. This should never "
             "happen!");
         return addresses;
@@ -624,7 +613,7 @@ class KvsClient {
    * worker address instead of all of them.
    */
   Address get_worker_thread(Key key) {
-    std::unordered_set<Address> local_cache = get_all_worker_threads(key);
+    set<Address> local_cache = get_all_worker_threads(key);
 
     // This will be empty if the request timed out in the get_all_worker_threads
     // method.
@@ -645,8 +634,7 @@ class KvsClient {
 
     if (local_) {
       Address routing_ip = route_addrs_[rand_r(&seed_) % route_addrs_.size()];
-      return RoutingThread(routing_ip, thread_id)
-          .get_key_address_connect_addr();
+      return RoutingThread(routing_ip, thread_id).key_address_connect_address();
     } else {
       Address routing_ip = route_addrs_[0];
 
@@ -661,7 +649,7 @@ class KvsClient {
    * cluster -- in that case, we simply retry the request because we are
    * waiting for more nodes to join.
    */
-  std::unordered_set<Address> query_routing(Key key) {
+  set<Address> query_routing(Key key) {
     int count = 0;
 
     // define protobuf request/response objects
@@ -670,10 +658,10 @@ class KvsClient {
 
     // populate request with response address, request id, etc.
     request.set_request_id(get_request_id());
-    request.set_response_address(ut_.get_key_address_connect_addr());
+    request.set_response_address(ut_.key_address_connect_address());
     request.add_keys(key);
 
-    std::unordered_set<Address> result;
+    set<Address> result;
 
     int error = -1;
 
@@ -705,8 +693,8 @@ class KvsClient {
       count++;
     }
 
-    // construct and return the unordered_set of IP adddresses.
-    for (const std::string& ip : response.addresses(0).ips()) {
+    // construct and return the set of IP adddresses.
+    for (const string& ip : response.addresses(0).ips()) {
       result.insert(ip);
     }
 
@@ -716,9 +704,9 @@ class KvsClient {
   /**
    * Generates a unique request ID.
    */
-  std::string get_request_id() {
+  string get_request_id() {
     if (++rid_ % 10000 == 0) rid_ = 0;
-    return ut_.get_ip() + ":" + std::to_string(ut_.get_tid()) + "_" +
+    return ut_.ip() + ":" + std::to_string(ut_.tid()) + "_" +
            std::to_string(rid_++);
   }
 
@@ -728,7 +716,7 @@ class KvsClient {
 
  private:
   // the set of routing addresses outside the cluster
-  std::vector<std::string> route_addrs_;
+  vector<string> route_addrs_;
 
   // whether we are running this client in local or remote mode;
   bool local_;
@@ -756,10 +744,10 @@ class KvsClient {
   zmq::socket_t response_puller_;
 
   // cache for retrieved worker addresses organized by key
-  std::unordered_map<Key, std::unordered_set<Address>> key_address_cache_;
+  map<Key, set<Address>> key_address_cache_;
 
   // class logger
-  std::shared_ptr<spdlog::logger> logger_;
+  logger log_;
 
   // create a default response for a local error (ie, timeout or trial limit)
   KeyResponse bad_response_;

@@ -20,24 +20,24 @@ ZmqUtilInterface* kZmqUtil = &mock_zmq_util;
 MockHashRingUtil mock_hash_ring_util;
 HashRingUtilInterface* kHashRingUtil = &mock_hash_ring_util;
 
-std::shared_ptr<spdlog::logger> logger =
-    spdlog::basic_logger_mt("mock_logger", "mock_log.txt", true);
+std::shared_ptr<spdlog::logger> log_ =
+    spdlog::basic_logger_mt("mock_log", "mock_log.txt", true);
 
 class RoutingHandlerTest : public ::testing::Test {
  protected:
   Address ip = "127.0.0.1";
   unsigned thread_id = 0;
-  std::unordered_map<unsigned, GlobalHashRing> global_hash_ring_map;
-  std::unordered_map<unsigned, LocalHashRing> local_hash_ring_map;
-  std::unordered_map<Key, KeyInfo> placement;
-  PendingMap<std::pair<Address, std::string>> pending_key_request_map;
+  map<TierId, GlobalHashRing> global_hash_rings;
+  map<TierId, LocalHashRing> local_hash_rings;
+  map<Key, KeyMetadata> metadata_map;
+  map<Key, vector<pair<Address, string>>> pending_requests;
   zmq::context_t context;
   SocketCache pushers = SocketCache(&context, ZMQ_PUSH);
   RoutingThread rt;
 
   RoutingHandlerTest() {
     rt = RoutingThread(ip, thread_id);
-    global_hash_ring_map[1].insert(ip, ip, 0, thread_id);
+    global_hash_rings[kMemoryTierId].insert(ip, ip, 0, thread_id);
   }
 
  public:
@@ -54,17 +54,18 @@ class RoutingHandlerTest : public ::testing::Test {
     mock_zmq_util.sent_messages.clear();
   }
 
-  std::vector<std::string> get_zmq_messages() {
-    return mock_zmq_util.sent_messages;
-  }
+  vector<string> get_zmq_messages() { return mock_zmq_util.sent_messages; }
 
-  void warmup_placement_to_defaults(std::vector<std::string> keys) {
-    for (std::string key : keys) {
-      placement[key].global_replication_map_[1] =
+  void warmup_metadata_map_to_defaults(vector<string> keys) {
+    for (string key : keys) {
+      metadata_map[key].global_replication_[kMemoryTierId] =
           kDefaultGlobalMemoryReplication;
-      placement[key].global_replication_map_[2] = kDefaultGlobalEbsReplication;
-      placement[key].local_replication_map_[1] = kDefaultLocalReplication;
-      placement[key].local_replication_map_[2] = kDefaultLocalReplication;
+      metadata_map[key].global_replication_[kEbsTierId] =
+          kDefaultGlobalEbsReplication;
+      metadata_map[key].local_replication_[kMemoryTierId] =
+          kDefaultLocalReplication;
+      metadata_map[key].local_replication_[kEbsTierId] =
+          kDefaultLocalReplication;
     }
   }
 };

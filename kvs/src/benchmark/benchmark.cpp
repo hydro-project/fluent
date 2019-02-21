@@ -15,7 +15,6 @@
 #include <stdlib.h>
 
 #include "client.hpp"
-#include "spdlog/spdlog.h"
 #include "yaml-cpp/yaml.h"
 
 unsigned kBenchmarkThreadNum;
@@ -38,7 +37,7 @@ double get_zipf_prob(unsigned rank, double skew, double base) {
 }
 
 int sample(int n, unsigned& seed, double base,
-           std::unordered_map<unsigned, double>& sum_probs) {
+           map<unsigned, double>& sum_probs) {
   double z;            // Uniform random number (0 < z < 1)
   int zipf_value;      // Computed exponential value to be returned
   int i;               // Loop counter
@@ -70,47 +69,46 @@ int sample(int n, unsigned& seed, double base,
   return zipf_value;
 }
 
-std::string generate_key(unsigned n) {
-  return std::string(8 - std::to_string(n).length(), '0') + std::to_string(n);
+string generate_key(unsigned n) {
+  return string(8 - std::to_string(n).length(), '0') + std::to_string(n);
 }
 
-void run(const unsigned& thread_id,
-         const std::vector<Address>& routing_addresses,
-         const std::vector<MonitoringThread>& monitoring_threads,
-         const Address& ip, const bool& local) {
-  KvsClient client(routing_addresses, kRoutingThreadCount, ip, thread_id, 10000,
+void run(const unsigned& thread_id, const vector<Address>& routing_ips,
+         const vector<MonitoringThread>& monitoring_threads, const Address& ip,
+         const bool& local) {
+  KvsClient client(routing_ips, kRoutingThreadCount, ip, thread_id, 10000,
                    local);
-  std::string log_file = "log_" + std::to_string(thread_id) + ".txt";
-  std::string logger_name = "benchmark_log_" + std::to_string(thread_id);
-  auto logger = spdlog::basic_logger_mt(logger_name, log_file, true);
-  logger->flush_on(spdlog::level::info);
+  string log_file = "log_" + std::to_string(thread_id) + ".txt";
+  string logger_name = "benchmark_log_" + std::to_string(thread_id);
+  auto log = spdlog::basic_logger_mt(logger_name, log_file, true);
+  log->flush_on(spdlog::level::info);
 
-  client.set_logger(logger);
+  client.set_logger(log);
   unsigned seed = client.get_seed();
 
   // observed per-key avg latency
-  std::unordered_map<Key, std::pair<double, unsigned>> observed_latency;
+  map<Key, std::pair<double, unsigned>> observed_latency;
 
   // responsible for pulling benchmark commands
   zmq::context_t& context = *(client.get_context());
   SocketCache pushers(&context, ZMQ_PUSH);
   zmq::socket_t command_puller(context, ZMQ_PULL);
   command_puller.bind("tcp://*:" +
-                      std::to_string(thread_id + kBenchmarkCommandBasePort));
+                      std::to_string(thread_id + kBenchmarkCommandPort));
 
-  std::vector<zmq::pollitem_t> pollitems = {
+  vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(command_puller), 0, ZMQ_POLLIN, 0}};
 
   while (true) {
     kZmqUtil->poll(-1, &pollitems);
 
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      std::string msg = kZmqUtil->recv_string(&command_puller);
-      logger->info("Received benchmark command: {}", msg);
+      string msg = kZmqUtil->recv_string(&command_puller);
+      log->info("Received benchmark command: {}", msg);
 
-      std::vector<std::string> v;
+      vector<string> v;
       split(msg, ':', v);
-      std::string mode = v[0];
+      string mode = v[0];
 
       if (mode == "CACHE") {
         unsigned num_keys = stoi(v[1]);
@@ -120,7 +118,7 @@ void run(const unsigned& thread_id,
 
         for (unsigned i = 1; i <= num_keys; i++) {
           if (i % 50000 == 0) {
-            logger->info("Warming up cache for key {}.", i);
+            log->info("Warming up cache for key {}.", i);
           }
 
           client.get(generate_key(i));
@@ -129,20 +127,20 @@ void run(const unsigned& thread_id,
         auto warmup_time = std::chrono::duration_cast<std::chrono::seconds>(
                                std::chrono::system_clock::now() - warmup_start)
                                .count();
-        logger->info("Cache warm-up took {} seconds.", warmup_time);
+        log->info("Cache warm-up took {} seconds.", warmup_time);
       } else if (mode == "LOAD") {
-        std::string type = v[1];
+        string type = v[1];
         unsigned num_keys = stoi(v[2]);
         unsigned length = stoi(v[3]);
         unsigned report_period = stoi(v[4]);
         unsigned time = stoi(v[5]);
         double zipf = stod(v[6]);
 
-        std::unordered_map<unsigned, double> sum_probs;
+        map<unsigned, double> sum_probs;
         double base;
 
         if (zipf > 0) {
-          logger->info("Zipf coefficient is {}.", zipf);
+          log->info("Zipf coefficient is {}.", zipf);
           base = get_base(num_keys, zipf);
           sum_probs[0] = 0;
 
@@ -150,7 +148,7 @@ void run(const unsigned& thread_id,
             sum_probs[i] = sum_probs[i - 1] + base / pow((double)i, zipf);
           }
         } else {
-          logger->info("Using a uniform random distribution.");
+          log->info("Using a uniform random distribution.");
         }
 
         size_t count = 0;
@@ -177,12 +175,12 @@ void run(const unsigned& thread_id,
             client.get(key);
             count += 1;
           } else if (type == "P") {
-            client.put(key, std::string(length, 'a'));
+            client.put(key, string(length, 'a'));
             count += 1;
           } else if (type == "M") {
             auto req_start = std::chrono::system_clock::now();
 
-            client.put(key, std::string(length, 'a'));
+            client.put(key, string(length, 'a'));
             client.get(key);
             count += 2;
 
@@ -205,7 +203,7 @@ void run(const unsigned& thread_id,
               observed_latency[key].second += 1;
             }
           } else {
-            logger->info("{} is an invalid request type.", type);
+            log->info("{} is an invalid request type.", type);
           }
 
           epoch_end = std::chrono::system_clock::now();
@@ -216,8 +214,8 @@ void run(const unsigned& thread_id,
           // report throughput every report_period seconds
           if (time_elapsed >= report_period) {
             double throughput = (double)count / (double)time_elapsed;
-            logger->info("[Epoch {}] Throughput is {} ops/seconds.", epoch,
-                         throughput);
+            log->info("[Epoch {}] Throughput is {} ops/seconds.", epoch,
+                      throughput);
             epoch += 1;
 
             auto latency = (double)1000000 / throughput;
@@ -235,13 +233,13 @@ void run(const unsigned& thread_id,
               }
             }
 
-            std::string serialized_latency;
+            string serialized_latency;
             feedback.SerializeToString(&serialized_latency);
 
             for (const MonitoringThread& thread : monitoring_threads) {
               kZmqUtil->send_string(
                   serialized_latency,
-                  &pushers[thread.get_latency_report_connect_addr()]);
+                  &pushers[thread.latency_report_connect_address()]);
             }
 
             count = 0;
@@ -258,19 +256,19 @@ void run(const unsigned& thread_id,
           }
         }
 
-        logger->info("Finished");
+        log->info("Finished");
         UserFeedback feedback;
 
         feedback.set_uid(ip + ":" + std::to_string(thread_id));
         feedback.set_finish(true);
 
-        std::string serialized_latency;
+        string serialized_latency;
         feedback.SerializeToString(&serialized_latency);
 
         for (const MonitoringThread& thread : monitoring_threads) {
           kZmqUtil->send_string(
               serialized_latency,
-              &pushers[thread.get_latency_report_connect_addr()]);
+              &pushers[thread.latency_report_connect_address()]);
         }
       } else if (mode == "WARM") {
         unsigned num_keys = stoi(v[1]);
@@ -285,18 +283,18 @@ void run(const unsigned& thread_id,
 
         for (unsigned i = start; i < end; i++) {
           if (i % 50000 == 0) {
-            logger->info("Creating key {}.", i);
+            log->info("Creating key {}.", i);
           }
 
-          client.put(generate_key(i), std::string(length, 'a'));
+          client.put(generate_key(i), string(length, 'a'));
         }
 
         auto warmup_time = std::chrono::duration_cast<std::chrono::seconds>(
                                std::chrono::system_clock::now() - warmup_start)
                                .count();
-        logger->info("Warming up data took {} seconds.", warmup_time);
+        log->info("Warming up data took {} seconds.", warmup_time);
       } else {
-        logger->info("{} is an invalid mode.", mode);
+        log->info("{} is an invalid mode.", mode);
       }
     }
   }
@@ -311,10 +309,10 @@ int main(int argc, char* argv[]) {
   // read the YAML conf
   YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
   YAML::Node user = conf["user"];
-  Address ip = user["ip"].as<std::string>();
+  Address ip = user["ip"].as<string>();
 
-  std::vector<MonitoringThread> monitoring_threads;
-  std::vector<Address> routing_addresses;
+  vector<MonitoringThread> monitoring_threads;
+  vector<Address> routing_ips;
 
   YAML::Node monitoring = user["monitoring"];
   for (const YAML::Node& node : monitoring) {
@@ -326,26 +324,26 @@ int main(int argc, char* argv[]) {
   kBenchmarkThreadNum = threads["benchmark"].as<int>();
   kDefaultLocalReplication = conf["replication"]["local"].as<unsigned>();
 
-  std::vector<std::thread> benchmark_threads;
+  vector<std::thread> benchmark_threads;
 
   bool local;
   if (YAML::Node elb = user["routing-elb"]) {
-    routing_addresses.push_back(elb.as<std::string>());
+    routing_ips.push_back(elb.as<string>());
     local = false;
   } else {
     YAML::Node routing = user["routing"];
     local = true;
 
     for (const YAML::Node& node : routing) {
-      routing_addresses.push_back(node.as<Address>());
+      routing_ips.push_back(node.as<Address>());
     }
   }
 
   // NOTE: We create a new client for every single thread.
   for (unsigned thread_id = 1; thread_id < kBenchmarkThreadNum; thread_id++) {
-    benchmark_threads.push_back(std::thread(run, thread_id, routing_addresses,
+    benchmark_threads.push_back(std::thread(run, thread_id, routing_ips,
                                             monitoring_threads, ip, local));
   }
 
-  run(0, routing_addresses, monitoring_threads, ip, local);
+  run(0, routing_ips, monitoring_threads, ip, local);
 }

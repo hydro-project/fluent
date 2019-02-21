@@ -15,23 +15,22 @@
 #include "monitor/monitoring_utils.hpp"
 #include "monitor/policies.hpp"
 
-void storage_policy(
-    std::shared_ptr<spdlog::logger> logger,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::chrono::time_point<std::chrono::system_clock>& grace_start,
-    SummaryStats& ss, unsigned& memory_node_number, unsigned& ebs_node_number,
-    unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    bool& removing_ebs_node, Address management_address, MonitoringThread& mt,
-    std::unordered_map<Address, unsigned>& departing_node_map,
-    SocketCache& pushers) {
+void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
+                    TimePoint& grace_start, SummaryStats& ss,
+                    unsigned& memory_node_number, unsigned& ebs_node_number,
+                    unsigned& adding_memory_node, unsigned& adding_ebs_node,
+                    bool& removing_ebs_node, Address management_ip,
+                    MonitoringThread& mt,
+                    map<Address, unsigned>& departing_node_map,
+                    SocketCache& pushers) {
   // check storage consumption and trigger elasticity if necessary
   if (adding_memory_node == 0 && ss.required_memory_node > memory_node_number) {
     auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                             std::chrono::system_clock::now() - grace_start)
                             .count();
     if (time_elapsed > kGracePeriod) {
-      add_node(logger, "memory", kNodeAdditionBatchSize, adding_memory_node,
-               pushers, management_address);
+      add_node(log, "memory", kNodeAdditionBatchSize, adding_memory_node,
+               pushers, management_ip);
     }
   }
 
@@ -40,8 +39,8 @@ void storage_policy(
                             std::chrono::system_clock::now() - grace_start)
                             .count();
     if (time_elapsed > kGracePeriod) {
-      add_node(logger, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
-               management_address);
+      add_node(log, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
+               management_ip);
     }
   }
 
@@ -55,10 +54,10 @@ void storage_policy(
 
     if (time_elapsed > kGracePeriod) {
       // pick a random ebs node and send remove node command
-      auto node = next(global_hash_ring_map[2].begin(),
-                       rand() % global_hash_ring_map[2].size())
+      auto node = next(global_hash_rings[kEbsTierId].begin(),
+                       rand() % global_hash_rings[kEbsTierId].size())
                       ->second;
-      remove_node(logger, node, "ebs", removing_ebs_node, pushers,
+      remove_node(log, node, "ebs", removing_ebs_node, pushers,
                   departing_node_map, mt);
     }
   }

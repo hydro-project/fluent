@@ -14,28 +14,27 @@
 
 #include "route/routing_handlers.hpp"
 
-std::string seed_handler(
-    std::shared_ptr<spdlog::logger> logger,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map) {
-  logger->info("Received an address request.");
+string seed_handler(logger log,
+                    map<TierId, GlobalHashRing>& global_hash_rings) {
+  log->info("Received an address request.");
 
   TierMembership membership;
 
-  for (const auto& global_pair : global_hash_ring_map) {
-    unsigned tier_id = global_pair.first;
-    auto hash_ring = global_pair.second;
+  for (const auto& pair : global_hash_rings) {
+    TierId tid = pair.first;
+    GlobalHashRing hash_ring = pair.second;
 
     TierMembership_Tier* tier = membership.add_tiers();
-    tier->set_tier_id(tier_id);
+    tier->set_tier_id(tid);
 
     for (const ServerThread& st : hash_ring.get_unique_servers()) {
       auto server = tier->add_servers();
-      server->set_private_ip(st.get_private_ip());
-      server->set_public_ip(st.get_public_ip());
+      server->set_private_ip(st.private_ip());
+      server->set_public_ip(st.public_ip());
     }
   }
 
-  std::string serialized;
+  string serialized;
   membership.SerializeToString(&serialized);
   return serialized;
 }

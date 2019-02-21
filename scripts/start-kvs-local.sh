@@ -31,7 +31,7 @@ cp conf/kvs-example.yml conf/kvs-config.yml
 MPID=$!
 ./build/kvs/src/route/flroute &
 RPID=$!
-export SERVER_TYPE=1
+export SERVER_TYPE="memory"
 ./build/kvs/src/kvs/flkvs &
 SPID=$!
 
