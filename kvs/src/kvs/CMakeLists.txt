@@ -21,8 +21,8 @@ SET(KVS_SOURCE
   self_depart_handler.cpp
   user_request_handler.cpp
   gossip_handler.cpp
-  rep_factor_response_handler.cpp
-  rep_factor_change_handler.cpp
+  replication_response_handler.cpp
+  replication_change_handler.cpp
   utils.cpp)
 
 ADD_EXECUTABLE(flkvs ${KVS_SOURCE})

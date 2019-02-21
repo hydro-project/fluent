@@ -16,44 +16,44 @@
 
 TEST_F(RoutingHandlerTest, ReplicationChange) {
   kRoutingThreadCount = 3;
-  std::vector<std::string> keys = {"key0, key1, key2"};
-  warmup_placement_to_defaults(keys);
+  vector<string> keys = {"key0, key1, key2"};
+  warmup_metadata_map_to_defaults(keys);
 
   ReplicationFactorUpdate update;
-  for (std::string key : keys) {
+  for (string key : keys) {
     ReplicationFactor* rf = update.add_key_reps();
     rf->set_key(key);
 
-    for (unsigned i = 1; i < 3; i++) {
+    for (unsigned tier_id : kAllTierIds) {
       Replication* rep_global = rf->add_global();
-      rep_global->set_tier_id(i);
+      rep_global->set_tier_id(tier_id);
       rep_global->set_replication_factor(2);
     }
 
-    for (unsigned i = 1; i < 3; i++) {
+    for (unsigned tier_id : kAllTierIds) {
       Replication* rep_local = rf->add_local();
-      rep_local->set_tier_id(i);
+      rep_local->set_tier_id(tier_id);
       rep_local->set_replication_factor(3);
     }
   }
 
-  std::string serialized;
+  string serialized;
   update.SerializeToString(&serialized);
 
-  replication_change_handler(logger, serialized, pushers, placement, thread_id,
+  replication_change_handler(log_, serialized, pushers, metadata_map, thread_id,
                              ip);
 
-  std::vector<std::string> messages = get_zmq_messages();
+  vector<string> messages = get_zmq_messages();
 
   EXPECT_EQ(messages.size(), 2);
   for (unsigned i = 0; i < messages.size(); i++) {
     EXPECT_EQ(messages[i], serialized);
   }
 
-  for (std::string key : keys) {
-    EXPECT_EQ(placement[key].global_replication_map_[1], 2);
-    EXPECT_EQ(placement[key].global_replication_map_[2], 2);
-    EXPECT_EQ(placement[key].local_replication_map_[1], 3);
-    EXPECT_EQ(placement[key].local_replication_map_[2], 3);
+  for (string key : keys) {
+    EXPECT_EQ(metadata_map[key].global_replication_[kMemoryTierId], 2);
+    EXPECT_EQ(metadata_map[key].global_replication_[kEbsTierId], 2);
+    EXPECT_EQ(metadata_map[key].local_replication_[kMemoryTierId], 3);
+    EXPECT_EQ(metadata_map[key].local_replication_[kEbsTierId], 3);
   }
 }

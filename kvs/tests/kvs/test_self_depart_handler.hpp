@@ -16,23 +16,22 @@
 
 TEST_F(ServerHandlerTest, SelfDepart) {
   unsigned seed = 0;
-  std::vector<Address> routing_address;
-  std::vector<Address> monitoring_address;
+  vector<Address> routing_ips;
+  vector<Address> monitoring_ips;
 
-  EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
-  EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 1);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 
-  std::string serialized = "tcp://127.0.0.2:6560";
+  string serialized = "tcp://127.0.0.2:6560";
 
-  self_depart_handler(thread_id, seed, ip, ip, logger, serialized,
-                      global_hash_ring_map, local_hash_ring_map, key_stat_map,
-                      placement, routing_address, monitoring_address, wt,
-                      pushers, serializers);
+  self_depart_handler(thread_id, seed, ip, ip, log_, serialized,
+                      global_hash_rings, local_hash_rings, metadata_map,
+                      routing_ips, monitoring_ips, wt, pushers, serializers);
 
-  EXPECT_EQ(global_hash_ring_map[1].size(), 0);
-  EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 0);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 0);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 0);
 
-  std::vector<std::string> zmq_messages = get_zmq_messages();
+  vector<string> zmq_messages = get_zmq_messages();
   EXPECT_EQ(zmq_messages.size(), 1);
   EXPECT_EQ(zmq_messages[0], ip + "_" + ip + "_" + std::to_string(kSelfTierId));
 }

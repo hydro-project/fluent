@@ -14,11 +14,10 @@
 
 #include "monitor/monitoring_handlers.hpp"
 
-void feedback_handler(std::string& serialized,
-                      std::unordered_map<std::string, double>& user_latency,
-                      std::unordered_map<std::string, double>& user_throughput,
-                      std::unordered_map<Key, std::pair<double, unsigned>>&
-                          latency_miss_ratio_map) {
+void feedback_handler(
+    string& serialized, map<string, double>& user_latency,
+    map<string, double>& user_throughput,
+    map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map) {
   UserFeedback fb;
   fb.ParseFromString(serialized);
 

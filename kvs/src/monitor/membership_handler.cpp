@@ -15,68 +15,65 @@
 #include "monitor/monitoring_handlers.hpp"
 
 void membership_handler(
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    unsigned& adding_memory_node, unsigned& adding_ebs_node,
-    std::chrono::time_point<std::chrono::system_clock>& grace_start,
-    std::vector<Address>& routing_address, StorageStat& memory_tier_storage,
-    StorageStat& ebs_tier_storage, OccupancyStats& memory_tier_occupancy,
-    OccupancyStats& ebs_tier_occupancy,
-    std::unordered_map<Key, std::unordered_map<Address, unsigned>>&
-        key_access_frequency) {
-  std::vector<std::string> v;
+    logger log, string& serialized,
+    map<TierId, GlobalHashRing>& global_hash_rings, unsigned& new_memory_count,
+    unsigned& new_ebs_count, TimePoint& grace_start,
+    vector<Address>& routing_ips, StorageStats& memory_storage,
+    StorageStats& ebs_storage, OccupancyStats& memory_occupancy,
+    OccupancyStats& ebs_occupancy,
+    map<Key, map<Address, unsigned>>& key_access_frequency) {
+  vector<string> v;
 
   split(serialized, ':', v);
-  std::string type = v[0];
+  string type = v[0];
   unsigned tier = stoi(v[1]);
   Address new_server_public_ip = v[2];
   Address new_server_private_ip = v[3];
 
   if (type == "join") {
-    logger->info("Received join from server {}/{} in tier {}.",
-                 new_server_public_ip, new_server_private_ip,
-                 std::to_string(tier));
+    log->info("Received join from server {}/{} in tier {}.",
+              new_server_public_ip, new_server_private_ip,
+              std::to_string(tier));
     if (tier == 1) {
-      global_hash_ring_map[tier].insert(new_server_public_ip,
-                                        new_server_private_ip, 0, 0);
+      global_hash_rings[tier].insert(new_server_public_ip,
+                                     new_server_private_ip, 0, 0);
 
-      if (adding_memory_node > 0) {
-        adding_memory_node -= 1;
+      if (new_memory_count > 0) {
+        new_memory_count -= 1;
       }
 
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();
     } else if (tier == 2) {
-      global_hash_ring_map[tier].insert(new_server_public_ip,
-                                        new_server_private_ip, 0, 0);
+      global_hash_rings[tier].insert(new_server_public_ip,
+                                     new_server_private_ip, 0, 0);
 
-      if (adding_ebs_node > 0) {
-        adding_ebs_node -= 1;
+      if (new_ebs_count > 0) {
+        new_ebs_count -= 1;
       }
 
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();
     } else if (tier == 0) {
-      routing_address.push_back(new_server_public_ip);
+      routing_ips.push_back(new_server_public_ip);
     } else {
-      logger->error("Invalid tier: {}.", std::to_string(tier));
+      log->error("Invalid tier: {}.", std::to_string(tier));
     }
 
-    for (const auto& global_pair : global_hash_ring_map) {
-      logger->info("Hash ring for tier {} is size {}.",
-                   std::to_string(global_pair.first),
-                   std::to_string(global_pair.second.size()));
+    for (const auto& pair : global_hash_rings) {
+      log->info("Hash ring for tier {} is size {}.", pair.first,
+                pair.second.size());
     }
   } else if (type == "depart") {
-    logger->info("Received depart from server {}/{}.", new_server_public_ip,
-                 new_server_private_ip);
+    log->info("Received depart from server {}/{}.", new_server_public_ip,
+              new_server_private_ip);
 
     // update hash ring
-    global_hash_ring_map[tier].remove(new_server_public_ip,
-                                      new_server_private_ip, 0);
+    global_hash_rings[tier].remove(new_server_public_ip, new_server_private_ip,
+                                   0);
     if (tier == 1) {
-      memory_tier_storage.erase(new_server_private_ip);
-      memory_tier_occupancy.erase(new_server_private_ip);
+      memory_storage.erase(new_server_private_ip);
+      memory_occupancy.erase(new_server_private_ip);
 
       // NOTE: No const here because we are calling erase
       for (auto& key_access_pair : key_access_frequency) {
@@ -86,8 +83,8 @@ void membership_handler(
         }
       }
     } else if (tier == 2) {
-      ebs_tier_storage.erase(new_server_private_ip);
-      ebs_tier_occupancy.erase(new_server_private_ip);
+      ebs_storage.erase(new_server_private_ip);
+      ebs_occupancy.erase(new_server_private_ip);
 
       // NOTE: No const here because we are calling erase
       for (auto& key_access_pair : key_access_frequency) {
@@ -97,13 +94,12 @@ void membership_handler(
         }
       }
     } else {
-      logger->error("Invalid tier: {}.", std::to_string(tier));
+      log->error("Invalid tier: {}.", std::to_string(tier));
     }
 
-    for (const auto& global_pair : global_hash_ring_map) {
-      logger->info("Hash ring for tier {} is size {}.",
-                   std::to_string(global_pair.first),
-                   std::to_string(global_pair.second.size()));
+    for (const auto& pair : global_hash_rings) {
+      log->info("Hash ring for tier {} is size {}.", pair.first,
+                pair.second.size());
     }
   }
 }

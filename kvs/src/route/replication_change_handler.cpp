@@ -14,19 +14,18 @@
 
 #include "route/routing_handlers.hpp"
 
-void replication_change_handler(std::shared_ptr<spdlog::logger> logger,
-                                std::string& serialized, SocketCache& pushers,
-                                std::unordered_map<Key, KeyInfo>& placement,
+void replication_change_handler(logger log, string& serialized,
+                                SocketCache& pushers,
+                                map<Key, KeyMetadata>& metadata_map,
                                 unsigned thread_id, Address ip) {
-  logger->info("Received a replication factor change.");
+  log->info("Received a replication factor change.");
 
   if (thread_id == 0) {
     // tell all worker threads about the replication factor change
     for (unsigned tid = 1; tid < kRoutingThreadCount; tid++) {
       kZmqUtil->send_string(
-          serialized,
-          &pushers[RoutingThread(ip, tid)
-                       .get_replication_factor_change_connect_addr()]);
+          serialized, &pushers[RoutingThread(ip, tid)
+                                   .replication_change_connect_address()]);
     }
   }
 
@@ -38,12 +37,12 @@ void replication_change_handler(std::shared_ptr<spdlog::logger> logger,
     // update the replication factor
 
     for (const Replication& global : key_rep.global()) {
-      placement[key].global_replication_map_[global.tier_id()] =
+      metadata_map[key].global_replication_[global.tier_id()] =
           global.replication_factor();
     }
 
     for (const Replication& local : key_rep.local()) {
-      placement[key].local_replication_map_[local.tier_id()] =
+      metadata_map[key].local_replication_[local.tier_id()] =
           local.replication_factor();
     }
   }

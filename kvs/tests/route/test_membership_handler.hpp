@@ -15,18 +15,21 @@
 #include "route/routing_handlers.hpp"
 
 TEST_F(RoutingHandlerTest, Membership) {
-  EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
-  EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 1);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 1);
 
-  std::string serialized = "join:1:127.0.0.2:127.0.0.2:0";
-  membership_handler(logger, serialized, pushers, global_hash_ring_map,
-                     thread_id, ip);
+  string message_base =
+      std::to_string(kMemoryTierId) + ":127.0.0.2:127.0.0.2:0";
 
-  std::vector<std::string> messages = get_zmq_messages();
+  string serialized = "join:" + message_base;
+  membership_handler(log_, serialized, pushers, global_hash_rings, thread_id,
+                     ip);
+
+  vector<string> messages = get_zmq_messages();
 
   EXPECT_EQ(messages.size(), 1);
-  EXPECT_EQ(messages[0], "1:127.0.0.2:127.0.0.2:0");
+  EXPECT_EQ(messages[0], message_base);
 
-  EXPECT_EQ(global_hash_ring_map[1].size(), 6000);
-  EXPECT_EQ(global_hash_ring_map[1].get_unique_servers().size(), 2);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 6000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].get_unique_servers().size(), 2);
 }

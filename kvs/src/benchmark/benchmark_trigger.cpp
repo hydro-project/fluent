@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
   unsigned thread_num = atoi(argv[1]);
 
   // read the YAML conf
-  std::vector<Address> benchmark_address;
+  vector<Address> benchmark_address;
   YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
   YAML::Node benchmark = conf["benchmark"];
 
@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
   zmq::context_t context(1);
   SocketCache pushers(&context, ZMQ_PUSH);
 
-  std::string command;
+  string command;
   while (true) {
     std::cout << "command> ";
     getline(std::cin, command);
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
         BenchmarkThread bt = BenchmarkThread(address, tid);
 
         kZmqUtil->send_string(command,
-                              &pushers[bt.get_benchmark_command_port_addr()]);
+                              &pushers[bt.benchmark_command_address()]);
       }
     }
   }

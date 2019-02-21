@@ -18,7 +18,7 @@ message ServerThreadStatistics {
   required uint64 storage_consumption = 1;
   required double occupancy = 2;
   required uint32 epoch = 3;
-  required uint32 total_accesses = 4;
+  required uint32 access_count = 4;
 }
 
 message KeyAccessData {
