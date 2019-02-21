@@ -12,8 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from functions_pb2 import *
-from serializer import *
+from .functions_pb2 import *
 
 # shared constants
 FUNCOBJ = 'funcs/index-allfuncs'

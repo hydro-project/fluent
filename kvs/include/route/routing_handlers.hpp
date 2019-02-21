@@ -16,6 +16,8 @@
 #define SRC_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_
 
 #include "hash_ring.hpp"
+#include "misc.pb.h"
+#include "replication.pb.h"
 
 string seed_handler(logger log, map<TierId, GlobalHashRing>& global_hash_rings);
 

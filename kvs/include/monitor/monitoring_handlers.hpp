@@ -16,6 +16,7 @@
 #define SRC_INCLUDE_MONITOR_MONITORING_HANDLERS_HPP_
 
 #include "hash_ring.hpp"
+#include "misc.pb.h"
 
 void membership_handler(logger log, string& serialized,
                         map<TierId, GlobalHashRing>& global_hash_rings,

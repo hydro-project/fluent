@@ -15,10 +15,9 @@
 from anna.client import AnnaClient
 import boto3
 import cloudpickle as cp
-from functions_pb2 import *
+from ..include.functions_pb2 import *
 import numpy
-from shared import *
-from serializer import *
+from ..include.shared import *
 import zmq
 
 class FluentConnection():

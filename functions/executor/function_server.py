@@ -18,7 +18,6 @@ from functions_pb2 import *
 import logging
 import os
 from shared import *
-from serializer import *
 import time
 import uuid
 import zmq

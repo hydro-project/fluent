@@ -16,6 +16,8 @@
 #define SRC_INCLUDE_KVS_KVS_HANDLERS_HPP_
 
 #include "hash_ring.hpp"
+#include "misc.pb.h"
+#include "replication.pb.h"
 #include "requests.hpp"
 #include "utils/server_utils.hpp"
 

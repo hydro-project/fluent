@@ -44,20 +44,6 @@ message TierMembership {
   repeated Tier tiers = 1;
 }
 
-message UserFeedback {
-  message KeyLatency {
-    required string key = 1;
-    required double latency = 2;
-  }
-
-  required string uid = 1;
-  optional double latency = 2;
-  optional bool finish = 3;
-  optional double throughput = 4;
-  optional bool warmup = 5;
-  repeated KeyLatency key_latency = 6;
-}
-
 message KeySizeData {
   message KeySize {
     required string key = 1;

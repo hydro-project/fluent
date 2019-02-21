@@ -19,8 +19,6 @@
 
 #include "kvs/lww_pair_lattice.hpp"
 #include "kvs_types.hpp"
-#include "misc.pb.h"
-#include "replication.pb.h"
 #include "requests.pb.h"
 #include "types.hpp"
 #include "zmq/socket_cache.hpp"

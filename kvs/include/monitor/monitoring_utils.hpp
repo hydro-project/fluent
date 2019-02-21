@@ -16,6 +16,8 @@
 #define SRC_INCLUDE_MONITOR_MONITORING_UTILS_HPP_
 
 #include "hash_ring.hpp"
+#include "misc.pb.h"
+#include "replication.pb.h"
 #include "requests.hpp"
 
 // define monitoring threshold (in second)

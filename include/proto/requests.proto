@@ -72,3 +72,17 @@ message KeyAddressResponse {
   required uint32 error = 2;
   optional string response_id = 3;
 }
+
+message UserFeedback {
+  message KeyLatency {
+    required string key = 1;
+    required double latency = 2;
+  }
+
+  required string uid = 1;
+  optional double latency = 2;
+  optional bool finish = 3;
+  optional double throughput = 4;
+  optional bool warmup = 5;
+  repeated KeyLatency key_latency = 6;
+}
