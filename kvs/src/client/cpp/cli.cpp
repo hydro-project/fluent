@@ -76,6 +76,7 @@ void handle_request(KvsClient& client, string input) {
     }
   } else if (v[0] == "PUT_SET_ALL") {
     set<string> set;
+
     for (int i = 2; i < v.size(); i++) {
       set.insert(v[i]);
     }
@@ -143,6 +144,7 @@ int main(int argc, char* argv[]) {
   }
 
   KvsClient client(routing_ips, kRoutingThreadCount, ip, 0, 10000, local);
+
   if (argc == 2) {
     run(client);
   } else {

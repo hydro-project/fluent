@@ -85,7 +85,8 @@ class ServerHandlerTest : public ::testing::Test {
   string get_key_request(Key key, string ip) {
     KeyRequest request;
     request.set_type(RequestType::GET);
-    request.set_response_address(UserThread(ip, 0).response_connect_address());
+    request.set_response_address(
+        UserThread(ip, 0).response_connect_address());
     request.set_request_id(kRequestId);
 
     KeyTuple* tp = request.add_tuples();
@@ -101,7 +102,8 @@ class ServerHandlerTest : public ::testing::Test {
                          string ip) {
     KeyRequest request;
     request.set_type(RequestType::PUT);
-    request.set_response_address(UserThread(ip, 0).response_connect_address());
+    request.set_response_address(
+        UserThread(ip, 0).response_connect_address());
     request.set_request_id(kRequestId);
 
     KeyTuple* tp = request.add_tuples();
