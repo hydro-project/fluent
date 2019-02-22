@@ -47,7 +47,37 @@ const unsigned kBenchmarkCommandPort = 6900;
 // used by the management node
 const unsigned kKopsRestartCountPort = 7000;
 
+// used by the cache system
+const unsigned kCacheGetPort = 7050;
+const unsigned kCachePutPort = 7100;
+const unsigned kCacheUpdatePort = 7150;
+
 const string kBindBase = "tcp://*:";
+
+class CacheThread {
+  Address ip_;
+  Address ip_base_;
+  unsigned tid_;
+
+ public:
+  CacheThread(Address ip, unsigned tid) : ip_(ip), ip_base_("tcp://" + ip_ + ":"), tid_(tid) {}
+  
+  Address ip() const { return ip_; }
+
+  unsigned tid() const { return tid_; }
+
+  Address cache_get_bind_address() const { return kBindBase + std::to_string(tid_ + kCacheGetPort); }
+  
+  Address cache_get_connect_address() const { return ip_base_ + std::to_string(tid_ + kCacheGetPort); }
+  
+  Address cache_put_bind_address() const { return kBindBase + std::to_string(tid_ + kCachePutPort); }
+  
+  Address cache_put_connect_address() const { return ip_base_ + std::to_string(tid_ + kCachePutPort); }
+  
+  Address cache_update_bind_address() const { return ip_base_ + std::to_string(tid_ + kCachePutPort); }
+  
+  Address cache_update_connect_address() const { return ip_base_ + std::to_string(tid_ + kCachePutPort); }
+};
 
 class ServerThread {
   Address public_ip_;

@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_LATTICES_BASE_LATTICES_HPP_
-#define SRC_INCLUDE_LATTICES_BASE_LATTICES_HPP_
+#ifndef INCLUDE_LATTICES_LATTICE_HPP_
+#define INCLUDE_LATTICES_LATTICE_HPP_
 
 template <typename T>
 class Lattice {
@@ -52,4 +52,4 @@ class Lattice {
   void assign(const Lattice<T> &e) { element = e.reveal(); }
 };
 
-#endif  // SRC_INCLUDE_LATTICES_BASE_LATTICES_HPP_
+#endif  // INCLUDE_LATTICES_LATTICE_HPP_

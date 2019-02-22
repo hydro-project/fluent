@@ -14,7 +14,7 @@
 
 #include <fstream>
 
-#include "client.hpp"
+#include "kvs_client.hpp"
 #include "yaml-cpp/yaml.h"
 
 unsigned kRoutingThreadCount;

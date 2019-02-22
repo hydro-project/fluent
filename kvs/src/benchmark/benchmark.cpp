@@ -14,7 +14,7 @@
 
 #include <stdlib.h>
 
-#include "client.hpp"
+#include "kvs_client.hpp"
 #include "yaml-cpp/yaml.h"
 
 unsigned kBenchmarkThreadNum;

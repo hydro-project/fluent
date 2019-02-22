@@ -12,7 +12,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#include "client.hpp"
+#include "kvs_client.hpp"
 #include "yaml-cpp/yaml.h"
 
 ZmqUtil zmq_util;
@@ -35,13 +35,9 @@ void run(KvsClient& client) {
 
   map<Key, std::string> local_cache;
 
-  // TODO: create CacheThread class
   // TODO: can we find a way to make the thread classes uniform across
   // languages? or unify the python and cpp implementations; actually, mostly
   // just the user thread stuff, I think.
-  // TODO: move the lattice and common and client libraries to the global
-  // include -- they aren't KVS only
-
   zmq::socket_t get_responder(context, ZMQ_REP);
   get_responder.bind(request_address);
 
