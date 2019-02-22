@@ -17,11 +17,11 @@
 
 #include "gtest/gtest.h"
 
-#include "misc.pb.h"
+#include "metadata.pb.h"
 #include "replication.pb.h"
-#include "requests.pb.h"
+#include "kvs.pb.h"
 #include "types.hpp"
-#include "utils/server_utils.hpp"
+#include "kvs/server_utils.hpp"
 
 #include "server_handler_base.hpp"
 #include "test_node_depart_handler.hpp"

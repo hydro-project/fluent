@@ -14,6 +14,14 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.6 FATAL_ERROR)
 
+SET(LIBRARY_DEPENDENCIES
+    protobuf
+    flproto
+    zmq
+    flzmq
+    yaml-cpp
+)
+
 ADD_EXECUTABLE(flkvs-cli cli.cpp)
-TARGET_LINK_LIBRARIES(flkvs-cli ${KV_LIBRARY_DEPENDENCIES})
+TARGET_LINK_LIBRARIES(flkvs-cli ${LIBRARY_DEPENDENCIES})
 ADD_DEPENDENCIES(flkvs-cli zeromq zeromqcpp)

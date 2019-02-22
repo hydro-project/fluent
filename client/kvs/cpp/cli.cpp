@@ -18,7 +18,6 @@
 #include "yaml-cpp/yaml.h"
 
 unsigned kRoutingThreadCount;
-unsigned kDefaultLocalReplication;
 
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
@@ -124,7 +123,6 @@ int main(int argc, char* argv[]) {
   // read the YAML conf
   YAML::Node conf = YAML::LoadFile(argv[1]);
   kRoutingThreadCount = conf["threads"]["routing"].as<unsigned>();
-  kDefaultLocalReplication = conf["replication"]["local"].as<unsigned>();
 
   YAML::Node user = conf["user"];
   Address ip = user["ip"].as<Address>();

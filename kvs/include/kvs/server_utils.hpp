@@ -12,15 +12,16 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_UTILS_SERVER_UTILS_HPP_
-#define SRC_INCLUDE_UTILS_SERVER_UTILS_HPP_
+#ifndef KVS_INCLUDE_KVS_SERVER_UTILS_HPP_
+#define KVS_INCLUDE_KVS_SERVER_UTILS_HPP_
 
 #include <fstream>
 #include <string>
 
-#include "../kvs/base_kv_store.hpp"
-#include "../kvs/lww_pair_lattice.hpp"
+#include "base_kv_store.hpp"
 #include "common.hpp"
+#include "kvs_common.hpp"
+#include "lattices/lww_pair_lattice.hpp"
 #include "yaml-cpp/yaml.h"
 
 // Define the garbage collect threshold
@@ -305,4 +306,4 @@ struct PendingGossip {
   string payload_;
 };
 
-#endif  // SRC_INCLUDE_UTILS_SERVER_UTILS_HPP_
+#endif  // KVS_INCLUDE_KVS_SERVER_UTILS_HPP_

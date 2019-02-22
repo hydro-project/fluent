@@ -65,13 +65,13 @@ INCLUDE_DIRECTORIES(${ZEROMQ_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${YAMLCPP_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${SPDLOG_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(include)
-INCLUDE_DIRECTORIES(kvs/include)
 
 INCLUDE(FindProtobuf)
 FIND_PACKAGE(Protobuf REQUIRED)
 INCLUDE_DIRECTORIES(${PROTOBUF_INCLUDE_DIR})
 PROTOBUF_GENERATE_CPP(PROTO_SRC PROTO_HEADER
-  ./include/proto/requests.proto)
+  ./include/proto/kvs.proto
+  ./include/proto/functions.proto)
 
 # need to build a target at this level or subdirs won't have the 
 # protobuf files generated.
@@ -102,7 +102,8 @@ ADD_SUBDIRECTORY(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 
 LINK_DIRECTORIES(${ZEROMQ_LINK_DIRS} ${YAMLCPP_LINK_DIRS})
 
-ADD_SUBDIRECTORY(kvs)
+ADD_SUBDIRECTORY(client)
 ADD_SUBDIRECTORY(functions)
+ADD_SUBDIRECTORY(kvs)
 
 # TODO: Enable selective build of KVS and function runtime

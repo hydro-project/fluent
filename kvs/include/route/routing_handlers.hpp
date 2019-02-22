@@ -12,11 +12,11 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_
-#define SRC_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_
+#ifndef KVS_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_
+#define KVS_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_
 
 #include "hash_ring.hpp"
-#include "misc.pb.h"
+#include "metadata.pb.h"
 #include "replication.pb.h"
 
 string seed_handler(logger log, map<TierId, GlobalHashRing>& global_hash_rings);
@@ -45,4 +45,4 @@ void address_handler(logger log, string& serialized, SocketCache& pushers,
                      map<Key, vector<pair<Address, string>>>& pending_requests,
                      unsigned& seed);
 
-#endif  // SRC_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_
+#endif  // KVS_INCLUDE_ROUTE_ROUTING_HANDLERS_HPP_

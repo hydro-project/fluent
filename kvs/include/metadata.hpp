@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_METADATA_HPP_
-#define SRC_INCLUDE_METADATA_HPP_
+#ifndef KVS_INCLUDE_METADATA_HPP_
+#define KVS_INCLUDE_METADATA_HPP_
 
 #include "threads.hpp"
 
@@ -147,4 +147,4 @@ inline void init_replication(map<Key, KeyMetadata>& key_metadata_map,
   }
 }
 
-#endif  // SRC_INCLUDE_METADATA_HPP_
+#endif  // KVS_INCLUDE_METADATA_HPP_

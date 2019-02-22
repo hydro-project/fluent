@@ -15,6 +15,9 @@
 #ifndef SRC_INCLUDE_REQUESTS_HPP_
 #define SRC_INCLUDE_REQUESTS_HPP_
 
+#include "zmq/socket_cache.hpp"
+#include "zmq/zmq_util.hpp"
+
 template <typename RES>
 bool receive(zmq::socket_t& recv_socket, set<string>& request_ids,
              vector<RES>& responses) {

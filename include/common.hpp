@@ -12,51 +12,16 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_COMMON_HPP_
-#define SRC_INCLUDE_COMMON_HPP_
+#ifndef INCLUDE_COMMON_HPP_
+#define INCLUDE_COMMON_HPP_
 
 #include <algorithm>
 
-#include "kvs/lww_pair_lattice.hpp"
-#include "kvs_types.hpp"
-#include "requests.pb.h"
+#include "lattices/lww_pair_lattice.hpp"
+#include "kvs.pb.h"
 #include "types.hpp"
 #include "zmq/socket_cache.hpp"
 #include "zmq/zmq_util.hpp"
-
-const string kMetadataIdentifier = "ANNA_METADATA";
-
-const unsigned kMetadataReplicationFactor = 1;
-const unsigned kMetadataLocalReplicationFactor = 1;
-
-const unsigned kVirtualThreadNum = 3000;
-
-const unsigned kMemoryTierId = 0;
-const unsigned kEbsTierId = 1;
-const unsigned kRoutingTierId = 100;
-
-const unsigned kMaxTier = 1;
-const vector<unsigned> kAllTierIds = {0, 1};
-
-const unsigned kSloWorst = 3000;
-
-// run-time constants
-extern unsigned kSelfTierId;
-extern vector<unsigned> kSelfTierIdVector;
-
-extern unsigned kMemoryNodeCapacity;
-extern unsigned kEbsNodeCapacity;
-
-// the number of threads running in this executable
-extern unsigned kThreadNum;
-extern unsigned kMemoryThreadCount;
-extern unsigned kEbsThreadCount;
-extern unsigned kRoutingThreadCount;
-
-extern unsigned kDefaultGlobalMemoryReplication;
-extern unsigned kDefaultGlobalEbsReplication;
-extern unsigned kDefaultLocalReplication;
-extern unsigned kMinimumReplicaNumber;
 
 inline void split(const string& s, char delim, vector<string>& elems) {
   std::stringstream ss(s);
@@ -159,4 +124,4 @@ struct lattice_type_hash {
   }
 };
 
-#endif  // SRC_INCLUDE_COMMON_HPP_
+#endif  // INCLUDE_COMMON_HPP_

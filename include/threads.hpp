@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_THREADS_HPP_
-#define SRC_INCLUDE_THREADS_HPP_
+#ifndef INCLUDE_THREADS_HPP_
+#define INCLUDE_THREADS_HPP_
 
 #include "types.hpp"
 
@@ -314,4 +314,10 @@ inline string get_join_count_req_address(string management_ip) {
   return "tcp://" + management_ip + ":" + std::to_string(kKopsRestartCountPort);
 }
 
-#endif  // SRC_INCLUDE_THREADS_HPP_
+struct ThreadHash {
+  std::size_t operator()(const ServerThread& st) const {
+    return std::hash<string>{}(st.id());
+  }
+};
+
+#endif  // INCLUDE_THREADS_HPP_

@@ -26,7 +26,7 @@ INCLUDE_DIRECTORIES(tests)
 INCLUDE(FindProtobuf)
 FIND_PACKAGE(Protobuf REQUIRED)
 INCLUDE_DIRECTORIES(${PROTOBUF_INCLUDE_DIR})
-PROTOBUF_GENERATE_CPP(PROTO_SRC PROTO_HEADER ./include/proto/misc.proto
+PROTOBUF_GENERATE_CPP(PROTO_SRC PROTO_HEADER ./include/proto/metadata.proto
   ./include/proto/replication.proto)
 
 # need to build a target at this level or subdirs won't have the 

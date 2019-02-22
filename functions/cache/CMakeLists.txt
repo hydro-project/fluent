@@ -22,7 +22,6 @@ SET(FUNC_DEPENDENCIES
 SET(FUNC_DEPENDENCIES
     protobuf
     flproto
-    flfunc-proto
     pthread
     zmq
     flzmq

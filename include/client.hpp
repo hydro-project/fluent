@@ -15,13 +15,11 @@
 #ifndef SRC_INCLUDE_CLIENT_HPP_
 #define SRC_INCLUDE_CLIENT_HPP_
 
-#include "hash_ring.hpp"
+#include "common.hpp"
 #include "requests.hpp"
-#include "requests.pb.h"
+#include "kvs.pb.h"
 #include "threads.hpp"
 #include "types.hpp"
-#include "zmq/socket_cache.hpp"
-#include "zmq/zmq_util.hpp"
 
 unsigned ELB_BASE = 6000;
 

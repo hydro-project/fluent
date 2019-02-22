@@ -12,10 +12,11 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_TYPES_HPP_
-#define SRC_INCLUDE_TYPES_HPP_
+#ifndef KVS_INCLUDE_TYPES_HPP_
+#define KVS_INCLUDE_TYPES_HPP_
 
 #include <chrono>
+#include "threads.hpp"
 #include "types.hpp"
 
 using StorageStats = map<Address, map<unsigned, unsigned long long>>;
@@ -28,4 +29,8 @@ using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
 
 using TierId = unsigned;
 
-#endif  // SRC_INCLUDE_TYPES_HPP_
+using ServerThreadList = vector<ServerThread>;
+
+using ServerThreadSet = std::unordered_set<ServerThread, ThreadHash>;
+
+#endif  // KVS_INCLUDE_TYPES_HPP_

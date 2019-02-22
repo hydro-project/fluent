@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_UTILS_CONSISTENT_HASH_MAP_HPP_
-#define SRC_INCLUDE_UTILS_CONSISTENT_HASH_MAP_HPP_
+#ifndef KVS_INCLUDE_CONSISTENT_HASH_MAP_HPP_
+#define KVS_INCLUDE_CONSISTENT_HASH_MAP_HPP_
 
 #include <map>
 #include <string>
@@ -78,4 +78,4 @@ class ConsistentHashMap {
   map_type nodes_;
 };
 
-#endif  // SRC_INCLUDE_UTILS_CONSISTENT_HASH_MAP_HPP_
+#endif  // KVS_INCLUDE_CONSISTENT_HASH_MAP_HPP_

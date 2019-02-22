@@ -12,25 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.6 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.6)
 
-SET(KV_SRC_DEPENDENCIES
-    ${PROTO_SRC}
-    ${PROTO_HEADER}
-)
-
-SET(KV_LIBRARY_DEPENDENCIES
-    protobuf
-    flproto
-    flkvs-proto
-    pthread
-    zmq
-    flzmq
-    yaml-cpp
-)
-
-ADD_SUBDIRECTORY(hash_ring)
-ADD_SUBDIRECTORY(kvs)
-ADD_SUBDIRECTORY(monitor)
-ADD_SUBDIRECTORY(route)
-ADD_SUBDIRECTORY(benchmark)
+ADD_SUBDIRECTORY(lattices)
