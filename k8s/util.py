@@ -115,13 +115,13 @@ def get_service_address(client, svc_name):
     return service.status.load_balancer.ingress[0].hostname
 
 # from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101
-def copy_file_to_pod(client, filepath, podname, podpath):
+def copy_file_to_pod(client, filepath, podname, podpath, container):
     exec_command = ['tar', 'xvf', '-', '-C', podpath]
     resp = stream(client.connect_get_namespaced_pod_exec, podname, NAMESPACE,
                   command=exec_command,
                   stderr=True, stdin=True,
                   stdout=True, tty=False,
-                  _preload_content=False)
+                  _preload_content=False, container=container)
 
     filename = filepath.split('/')[-1]
     with TemporaryFile() as tar_buffer:
