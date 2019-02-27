@@ -1,41 +1,27 @@
+#!/bin/bash
+
 #  Copyright 2018 U.C. Berkeley RISE Lab
-# 
+#
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-# 
+#
 #      http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-apiVersion: v1
-kind: Pod
-metadata:
-  name: function-pod-NUM_DUMMY
-  labels: 
-    role: function
-spec:
-  hostNetwork: true
-  containers:
-  - name: function-container
-    image: vsreekanti/fluent-func
-    env: 
-    - name: ROUTE_ADDR
-      value: ROUTE_ADDR_DUMMY
-    - name: MGMT_IP
-      value: MGMT_IP_DUMMY
-  containers:
-  - name: cache-container
-    image: vsreekanti/fluent-cache
-    env:
-    - name: ROUTE_ADDR
-      value: ROUTE_ADDR_DUMMY
-    - name: MGMT_IP
-      value: MGMT_IP_DUMMY
-  nodeSelector:
-    role: function
-    podid: function-NUM_DUMMY
+IS_EC2=`curl -s http://instance-data.ec2.internal`
+if [[ ! -z "$IS_EC2" ]]; then
+  # NOTE: We use the local IPv4 here because we cannot connect to the public
+  # IPv4 -- those ports are not open!
+  MY_IP=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
+else
+  MY_IP=`ifconfig eth0 | grep 'inet addr:' | grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1 }'`
+fi
+
+# start python server
+cd fluent/functions && export MY_IP=$IP && python3.6 function_server.py
