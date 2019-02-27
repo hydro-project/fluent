@@ -36,11 +36,14 @@ void handle_request(KvsClient& client, string input) {
   split(input, ' ', v);
 
   if (v[0] == "GET") {
-    std::cout << client.get(v[1]) << std::endl;
+    std::cout << client.get(v[1]).reveal().value << std::endl;
   } else if (v[0] == "GET_SET") {
-    print_set(client.get_set(v[1]));
+    print_set(client.get_set(v[1]).reveal());
   } else if (v[0] == "PUT") {
-    if (client.put(v[1], v[2])) {
+    Key key = v[1];
+    LWWPairLattice<string> val(TimestampValuePair<string>(generate_timestamp(0), v[2]));
+
+    if (client.put(key, val)) {
       std::cout << "Success!" << std::endl;
     } else {
       std::cout << "Failure!" << std::endl;
@@ -51,7 +54,7 @@ void handle_request(KvsClient& client, string input) {
       set.insert(v[i]);
     }
 
-    if (client.put(v[1], set)) {
+    if (client.put(v[1], SetLattice<string>(set))) {
       std::cout << "Success!" << std::endl;
     } else {
       std::cout << "Failure!" << std::endl;
@@ -59,16 +62,20 @@ void handle_request(KvsClient& client, string input) {
   } else if (v[0] == "GET_ALL") {
     auto responses = client.get_all(v[1]);
     for (const auto& response : responses) {
-      std::cout << response << std::endl;
+      std::cout << response.reveal().value << "("
+                << response.reveal().timestamp << ")" << std::endl;
     }
   } else if (v[0] == "GET_SET_ALL") {
-    vector<set<string>> result = client.get_set_all(v[1]);
+    vector<SetLattice<string>> result = client.get_set_all(v[1]);
 
-    for (const auto& set : result) {
-      print_set(set);
+    for (const auto& set_lattice : result) {
+      print_set(set_lattice.reveal());
     }
   } else if (v[0] == "PUT_ALL") {
-    if (client.put_all(v[1], v[2])) {
+    Key key = v[1];
+    LWWPairLattice<string> val(TimestampValuePair<string>(generate_timestamp(0), v[2]));
+
+    if (client.put_all(key, val)) {
       std::cout << "Success!" << std::endl;
     } else {
       std::cout << "Failure!" << std::endl;
@@ -80,7 +87,7 @@ void handle_request(KvsClient& client, string input) {
       set.insert(v[i]);
     }
 
-    if (client.put_all(v[1], set)) {
+    if (client.put_all(v[1], SetLattice<string>(set))) {
       std::cout << "Success!" << std::endl;
     } else {
       std::cout << "Failure!" << std::endl;
@@ -128,20 +135,23 @@ int main(int argc, char* argv[]) {
   Address ip = user["ip"].as<Address>();
 
   vector<Address> routing_ips;
-  bool local;
   if (YAML::Node elb = user["routing-elb"]) {
     routing_ips.push_back(elb.as<string>());
-    local = false;
   } else {
     YAML::Node routing = user["routing"];
-    local = true;
-
     for (const YAML::Node& node : routing) {
       routing_ips.push_back(node.as<Address>());
     }
   }
 
-  KvsClient client(routing_ips, kRoutingThreadCount, ip, 0, 10000, local);
+  vector<UserRoutingThread> threads;
+  for (Address addr : routing_ips) {
+    for (unsigned i = 0; i < kRoutingThreadCount; i++) {
+      threads.push_back(UserRoutingThread(addr, i));
+    }
+  }
+
+  KvsClient client(threads, ip, 0, 10000);
 
   if (argc == 2) {
     run(client);

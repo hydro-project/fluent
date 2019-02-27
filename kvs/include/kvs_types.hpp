@@ -16,7 +16,7 @@
 #define KVS_INCLUDE_TYPES_HPP_
 
 #include <chrono>
-#include "threads.hpp"
+#include "kvs_threads.hpp"
 #include "types.hpp"
 
 using StorageStats = map<Address, map<unsigned, unsigned long long>>;

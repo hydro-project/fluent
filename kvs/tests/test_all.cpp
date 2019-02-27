@@ -17,9 +17,9 @@
 
 #include "gtest/gtest.h"
 
+#include "kvs.pb.h"
 #include "misc.pb.h"
 #include "replication.pb.h"
-#include "kvs.pb.h"
 #include "types.hpp"
 #include "utils/server_utils.hpp"
 

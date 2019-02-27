@@ -16,7 +16,7 @@
 #define KVS_INCLUDE_HASHERS_HPP_
 
 #include <vector>
-#include "threads.hpp"
+#include "kvs_threads.hpp"
 
 struct GlobalHasher {
   uint32_t operator()(const ServerThread& th) {

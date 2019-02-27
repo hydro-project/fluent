@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include "kvs_client.hpp"
+#include "kvs_threads.hpp"
 #include "yaml-cpp/yaml.h"
 
 unsigned kBenchmarkThreadNum;
@@ -73,11 +74,9 @@ string generate_key(unsigned n) {
   return string(8 - std::to_string(n).length(), '0') + std::to_string(n);
 }
 
-void run(const unsigned& thread_id, const vector<Address>& routing_ips,
-         const vector<MonitoringThread>& monitoring_threads, const Address& ip,
-         const bool& local) {
-  KvsClient client(routing_ips, kRoutingThreadCount, ip, thread_id, 10000,
-                   local);
+void run(const unsigned& thread_id, const vector<UserRoutingThread>& routing_threads,
+         const vector<MonitoringThread>& monitoring_threads, const Address& ip) {
+  KvsClient client(routing_threads, ip, thread_id, 10000);
   string log_file = "log_" + std::to_string(thread_id) + ".txt";
   string logger_name = "benchmark_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(logger_name, log_file, true);
@@ -175,12 +174,17 @@ void run(const unsigned& thread_id, const vector<Address>& routing_ips,
             client.get(key);
             count += 1;
           } else if (type == "P") {
-            client.put(key, string(length, 'a'));
+            unsigned ts = generate_timestamp(thread_id);
+            LWWPairLattice<string> val(TimestampValuePair<string>(ts, string(length, 'a')));
+
+            client.put(key, val);
             count += 1;
           } else if (type == "M") {
             auto req_start = std::chrono::system_clock::now();
+            unsigned ts = generate_timestamp(thread_id);
+            LWWPairLattice<string> val(TimestampValuePair<string>(ts, string(length, 'a')));
 
-            client.put(key, string(length, 'a'));
+            client.put(key, val);
             client.get(key);
             count += 2;
 
@@ -286,7 +290,9 @@ void run(const unsigned& thread_id, const vector<Address>& routing_ips,
             log->info("Creating key {}.", i);
           }
 
-          client.put(generate_key(i), string(length, 'a'));
+          unsigned ts = generate_timestamp(thread_id);
+          LWWPairLattice<string> val(TimestampValuePair<string>(ts, string(length, 'a')));
+          client.put(generate_key(i), val);
         }
 
         auto warmup_time = std::chrono::duration_cast<std::chrono::seconds>(
@@ -326,24 +332,28 @@ int main(int argc, char* argv[]) {
 
   vector<std::thread> benchmark_threads;
 
-  bool local;
   if (YAML::Node elb = user["routing-elb"]) {
     routing_ips.push_back(elb.as<string>());
-    local = false;
   } else {
     YAML::Node routing = user["routing"];
-    local = true;
 
     for (const YAML::Node& node : routing) {
       routing_ips.push_back(node.as<Address>());
     }
   }
 
-  // NOTE: We create a new client for every single thread.
-  for (unsigned thread_id = 1; thread_id < kBenchmarkThreadNum; thread_id++) {
-    benchmark_threads.push_back(std::thread(run, thread_id, routing_ips,
-                                            monitoring_threads, ip, local));
+  vector<UserRoutingThread> routing_threads;
+  for (const Address& ip : routing_ips) {
+    for (unsigned i = 0; i < kRoutingThreadCount; i++) {
+      routing_threads.push_back(UserRoutingThread(ip, i));
+    }
   }
 
-  run(0, routing_ips, monitoring_threads, ip, local);
+  // NOTE: We create a new client for every single thread.
+  for (unsigned thread_id = 1; thread_id < kBenchmarkThreadNum; thread_id++) {
+    benchmark_threads.push_back(std::thread(run, thread_id, routing_threads,
+                                            monitoring_threads, ip));
+  }
+
+  run(0, routing_threads, monitoring_threads, ip);
 }

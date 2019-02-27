@@ -17,8 +17,8 @@
 
 #include <algorithm>
 
-#include "lattices/lww_pair_lattice.hpp"
 #include "kvs.pb.h"
+#include "lattices/lww_pair_lattice.hpp"
 #include "types.hpp"
 #include "zmq/socket_cache.hpp"
 #include "zmq/zmq_util.hpp"
@@ -104,18 +104,24 @@ inline string serialize(const set<string>& set) {
   return serialized;
 }
 
-inline LWWValue deserialize_lww(const string& serialized) {
+inline LWWPairLattice<string> deserialize_lww(const string& serialized) {
   LWWValue lww;
   lww.ParseFromString(serialized);
 
-  return lww;
+  return LWWPairLattice<string>(TimestampValuePair<string>(lww.timestamp(), lww.value()));
 }
 
-inline SetValue deserialize_set(const string& serialized) {
-  SetValue set;
-  set.ParseFromString(serialized);
+inline SetLattice<string> deserialize_set(const string& serialized) {
+  SetValue s;
+  s.ParseFromString(serialized);
 
-  return set;
+  set<string> result;
+
+  for (const string& value : s.values()) {
+    result.insert(value);
+  }
+
+  return SetLattice<string>(result);
 }
 
 struct lattice_type_hash {

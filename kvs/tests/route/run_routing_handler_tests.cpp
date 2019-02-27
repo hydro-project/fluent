@@ -19,9 +19,9 @@
 
 #include "gtest/gtest.h"
 
+#include "kvs.pb.h"
 #include "metadata.pb.h"
 #include "replication.pb.h"
-#include "kvs.pb.h"
 #include "types.hpp"
 
 #include "routing_handler_base.hpp"

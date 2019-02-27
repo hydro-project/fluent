@@ -16,36 +16,24 @@
 #define SRC_INCLUDE_CLIENT_HPP_
 
 #include "common.hpp"
-#include "requests.hpp"
 #include "kvs.pb.h"
+#include "requests.hpp"
 #include "threads.hpp"
 #include "types.hpp"
-
-unsigned ELB_BASE = 6000;
 
 class KvsClient {
  public:
   /**
-   * TODO(vikram): If local is true, we only ever use the first routing
-   * address because we assume it's an ELB address. We should figure out how
-   * to make sure that we sidestep that dependency in the future, but I
-   * don't have to figure it out right now.
-   *
-   * @addrs A vector of routing addresses. If the cluster is running in local
-   * mode, we will only use the first address
+   * @addrs A vector of routing addresses.
    * @routing_thread_count The number of thread sone ach routing node
    * @ip My node's IP address
    * @tid My client's thread ID
    * @timeout Length of request timeouts in ms
-   * @local Whether the client is running within the Kubernetes cluster (true)
-   * or not (false)
    */
-  KvsClient(vector<Address> addrs, unsigned routing_thread_count, string ip,
-            unsigned tid = 0, unsigned timeout = 10000, bool local = false) :
-      route_addrs_(addrs),
+  KvsClient(vector<UserRoutingThread> routing_threads, string ip,
+            unsigned tid = 0, unsigned timeout = 10000) :
+      routing_threads_(routing_threads),
       ut_(UserThread(ip, tid)),
-      local_(local),
-      routing_thread_count_(routing_thread_count),
       context_(zmq::context_t(1)),
       socket_cache_(SocketCache(&context_, ZMQ_PUSH)),
       key_address_puller_(zmq::socket_t(context_, ZMQ_PULL)),
@@ -55,7 +43,6 @@ class KvsClient {
     log_->flush_on(spdlog::level::info);
 
     // set class variables
-    local_ = true;
     bad_response_.set_response_id("NULL_ERROR");
 
     std::hash<string> hasher;
@@ -86,7 +73,9 @@ class KvsClient {
    * retrying the request or return NULL. Since no trial_limit is specified, we
    * use a default value of 10.
    */
-  bool put(Key key, string value) { return put(key, value, 10); }
+  bool put(Key key, LWWPairLattice<string> value) {
+    return put(key, value, 10);
+  }
 
   /**
    * Issue a PUT request to the KVS for a last-writer-wins value.
@@ -96,12 +85,12 @@ class KvsClient {
    * retrying the request or return NULL. We attempt this request up to
    * trial_limit times before giving up.
    */
-  bool put(Key key, string value, unsigned trial_limit) {
+  bool put(Key key, LWWPairLattice<string> value, unsigned trial_limit) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
     tuple->set_lattice_type(LatticeType::LWW);
-    tuple->set_payload(serialize(generate_timestamp(0), value));
+    tuple->set_payload(serialize(value));
 
     KeyResponse response = try_request(request, trial_limit);
 
@@ -116,7 +105,7 @@ class KvsClient {
    * retrying the request or return NULL. Since no trial_limit is specified, we
    * use a default value of 10.
    */
-  bool put(Key key, set<string> value) { return put(key, value, 10); }
+  bool put(Key key, SetLattice<string> value) { return put(key, value, 10); }
 
   /**
    * Issue a PUT request to the KVS for a set value.
@@ -126,7 +115,7 @@ class KvsClient {
    * retrying the request or return NULL. We attempt this request up to
    * trial_limit times before giving up.
    */
-  bool put(Key key, set<string> value, unsigned trial_limit) {
+  bool put(Key key, SetLattice<string> value, unsigned trial_limit) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
@@ -146,7 +135,9 @@ class KvsClient {
    * successful. Since no trial_limit is specified, we use a default value of
    * 5.
    */
-  bool put_all(Key key, string value) { return put_all(key, value, 5); }
+  bool put_all(Key key, LWWPairLattice<string> value) {
+    return put_all(key, value, 5);
+  }
 
   /**
    * Issue a durable PUT request to the KVS with a last-writer-wins value.
@@ -156,12 +147,12 @@ class KvsClient {
    * successful. We attempt this request trial_limit times before giving up.
    * 5.
    */
-  bool put_all(Key key, string value, unsigned trial_limit) {
+  bool put_all(Key key, LWWPairLattice<string> value, unsigned trial_limit) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
     tuple->set_lattice_type(LatticeType::LWW);
-    tuple->set_payload(serialize(generate_timestamp(0), value));
+    tuple->set_payload(serialize(value));
 
     vector<KeyResponse> responses = try_multi_request(request, trial_limit);
 
@@ -176,7 +167,9 @@ class KvsClient {
    * successful. Since no trial_limit is specified, we use a default value of
    * 5.
    */
-  bool put_all(Key key, set<string> value) { return put_all(key, value, 5); }
+  bool put_all(Key key, SetLattice<string> value) {
+    return put_all(key, value, 5);
+  }
 
   /**
    * Issue a durable PUT request to the KVS with a set value.
@@ -186,7 +179,7 @@ class KvsClient {
    * successful. We attempt this request trial_limit times before giving up.
    * 5.
    */
-  bool put_all(Key key, set<string> value, unsigned trial_limit) {
+  bool put_all(Key key, SetLattice<string> value, unsigned trial_limit) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
@@ -205,7 +198,7 @@ class KvsClient {
    * contactable from our client, we will return an empty string. Since no
    * trial_limit is specified, we use a default value of 10.
    */
-  string get(Key key) { return get(key, 10); }
+  LWWPairLattice<string> get(Key key) { return get(key, 10); }
 
   /**
    * Issue a GET request to the KVS for a last-writer-wins value.
@@ -214,7 +207,7 @@ class KvsClient {
    * contactable from our client, we will return an empty string. We attempt
    * this request trial_limit times before giving up.
    */
-  string get(Key key, unsigned trial_limit) {
+  LWWPairLattice<string> get(Key key, unsigned trial_limit) {
     KeyRequest request;
     prepare_data_request(request, key);
     request.set_type(RequestType::GET);
@@ -222,16 +215,16 @@ class KvsClient {
     KeyResponse response = try_request(request, trial_limit);
 
     if (is_error_response(response)) {
-      return "";
+      return LWWPairLattice<string>(TimestampValuePair<string>(0, "ERROR: Timeout -- connection could not be established!"));
     }
 
     KeyTuple rtuple = response.tuples(0);
     if (rtuple.error() == 1) {
       log_->info("Key {} does not exist and could not be retrieved.", key);
-      return "";
+      return LWWPairLattice<string>(TimestampValuePair<string>(0, "ERROR: Key does not exist!"));
     }
 
-    return deserialize_lww(rtuple.payload()).value();
+    return deserialize_lww(rtuple.payload());
   }
 
   /**
@@ -242,7 +235,7 @@ class KvsClient {
    * otherwise returns an empty vector. Since no trial_limit is specified, we
    * use a default value of 5.
    */
-  vector<string> get_all(Key key) { return get_all(key, 5); }
+  vector<LWWPairLattice<string>> get_all(Key key) { return get_all(key, 5); }
 
   /**
    * Retrieve all replicas of a key from the KVS for a last-writer-wins value.
@@ -252,13 +245,13 @@ class KvsClient {
    * otherwise returns an empty vector. We attempt this request trial_limit
    * times before giving up.
    */
-  vector<string> get_all(Key key, unsigned trial_limit) {
+  vector<LWWPairLattice<string>> get_all(Key key, unsigned trial_limit) {
     KeyRequest request;
     prepare_data_request(request, key);
     request.set_type(RequestType::GET);
 
     vector<KeyResponse> responses = try_multi_request(request, trial_limit);
-    vector<string> result;
+    vector<LWWPairLattice<string>> result;
 
     if (responses.size() == 0) {
       return result;
@@ -272,7 +265,7 @@ class KvsClient {
         return result;
       }
 
-      result.push_back(deserialize_lww(tuple.payload()).value());
+      result.push_back(deserialize_lww(tuple.payload()));
     }
 
     return result;
@@ -285,7 +278,7 @@ class KvsClient {
    * contactable from our client, we will return an empty string. Since no
    * trial_limit is specified, we use a default value of 10.
    */
-  set<string> get_set(Key key) { return get_set(key, 10); }
+  SetLattice<string> get_set(Key key) { return get_set(key, 10); }
 
   /**
    * Issue a GET request to the KVS for a set value.
@@ -294,7 +287,7 @@ class KvsClient {
    * contactable from our client, we will return an empty string. We attempt
    * this request trial_limit times before giving up.
    */
-  set<string> get_set(Key key, unsigned trial_limit) {
+  SetLattice<string> get_set(Key key, unsigned trial_limit) {
     KeyRequest request;
     prepare_data_request(request, key);
     request.set_type(RequestType::GET);
@@ -312,12 +305,7 @@ class KvsClient {
       return result;
     }
 
-    SetValue set_result = deserialize_set(rtuple.payload());
-    for (const string& val : set_result.values()) {
-      result.insert(val);
-    }
-
-    return result;
+    return deserialize_set(rtuple.payload());
   }
 
   /**
@@ -328,7 +316,9 @@ class KvsClient {
    * otherwise returns an empty vector. Since no trial_limit is specified, we
    * use a default value of 5.
    */
-  vector<set<string>> get_set_all(Key key) { return get_set_all(key, 5); }
+  vector<SetLattice<string>> get_set_all(Key key) {
+    return get_set_all(key, 5);
+  }
 
   /**
    * Retrieve all replicas of a key from the KVS for a set value.
@@ -338,13 +328,13 @@ class KvsClient {
    * otherwise returns an empty vector. We attempt this request trial_limit
    * times before giving up.
    */
-  vector<set<string>> get_set_all(Key key, unsigned trial_limit) {
+  vector<SetLattice<string>> get_set_all(Key key, unsigned trial_limit) {
     KeyRequest request;
     prepare_data_request(request, key);
     request.set_type(RequestType::GET);
 
     vector<KeyResponse> responses = try_multi_request(request, trial_limit);
-    vector<set<string>> result;
+    vector<SetLattice<string>> result;
 
     if (responses.size() == 0) {
       return result;
@@ -358,14 +348,7 @@ class KvsClient {
         return result;
       }
 
-      SetValue set_result = deserialize_set(tuple.payload());
-      set<string> deserialized;
-
-      for (const string& val : set_result.values()) {
-        deserialized.insert(val);
-      }
-
-      result.push_back(deserialized);
+      result.push_back(deserialize_set(tuple.payload()));
     }
 
     return result;
@@ -628,16 +611,8 @@ class KvsClient {
    * there's only one address to choose from but 4 threads.
    */
   Address get_routing_thread() {
-    unsigned thread_id = rand_r(&seed_) % routing_thread_count_;
-
-    if (local_) {
-      Address routing_ip = route_addrs_[rand_r(&seed_) % route_addrs_.size()];
-      return RoutingThread(routing_ip, thread_id).key_address_connect_address();
-    } else {
-      Address routing_ip = route_addrs_[0];
-
-      return "tcp://" + routing_ip + ":" + std::to_string(ELB_BASE + thread_id);
-    }
+    return routing_threads_[rand_r(&seed_) % routing_threads_.size()]
+        .key_address_connect_address();
   }
 
   /**
@@ -714,19 +689,13 @@ class KvsClient {
 
  private:
   // the set of routing addresses outside the cluster
-  vector<string> route_addrs_;
-
-  // whether we are running this client in local or remote mode;
-  bool local_;
+  vector<UserRoutingThread> routing_threads_;
 
   // the current request id
   unsigned rid_;
 
   // the random seed for this client
   unsigned seed_;
-
-  // number of routing threads per routing IP
-  unsigned routing_thread_count_;
 
   // the IP and port functions for this thread
   UserThread ut_;
