@@ -21,7 +21,7 @@ import kubernetes as k8s
 import sys
 from util import *
 
-ec2_client = boto3.client('ec2', 'us-east')
+ec2_client = boto3.client('ec2', 'us-east-1')
 
 def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
         cfile, ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
@@ -55,12 +55,13 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
 
     # copy kube config file to kops pod, so it can execute kubectl commands
     kops_podname = kops_spec['metadata']['name']
+    kcname = kops_spec['spec']['containers'][0]['name']
     copy_file_to_pod(client, '/home/ubuntu/.kube/config', kops_podname,
-            '/root/.kube/')
-    copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/')
+            '/root/.kube/', kcname)
+    copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/', kcname)
     copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
-            '/root/.ssh/')
-    copy_file_to_pod(client, cfile, kops_podname, '/fluent/conf/')
+            '/root/.ssh/', kcname)
+    copy_file_to_pod(client, cfile, kops_podname, '/fluent/conf/', kcname)
 
     # start the monitoring pod
     mon_spec = load_yaml('yaml/pods/monitoring-pod.yml')
@@ -81,7 +82,7 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
 
     print('Finished creating all pods...')
     os.system('touch setup_complete')
-    copy_file_to_pod(client, 'setup_complete', kops_podname, '/fluent')
+    copy_file_to_pod(client, 'setup_complete', kops_podname, '/fluent', kcname)
     os.system('rm setup_complete')
 
     print('Creating routing service...')

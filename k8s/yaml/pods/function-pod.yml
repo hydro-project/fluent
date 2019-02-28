@@ -28,7 +28,6 @@ spec:
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
-  containers:
   - name: cache-container
     image: vsreekanti/fluent-cache
     env:

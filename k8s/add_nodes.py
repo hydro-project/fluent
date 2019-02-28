@@ -97,7 +97,7 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
                 replace_yaml_val(env, 'MGMT_IP', kops_ip)
                 replace_yaml_val(env, 'SEED_IP', seed_ip)
 
-                create_pods += [(pod_name, container['name'])]
+                created_pods += [(pod_name, container['name'])]
 
             pod_spec['spec']['nodeSelector']['podid'] = ('%s-%d' % (kind, j))
 
@@ -126,7 +126,7 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
 
             os.system('cp %s ./kvs-config.yml' % cfile)
             for pname, cname in created_pods:
-                copy_file_to_pod(client, 'kvs-config.yml', pod,
+                copy_file_to_pod(client, 'kvs-config.yml', pname,
                         '/fluent/conf/', cname)
 
             os.system('rm ./kvs-config.yml')
