@@ -41,7 +41,8 @@ void handle_request(KvsClient& client, string input) {
     print_set(client.get_set(v[1]).reveal());
   } else if (v[0] == "PUT") {
     Key key = v[1];
-    LWWPairLattice<string> val(TimestampValuePair<string>(generate_timestamp(0), v[2]));
+    LWWPairLattice<string> val(
+        TimestampValuePair<string>(generate_timestamp(0), v[2]));
 
     if (client.put(key, val)) {
       std::cout << "Success!" << std::endl;
@@ -62,8 +63,8 @@ void handle_request(KvsClient& client, string input) {
   } else if (v[0] == "GET_ALL") {
     auto responses = client.get_all(v[1]);
     for (const auto& response : responses) {
-      std::cout << response.reveal().value << "("
-                << response.reveal().timestamp << ")" << std::endl;
+      std::cout << response.reveal().value << "(" << response.reveal().timestamp
+                << ")" << std::endl;
     }
   } else if (v[0] == "GET_SET_ALL") {
     vector<SetLattice<string>> result = client.get_set_all(v[1]);
@@ -73,7 +74,8 @@ void handle_request(KvsClient& client, string input) {
     }
   } else if (v[0] == "PUT_ALL") {
     Key key = v[1];
-    LWWPairLattice<string> val(TimestampValuePair<string>(generate_timestamp(0), v[2]));
+    LWWPairLattice<string> val(
+        TimestampValuePair<string>(generate_timestamp(0), v[2]));
 
     if (client.put_all(key, val)) {
       std::cout << "Success!" << std::endl;

@@ -215,13 +215,15 @@ class KvsClient {
     KeyResponse response = try_request(request, trial_limit);
 
     if (is_error_response(response)) {
-      return LWWPairLattice<string>(TimestampValuePair<string>(0, "ERROR: Timeout -- connection could not be established!"));
+      return LWWPairLattice<string>(TimestampValuePair<string>(
+          0, "ERROR: Timeout -- connection could not be established!"));
     }
 
     KeyTuple rtuple = response.tuples(0);
     if (rtuple.error() == 1) {
       log_->info("Key {} does not exist and could not be retrieved.", key);
-      return LWWPairLattice<string>(TimestampValuePair<string>(0, "ERROR: Key does not exist!"));
+      return LWWPairLattice<string>(
+          TimestampValuePair<string>(0, "ERROR: Key does not exist!"));
     }
 
     return deserialize_lww(rtuple.payload());

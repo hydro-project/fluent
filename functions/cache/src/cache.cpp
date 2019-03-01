@@ -19,7 +19,7 @@ ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 void run(KvsClient& client, Address ip, unsigned thread_id) {
-  string log_file = "log_" + std::to_string(thread_id) + ".txt";
+  string log_file = "cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "cache_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
   log->flush_on(spdlog::level::info);
@@ -110,7 +110,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
 
     // handle a PUT request
     if (pollitems[1].revents & ZMQ_POLLIN) {
-      string serialized = kZmqUtil->recv_string(&get_responder);
+      string serialized = kZmqUtil->recv_string(&put_responder);
       KeyRequest request;
       request.ParseFromString(serialized);
 
@@ -139,6 +139,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
 
             local_lww_cache[key] = new_val;
             resp->set_error(0);
+            break;
           }
           case LatticeType::SET: {
             SetLattice<string> new_val = deserialize_set(tuple.payload());
@@ -148,6 +149,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
 
             local_set_cache[key] = new_val;
             resp->set_error(0);
+            break;
           }
           default: resp->set_error(2);
         }
@@ -155,7 +157,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
 
       std::string resp_string;
       response.SerializeToString(&resp_string);
-      kZmqUtil->send_string(resp_string, &get_responder);
+      kZmqUtil->send_string(resp_string, &put_responder);
     }
 
     // TODO: check & update different caches
@@ -169,7 +171,7 @@ int main(int argc, char* argv[]) {
   }
 
   // read the YAML conf
-  YAML::Node conf = YAML::LoadFile("kvs-config.yml");
+  YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
   unsigned kRoutingThreadCount = conf["threads"]["routing"].as<unsigned>();
 
   YAML::Node user = conf["user"];

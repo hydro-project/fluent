@@ -108,7 +108,8 @@ inline LWWPairLattice<string> deserialize_lww(const string& serialized) {
   LWWValue lww;
   lww.ParseFromString(serialized);
 
-  return LWWPairLattice<string>(TimestampValuePair<string>(lww.timestamp(), lww.value()));
+  return LWWPairLattice<string>(
+      TimestampValuePair<string>(lww.timestamp(), lww.value()));
 }
 
 inline SetLattice<string> deserialize_set(const string& serialized) {

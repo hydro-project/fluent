@@ -12,9 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from anna.client import AnnaClient
+from anna.local_client import AnnaClient
 from cache import LruCache
-from functions_pb2 import *
+from ..shared.functions_pb2 import *
 import logging
 import os
 from shared import *
@@ -23,11 +23,7 @@ import uuid
 import zmq
 
 REPORT_THRESH = 30
-FUNC_CACHE_SIZE = 100
-DATA_CACHE_SIZE = 100
 global_util = 0.0
-function_cache = LruCache(FUNC_CACHE_SIZE)
-data_cache = LruCache(DATA_CACHE_SIZE)
 
 logging.basicConfig(filename='log.txt', level=logging.INFO)
 
