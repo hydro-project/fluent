@@ -15,54 +15,61 @@
 #ifndef SRC_INCLUDE_REQUESTS_HPP_
 #define SRC_INCLUDE_REQUESTS_HPP_
 
-template <typename REQ, typename RES>
-bool recursive_receive(zmq::socket_t& receiving_socket, zmq::message_t& message,
-                       const REQ& req, RES& response, bool& succeed) {
-  bool rc = receiving_socket.recv(&message);
+template <typename RES>
+bool receive(zmq::socket_t& recv_socket, set<string>& request_ids,
+             vector<RES>& responses) {
+  zmq::message_t message;
 
-  if (rc) {
-    auto serialized_resp = kZmqUtil->message_to_string(message);
-    response.ParseFromString(serialized_resp);
+  // We allow as many timeouts as there are requests that we made. We may want
+  // to make this configurable at some point.
+  unsigned timeout_limit = request_ids.size();
 
-    if (req.request_id() == response.response_id()) {
-      succeed = true;
-      return false;
+  while (true) {
+    RES response;
+
+    if (recv_socket.recv(&message)) {
+      string serialized_resp = kZmqUtil->message_to_string(message);
+      response.ParseFromString(serialized_resp);
+      string resp_id = response.response_id();
+
+      if (request_ids.find(resp_id) != request_ids.end()) {
+        request_ids.erase(resp_id);
+        responses.push_back(response);
+      }
+
+      if (request_ids.size() == 0) {
+        return true;
+      }
     } else {
-      return true;
-    }
-  } else {
-    // timeout
-    if (errno == EAGAIN) {
-      succeed = false;
-    } else {
-      succeed = false;
-    }
+      // We assume that the request timed out here, so errno should always equal
+      // EAGAIN. If that is not the case, log or print the errno here for
+      // debugging.
+      timeout_limit--;
 
-    return false;
+      if (timeout_limit == 0) {
+        responses.clear();
+        return false;
+      }
+    }
   }
 }
 
+template <typename REQ>
+void send_request(const REQ& request, zmq::socket_t& send_socket) {
+  string serialized_req;
+  request.SerializeToString(&serialized_req);
+  kZmqUtil->send_string(serialized_req, &send_socket);
+}
+
 template <typename REQ, typename RES>
-RES send_request(const REQ& req, zmq::socket_t& sending_socket,
-                 zmq::socket_t& receiving_socket, bool& succeed) {
-  std::string serialized_req;
-  req.SerializeToString(&serialized_req);
-  kZmqUtil->send_string(serialized_req, &sending_socket);
+RES make_request(const REQ& request, zmq::socket_t& send_socket,
+                 zmq::socket_t& recv_socket, bool& succeed) {
+  send_request<REQ>(request, send_socket);
 
-  RES response;
-  zmq::message_t message;
-
-  bool recurse = recursive_receive<REQ, RES>(receiving_socket, message, req,
-                                             response, succeed);
-
-  while (recurse) {
-    response.Clear();
-    zmq::message_t message;
-    recurse = recursive_receive<REQ, RES>(receiving_socket, message, req,
-                                          response, succeed);
-  }
-
-  return response;
+  vector<RES> responses;
+  set<string> req_ids{request.request_id()};
+  succeed = receive<RES>(recv_socket, req_ids, responses);
+  return responses[0];
 }
 
 #endif  // SRC_INCLUDE_REQUESTS_HPP_

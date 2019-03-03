@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "spdlog/spdlog.h"
 
 #include "misc.pb.h"
 #include "replication.pb.h"
@@ -31,18 +30,18 @@
 #include "test_user_request_handler.hpp"
 
 unsigned kDefaultLocalReplication = 1;
-unsigned kSelfTierId = 1;
+unsigned kSelfTierId = kMemoryTierId;
 unsigned kThreadNum = 1;
 
-std::vector<unsigned> kSelfTierIdVector = {kSelfTierId};
-std::unordered_map<unsigned, TierData> kTierDataMap = {};
+vector<unsigned> kSelfTierIdVector = {kSelfTierId};
+map<TierId, TierMetadata> kTierMetadata = {};
 
 unsigned kEbsThreadNum = 1;
 unsigned kMemoryThreadNum = 1;
 unsigned kRoutingThreadNum = 1;
 
 int main(int argc, char* argv[]) {
-  logger->set_level(spdlog::level::info);
+  log_->set_level(spdlog::level::info);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

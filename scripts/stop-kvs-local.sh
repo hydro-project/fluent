@@ -24,7 +24,7 @@ while IFS='' read -r line || [[ -n "$line" ]] ; do
 done < "pids"
 
 if [ "$1" = "y" ]; then
-  rm log*
+  rm *log*
 fi
 
 rm conf/kvs-config.yml

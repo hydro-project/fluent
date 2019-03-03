@@ -4,3 +4,7 @@ PUT b 2
 GET b
 PUT a 10 
 GET a
+PUT_SET_ALL set 1 2 3 
+GET_SET set
+PUT_SET_ALL set 1 2 4
+GET_SET set

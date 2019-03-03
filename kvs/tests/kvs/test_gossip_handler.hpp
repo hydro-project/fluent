@@ -16,45 +16,45 @@
 
 TEST_F(ServerHandlerTest, SimpleGossipReceive) {
   Key key = "key";
-  std::string value = "value";
-  std::string put_request = put_key_request(key, value, ip);
+  string value = "value";
+  string put_request = put_key_request(key, value, ip);
 
-  unsigned total_access = 0;
+  unsigned access_count = 0;
   unsigned seed = 0;
   unsigned error;
   auto now = std::chrono::system_clock::now();
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  gossip_handler(seed, put_request, global_hash_ring_map, local_hash_ring_map,
-                 key_size_map, pending_gossip_map, placement, wt, serializer,
+  gossip_handler(seed, put_request, global_hash_rings, local_hash_rings,
+                 key_size_map, pending_gossip, metadata_map, wt, serializer,
                  pushers);
 
-  EXPECT_EQ(pending_gossip_map.size(), 0);
+  EXPECT_EQ(pending_gossip.size(), 0);
   EXPECT_EQ(serializer->get(key, error).reveal().value, value);
 }
 
 TEST_F(ServerHandlerTest, GossipUpdate) {
   Key key = "key";
-  std::string value = "value1";
+  string value = "value1";
   serializer->put(key, value, (unsigned)0);
 
   value = "value2";
 
-  std::string put_request = put_key_request(key, value, ip);
+  string put_request = put_key_request(key, value, ip);
 
-  unsigned total_access = 0;
+  unsigned access_count = 0;
   unsigned seed = 0;
   unsigned error;
   auto now = std::chrono::system_clock::now();
 
   EXPECT_EQ(local_changeset.size(), 0);
 
-  gossip_handler(seed, put_request, global_hash_ring_map, local_hash_ring_map,
-                 key_size_map, pending_gossip_map, placement, wt, serializer,
+  gossip_handler(seed, put_request, global_hash_rings, local_hash_rings,
+                 key_size_map, pending_gossip, metadata_map, wt, serializer,
                  pushers);
 
-  EXPECT_EQ(pending_gossip_map.size(), 0);
+  EXPECT_EQ(pending_gossip.size(), 0);
   EXPECT_EQ(serializer->get(key, error).reveal().value, value);
 }
 

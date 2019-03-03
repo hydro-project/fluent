@@ -16,9 +16,6 @@
 #define SRC_INCLUDE_COMMON_HPP_
 
 #include <algorithm>
-#include <string>
-#include <unordered_map>
-#include <vector>
 
 #include "kvs/lww_pair_lattice.hpp"
 #include "kvs_types.hpp"
@@ -29,23 +26,25 @@
 #include "zmq/socket_cache.hpp"
 #include "zmq/zmq_util.hpp"
 
-const std::string kMetadataIdentifier = "ANNA_METADATA";
+const string kMetadataIdentifier = "ANNA_METADATA";
 
 const unsigned kMetadataReplicationFactor = 1;
 const unsigned kMetadataLocalReplicationFactor = 1;
 
 const unsigned kVirtualThreadNum = 3000;
 
-const unsigned kMinTier = 1;
-const unsigned kMaxTier = 2;
-const std::vector<unsigned> kAllTierIds = {1, 2};
+const unsigned kMemoryTierId = 0;
+const unsigned kEbsTierId = 1;
+const unsigned kRoutingTierId = 100;
+
+const unsigned kMaxTier = 1;
+const vector<unsigned> kAllTierIds = {0, 1};
 
 const unsigned kSloWorst = 3000;
-const unsigned SLO_BEST = 1500;
 
 // run-time constants
 extern unsigned kSelfTierId;
-extern std::vector<unsigned> kSelfTierIdVector;
+extern vector<unsigned> kSelfTierIdVector;
 
 extern unsigned kMemoryNodeCapacity;
 extern unsigned kEbsNodeCapacity;
@@ -61,10 +60,9 @@ extern unsigned kDefaultGlobalEbsReplication;
 extern unsigned kDefaultLocalReplication;
 extern unsigned kMinimumReplicaNumber;
 
-inline void split(const std::string& s, char delim,
-                  std::vector<std::string>& elems) {
+inline void split(const string& s, char delim, vector<string>& elems) {
   std::stringstream ss(s);
-  std::string item;
+  string item;
 
   while (std::getline(ss, item, delim)) {
     elems.push_back(item);
@@ -72,9 +70,15 @@ inline void split(const std::string& s, char delim,
 }
 
 // form the timestamp given a time and a thread id
-inline unsigned long long generate_timestamp(const unsigned long long& time,
-                                             const unsigned& id) {
+inline unsigned long long get_time() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
+}
+
+inline unsigned long long generate_timestamp(const unsigned& id) {
   unsigned pow = 10;
+  auto time = get_time();
   while (id >= pow) pow *= 10;
   return time * pow + id;
 }
@@ -87,53 +91,73 @@ inline void prepare_get_tuple(KeyRequest& req, Key key,
 }
 
 inline void prepare_put_tuple(KeyRequest& req, Key key,
-                              LatticeType lattice_type, std::string payload) {
+                              LatticeType lattice_type, string payload) {
   KeyTuple* tp = req.add_tuples();
   tp->set_key(std::move(key));
   tp->set_lattice_type(std::move(lattice_type));
   tp->set_payload(std::move(payload));
 }
 
-// TODO(vikram): what's the right way to check if this succeeded or not?
-inline RequestType get_request_type(const std::string& type_str) {
-  RequestType type;
-  RequestType_Parse(type_str, &type);
-
-  return type;
-}
-
-inline std::string serialize(const LWWPairLattice<std::string>& l) {
+inline string serialize(const LWWPairLattice<string>& l) {
   LWWValue lww_value;
   lww_value.set_timestamp(l.reveal().timestamp);
   lww_value.set_value(l.reveal().value);
-  std::string serialized;
+
+  string serialized;
   lww_value.SerializeToString(&serialized);
   return serialized;
 }
 
-inline std::string serialize(const unsigned long long& timestamp,
-                             const std::string& value) {
+inline string serialize(const unsigned long long& timestamp,
+                        const string& value) {
   LWWValue lww_value;
   lww_value.set_timestamp(timestamp);
   lww_value.set_value(value);
-  std::string serialized;
+
+  string serialized;
   lww_value.SerializeToString(&serialized);
   return serialized;
 }
 
-inline std::string serialize(const SetLattice<std::string>& l) {
+inline string serialize(const SetLattice<string>& l) {
   SetValue set_value;
-  for (const std::string& val : l.reveal()) {
+  for (const string& val : l.reveal()) {
     set_value.add_values(val);
   }
-  std::string serialized;
+
+  string serialized;
   set_value.SerializeToString(&serialized);
   return serialized;
 }
 
+inline string serialize(const set<string>& set) {
+  SetValue set_value;
+  for (const string& val : set) {
+    set_value.add_values(val);
+  }
+
+  string serialized;
+  set_value.SerializeToString(&serialized);
+  return serialized;
+}
+
+inline LWWValue deserialize_lww(const string& serialized) {
+  LWWValue lww;
+  lww.ParseFromString(serialized);
+
+  return lww;
+}
+
+inline SetValue deserialize_set(const string& serialized) {
+  SetValue set;
+  set.ParseFromString(serialized);
+
+  return set;
+}
+
 struct lattice_type_hash {
   std::size_t operator()(const LatticeType& lt) const {
-    return std::hash<std::string>()(LatticeType_Name(lt));
+    return std::hash<string>()(LatticeType_Name(lt));
   }
 };
 

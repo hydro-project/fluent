@@ -15,22 +15,17 @@
 #ifndef SRC_INCLUDE_TYPES_HPP_
 #define SRC_INCLUDE_TYPES_HPP_
 
-#include <string>
-#include <unordered_map>
-
+#include <chrono>
 #include "types.hpp"
 
-template <typename T>
-using PendingMap = std::unordered_map<std::string, std::vector<T>>;
+using StorageStats = map<Address, map<unsigned, unsigned long long>>;
 
-using StorageStat =
-    std::unordered_map<Address,
-                       std::unordered_map<unsigned, unsigned long long>>;
+using OccupancyStats = map<Address, map<unsigned, pair<double, unsigned>>>;
 
-using OccupancyStats = std::unordered_map<
-    Address, std::unordered_map<unsigned, std::pair<double, unsigned>>>;
+using AccessStats = map<Address, map<unsigned, unsigned>>;
 
-using AccessStat =
-    std::unordered_map<Address, std::unordered_map<unsigned, unsigned>>;
+using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
+
+using TierId = unsigned;
 
 #endif  // SRC_INCLUDE_TYPES_HPP_

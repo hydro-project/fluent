@@ -23,9 +23,9 @@
 class SetLatticeTest : public ::testing::Test {
  protected:
   SetLattice<char>* sl;
-  std::unordered_set<char> set1 = {'a', 'b', 'c'};
-  std::unordered_set<char> set2 = {'c', 'd', 'e'};
-  std::unordered_set<char> set3 = {'a', 'd', 'e', 'b', 'c'};
+  set<char> set1 = {'a', 'b', 'c'};
+  set<char> set2 = {'c', 'd', 'e'};
+  set<char> set3 = {'a', 'd', 'e', 'b', 'c'};
   SetLatticeTest() { sl = new SetLattice<char>; }
   virtual ~SetLatticeTest() { delete sl; }
 };
@@ -62,5 +62,5 @@ TEST_F(SetLatticeTest, MergeByLattice) {
 TEST_F(SetLatticeTest, Intersection) {
   sl->merge(set1);
   SetLattice<char> res = sl->intersect(set2);
-  EXPECT_EQ(std::unordered_set<char>({'c'}), res.reveal());
+  EXPECT_EQ(set<char>({'c'}), res.reveal());
 }

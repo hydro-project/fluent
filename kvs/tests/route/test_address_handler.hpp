@@ -15,7 +15,7 @@
 #include "route/routing_handlers.hpp"
 
 TEST_F(RoutingHandlerTest, Address) {
-  EXPECT_EQ(global_hash_ring_map[1].size(), 3000);
+  EXPECT_EQ(global_hash_rings[kMemoryTierId].size(), 3000);
 
   unsigned seed = 0;
 
@@ -24,17 +24,16 @@ TEST_F(RoutingHandlerTest, Address) {
   req.set_response_address("tcp://127.0.0.1:5000");
   req.add_keys("key");
 
-  std::string serialized;
+  string serialized;
   req.SerializeToString(&serialized);
 
-  address_handler(logger, serialized, pushers, rt, global_hash_ring_map,
-                  local_hash_ring_map, placement, pending_key_request_map,
-                  seed);
+  address_handler(log_, serialized, pushers, rt, global_hash_rings,
+                  local_hash_rings, metadata_map, pending_requests, seed);
 
-  std::vector<std::string> messages = get_zmq_messages();
+  vector<string> messages = get_zmq_messages();
 
   EXPECT_EQ(messages.size(), 1);
-  std::string serialized_resp = messages[0];
+  string serialized_resp = messages[0];
 
   KeyAddressResponse resp;
   resp.ParseFromString(serialized_resp);
@@ -43,9 +42,9 @@ TEST_F(RoutingHandlerTest, Address) {
   EXPECT_EQ(resp.error(), 0);
 
   for (const KeyAddressResponse_KeyAddress& addr : resp.addresses()) {
-    std::string key = addr.key();
+    string key = addr.key();
     EXPECT_EQ(key, "key");
-    for (const std::string& ip : addr.ips()) {
+    for (const string& ip : addr.ips()) {
       EXPECT_EQ(ip, "tcp://127.0.0.1:6200");
     }
   }

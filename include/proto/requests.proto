@@ -4,7 +4,7 @@
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
 // 
-//      http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.apache.org/licenses/LICENSE-2.0 
 // 
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,7 @@ enum LatticeType {
 
 message LWWValue {
   required uint64 timestamp = 1;
-  required string value = 2;
+  required bytes value = 2;
 }
 
 message SetValue {
@@ -36,7 +36,7 @@ message SetValue {
 
 message KeyTuple {
   required string key = 1;
-  required LatticeType lattice_type = 2;
+  optional LatticeType lattice_type = 2 [default = NO];
   optional uint32 error = 3;
   optional bytes payload = 4;
   optional uint32 address_cache_size = 5;

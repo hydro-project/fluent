@@ -14,13 +14,13 @@
 
 #include "mock_utils.hpp"
 
-void MockZmqUtil::send_string(const std::string& s, zmq::socket_t* socket) {
+void MockZmqUtil::send_string(const string& s, zmq::socket_t* socket) {
   sent_messages.push_back(s);
 }
 
-std::string MockZmqUtil::recv_string(zmq::socket_t* socket) { return ""; }
+string MockZmqUtil::recv_string(zmq::socket_t* socket) { return ""; }
 
-int MockZmqUtil::poll(long timeout, std::vector<zmq::pollitem_t>* items) {
+int MockZmqUtil::poll(long timeout, vector<zmq::pollitem_t>* items) {
   return 0;
 }
 
@@ -28,10 +28,10 @@ int MockZmqUtil::poll(long timeout, std::vector<zmq::pollitem_t>* items) {
 // metadata flag = 0 means the key is  metadata; otherwise, it is  regular data
 ServerThreadList MockHashRingUtil::get_responsible_threads(
     Address respond_address, const Key& key, bool metadata,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, KeyInfo>& placement, SocketCache& pushers,
-    const std::vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) {
+    map<TierId, GlobalHashRing>& global_hash_rings,
+    map<TierId, LocalHashRing>& local_hash_rings,
+    map<Key, KeyMetadata>& metadata_map, SocketCache& pushers,
+    const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed) {
   ServerThreadList threads;
   succeed = true;
 

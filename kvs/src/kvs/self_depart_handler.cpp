@@ -14,79 +14,75 @@
 
 #include "kvs/kvs_handlers.hpp"
 
-void self_depart_handler(
-    unsigned thread_id, unsigned& seed, Address public_ip, Address private_ip,
-    std::shared_ptr<spdlog::logger> logger, std::string& serialized,
-    std::unordered_map<unsigned, GlobalHashRing>& global_hash_ring_map,
-    std::unordered_map<unsigned, LocalHashRing>& local_hash_ring_map,
-    std::unordered_map<Key, std::pair<unsigned, LatticeType>>& key_stat_map,
-    std::unordered_map<Key, KeyInfo>& placement,
-    std::vector<Address>& routing_address,
-    std::vector<Address>& monitoring_address, ServerThread& wt,
-    SocketCache& pushers,
-    std::unordered_map<LatticeType, Serializer*, lattice_type_hash>&
-        serializers) {
-  logger->info("Node is departing.");
-  global_hash_ring_map[kSelfTierId].remove(public_ip, private_ip, 0);
+void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
+                         Address private_ip, logger log, string& serialized,
+                         map<TierId, GlobalHashRing>& global_hash_rings,
+                         map<TierId, LocalHashRing>& local_hash_rings,
+                         map<Key, KeyMetadata>& metadata_map,
+                         vector<Address>& routing_ips,
+                         vector<Address>& monitoring_ips, ServerThread& wt,
+                         SocketCache& pushers, SerializerMap& serializers) {
+  log->info("Node is departing.");
+  global_hash_rings[kSelfTierId].remove(public_ip, private_ip, 0);
 
   // thread 0 notifies other nodes in the cluster (of all types) that it is
   // leaving the cluster
   if (thread_id == 0) {
-    std::string msg =
+    string msg =
         std::to_string(kSelfTierId) + ":" + public_ip + ":" + private_ip;
 
-    for (const auto& global_pair : global_hash_ring_map) {
-      GlobalHashRing hash_ring = global_pair.second;
+    for (const auto& pair : global_hash_rings) {
+      GlobalHashRing hash_ring = pair.second;
 
       for (const ServerThread& st : hash_ring.get_unique_servers()) {
-        kZmqUtil->send_string(msg, &pushers[st.get_node_depart_connect_addr()]);
+        kZmqUtil->send_string(msg, &pushers[st.node_depart_connect_address()]);
       }
     }
 
     msg = "depart:" + msg;
 
     // notify all routing nodes
-    for (const std::string& address : routing_address) {
+    for (const string& address : routing_ips) {
       kZmqUtil->send_string(
-          msg, &pushers[RoutingThread(address, 0).get_notify_connect_addr()]);
+          msg, &pushers[RoutingThread(address, 0).notify_connect_address()]);
     }
 
     // notify monitoring nodes
-    for (const std::string& address : monitoring_address) {
+    for (const string& address : monitoring_ips) {
       kZmqUtil->send_string(
-          msg, &pushers[MonitoringThread(address).get_notify_connect_addr()]);
+          msg, &pushers[MonitoringThread(address).notify_connect_address()]);
     }
 
     // tell all worker threads about the self departure
     for (unsigned tid = 1; tid < kThreadNum; tid++) {
       kZmqUtil->send_string(serialized,
                             &pushers[ServerThread(public_ip, private_ip, tid)
-                                         .get_self_depart_connect_addr()]);
+                                         .self_depart_connect_address()]);
     }
   }
 
   AddressKeysetMap addr_keyset_map;
   bool succeed;
 
-  for (const auto& key_pair : key_stat_map) {
+  for (const auto& key_pair : metadata_map) {
     Key key = key_pair.first;
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-        wt.get_replication_factor_connect_addr(), key, is_metadata(key),
-        global_hash_ring_map, local_hash_ring_map, placement, pushers,
-        kAllTierIds, succeed, seed);
+        wt.replication_response_connect_address(), key, is_metadata(key),
+        global_hash_rings, local_hash_rings, metadata_map, pushers, kAllTierIds,
+        succeed, seed);
 
     if (succeed) {
       // since we already removed this node from the hash ring, no need to
       // exclude it explicitly
       for (const ServerThread& thread : threads) {
-        addr_keyset_map[thread.get_gossip_connect_addr()].insert(key);
+        addr_keyset_map[thread.gossip_connect_address()].insert(key);
       }
     } else {
-      logger->error("Missing key replication factor in node depart routine");
+      log->error("Missing key replication factor in node depart routine");
     }
   }
 
-  send_gossip(addr_keyset_map, pushers, serializers, key_stat_map);
+  send_gossip(addr_keyset_map, pushers, serializers, metadata_map);
   kZmqUtil->send_string(
       public_ip + "_" + private_ip + "_" + std::to_string(kSelfTierId),
       &pushers[serialized]);
