@@ -173,6 +173,13 @@ inline SetValue deserialize_set(const string& serialized) {
   return set;
 }
 
+inline CausalValue deserialize_causal(const string& serialized) {
+  CausalValue causal;
+  causal.ParseFromString(serialized);
+
+  return causal;
+}
+
 struct lattice_type_hash {
   std::size_t operator()(const LatticeType& lt) const {
     return std::hash<string>()(LatticeType_Name(lt));
