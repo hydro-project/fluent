@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_
-#define SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_
+#ifndef SRC_INCLUDE_KVS_LWW_PAIR_LATTICE_HPP_
+#define SRC_INCLUDE_KVS_LWW_PAIR_LATTICE_HPP_
 
 #include "../lattices/core_lattices.hpp"
 
@@ -58,4 +58,4 @@ class LWWPairLattice : public Lattice<TimestampValuePair<T>> {
   MaxLattice<unsigned> size() { return {this->element.size()}; }
 };
 
-#endif  // SRC_INCLUDE_KVS_RC_PAIR_LATTICE_HPP_
+#endif  // SRC_INCLUDE_KVS_LWW_PAIR_LATTICE_HPP_

@@ -18,6 +18,7 @@
 #include <algorithm>
 
 #include "kvs/lww_pair_lattice.hpp"
+#include "kvs/vector_clock_pair_lattice.hpp"
 #include "kvs_types.hpp"
 #include "misc.pb.h"
 #include "replication.pb.h"
@@ -138,6 +139,23 @@ inline string serialize(const set<string>& set) {
 
   string serialized;
   set_value.SerializeToString(&serialized);
+  return serialized;
+}
+
+inline string serialize(const CausalPairLattice<SetLattice<string>>& l) {
+  CausalValue causal_value;
+  auto ptr = causal_value.mutable_vector_clock();
+  // serialize vector clock
+  for (const auto& pair : l.reveal().vector_clock.reveal()) {
+    (*ptr)[pair.first] = pair.second.reveal();
+  }
+  // serialize values
+  for (const string& val : l.reveal().value.reveal()) {
+    causal_value.add_values(val);
+  }
+
+  string serialized;
+  causal_value.SerializeToString(&serialized);
   return serialized;
 }
 
