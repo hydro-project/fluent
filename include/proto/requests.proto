@@ -23,6 +23,7 @@ enum LatticeType {
   NO = 0;
   LWW = 1;
   SET = 2;
+  CAUSAL = 3;
 }
 
 message LWWValue {
@@ -32,6 +33,11 @@ message LWWValue {
 
 message SetValue {
   repeated string values = 1;
+}
+
+message CausalValue {
+  map<uint32, uint32> vector_clock = 1;
+  repeated string values = 2;
 }
 
 message KeyTuple {

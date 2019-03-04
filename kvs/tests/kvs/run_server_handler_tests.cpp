@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <vector>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include "misc.pb.h"
