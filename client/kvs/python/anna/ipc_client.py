@@ -96,5 +96,4 @@ class IpcAnnaClient:
         resp = KeyResponse()
         resp.ParseFromString(self.put_socket.recv())
 
-        print(resp.tuples[0].error)
         return resp.tuples[0].error == 0

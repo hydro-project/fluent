@@ -24,4 +24,4 @@ else
 fi
 
 # start python server
-cd fluent/functions && export MY_IP=$IP && python3.6 function_server.py
+cd fluent/functions/executor && export MY_IP=$IP && python3.6 function_server.py

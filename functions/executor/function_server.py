@@ -12,12 +12,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from anna.local_client import AnnaClient
+import sys
+sys.path.append('..')
+
+from anna.ipc_client import IpcAnnaClient
 from cache import LruCache
-from ..shared.functions_pb2 import *
+from include.functions_pb2 import *
 import logging
 import os
-from shared import *
+from include.shared import *
 import time
 import uuid
 import zmq
@@ -53,7 +56,7 @@ def run():
     mgmt_ip = os.environ['MGMT_IP']
     ip = os.environ['MY_IP']
 
-    client = AnnaClient(routing_addr, ip)
+    client = IpcAnnaClient()
 
     report_start = time.time()
 

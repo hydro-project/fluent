@@ -39,7 +39,7 @@ RUN pip3 install numpy sklearn scikit-image torch torchvision
 RUN git clone https://github.com/$repo_org/fluent
 WORKDIR /fluent
 RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
-RUN cd client/python && python3.6 setup.py install --prefix=$HOME/.local
+RUN cd client/kvs/python && python3.6 setup.py install --prefix=$HOME/.local
 WORKDIR /
 
 COPY start-funcs.sh /start-funcs.sh

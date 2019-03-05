@@ -40,7 +40,8 @@ while [[ ! -f "conf/kvs-config.yml" ]]; do
   continue
 done
 
-echo -e "user" >> conf/kvs-config.yml
+echo -e "user:" >> conf/kvs-config.yml
+echo -e "    ip: $PRIVATE_IP" >> conf/kvs-config.yml
 echo -e "    routing-elb: $ROUTE_ADDR" >> conf/kvs-config.yml
 
 ./build/functions/cache/src/flfunc-cache

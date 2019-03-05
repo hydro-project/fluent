@@ -19,7 +19,12 @@ metadata:
   labels: 
     role: function
 spec:
+  volumes:
+  - name: ipc
+    hostPath:
+      path: /tmp
   hostNetwork: true
+  hostIPC: true
   containers:
   - name: function-container
     image: vsreekanti/fluent-func
@@ -28,6 +33,9 @@ spec:
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
+    volumeMounts:
+    - mountPath: /requests
+      name: ipc
   - name: cache-container
     image: vsreekanti/fluent-cache
     env:
@@ -35,6 +43,9 @@ spec:
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
+    volumeMounts:
+    - mountPath: /requests
+      name: ipc
   nodeSelector:
     role: function
     podid: function-NUM_DUMMY

@@ -179,7 +179,7 @@ int main(int argc, char* argv[]) {
 
   vector<Address> routing_ips;
   if (YAML::Node elb = user["routing-elb"]) {
-    routing_ips.push_back(elb.as<string>());
+    routing_ips.push_back(elb.as<Address>());
   } else {
     YAML::Node routing = user["routing"];
     for (const YAML::Node& node : routing) {
