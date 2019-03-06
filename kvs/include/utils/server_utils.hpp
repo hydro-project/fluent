@@ -30,7 +30,7 @@
 #define DATA_REDISTRIBUTE_THRESHOLD 50
 
 // Define the gossip period (frequency)
-#define PERIOD 10000000
+#define PERIOD 10000000  // 10 seconds
 
 typedef KVStore<Key, LWWPairLattice<string>> MemoryLWWKVS;
 typedef KVStore<Key, SetLattice<string>> MemorySetKVS;

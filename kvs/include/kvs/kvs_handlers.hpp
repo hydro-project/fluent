@@ -79,6 +79,14 @@ void replication_change_handler(Address public_ip, Address private_ip,
                                 SerializerMap& serializers,
                                 SocketCache& pushers);
 
+// Postcondition:
+// cache_ip_to_keys, key_to_cache_ips are both updated
+// with the IPs and their fresh list of repsonsible keys
+// in the serialized response.
+void cache_ip_response_handler(
+    string& serialized, map<Address, set<Key>>& cache_ip_to_keys,
+    map<Key, set<Address>>& key_to_cache_ips);
+
 void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
                  SerializerMap& serializers,
                  map<Key, KeyMetadata>& metadata_map);

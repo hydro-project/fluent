@@ -66,7 +66,7 @@ inline bool is_metadata(Key key) {
 // NOTE: This needs to be here because it needs the definition of TierMetadata
 extern map<TierId, TierMetadata> kTierMetadata;
 
-enum MetadataType { replication, server_stats, key_access, key_size };
+enum MetadataType { replication, server_stats, key_access, key_size, cache_ip };
 
 inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
                             unsigned thread_num, MetadataType type) {
@@ -88,23 +88,30 @@ inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
 }
 
 // This version of the function should only be called with
-// MetadataType::replication, so if it's called with something else, we return
+// certain types of MetadataType,
+// so if it's called with something else, we return
 // an empty string.
-// NOTE: There should probably be a less silent error check.
+// TODO: There should probably be a less silent error check.
 inline Key get_metadata_key(string data_key, MetadataType type) {
   if (type == MetadataType::replication) {
     return kMetadataIdentifier + kMetadataDelimiter + data_key +
            kMetadataDelimiter + "replication";
+  } else if (type == MetadataType::cache_ip) {
+    return kMetadataIdentifier + kMetadataDelimiter + data_key +
+           kMetadataDelimiter + "cache_ip";
   }
 
   return "";
 }
 
+// Inverse of get_metadata_key, returning just the key itself.
+// TODO: same problem as get_metadata_key with the metadata types.
 inline Key get_key_from_metadata(Key metadata_key) {
   vector<string> tokens;
   split(metadata_key, '|', tokens);
 
-  if (tokens[tokens.size() - 1] == "replication") {
+  string metadata_type = tokens[tokens.size() - 1];
+  if (metadata_type == "replication" || metadata_type == "cache_ip") {
     return tokens[1];
   }
 

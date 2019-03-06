@@ -186,4 +186,5 @@ struct lattice_type_hash {
   }
 };
 
+
 #endif  // SRC_INCLUDE_COMMON_HPP_

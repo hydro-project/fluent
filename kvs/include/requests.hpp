@@ -61,6 +61,7 @@ void send_request(const REQ& request, zmq::socket_t& send_socket) {
   kZmqUtil->send_string(serialized_req, &send_socket);
 }
 
+// Synchronous combination of send and receive.
 template <typename REQ, typename RES>
 RES make_request(const REQ& request, zmq::socket_t& send_socket,
                  zmq::socket_t& recv_socket, bool& succeed) {
