@@ -34,7 +34,7 @@ install_protobuf() {
 }
 
 download_lcov() {
-  wget https://sourceforge.net/projects/ltp/files/Coverage%20Analysis/LCOV-1.13/lcov-1.13.tar.gz
+  wget http://sourceforge.net/projects/ltp/files/Coverage%20Analysis/LCOV-1.13/lcov-1.13.tar.gz
   tar xvzf lcov-${LCOV_VERSION}.tar.gz > /dev/null 2>&1
   rm -rf lcov-${LCOV_VERSION}.tar.gz
 }
