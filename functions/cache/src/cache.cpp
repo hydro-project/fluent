@@ -45,12 +45,17 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
   zmq::socket_t put_responder(context, ZMQ_REP);
   put_responder.bind(ct.cache_put_bind_address());
 
-  // TODO: bind update address here
+  zmq::socket_t update_puller(context, ZMQ_PULL);
+  update_puller.bind(ct.cache_update_bind_address());
 
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(get_responder), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(put_responder), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(update_puller), 0, ZMQ_POLLIN, 0},
   };
+
+  auto report_start = std::chrono::system_clock::now();
+  auto report_end = std::chrono::system_clock::now();
 
   while (true) {
     kZmqUtil->poll(0, &pollitems);
@@ -99,6 +104,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           }
           default: {
             resp->set_error(3);
+            break;
           }
         }
       }
@@ -134,7 +140,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           case LatticeType::LWW: {
             LWWPairLattice<string> new_val = deserialize_lww(tuple.payload());
             if (local_lww_cache.find(key) != local_lww_cache.end()) {
-              new_val.merge(local_lww_cache[key]);
+              new_val = new_val.merge(local_lww_cache[key]);
             }
 
             local_lww_cache[key] = new_val;
@@ -144,14 +150,16 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           case LatticeType::SET: {
             SetLattice<string> new_val = deserialize_set(tuple.payload());
             if (local_set_cache.find(key) != local_set_cache.end()) {
-              new_val.merge(local_set_cache[key]);
+              new_val = ew_val.merge(local_set_cache[key]);
             }
 
             local_set_cache[key] = new_val;
             resp->set_error(0);
             break;
           }
-          default: resp->set_error(2);
+          default:
+            resp->set_error(2);
+            break;
         }
       }
 
@@ -160,7 +168,93 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
       kZmqUtil->send_string(resp_string, &put_responder);
     }
 
-    // TODO: check & update different caches
+    // handle updates received from the KVS
+    if (pollitems[2].revents & ZMQ_POLLIN) {
+      string serialized = kZmqUtil->recv_string(&update_puller);
+      KeyRequest updates;
+      updates.ParseFromString(serialized);
+
+      for (const KeyTuple& tuple : updates) {
+        Key key = tuple.key();
+
+        // if we are no longer caching this key, then we simply ignore updates
+        // for it because we received the update based on outdated information
+        if (key_type_map.find(key) == key_type_map.end()) {
+          continue;
+        }
+
+        if (key_type_map[key] != tuple.lattice_type()) {
+          // This is bad! This means that we have a certain lattice type stored
+          // locally for a key and that is incompatible with the lattice type
+          // stored in the KVS. This probably means that something was put here
+          // but hasn't been propagated yet, and something *different* was put
+          // globally. I think we should just drop our local copy for the time
+          // being, but open to other ideas.
+
+          switch(key_type_map[key]) {
+            case LatticeType::LWW:
+              local_lww_cache.erase(key);
+              break;
+            case LatticeType::SET:
+              local_set_cache.erase(key);
+              break;
+            default:
+              break; // this can never happen
+          }
+
+          key_type_map[key] = tuple.lattice_type();
+        }
+
+        switch(key_type_map[key]) {
+          case LatticeType::LWW: {
+            LWWPairLattice<string> new_val = deserialize_lww(tuple.payload());
+
+            if (local_lww_cache.find(key) != local_lww_cache.end()) {
+              new_val = new_val.merge(local_lww_cache[key]);
+            }
+
+            local_lww_cache[key] = new_val;
+            break
+          }
+          case LatticeType::SET: {
+            SetLattice<string> new_val = deserialize_set(tuple.payload());
+            if (local_set_cache.find(key) != local_set_cache.end()) {
+              new_val = ew_val.merge(local_set_cache[key]);
+            }
+
+            local_set_cache[key] = new_val;
+          }
+          default: break; // this should never happen!
+        }
+      }
+    }
+
+    // collect and store internal statistics
+    report_end = std::chrono::system_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(
+                        report_end - report_start)
+                        .count();
+
+    // update KVS with information about which keys this node is currently
+    // caching; we only do this periodically because we are okay with receiving
+    // potentially stale updates
+    if (duration >= kCacheReportThreshold) {
+      KeySet set;
+
+      for (const auto& pair : key_type_map) {
+        set.add_keys(pair.first);
+      }
+
+      string serialized;
+      set.SerializeToString(serialized);
+
+      LWWPairLattice<string> val(generate_timestamp(thread_id), serialized);
+      // TODO: use the key generation method to create this
+      Key key = "ANNA_METADATA|" + ip + ":" + thread_id + "|cache_ip";
+      client.put(key, val);
+    }
+
+    // TODO: check if cache size is exceeding (threshold x capacity) and evict.
   }
 }
 

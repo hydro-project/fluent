@@ -86,3 +86,7 @@ message UserFeedback {
   optional bool warmup = 5;
   repeated KeyLatency key_latency = 6;
 }
+
+message KeySet {
+  repeated string keys = 1;
+}
