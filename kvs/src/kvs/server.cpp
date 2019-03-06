@@ -591,7 +591,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       // and put them in an address request map.
       map<Address, KeyRequest> addr_request_map;
       for (const auto& cacheip : extant_caches) {
-        Key key = get_metadata_key(cacheip, MetadataType::cache_ip);
+        Key key = get_user_metadata_key(cacheip, UserMetadataType::cache_ip);
         prepare_metadata_get_request(
           key, global_hash_rings[kMemoryTierId], local_hash_rings[kMemoryTierId],
           addr_request_map, wt.cache_ip_response_connect_address(), rid);

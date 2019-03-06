@@ -17,9 +17,6 @@
 
 #include "threads.hpp"
 
-const string kMetadataDelimiter = "|";
-const char kMetadataDelimiterChar = '|';
-
 // represents the replication state for each key
 struct KeyMetadata {
   map<TierId, unsigned> global_replication_;
@@ -66,7 +63,7 @@ inline bool is_metadata(Key key) {
 // NOTE: This needs to be here because it needs the definition of TierMetadata
 extern map<TierId, TierMetadata> kTierMetadata;
 
-enum MetadataType { replication, server_stats, key_access, key_size, cache_ip };
+enum MetadataType { replication, server_stats, key_access, key_size };
 
 inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
                             unsigned thread_num, MetadataType type) {
@@ -96,11 +93,7 @@ inline Key get_metadata_key(string data_key, MetadataType type) {
   if (type == MetadataType::replication) {
     return kMetadataIdentifier + kMetadataDelimiter + data_key +
            kMetadataDelimiter + "replication";
-  } else if (type == MetadataType::cache_ip) {
-    return kMetadataIdentifier + kMetadataDelimiter + data_key +
-           kMetadataDelimiter + "cache_ip";
   }
-
   return "";
 }
 
@@ -111,7 +104,7 @@ inline Key get_key_from_metadata(Key metadata_key) {
   split(metadata_key, '|', tokens);
 
   string metadata_type = tokens[tokens.size() - 1];
-  if (metadata_type == "replication" || metadata_type == "cache_ip") {
+  if (metadata_type == "replication") {
     return tokens[1];
   }
 

@@ -31,7 +31,7 @@ void cache_ip_response_handler(
 
     if (error == 0) {
       // Extract the cache IP.
-      Address cache_ip = get_key_from_metadata(tuple.key());
+      Address cache_ip = get_key_from_user_metadata(tuple.key());
 
       // Extract the keys that the cache is responsible for.
       LWWValue lww_value;
