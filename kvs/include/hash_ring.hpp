@@ -113,31 +113,24 @@ ServerThreadList responsible_global(const Key& key, unsigned global_rep,
 set<unsigned> responsible_local(const Key& key, unsigned local_rep,
                                 LocalHashRing& local_hash_ring);
 
-Address prepare_metadata_request(
-    const Key& key,
-    GlobalHashRing& global_memory_hash_ring,
-    LocalHashRing& local_memory_hash_ring,
-    map<Address, KeyRequest>& addr_request_map,
-    Address response_address,
-    unsigned& rid,
-    RequestType type
-);
+Address prepare_metadata_request(const Key& key,
+                                 GlobalHashRing& global_memory_hash_ring,
+                                 LocalHashRing& local_memory_hash_ring,
+                                 map<Address, KeyRequest>& addr_request_map,
+                                 Address response_address, unsigned& rid,
+                                 RequestType type);
 
-void prepare_metadata_get_request(
-    const Key& key,
-    GlobalHashRing& global_memory_hash_ring,
-    LocalHashRing& local_memory_hash_ring,
-    map<Address, KeyRequest>& addr_request_map,
-    Address response_address,
-    unsigned& rid
-);
+void prepare_metadata_get_request(const Key& key,
+                                  GlobalHashRing& global_memory_hash_ring,
+                                  LocalHashRing& local_memory_hash_ring,
+                                  map<Address, KeyRequest>& addr_request_map,
+                                  Address response_address, unsigned& rid);
 
 void prepare_metadata_put_request(const Key& key, const string& value,
                                   GlobalHashRing& global_memory_hash_ring,
                                   LocalHashRing& local_memory_hash_ring,
                                   map<Address, KeyRequest>& addr_request_map,
                                   Address response_address, unsigned& rid);
-
 
 extern HashRingUtilInterface* kHashRingUtil;
 

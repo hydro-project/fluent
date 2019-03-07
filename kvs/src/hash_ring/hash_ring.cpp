@@ -18,7 +18,6 @@
 
 #include "requests.hpp"
 
-
 // get all threads responsible for a key from the "node_type" tier
 // metadata flag = 0 means the key is  metadata; otherwise, it is  regular data
 ServerThreadList HashRingUtil::get_responsible_threads(
@@ -116,16 +115,12 @@ set<unsigned> responsible_local(const Key& key, unsigned local_rep,
   return tids;
 }
 
-
-Address prepare_metadata_request(
-    const Key& key,
-    GlobalHashRing& global_memory_hash_ring,
-    LocalHashRing& local_memory_hash_ring,
-    map<Address, KeyRequest>& addr_request_map,
-    Address response_address,
-    unsigned& rid,
-    RequestType type
-) {
+Address prepare_metadata_request(const Key& key,
+                                 GlobalHashRing& global_memory_hash_ring,
+                                 LocalHashRing& local_memory_hash_ring,
+                                 map<Address, KeyRequest>& addr_request_map,
+                                 Address response_address, unsigned& rid,
+                                 RequestType type) {
   auto threads = kHashRingUtil->get_responsible_threads_metadata(
       key, global_memory_hash_ring, local_memory_hash_ring);
   if (threads.size() != 0) {  // In case no servers have joined yet.
@@ -147,14 +142,11 @@ Address prepare_metadata_request(
   return string();
 }
 
-void prepare_metadata_get_request(
-    const Key& key,
-    GlobalHashRing& global_memory_hash_ring,
-    LocalHashRing& local_memory_hash_ring,
-    map<Address, KeyRequest>& addr_request_map,
-    Address response_address,
-    unsigned& rid
-) {
+void prepare_metadata_get_request(const Key& key,
+                                  GlobalHashRing& global_memory_hash_ring,
+                                  LocalHashRing& local_memory_hash_ring,
+                                  map<Address, KeyRequest>& addr_request_map,
+                                  Address response_address, unsigned& rid) {
   Address target_address = prepare_metadata_request(
       key, global_memory_hash_ring, local_memory_hash_ring, addr_request_map,
       response_address, rid, RequestType::GET);
@@ -179,7 +171,6 @@ void prepare_metadata_put_request(const Key& key, const string& value,
                       serialize(ts, value));
   }
 }
-
 
 ServerThreadList HashRingUtilInterface::get_responsible_threads_metadata(
     const Key& key, GlobalHashRing& global_memory_hash_ring,

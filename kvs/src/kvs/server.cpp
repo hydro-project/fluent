@@ -82,7 +82,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // For tracking the keys each extant cache is responsible for.
   // This is just our thread's cache of this.
   map<Address, set<Key>> cache_ip_to_keys;
-  // TODO: update with updates to extant_caches (only deletions of caches matter)
+  // TODO: update with updates to extant_caches (only deletions of caches
+  // matter)
 
   // For tracking the caches that hold a given key.
   // Inverse of cache_ip_to_keys.
@@ -593,13 +594,15 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       for (const auto& cacheip : extant_caches) {
         Key key = get_user_metadata_key(cacheip, UserMetadataType::cache_ip);
         prepare_metadata_get_request(
-          key, global_hash_rings[kMemoryTierId], local_hash_rings[kMemoryTierId],
-          addr_request_map, wt.cache_ip_response_connect_address(), rid);
+            key, global_hash_rings[kMemoryTierId],
+            local_hash_rings[kMemoryTierId], addr_request_map,
+            wt.cache_ip_response_connect_address(), rid);
       }
 
       // Loop over the address request map and execute all the requests.
       for (const auto& addr_request : addr_request_map) {
-        send_request<KeyRequest>(addr_request.second, pushers[addr_request.first]);
+        send_request<KeyRequest>(addr_request.second,
+                                 pushers[addr_request.first]);
       }
 
       // reset stats tracked in memory

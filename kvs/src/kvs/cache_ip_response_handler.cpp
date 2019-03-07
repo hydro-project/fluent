@@ -14,10 +14,9 @@
 
 #include "kvs/kvs_handlers.hpp"
 
-void cache_ip_response_handler(
-  string& serialized, map<Address, set<Key>>& cache_ip_to_keys,
-  map<Key, set<Address>>& key_to_cache_ips) {
-
+void cache_ip_response_handler(string& serialized,
+                               map<Address, set<Key>>& cache_ip_to_keys,
+                               map<Key, set<Address>>& key_to_cache_ips) {
   // The response will be a list of cache IPs and their responsible keys.
   KeyResponse response;
   response.ParseFromString(serialized);
