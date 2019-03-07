@@ -12,13 +12,14 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_HASH_RING_HPP_
-#define SRC_INCLUDE_HASH_RING_HPP_
+#ifndef KVS_INCLUDE_HASH_RING_HPP_
+#define KVS_INCLUDE_HASH_RING_HPP_
 
 #include "common.hpp"
+#include "consistent_hash_map.hpp"
 #include "hashers.hpp"
+#include "kvs_common.hpp"
 #include "metadata.hpp"
-#include "utils/consistent_hash_map.hpp"
 
 template <typename H>
 class HashRing : public ConsistentHashMap<ServerThread, H> {
@@ -28,9 +29,7 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
   ~HashRing() {}
 
  public:
-  std::unordered_set<ServerThread, ThreadHash> get_unique_servers() const {
-    return unique_servers;
-  }
+  ServerThreadSet get_unique_servers() const { return unique_servers; }
 
   bool insert(Address public_ip, Address private_ip, int join_count,
               unsigned tid) {
@@ -70,7 +69,7 @@ class HashRing : public ConsistentHashMap<ServerThread, H> {
   }
 
  private:
-  std::unordered_set<ServerThread, ThreadHash> unique_servers;
+  ServerThreadSet unique_servers;
   map<string, int> server_join_count;
 };
 
@@ -134,4 +133,4 @@ void prepare_metadata_put_request(const Key& key, const string& value,
 
 extern HashRingUtilInterface* kHashRingUtil;
 
-#endif  // SRC_INCLUDE_HASH_RING_HPP_
+#endif  // KVS_INCLUDE_HASH_RING_HPP_

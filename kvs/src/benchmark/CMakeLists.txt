@@ -18,6 +18,6 @@ ADD_EXECUTABLE(flkvs-bench benchmark.cpp)
 TARGET_LINK_LIBRARIES(flkvs-bench flkvs-ring ${KV_LIBRARY_DEPENDENCIES})
 ADD_DEPENDENCIES(flkvs-bench zeromq zeromqcpp)
 
-ADD_EXECUTABLE(flkvs-bench-trigger benchmark_trigger.cpp)
+ADD_EXECUTABLE(flkvs-bench-trigger trigger.cpp)
 TARGET_LINK_LIBRARIES(flkvs-bench-trigger flkvs-ring ${KV_LIBRARY_DEPENDENCIES})
 ADD_DEPENDENCIES(flkvs-bench-trigger flkvs-ring zeromq zeromqcpp)

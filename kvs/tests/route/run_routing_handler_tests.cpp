@@ -19,11 +19,10 @@
 
 #include "gtest/gtest.h"
 
-#include "misc.pb.h"
+#include "kvs.pb.h"
+#include "metadata.pb.h"
 #include "replication.pb.h"
-#include "requests.pb.h"
 #include "types.hpp"
-#include "utils/server_utils.hpp"
 
 #include "routing_handler_base.hpp"
 #include "test_address_handler.hpp"

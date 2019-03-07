@@ -12,10 +12,12 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_MONITOR_MONITORING_UTILS_HPP_
-#define SRC_INCLUDE_MONITOR_MONITORING_UTILS_HPP_
+#ifndef KVS_INCLUDE_MONITOR_MONITORING_UTILS_HPP_
+#define KVS_INCLUDE_MONITOR_MONITORING_UTILS_HPP_
 
 #include "hash_ring.hpp"
+#include "metadata.pb.h"
+#include "replication.pb.h"
 #include "requests.hpp"
 
 // define monitoring threshold (in second)
@@ -141,4 +143,4 @@ void remove_node(logger log, ServerThread& node, string tier,
                  map<Address, unsigned>& departing_node_map,
                  MonitoringThread& mt);
 
-#endif  // SRC_INCLUDE_MONITOR_MONITORING_UTILS_HPP_
+#endif  // KVS_INCLUDE_MONITOR_MONITORING_UTILS_HPP_

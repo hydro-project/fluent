@@ -12,23 +12,11 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_HASHERS_HPP_
-#define SRC_INCLUDE_HASHERS_HPP_
+#ifndef KVS_INCLUDE_HASHERS_HPP_
+#define KVS_INCLUDE_HASHERS_HPP_
 
 #include <vector>
-#include "threads.hpp"
-
-struct ThreadHash {
-  std::size_t operator()(const ServerThread& st) const {
-    return std::hash<string>{}(st.id());
-  }
-};
-
-// TODO: This is here for now because it needs the definition of ThreadHash, but
-// it seems like it should actually be in threads.hpp; that doesn't compile
-// because that file gets compiled before this one (and there is a circular
-// dependency between the two?)... not completely sure how to fix this
-typedef vector<ServerThread> ServerThreadList;
+#include "kvs_threads.hpp"
 
 struct GlobalHasher {
   uint32_t operator()(const ServerThread& th) {
@@ -57,4 +45,4 @@ struct LocalHasher {
   ResultType operator()(const Key& key) { return std::hash<string>{}(key); }
 };
 
-#endif  // SRC_INCLUDE_HASHERS_HPP_
+#endif  // KVS_INCLUDE_HASHERS_HPP_

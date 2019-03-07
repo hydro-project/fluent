@@ -12,10 +12,11 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_MONITOR_MONITORING_HANDLERS_HPP_
-#define SRC_INCLUDE_MONITOR_MONITORING_HANDLERS_HPP_
+#ifndef KVS_INCLUDE_MONITOR_MONITORING_HANDLERS_HPP_
+#define KVS_INCLUDE_MONITOR_MONITORING_HANDLERS_HPP_
 
 #include "hash_ring.hpp"
+#include "metadata.pb.h"
 
 void membership_handler(logger log, string& serialized,
                         map<TierId, GlobalHashRing>& global_hash_rings,
@@ -37,4 +38,4 @@ void feedback_handler(
     map<string, double>& user_throughput,
     map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map);
 
-#endif  // SRC_INCLUDE_MONITOR_MONITORING_HANDLERS_HPP_
+#endif  // KVS_INCLUDE_MONITOR_MONITORING_HANDLERS_HPP_

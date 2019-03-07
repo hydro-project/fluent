@@ -15,6 +15,7 @@
 #  limitations under the License.
 
 from add_nodes import add_nodes
+from functools import reduce
 import logging
 from misc_pb2 import *
 from requests_pb2 import *
@@ -26,8 +27,9 @@ import time
 import util
 import zmq
 
-logging.basicConfig(filename='log.txt',level=logging.INFO)
 THRESHOLD = 30
+FOCC_THRESHOLD = .75
+logging.basicConfig(filename='log.txt',level=logging.INFO)
 
 def run():
     context = zmq.Context(1)
@@ -40,9 +42,13 @@ def run():
     extant_caches_socket = context.socket(zmq.REP)
     extant_caches_socket.bind('tcp://*:7002')
 
+    func_pull_socket = context.socket(zmq.PULL)
+    func_pull_socket.bind('tcp://*:7003')
+
     poller = zmq.Poller()
     poller.register(restart_pull_socket, zmq.POLLIN)
     poller.register(churn_pull_socket, zmq.POLLIN)
+    poller.register(func_pull_socket, zmq.POLLIN)
     poller.register(extant_caches_socket, zmq.POLLIN)
 
     cfile = '/fluent/conf/kvs-base.yml'
@@ -54,6 +60,8 @@ def run():
         pass
 
     client = util.init_k8s()
+
+    func_occ_map = {}
 
     start = time.time()
     while True:
@@ -118,6 +126,16 @@ def run():
 
             extant_caches_socket.send_string(ks.SerializeToString())
 
+        if func_pull_socket in socks and socks[func_pull_socket] == zmq.POLLIN:
+            msg = func_pull_socket.recv_string()
+            args = msg.split('|')
+            ip, mutil = args[0], float(args[1])
+
+            logging.info('Received node occupancy of %.2f%% from IP %s.' %
+                    (mutil * 100, ip))
+
+            func_occ_map[ip] = mutil
+
         end = time.time()
         if end - start > THRESHOLD:
             logging.info('Checking hash ring...')
@@ -126,7 +144,21 @@ def run():
             logging.info('Checking for extra nodes...')
             check_unused_nodes(client)
 
+            if func_occ_map.values():
+                avg_focc = reduce(lambda a, b: a + b, func_occ_map.values(), \
+                        0) / len(func_occ_map)
+            else:
+                avg_focc = 0
+            logging.info('Average node occupancy is %f%%...' % (avg_focc * 100))
+
+            if avg_focc > FOCC_THRESHOLD:
+                mon_ips = util.get_pod_ips(client, 'role=monitoring')
+                route_addr = get_service_address(client, 'routing-service')
+                add_nodes(client, ['function'], [1], mon_ips,
+                        route_addr=route_addr)
+
             start = time.time()
+
 
 def check_hash_ring(client, context):
     # get routing IPs
