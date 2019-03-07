@@ -20,5 +20,15 @@ echo "[default]\nregion = us-east-1" > ~/.aws/config
 echo "[default]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
 mkdir -p ~/.ssh
 
+# move into the fluent directory for the rest of the script
+cd fluent
+
+# generate Python protobuf libraries
+cd kvs/include/proto
+protoc -I=./ --python_out=../../../k8s/ misc.proto
+cd ../../../include/proto
+protoc -I=./ --python_out=../../../k8s/ kvs.proto
+cd ../..
+
 # start python server
 cd fluent/k8s && python3.6 kops_server.py

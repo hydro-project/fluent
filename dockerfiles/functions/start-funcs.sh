@@ -23,5 +23,13 @@ else
   MY_IP=`ifconfig eth0 | grep 'inet addr:' | grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1 }'`
 fi
 
+# move into the fluent directory for the rest of the script
+cd fluent
+
+# generate Python protobufs
+cd include/proto
+protoc -I=./ --python_out=../../function/include functions.proto
+cd ../..
+
 # start python server
 cd fluent/functions/executor && export MY_IP=$IP && python3.6 function_server.py

@@ -12,13 +12,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
 import random
 import socket
 import zmq
 
 from .common import *
 from .zmq_util import *
-from .requests_pb2 import *
+
+if not os.path.isfile('kvs_pb2.py'):
+    print('You are running in an environment where protobufs were not \
+            automatically compiled. Please run protoc before proceeding.')
+from .kvs_pb2 import *
 
 class AnnaClient():
     def __init__(self, elb_addr, ip=None, elb_ports=list(range(6000, 6004)), offset=0):
