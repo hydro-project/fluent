@@ -34,17 +34,20 @@ void collect_internal_stats(
         Key key = get_metadata_key(st, tier_id, i, MetadataType::server_stats);
         prepare_metadata_get_request(key, global_hash_rings[kMemoryTierId],
                                      local_hash_rings[kMemoryTierId],
-                                     addr_request_map, mt, rid);
+                                     addr_request_map,
+                                     mt.response_connect_address(), rid);
 
         key = get_metadata_key(st, tier_id, i, MetadataType::key_access);
         prepare_metadata_get_request(key, global_hash_rings[kMemoryTierId],
                                      local_hash_rings[kMemoryTierId],
-                                     addr_request_map, mt, rid);
+                                     addr_request_map,
+                                     mt.response_connect_address(), rid);
 
         key = get_metadata_key(st, tier_id, i, MetadataType::key_size);
         prepare_metadata_get_request(key, global_hash_rings[kMemoryTierId],
                                      local_hash_rings[kMemoryTierId],
-                                     addr_request_map, mt, rid);
+                                     addr_request_map,
+                                     mt.response_connect_address(), rid);
       }
     }
   }

@@ -94,25 +94,6 @@ struct SummaryStats {
   double total_throughput;
 };
 
-Address prepare_metadata_request(const Key& key,
-                                 GlobalHashRing& global_memory_hash_ring,
-                                 LocalHashRing& local_memory_hash_ring,
-                                 map<Address, KeyRequest>& addr_request_map,
-                                 MonitoringThread& mt, unsigned& rid,
-                                 string type);
-
-void prepare_metadata_get_request(const Key& key,
-                                  GlobalHashRing& global_memory_hash_ring,
-                                  LocalHashRing& local_memory_hash_ring,
-                                  map<Address, KeyRequest>& addr_request_map,
-                                  MonitoringThread& mt, unsigned& rid);
-
-void prepare_metadata_put_request(const Key& key, const string& value,
-                                  GlobalHashRing& global_memory_hash_ring,
-                                  LocalHashRing& local_memory_hash_ring,
-                                  map<Address, KeyRequest>& addr_request_map,
-                                  MonitoringThread& mt, unsigned& rid);
-
 void collect_internal_stats(
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings, SocketCache& pushers,

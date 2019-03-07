@@ -58,6 +58,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   unsigned seed = time(NULL);
   seed += thread_id;
 
+  // A monotonically increasing integer.
+  unsigned rid = 0;
+
   // prepare the zmq context
   zmq::context_t context(1);
   SocketCache pushers(&context, ZMQ_PUSH);
@@ -71,6 +74,25 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   // keep track of which key should be removed when node joins
   set<Key> join_remove_set;
+
+  // for tracking IP addresses of extant caches
+  set<Address> extant_caches;
+  // TODO: actually populate
+
+  // For tracking the keys each extant cache is responsible for.
+  // This is just our thread's cache of this.
+  map<Address, set<Key>> cache_ip_to_keys;
+  // TODO: update with updates to extant_caches (only deletions of caches
+  // matter)
+
+  // For tracking the caches that hold a given key.
+  // Inverse of cache_ip_to_keys.
+  // We need the two structures because
+  // key->caches is the one necessary for gossiping upon key updates,
+  // but the mapping is provided to us in the form cache->keys,
+  // so we need a local copy of this mapping in order to update key->caches
+  // with dropped keys when we receive a fresh cache->keys record.
+  map<Key, set<Address>> key_to_cache_ips;
 
   // pending events for asynchrony
   map<Key, vector<PendingRequest>> pending_requests;
@@ -220,6 +242,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   zmq::socket_t replication_change_puller(context, ZMQ_PULL);
   replication_change_puller.bind(wt.replication_change_bind_address());
 
+  // responsible for listening for cache IP lookup response messages.
+  zmq::socket_t cache_ip_response_puller(context, ZMQ_PULL);
+  cache_ip_response_puller.bind(wt.cache_ip_response_bind_address());
+
   //  Initialize poll set
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(join_puller), 0, ZMQ_POLLIN, 0},
@@ -228,7 +254,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       {static_cast<void*>(request_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(gossip_puller), 0, ZMQ_POLLIN, 0},
       {static_cast<void*>(replication_response_puller), 0, ZMQ_POLLIN, 0},
-      {static_cast<void*>(replication_change_puller), 0, ZMQ_POLLIN, 0}};
+      {static_cast<void*>(replication_change_puller), 0, ZMQ_POLLIN, 0},
+      {static_cast<void*>(cache_ip_response_puller), 0, ZMQ_POLLIN, 0}};
 
   auto gossip_start = std::chrono::system_clock::now();
   auto gossip_end = std::chrono::system_clock::now();
@@ -350,6 +377,20 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       working_time_map[6] += time_elapsed;
     }
 
+    // Receive cache IP lookup response.
+    if (pollitems[7].revents & ZMQ_POLLIN) {
+      auto work_start = std::chrono::system_clock::now();
+
+      string serialized = kZmqUtil->recv_string(&cache_ip_response_puller);
+      cache_ip_response_handler(serialized, cache_ip_to_keys, key_to_cache_ips);
+
+      auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                              std::chrono::system_clock::now() - work_start)
+                              .count();
+      working_time += time_elapsed;
+      working_time_map[7] += time_elapsed;
+    }
+
     // gossip updates to other threads
     gossip_end = std::chrono::system_clock::now();
     if (std::chrono::duration_cast<std::chrono::microseconds>(gossip_end -
@@ -362,6 +403,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
         bool succeed;
         for (const Key& key : local_changeset) {
+          // Get the threads that we need to gossip to.
           ServerThreadList threads = kHashRingUtil->get_responsible_threads(
               wt.replication_response_connect_address(), key, is_metadata(key),
               global_hash_rings, local_hash_rings, metadata_map, pushers,
@@ -373,6 +415,16 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
             }
           } else {
             log->error("Missing key replication factor in gossip routine.");
+          }
+
+          // Get the caches that we need to gossip to.
+          set<Address>& cache_ips = key_to_cache_ips[key];
+          for (const Address& cache_ip : cache_ips) {
+            // XXX TODO
+            // cache_ip here doesn't have a port and needs it added,
+            // probably through gossip_connect_address() of CacheThread
+            // once that's implemented.
+            addr_keyset_map[cache_ip].insert(key);
           }
         }
 
@@ -390,6 +442,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     }
 
     // collect and store internal statistics
+    // Also, send out GET requests for the cached keys by cache IP.
     report_end = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(
                         report_end - report_start)
@@ -533,6 +586,24 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       }
 
       report_start = std::chrono::system_clock::now();
+
+      // Get the cached keys by cache IP.
+      // First, prepare the requests for all the IPs we know about
+      // and put them in an address request map.
+      map<Address, KeyRequest> addr_request_map;
+      for (const auto& cacheip : extant_caches) {
+        Key key = get_user_metadata_key(cacheip, UserMetadataType::cache_ip);
+        prepare_metadata_get_request(
+            key, global_hash_rings[kMemoryTierId],
+            local_hash_rings[kMemoryTierId], addr_request_map,
+            wt.cache_ip_response_connect_address(), rid);
+      }
+
+      // Loop over the address request map and execute all the requests.
+      for (const auto& addr_request : addr_request_map) {
+        send_request<KeyRequest>(addr_request.second,
+                                 pushers[addr_request.first]);
+      }
 
       // reset stats tracked in memory
       working_time = 0;

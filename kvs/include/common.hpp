@@ -27,7 +27,12 @@
 #include "zmq/socket_cache.hpp"
 #include "zmq/zmq_util.hpp"
 
+enum UserMetadataType { cache_ip };
+
+// TODO: split this off for kvs vs user metadata keys?
 const string kMetadataIdentifier = "ANNA_METADATA";
+const string kMetadataDelimiter = "|";
+const char kMetadataDelimiterChar = '|';
 
 const unsigned kMetadataReplicationFactor = 1;
 const unsigned kMetadataLocalReplicationFactor = 1;
@@ -82,6 +87,33 @@ inline unsigned long long generate_timestamp(const unsigned& id) {
   auto time = get_time();
   while (id >= pow) pow *= 10;
   return time * pow + id;
+}
+
+// This version of the function should only be called with
+// certain types of MetadataType,
+// so if it's called with something else, we return
+// an empty string.
+// TODO: There should probably be a less silent error check.
+inline Key get_user_metadata_key(string data_key, UserMetadataType type) {
+  if (type == UserMetadataType::cache_ip) {
+    return kMetadataIdentifier + kMetadataDelimiter + data_key +
+           kMetadataDelimiter + "cache_ip";
+  }
+  return "";
+}
+
+// Inverse of get_user_metadata_key, returning just the key itself.
+// TODO: same problem as get_user_metadata_key with the metadata types.
+inline Key get_key_from_user_metadata(Key metadata_key) {
+  vector<string> tokens;
+  split(metadata_key, '|', tokens);
+
+  string metadata_type = tokens[tokens.size() - 1];
+  if (metadata_type == "cache_ip") {
+    return tokens[1];
+  }
+
+  return "";
 }
 
 inline void prepare_get_tuple(KeyRequest& req, Key key,
