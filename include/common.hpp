@@ -18,10 +18,9 @@
 #include <algorithm>
 
 #include "kvs.pb.h"
-#include "types.hpp"
 #include "lattices/lww_pair_lattice.hpp"
 #include "lattices/vector_clock_pair_lattice.hpp"
-#include "kvs.pb.h"
+#include "types.hpp"
 #include "zmq/socket_cache.hpp"
 #include "zmq/zmq_util.hpp"
 

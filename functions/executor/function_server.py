@@ -110,7 +110,7 @@ def run():
             util = global_util / (report_end - report_start)
 
             sckt = ctx.socket(zmq.PUSH)
-            sckt.connect('tcp://' + mgmt_ip + ':7002')
+            sckt.connect('tcp://' + mgmt_ip + ':7003')
             sckt.send_string(ip + '|' + str(util))
 
             logging.info('Sending utilization of %.2f%%.' % (util * 100))
