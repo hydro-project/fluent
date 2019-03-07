@@ -14,7 +14,7 @@
 
 FROM ubuntu:14.04
 
-MAINTAINER Vikram Sreekanti <vsreekanti@gmail..com> version: 0.1
+MAINTAINER Vikram Sreekanti <vsreekanti@gmail.com> version: 0.1
 
 ARG repo_org=fluent-project
 ARG source_branch=master

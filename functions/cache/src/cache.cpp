@@ -157,9 +157,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
             resp->set_error(0);
             break;
           }
-          default:
-            resp->set_error(2);
-            break;
+          default: resp->set_error(2); break;
         }
       }
 
@@ -191,21 +189,16 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           // globally. I think we should just drop our local copy for the time
           // being, but open to other ideas.
 
-          switch(key_type_map[key]) {
-            case LatticeType::LWW:
-              local_lww_cache.erase(key);
-              break;
-            case LatticeType::SET:
-              local_set_cache.erase(key);
-              break;
-            default:
-              break; // this can never happen
+          switch (key_type_map[key]) {
+            case LatticeType::LWW: local_lww_cache.erase(key); break;
+            case LatticeType::SET: local_set_cache.erase(key); break;
+            default: break;  // this can never happen
           }
 
           key_type_map[key] = tuple.lattice_type();
         }
 
-        switch(key_type_map[key]) {
+        switch (key_type_map[key]) {
           case LatticeType::LWW: {
             LWWPairLattice<string> new_val = deserialize_lww(tuple.payload());
 
@@ -224,7 +217,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
 
             local_set_cache[key] = new_val;
           }
-          default: break; // this should never happen!
+          default: break;  // this should never happen!
         }
       }
     }

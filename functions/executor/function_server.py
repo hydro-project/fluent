@@ -16,7 +16,6 @@ import sys
 sys.path.append('..')
 
 from anna.ipc_client import IpcAnnaClient
-from cache import LruCache
 from include.functions_pb2 import *
 import logging
 import os
