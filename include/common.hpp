@@ -18,12 +18,10 @@
 #include <algorithm>
 
 #include "kvs.pb.h"
+#include "types.hpp"
 #include "lattices/lww_pair_lattice.hpp"
 #include "lattices/vector_clock_pair_lattice.hpp"
-#include "kvs_types.hpp"
-#include "misc.pb.h"
-#include "replication.pb.h"
-#include "requests.pb.h"
+#include "kvs.pb.h"
 #include "zmq/socket_cache.hpp"
 #include "zmq/zmq_util.hpp"
 
@@ -33,38 +31,6 @@ enum UserMetadataType { cache_ip };
 const string kMetadataIdentifier = "ANNA_METADATA";
 const string kMetadataDelimiter = "|";
 const char kMetadataDelimiterChar = '|';
-
-const unsigned kMetadataReplicationFactor = 1;
-const unsigned kMetadataLocalReplicationFactor = 1;
-
-const unsigned kVirtualThreadNum = 3000;
-
-const unsigned kMemoryTierId = 0;
-const unsigned kEbsTierId = 1;
-const unsigned kRoutingTierId = 100;
-
-const unsigned kMaxTier = 1;
-const vector<unsigned> kAllTierIds = {0, 1};
-
-const unsigned kSloWorst = 3000;
-
-// run-time constants
-extern unsigned kSelfTierId;
-extern vector<unsigned> kSelfTierIdVector;
-
-extern unsigned kMemoryNodeCapacity;
-extern unsigned kEbsNodeCapacity;
-
-// the number of threads running in this executable
-extern unsigned kThreadNum;
-extern unsigned kMemoryThreadCount;
-extern unsigned kEbsThreadCount;
-extern unsigned kRoutingThreadCount;
-
-extern unsigned kDefaultGlobalMemoryReplication;
-extern unsigned kDefaultGlobalEbsReplication;
-extern unsigned kDefaultLocalReplication;
-extern unsigned kMinimumReplicaNumber;
 
 inline void split(const string& s, char delim, vector<string>& elems) {
   std::stringstream ss(s);

@@ -79,7 +79,10 @@ message KeyAddressResponse {
   optional string response_id = 3;
 }
 
-<<<<<<< HEAD:include/proto/kvs.proto
+message KeySet {
+  repeated string keys = 1;
+}
+
 message UserFeedback {
   message KeyLatency {
     required string key = 1;
@@ -92,10 +95,4 @@ message UserFeedback {
   optional double throughput = 4;
   optional bool warmup = 5;
   repeated KeyLatency key_latency = 6;
-}
-
-=======
->>>>>>> master:include/proto/requests.proto
-message KeySet {
-  repeated string keys = 1;
 }

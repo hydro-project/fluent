@@ -63,10 +63,8 @@ class MemoryLWWSerializer : public Serializer {
   }
 
   unsigned put(const Key& key, const string& serialized) {
-    LWWValue lww_value = deserialize_lww(serialized);
-    TimestampValuePair<string> p =
-        TimestampValuePair<string>(lww_value.timestamp(), lww_value.value());
-    kvs_->put(key, LWWPairLattice<string>(p));
+    LWWPairLattice<string> val = deserialize_lww(serialized);
+    kvs_->put(key, val);
     return kvs_->size(key);
   }
 
@@ -88,12 +86,8 @@ class MemorySetSerializer : public Serializer {
   }
 
   unsigned put(const Key& key, const string& serialized) {
-    SetValue set_value = deserialize_set(serialized);
-    set<string> s;
-    for (auto& val : set_value.values()) {
-      s.emplace(std::move(val));
-    }
-    kvs_->put(key, SetLattice<string>(s));
+    SetLattice<string> sl = deserialize_set(serialized);
+    kvs_->put(key, sl);
     return kvs_->size(key);
   }
 

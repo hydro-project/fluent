@@ -17,8 +17,6 @@
 
 #include "kvs_types.hpp"
 
-const string kMetadataIdentifier = "ANNA_METADATA";
-
 const unsigned kMetadataReplicationFactor = 1;
 const unsigned kMetadataLocalReplicationFactor = 1;
 

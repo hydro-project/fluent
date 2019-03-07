@@ -18,6 +18,8 @@
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
+unsigned kCacheReportThreshold = 5;
+
 void run(KvsClient& client, Address ip, unsigned thread_id) {
   string log_file = "cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "cache_log_" + std::to_string(thread_id);
@@ -140,7 +142,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           case LatticeType::LWW: {
             LWWPairLattice<string> new_val = deserialize_lww(tuple.payload());
             if (local_lww_cache.find(key) != local_lww_cache.end()) {
-              new_val = new_val.merge(local_lww_cache[key]);
+              new_val.merge(local_lww_cache[key]);
             }
 
             local_lww_cache[key] = new_val;
@@ -150,7 +152,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           case LatticeType::SET: {
             SetLattice<string> new_val = deserialize_set(tuple.payload());
             if (local_set_cache.find(key) != local_set_cache.end()) {
-              new_val = ew_val.merge(local_set_cache[key]);
+              new_val.merge(local_set_cache[key]);
             }
 
             local_set_cache[key] = new_val;
@@ -172,7 +174,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
       KeyRequest updates;
       updates.ParseFromString(serialized);
 
-      for (const KeyTuple& tuple : updates) {
+      for (const KeyTuple& tuple : updates.tuples()) {
         Key key = tuple.key();
 
         // if we are no longer caching this key, then we simply ignore updates
@@ -203,16 +205,16 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
             LWWPairLattice<string> new_val = deserialize_lww(tuple.payload());
 
             if (local_lww_cache.find(key) != local_lww_cache.end()) {
-              new_val = new_val.merge(local_lww_cache[key]);
+              new_val.merge(local_lww_cache[key]);
             }
 
             local_lww_cache[key] = new_val;
-            break
+            break;
           }
           case LatticeType::SET: {
             SetLattice<string> new_val = deserialize_set(tuple.payload());
             if (local_set_cache.find(key) != local_set_cache.end()) {
-              new_val = ew_val.merge(local_set_cache[key]);
+              new_val.merge(local_set_cache[key]);
             }
 
             local_set_cache[key] = new_val;
@@ -239,11 +241,11 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
       }
 
       string serialized;
-      set.SerializeToString(serialized);
+      set.SerializeToString(&serialized);
 
-      LWWPairLattice<string> val(generate_timestamp(thread_id), serialized);
-      // TODO: use the key generation method to create this
-      Key key = "ANNA_METADATA|" + ip + ":" + thread_id + "|cache_ip";
+      LWWPairLattice<string> val(TimestampValuePair<string>(
+          generate_timestamp(thread_id), serialized));
+      Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
       client.put(key, val);
     }
 
