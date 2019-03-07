@@ -64,7 +64,7 @@ class SetLattice : public Lattice<set<T>> {
 
   MaxLattice<unsigned> size() const { return this->element.size(); }
 
-  void insert(const T &e) { this->element.insert(e); }
+  void insert(T e) { this->element.insert(std::move(e)); }
 
   SetLattice<T> intersect(set<T> s) const {
     set<T> res;
@@ -158,6 +158,8 @@ class MapLattice : public Lattice<map<K, V>> {
     auto it = this->element.find(k);
     if (it != this->element.end()) this->element.erase(k);
   }
+
+  void insert(const K &k, const V &v) { this->insert_pair(k, v); }
 };
 
 #endif  // SRC_INCLUDE_LATTICES_CORE_LATTICES_HPP_

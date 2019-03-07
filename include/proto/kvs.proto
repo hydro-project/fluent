@@ -1,11 +1,11 @@
 //  Copyright 2018 U.C. Berkeley RISE Lab
-// 
+//
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
-// 
-//      http://www.apache.org/licenses/LICENSE-2.0 
-// 
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
 //  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,7 @@
 //  limitations under the License.
 
 syntax = "proto2";
-  
+
 enum RequestType {
   GET = 0;
   PUT = 1;
@@ -23,6 +23,7 @@ enum LatticeType {
   NO = 0;
   LWW = 1;
   SET = 2;
+  CAUSAL = 3;
 }
 
 message LWWValue {
@@ -32,6 +33,11 @@ message LWWValue {
 
 message SetValue {
   repeated string values = 1;
+}
+
+message CausalValue {
+  map<uint32, uint32> vector_clock = 1;
+  repeated string values = 2;
 }
 
 message KeyTuple {
@@ -67,12 +73,13 @@ message KeyAddressResponse {
     required string key = 1;
     repeated string ips = 2;
   }
-    
+
   repeated KeyAddress addresses = 1;
   required uint32 error = 2;
   optional string response_id = 3;
 }
 
+<<<<<<< HEAD:include/proto/kvs.proto
 message UserFeedback {
   message KeyLatency {
     required string key = 1;
@@ -87,6 +94,8 @@ message UserFeedback {
   repeated KeyLatency key_latency = 6;
 }
 
+=======
+>>>>>>> master:include/proto/requests.proto
 message KeySet {
   repeated string keys = 1;
 }

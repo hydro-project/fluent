@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef INCLUDE_LWW_PAIR_LATTICE_HPP_
-#define INCLUDE_LWW_PAIR_LATTICE_HPP_
+#ifndef INCLUDE_LATTICES_LWW_PAIR_LATTICE_HPP_
+#define INCLUDE_LATTICES_LWW_PAIR_LATTICE_HPP_
 
 #include "core_lattices.hpp"
 
@@ -58,4 +58,4 @@ class LWWPairLattice : public Lattice<TimestampValuePair<T>> {
   MaxLattice<unsigned> size() { return {this->element.size()}; }
 };
 
-#endif  // INCLUDE_LWW_PAIR_LATTICE_HPP_
+#endif  // INCLUDE_LATTICES_LWW_PAIR_LATTICE_HPP_

@@ -27,6 +27,7 @@ const unsigned kServerReplicationResponsePort = 6150;
 const unsigned kKeyRequestPort = 6200;
 const unsigned kGossipPort = 6250;
 const unsigned kServerReplicationChangePort = 6300;
+const unsigned kCacheIpResponsePort = 7050;
 
 // define routing base ports
 const unsigned kSeedPort = 6350;
@@ -122,6 +123,14 @@ class ServerThread {
 
   Address replication_response_bind_address() const {
     return kBindBase + std::to_string(tid_ + kServerReplicationResponsePort);
+  }
+
+  Address cache_ip_response_connect_address() const {
+    return private_base_ + std::to_string(kCacheIpResponsePort);
+  }
+
+  Address cache_ip_response_bind_address() const {
+    return kBindBase + std::to_string(kCacheIpResponsePort);
   }
 
   Address gossip_connect_address() const {
