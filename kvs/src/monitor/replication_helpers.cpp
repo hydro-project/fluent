@@ -97,7 +97,8 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
     rep_data.SerializeToString(&serialized_rep_data);
     prepare_metadata_put_request(
         rep_key, serialized_rep_data, global_hash_rings[kMemoryTierId],
-        local_hash_rings[kMemoryTierId], addr_request_map, mt, rid);
+        local_hash_rings[kMemoryTierId], addr_request_map,
+        mt.response_connect_address(), rid);
   }
 
   // send updates to storage nodes

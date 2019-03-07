@@ -115,6 +115,63 @@ set<unsigned> responsible_local(const Key& key, unsigned local_rep,
   return tids;
 }
 
+Address prepare_metadata_request(const Key& key,
+                                 GlobalHashRing& global_memory_hash_ring,
+                                 LocalHashRing& local_memory_hash_ring,
+                                 map<Address, KeyRequest>& addr_request_map,
+                                 Address response_address, unsigned& rid,
+                                 RequestType type) {
+  auto threads = kHashRingUtil->get_responsible_threads_metadata(
+      key, global_memory_hash_ring, local_memory_hash_ring);
+  if (threads.size() != 0) {  // In case no servers have joined yet.
+    Address target_address = std::next(begin(threads), rand() % threads.size())
+                                 ->key_request_connect_address();
+    if (addr_request_map.find(target_address) == addr_request_map.end()) {
+      addr_request_map[target_address].set_type(type);
+      addr_request_map[target_address].set_response_address(response_address);
+      // NB: response_address might not be necessary here
+      // (or in other places where req_id is constructed either).
+      string req_id = response_address + ":" + std::to_string(rid);
+      addr_request_map[target_address].set_request_id(req_id);
+      rid += 1;
+    }
+
+    return target_address;
+  }
+
+  return string();
+}
+
+void prepare_metadata_get_request(const Key& key,
+                                  GlobalHashRing& global_memory_hash_ring,
+                                  LocalHashRing& local_memory_hash_ring,
+                                  map<Address, KeyRequest>& addr_request_map,
+                                  Address response_address, unsigned& rid) {
+  Address target_address = prepare_metadata_request(
+      key, global_memory_hash_ring, local_memory_hash_ring, addr_request_map,
+      response_address, rid, RequestType::GET);
+
+  if (!target_address.empty()) {
+    prepare_get_tuple(addr_request_map[target_address], key, LatticeType::LWW);
+  }
+}
+
+void prepare_metadata_put_request(const Key& key, const string& value,
+                                  GlobalHashRing& global_memory_hash_ring,
+                                  LocalHashRing& local_memory_hash_ring,
+                                  map<Address, KeyRequest>& addr_request_map,
+                                  Address response_address, unsigned& rid) {
+  Address target_address = prepare_metadata_request(
+      key, global_memory_hash_ring, local_memory_hash_ring, addr_request_map,
+      response_address, rid, RequestType::PUT);
+
+  if (!target_address.empty()) {
+    auto ts = generate_timestamp(0);
+    prepare_put_tuple(addr_request_map[target_address], key, LatticeType::LWW,
+                      serialize(ts, value));
+  }
+}
+
 ServerThreadList HashRingUtilInterface::get_responsible_threads_metadata(
     const Key& key, GlobalHashRing& global_memory_hash_ring,
     LocalHashRing& local_memory_hash_ring) {
