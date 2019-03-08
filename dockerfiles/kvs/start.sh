@@ -41,6 +41,25 @@ else
   PUBLIC_IP=$PRIVATE_IP
 fi
 
+ download latest version of the code from relevant repository & branch
+git remote remove origin
+if [[ -z "$REPO_ORG" ]]; then
+  REPO_ORG="fluent-project"
+fi
+
+if [[ -z "$REPO_BRANCH" ]]; then
+  REPO_BRANCH="master"
+fi
+
+# switch to the desired branch; by default we run with master on
+# fluent-project/fluent
+git remote add origin https://github.com/$REPO_ORG/fluent
+git fetch -p origin
+git checkout -b brnch origin/$REPO_BRANCH
+
+cd build && make -j2 && cd ..
+
+
 while [[ ! -f "conf/kvs-config.yml" ]]; do
   continue
 done

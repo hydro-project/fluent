@@ -39,8 +39,8 @@ def run():
     churn_pull_socket = context.socket(zmq.PULL)
     churn_pull_socket.bind('tcp://*:7001')
 
-    extant_caches_socket = context.socket(zmq.REP)
-    extant_caches_socket.bind('tcp://*:7002')
+    func_nodes_socket = context.socket(zmq.REP)
+    func_nodes_socket.bind('tcp://*:7002')
 
     func_pull_socket = context.socket(zmq.PULL)
     func_pull_socket.bind('tcp://*:7003')
@@ -49,7 +49,7 @@ def run():
     poller.register(restart_pull_socket, zmq.POLLIN)
     poller.register(churn_pull_socket, zmq.POLLIN)
     poller.register(func_pull_socket, zmq.POLLIN)
-    poller.register(extant_caches_socket, zmq.POLLIN)
+    poller.register(func_nodes_socket, zmq.POLLIN)
 
     cfile = '/fluent/conf/kvs-base.yml'
 
@@ -114,17 +114,17 @@ def run():
             logging.info('Returning restart count ' + count + ' for IP ' + ip + '.')
             restart_pull_socket.send_string(count)
 
-        if extant_caches_socket in socks and socks[extant_caches_socket] == \
+        if func_nodes_socket in socks and socks[func_nodes_socket] == \
                 zmq.POLLIN:
 
             # It doesn't matter what is in this message
-            msg = extant_caches_socket.recv_string()
+            msg = func_nodes_socket.recv_string()
 
             ks = KeySet()
             for ip in util.get_pod_ips(clinet, 'role=function'):
                 ks.add_keys(ip)
 
-            extant_caches_socket.send_string(ks.SerializeToString())
+            func_nodes_socket.send_string(ks.SerializeToString())
 
         if func_pull_socket in socks and socks[func_pull_socket] == zmq.POLLIN:
             msg = func_pull_socket.recv_string()
