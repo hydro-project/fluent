@@ -34,8 +34,30 @@ message FunctionCall {
   required string name = 1;
   required uint32 request_id = 2;
   repeated Value args = 3;
+  optional string resp_id = 4;
 }
 
 message FunctionList {
   repeated string names = 1;
+}
+
+message Dag {
+  message DagPair {
+    required string source = 1;
+    required string sink = 2;
+  }
+
+  required string name = 1;
+  repeated string functions = 2;
+  repeated DagPair connections = 3;
+}
+
+message DagCall {
+  message DagStageArgs {
+    required string name = 1;
+    repeated Value args = 2;
+  }
+
+  required string name = 1;
+  repeated DagStageArgs args = 2;
 }

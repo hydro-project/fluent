@@ -1,0 +1,58 @@
+//  Copyright 2018 U.C. Berkeley RISE Lab
+// 
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+// 
+//      http://www.apache.org/licenses/LICENSE-2.0
+// 
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+
+syntax = "proto2";
+
+import "functions.proto";
+
+enum ErrorType {
+  FUNC_NOT_FOUND = 1;
+  NOT_PINNED = 2;
+  INVALID_TARGET = 3;
+}
+
+enum Status {
+  PINNED = 1; // function is currently pinned
+  CLEARING = 2; // function is not longer accepting requests
+}
+
+message ThreadStatus {
+  required string ip = 1;
+  required uint32 tid = 2;
+  repeated map<string, Status> functions = 3;
+}
+
+message DagSchedule {
+  message FuncArguments {
+    repeated Value args = 1;
+  }
+
+  required uint32 id = 1;
+  required Dag dag = 2;
+  required string target_function = 3;
+  repeated map<string, string> locations = 4; // which functions should be executed where
+  // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
+  repeated map<string, FuncArguments> arguments = 5; 
+}
+
+message DagTrigger {
+  required uint32 id = 1;
+  required string target_function = 2; // which function is this trigger for
+  repeated Value args = 2;
+}
+
+message GenericResponse {
+  required bool success = 1;
+  optional ErrorType error;
+}

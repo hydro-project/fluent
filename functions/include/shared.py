@@ -13,16 +13,20 @@
 #  limitations under the License.
 
 from .functions_pb2 import *
+import time
 
-# shared constants
-FUNCOBJ = 'funcs/index-allfuncs'
-FUNC_PREFIX = 'funcs/'
-BIND_ADDR_TEMPLATE = 'tcp://*:%d'
+CONNECT_PORT = 5000
+FUNC_CREATE_PORT = 5001
+FUNC_CALL_PORT = 5002
+LIST_PORT = 5003
+DAG_CREATE_PORT = 5004
+DAG_CALL_PORT = 5005
 
-CONNECT_PORT = 4999
-CREATE_PORT = 5000
-CALL_PORT = 5001
-LIST_PORT = 5002
+def generate_timestamp(tid=1):
+    t = time.time()
+
+    p= 10
+    while
 
 class FluentFuture():
     def __init__(self, obj_id, kvs_client):
