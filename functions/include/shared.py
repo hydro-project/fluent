@@ -25,8 +25,11 @@ DAG_CALL_PORT = 5005
 def generate_timestamp(tid=1):
     t = time.time()
 
-    p= 10
-    while
+    p = 10
+    while tid >= p:
+        p *= 10
+
+    return t * p + tid
 
 class FluentFuture():
     def __init__(self, obj_id, kvs_client):

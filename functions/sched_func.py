@@ -25,7 +25,7 @@ sys.path.append('..')
 
 from anna.client import AnnaClient
 from include.kvs_pb2 import *
-from include.misc_pb2 import *
+from include.functions_pb2 import *
 from include.server_utils import *
 from include.shared import *
 from include.serializer import *
@@ -113,9 +113,9 @@ def scheduler(mgmt_ip, route_addr):
     poller.register(exec_status_socket, zmq.POLLIN)
     poller.register(sched_update_socket, zmq.POLLIN)
 
-    executors = get_ip_list(mgmt_ip, NODES_PORT, ctx)
+    executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
     update_key_maps(key_cache_map, key_ip_map, executors, kvs)
-    schedulers = get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx)
+    schedulers = _get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx)
 
     start = time.time()
 
@@ -144,7 +144,7 @@ def scheduler(mgmt_ip, route_addr):
                     key_ip_map)
 
             while not accepted:
-                executors = get_ip_list(mgmt_ip, NODES_PORT, ctx)
+                executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
                 update_key_maps(key_cache_map, key_ip_map, executors, kvs)
 
                 accepted, error = call_dag(call, ctx, dags, func_locations,
@@ -199,10 +199,10 @@ def scheduler(mgmt_ip, route_addr):
         end = time.time()
         if start - end > THRESHOLD:
             # update our local key-cache mapping information
-            executors = get_ip_list(mgmt_ip, NODES_PORT, ctx)
+            executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
             update_key_maps(key_cache_map, key_ip_map, executors, kvs)
 
-            schedulers = get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx)
+            schedulers = _get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx)
 
             dag_names = KeySet()
             for name in dags.keys():
@@ -214,6 +214,4 @@ def scheduler(mgmt_ip, route_addr):
                 sckt.connect('tcp://' + sched_ip + ':' +
                         str(SCHED_UPDATE_PORT))
                 sckt.send(msg)
-
-
 

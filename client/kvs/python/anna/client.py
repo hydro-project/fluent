@@ -21,8 +21,8 @@ from .common import *
 from .zmq_util import *
 
 if not os.path.isfile('kvs_pb2.py'):
-    print('You are running in an environment where protobufs were not \
-            automatically compiled. Please run protoc before proceeding.')
+    print('You are running in an environment where protobufs were not ' +
+            'automatically compiled. Please run protoc before proceeding.')
 from .kvs_pb2 import *
 
 class AnnaClient():

@@ -16,8 +16,6 @@ import logging
 import sys
 import uuid
 
-sys.path.append('..')
-
 from include.functions_pb2 import *
 
 def exec_function(exec_socket, status, error):

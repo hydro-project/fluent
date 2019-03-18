@@ -12,16 +12,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import sys
-sys.path.append('..')
-
 from anna.ipc_client import IpcAnnaClient
-from call import *
-from include.functions_pb2 import *
+from executor.call import *
+from executor.pin import *
 import logging
-import os
-from pin import *
+from include.server_utils import *
 from include.shared import *
+import os
 import time
 import zmq
 
@@ -47,10 +44,10 @@ def run():
     unpin_socket.bind(BIND_ADDR_TEMPLATE % (UNPIN_PORT))
 
     exec_socket = ctx.socket(zmq.REP)
-    exec_socket.bind(BIND_ADDR_TEMPLATE % (EXEC_PORT))
+    exec_socket.bind(BIND_ADDR_TEMPLATE % (FUNC_EXEC_PORT))
 
     dag_queue_socket = ctx.socket(zmq.REP)
-    dag_queue_socket.bind(BIND_ADDR_TEMPLATE % (QUEUE_PORT))
+    dag_queue_socket.bind(BIND_ADDR_TEMPLATE % (DAG_QUEUE_PORT))
 
     dag_exec_socket = ctx.socket(zmq.PULL)
     dag_exec_socket.bind(BIND_ADDR_TEMPLATE % (DAG_EXEC_PORT))
@@ -81,7 +78,7 @@ def run():
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             pin(pin_socket, client, status, pinned_functions)
 
-        if unpin_socket in socks and socks[unpin_socket] = zmq.POLLIN:
+        if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
             unpin(unpin, status, pinned_functions)
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
@@ -95,8 +92,9 @@ def run():
             # if we are trying to unpin this function, we don't accept requests
             # anymore for DAG schedules; this also checks to make sure it's the
             # right IP for the target
-            if schedule.id not in queue[fname].keys() or status.functions[fname]
-                    == CLEARING or schedule.locations[fname] != ip:
+            if schedule.id not in queue[fname].keys() or \
+                    status.functions[fname] == CLEARING or \
+                    schedule.locations[fname] != ip:
                 error.error = INVALID_TARGET
                 dag_queue_socket.send(error.SerializeToString())
                 continue

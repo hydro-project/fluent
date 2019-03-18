@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from utils import *
+from executor.utils import *
 
 def pin(pin_socket, client, status, pinned_functions):
     name = pin_socket.recv_string()
@@ -22,7 +22,7 @@ def pin(pin_socket, client, status, pinned_functions):
     if not func:
         ERROR.error = FUNC_NOT_FOUND
         pin_socket.send(ERROR.SerializeToString())
-        continue
+        return
 
     pin_socket.send_string(OK_RESP)
 
@@ -36,7 +36,7 @@ def unpin(unpin_socket, status, pinned_functions):
     if status.functions[name] != PINNED:
         error.error = NOT_PINNED
         unpin_socket.send(error.SerializeToString())
-        continue
+        return
 
     unpin_socket.send(ok_resp)
 

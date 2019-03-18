@@ -12,17 +12,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from misc_pb2 import *
+from include.functions_pb2 import *
 
 # create generic error response
 error = GenericResponse()
 error.success = False
 
 # create generic OK response
-ok = GenericResponse
-ok.success= True
+ok = GenericResponse()
+ok.success = True
 OK_RESP = ok.SerializeToString()
-
 
 def _retrieve_function(name, kvs):
     kvs_name = _get_func_kvs_name(name)
