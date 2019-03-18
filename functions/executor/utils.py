@@ -14,7 +14,6 @@
 
 from misc_pb2 import *
 
-
 # create generic error response
 error = GenericResponse()
 error.success = False
@@ -23,20 +22,6 @@ error.success = False
 ok = GenericResponse
 ok.success= True
 OK_RESP = ok.SerializeToString()
-
-# shared constants
-FUNCOBJ = 'funcs/index-allfuncs'
-FUNC_PREFIX = 'funcs/'
-BIND_ADDR_TEMPLATE = 'tcp://*:%d'
-
-PIN_PORT = 5000
-UNPIN_PORT = 5001
-FUNC_EXEC_PORT = 5002
-DAG_QUEUE_PORT = 5003
-DAG_EXEC_PORT = 5004
-
-def _get_func_kvs_name(fname):
-    return FUNC_PREFIX + fname
 
 
 def _retrieve_function(name, kvs):

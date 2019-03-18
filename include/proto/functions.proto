@@ -52,12 +52,17 @@ message Dag {
   repeated DagPair connections = 3;
 }
 
-message DagCall {
-  message DagStageArgs {
-    required string name = 1;
-    repeated Value args = 2;
-  }
+message ArgList { 
+  repeated Value args = 1;
+}
 
+message DagCall {
   required string name = 1;
-  repeated DagStageArgs args = 2;
+  repeated map<string, ArgList> function_args = 2;
+}
+
+message GenericResponse {
+  required bool success = 1;
+  optional string response_id = 2;
+  optional ErrorType error = 3;
 }

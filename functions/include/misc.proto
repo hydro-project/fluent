@@ -22,37 +22,23 @@ enum ErrorType {
   INVALID_TARGET = 3;
 }
 
-enum Status {
-  PINNED = 1; // function is currently pinned
-  CLEARING = 2; // function is not longer accepting requests
-}
-
 message ThreadStatus {
   required string ip = 1;
   required uint32 tid = 2;
-  repeated map<string, Status> functions = 3;
+  repeated string functions = 3;
 }
 
 message DagSchedule {
-  message FuncArguments {
-    repeated Value args = 1;
-  }
-
   required uint32 id = 1;
   required Dag dag = 2;
   required string target_function = 3;
   repeated map<string, string> locations = 4; // which functions should be executed where
   // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
-  repeated map<string, FuncArguments> arguments = 5; 
+  repeated map<string, ArgList> arguments = 5; 
 }
 
 message DagTrigger {
   required uint32 id = 1;
   required string target_function = 2; // which function is this trigger for
-  repeated Value args = 2;
-}
-
-message GenericResponse {
-  required bool success = 1;
-  optional ErrorType error;
+  optional ArgList arguments = 3;
 }

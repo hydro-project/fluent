@@ -45,6 +45,9 @@ def run():
     func_pull_socket = context.socket(zmq.PULL)
     func_pull_socket.bind('tcp://*:7003')
 
+    schedulers_socket = context.socket(zmq.REP)
+    schedulers_socket.bind('tcp://*:7004')
+
     poller = zmq.Poller()
     poller.register(restart_pull_socket, zmq.POLLIN)
     poller.register(churn_pull_socket, zmq.POLLIN)
@@ -116,7 +119,6 @@ def run():
 
         if func_nodes_socket in socks and socks[func_nodes_socket] == \
                 zmq.POLLIN:
-
             # It doesn't matter what is in this message
             msg = func_nodes_socket.recv_string()
 
@@ -135,6 +137,17 @@ def run():
                     (mutil * 100, ip))
 
             func_occ_map[ip] = mutil
+
+        if schedulers_socket in socks and socks[schedulers_socket] == \
+                zmq.POLLIN:
+            # It doesn't matter what is in this message
+            msg = schedulers_socket.recv_string()
+
+            ks = KeySet()
+            for ip in util.get_pod_ips(clinet, 'role=scheduler'):
+                ks.add_keys(ip)
+
+            schedulers_socket.send_string(ks.SerializeToString())
 
         end = time.time()
         if end - start > THRESHOLD:

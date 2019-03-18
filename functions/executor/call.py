@@ -24,11 +24,6 @@ def exec_function(exec_socket, status, error):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
 
-    if status.pinned:
-        error.error = ALREADY_PINNED
-        exec_socket.send(error.SerializeToString())
-        return
-
     obj_id = str(uuid.uuid4())
     if not call.HasField('resp_id'):
         call.resp_id = obj_id
