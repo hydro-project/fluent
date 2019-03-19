@@ -44,8 +44,8 @@ git checkout -b brnch origin/$REPO_BRANCH
 
 # generate Python protobufs
 cd include/proto
-protoc -I=./ --python_out=../../function/include functions.proto
+protoc -I=./ --python_out=../../functions/include functions.proto
 cd ../..
 
 # start python server
-cd fluent/functions/executor && export MY_IP=$IP && python3.6 function_server.py
+cd functions && export MY_IP=$IP && python3.6 executor.py
