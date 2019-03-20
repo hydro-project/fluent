@@ -70,6 +70,10 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
     client.create_namespaced_pod(namespace=NAMESPACE, body=mon_spec)
 
     mon_ips = get_pod_ips(client, 'role=monitoring')
+    os.system('cp %s ./kvs-config.yml' % cfile)
+    copy_file_to_pod(client, 'kvs-config.yml', mon_spec['metadata']['name'],
+            mon_spec['spec']['containers'][0]['name'], '/fluent/conf')
+    os.system('rm ./kvs-config.yml')
 
     print('Creating %d routing nodes...' % (route_count))
     add_nodes(client, cfile, ['routing'], [route_count], mon_ips)
