@@ -17,6 +17,7 @@ import random
 import socket
 import zmq
 
+from .lattices import *
 from .common import *
 from .zmq_util import *
 
@@ -26,7 +27,7 @@ if not os.path.isfile('kvs_pb2.py'):
 from .kvs_pb2 import *
 
 class AnnaClient():
-    def __init__(self, elb_addr, ip=None, elb_ports=list(range(6000, 6004)), offset=0):
+    def __init__(self, elb_addr, ip=None, elb_ports=list(range(6450, 6454)), offset=0):
         assert type(elb_addr) == str, \
             'ELB IP argument must be a string.'
 
@@ -142,12 +143,12 @@ class AnnaClient():
 
     def put(self, key, value):
         worker_address = self._get_worker_address(key)
+        print(worker_address)
         send_sock = self.pusher_cache.get(worker_address)
 
         req, tup = self._prepare_data_request(key)
         req.type = PUT
-        tup.value = bytes(value, 'utf-8')
-        tup.timestamp = 0
+        tup.payload = self._serialize(value)
 
         send_request(req, send_sock)
         response = recv_response([req.request_id], self.response_puller,
@@ -164,6 +165,18 @@ class AnnaClient():
 
         return tup.error == 0
 
+    def _serialize(self, val):
+        if isinstance(val, LWWPairLattice):
+            lww = LWWValue()
+            lww.timestamp = val.ts
+            lww.value = bytes(val.val, 'utf-8')
+            return lww.SerializeToString()
+        elif isinstance(val, SetLattice):
+            s = SetValue()
+            for o in val:
+                s.values.append(o)
+
+            return s.SerializeToString()
 
     def _prepare_data_request(self, key):
         req = KeyRequest()

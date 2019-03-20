@@ -15,7 +15,7 @@
 from anna.client import AnnaClient
 import boto3
 import cloudpickle as cp
-from ..include.functions_pb2 import *
+from functions_pb2 import *
 import numpy
 from ..include.shared import *
 import zmq
