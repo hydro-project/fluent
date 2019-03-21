@@ -82,7 +82,7 @@ def run():
             unpin(unpin, status, pinned_functions)
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
-            exec_function(exec_socket, status, error)
+            exec_function(exec_socket, client, status, error)
 
         if dag_queue_socket in socks and socks[dag_queue_socket] == zmq.POLLIN:
             schedule = DagSchedule()

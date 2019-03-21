@@ -14,6 +14,7 @@
 
 import cloudpickle as cp
 import codecs
+from .functions_pb2 import *
 from io import BytesIO
 import numpy as np
 

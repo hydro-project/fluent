@@ -16,9 +16,9 @@
 
 from add_nodes import add_nodes
 from functools import reduce
+from kvs_pb2 import *
 import logging
-from misc_pb2 import *
-from requests_pb2 import *
+from metadata_pb2 import *
 import os
 import random
 from remove_node import remove_node

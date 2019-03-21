@@ -74,6 +74,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
         KeyTuple* resp = response.add_tuples();
         Key key = tuple.key();
         resp->set_key(key);
+        log->info("Received request for key {}.", key);
 
         if (!tuple.has_lattice_type()) {
           log->error("Cache requires type to retrieve key.");
@@ -85,6 +86,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           case LatticeType::LWW: {
             if (local_lww_cache.find(key) == local_lww_cache.end()) {
               LWWPairLattice<string> resp = client.get(key);
+              log->info("Successfully retrieved key {} from KVS. TS is {}.", key, resp.reveal().timestamp);
               local_lww_cache[key] = resp;
               key_type_map[key] = LatticeType::LWW;
             }

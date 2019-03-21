@@ -13,15 +13,17 @@
 #  limitations under the License.
 
 import logging
-from serializer import *
 import sys
 import uuid
 
 from include.functions_pb2 import *
+from include.serializer import *
+from executor import utils
 
-def exec_function(exec_socket, status, error):
+def exec_function(exec_socket, client, status, error):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
+    logging.info('Received call for ' + call.name)
 
     obj_id = str(uuid.uuid4())
     if not call.HasField('resp_id'):
@@ -32,12 +34,13 @@ def exec_function(exec_socket, status, error):
     reqid = call.request_id
     fargs = _process_args(call.args)
 
-    f = _retrieve_function(name, client)
+    f = utils._retrieve_function(call.name, client)
     if not f:
         error.error = FUNC_NOT_FOUND
         exec_socket.send(error.SerializeToString())
         return
 
+    logging.info('Sending response of ' + obj_id)
     exec_socket.send_string(obj_id)
     result = _exec_func(client, f, fargs)
 

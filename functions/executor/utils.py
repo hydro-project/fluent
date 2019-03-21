@@ -13,6 +13,8 @@
 #  limitations under the License.
 
 from include.functions_pb2 import *
+from include.kvs_pb2 import *
+from include import server_utils
 
 # create generic error response
 error = GenericResponse()
@@ -24,8 +26,8 @@ ok.success = True
 OK_RESP = ok.SerializeToString()
 
 def _retrieve_function(name, kvs):
-    kvs_name = _get_func_kvs_name(name)
-    latt = kvs.get(kvs_name)
+    kvs_name = server_utils._get_func_kvs_name(name)
+    latt = kvs.get(kvs_name, LWW)
 
     if latt:
         return function_ser.load(latt.value)
