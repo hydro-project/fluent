@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import logging
+from serializer import *
 import sys
 import uuid
 

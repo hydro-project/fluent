@@ -13,99 +13,11 @@
 #  limitations under the License.
 
 import cloudpickle as cp
+import codecs
+from io import BytesIO
 import numpy as np
 
-class Serializer():
-    def __init__(self):
-        raise NotImplementedError('Cannot instantiate abstract class.')
-
-    def _serialize(self, msg):
-        pass
-
-    def _deserialize(self, msg):
-        pass
-
-    def dump(self, msg):
-        pass
-
-    def load(self, msg):
-        pass
-
-class DefaultSerializer(Serializer):
-    def __init__(self):
-        pass
-
-    def _serialize(msg):
-        return msg
-
-    def _deserialize(self, msg):
-        return msg
-
-    def dump(self, msg):
-        return cp.dumps(msg)
-
-    def load(self, msg):
-        return cp.loads(msg)
-
-class StringSerializer(Serializer):
-    def __init__(self):
-        pass
-
-    def _serialize(self, msg):
-        return codecs.decode(msg, SER_FORMAT)
-
-    def _deserialize(self, msg):
-        return codecs.encode(msg, SER_FORMAT)
-
-    def dump(self, msg):
-        return serialize(cp.dumps(msg))
-
-    def load(self, msg):
-        return cp.loads(deserialize(msg))
-
-# TODO: how can we make serializers pluggable?
-class NumpySerializer(DefaultSerializer):
-    def __init__(self):
-        pass
-
-    def dump(self, msg):
-        body = BytesIO()
-
-        np.save(body, msg)
-        return body.getvalue()
-
-    def load(self, msg):
-        return np.load(BytesIO(msg))
-
-numpy_ser = NumpySerializer()
-default_ser = DefaultSerializer()
-string_ser = StringSerializer()
-
-def get_serializer(kind):
-    global numpy_ser, default_ser, string_ser
-
-    if kind == NUMPY:
-        return numpy_ser
-    elif kind == STRING:
-        return string_ser
-    elif kind == DEFAULT:
-        return default_ser
-    else:
-        return default_ser
-
-def serialize_val(val, valobj=None):
-    if not valobj:
-        valobj = Value()
-
-    if isinstance(val, SkyFuture):
-        valobj.body = default_ser.dump(SkyReference(val.obj_id, True))
-    elif isinstance(val, np.ndarray):
-        valobj.body = numpy_ser.dump(val)
-        valobj.type = NUMPY
-    else:
-        valobj.body = default_ser.dump(val)
-
-    return valobj
+SER_FORMAT = 'raw_unicode_escape'
 
 class Serializer():
     def __init__(self):
@@ -150,10 +62,10 @@ class StringSerializer(Serializer):
         return codecs.encode(msg, SER_FORMAT)
 
     def dump(self, msg):
-        return serialize(cp.dumps(msg))
+        return self._serialize(cp.dumps(msg))
 
     def load(self, msg):
-        return cp.loads(deserialize(msg))
+        return cp.loads(self._deserialize(msg))
 
 # TODO: how can we make serializers pluggable?
 class NumpySerializer(DefaultSerializer):
@@ -198,4 +110,3 @@ def serialize_val(val, valobj=None):
         valobj.body = default_ser.dump(val)
 
     return valobj
-
