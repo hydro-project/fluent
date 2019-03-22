@@ -77,13 +77,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   // for tracking IP addresses of extant caches
   set<Address> extant_caches;
-  // TODO: actually populate
 
   // For tracking the keys each extant cache is responsible for.
   // This is just our thread's cache of this.
   map<Address, set<Key>> cache_ip_to_keys;
-  // TODO: update with updates to extant_caches (only deletions of caches
-  // matter)
 
   // For tracking the caches that hold a given key.
   // Inverse of cache_ip_to_keys.
@@ -441,8 +438,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       working_time_map[7] += time_elapsed;
     }
 
-    // collect and store internal statistics
-    // Also, send out GET requests for the cached keys by cache IP.
+    // Collect and store internal statistics,
+    // fetch the most recent list of cache IPs,
+    // and send out GET requests for the cached keys by cache IP.
     report_end = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(
                         report_end - report_start)
@@ -586,6 +584,37 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       }
 
       report_start = std::chrono::system_clock::now();
+
+      // Get the most recent list of cache IPs.
+      // (Actually gets the list of all current functional nodes.)
+
+      zmq::socket_t func_nodes_requester(context, ZMQ_REQ);
+      func_nodes_requester.setsockopt(ZMQ_SNDTIMEO, 1000); // 1s
+      func_nodes_requester.setsockopt(ZMQ_RCVTIMEO, 1000); // 1s
+      func_nodes_requester.connect(get_func_nodes_req_address(management_ip));
+      // Send the request.
+      // (The message content doesn't matter here; it's an argless RPC call.)
+      kZmqUtil->send_string(" ", &func_nodes_requester);
+      // Get the response.
+      KeySet func_nodes;
+      func_nodes.ParseFromString(kZmqUtil->recv_string(&func_nodes_requester));
+
+      // Update extant_caches with the response.
+      set<Address> deleted_caches = std::move(extant_caches);
+      extant_caches = set<Address>();
+      for (const auto& func_node : func_nodes.keys()) {
+        deleted_caches.erase(func_node);
+        extant_caches.insert(func_node);
+      }
+
+      // Process deleted caches
+      // (cache IPs that we were tracking but were not in the newest list of caches).
+      for (const auto& cache_ip : deleted_caches) {
+        cache_ip_to_keys.erase(cache_ip);
+        for (auto& key_and_caches : key_to_cache_ips) {
+          key_and_caches.second.erase(cache_ip);
+        }
+      }
 
       // Get the cached keys by cache IP.
       // First, prepare the requests for all the IPs we know about
