@@ -65,7 +65,7 @@ class AnnaClient():
                 KeyResponse)[0]
 
         # we currently only support single key operations
-        tup = resp_obj.tuples[0]
+        tup = response.tuples[0]
 
         if tup.invalidate:
             self._invalidate_cache(tup.key, tup.addresses)
@@ -143,7 +143,6 @@ class AnnaClient():
 
     def put(self, key, value):
         worker_address = self._get_worker_address(key)
-        print(worker_address)
         send_sock = self.pusher_cache.get(worker_address)
 
         req, tup = self._prepare_data_request(key)
@@ -170,7 +169,7 @@ class AnnaClient():
             val = LWWValue()
             val.ParseFromString(tup.payload)
 
-            return LWWPairLattice(val.val, val.timestamp)
+            return LWWPairLattice(val.timestamp, val.value)
         elif tup.lattice_type == SET:
             s = SetValue()
             s.ParseFromString(tup.payload)
