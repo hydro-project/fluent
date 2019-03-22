@@ -19,6 +19,7 @@ import boto3
 import json
 import kubernetes as k8s
 import sys
+import time
 from util import *
 
 ec2_client = boto3.client('ec2', 'us-east-1')
@@ -61,7 +62,8 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
     copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/', kcname)
     copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
             '/root/.ssh/', kcname)
-    copy_file_to_pod(client, cfile, kops_podname, '/fluent/conf/', kcname)
+    os.system('cp %s kvs-config.yml' % cfile)
+    copy_file_to_pod(client, 'kvs-config.yml', kops_podname, '/fluent/conf/', kcname)
 
     # start the monitoring pod
     mon_spec = load_yaml('yaml/pods/monitoring-pod.yml')
@@ -70,10 +72,13 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
     client.create_namespaced_pod(namespace=NAMESPACE, body=mon_spec)
 
     mon_ips = get_pod_ips(client, 'role=monitoring')
-    os.system('cp %s ./kvs-config.yml' % cfile)
+
+    # copy config file into monitoring pod -- wait till we create routing pods,
+    # so we're sure that the monitoring nodes are up and running
     copy_file_to_pod(client, 'kvs-config.yml', mon_spec['metadata']['name'],
-            mon_spec['spec']['containers'][0]['name'], '/fluent/conf')
-    os.system('rm ./kvs-config.yml')
+            '/fluent/conf/', mon_spec['spec']['containers'][0]['name'])
+    os.system('rm kvs-config.yml')
+
 
     print('Creating %d routing nodes...' % (route_count))
     add_nodes(client, cfile, ['routing'], [route_count], mon_ips)
