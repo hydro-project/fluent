@@ -238,6 +238,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
     // caching; we only do this periodically because we are okay with receiving
     // potentially stale updates
     if (duration >= kCacheReportThreshold) {
+      std::cout << "Starting the cache process." << std::endl;
       KeySet set;
 
       for (const auto& pair : key_type_map) {
@@ -250,7 +251,9 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
       LWWPairLattice<string> val(TimestampValuePair<string>(
           generate_timestamp(thread_id), serialized));
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
+      std::cout << "Key is " << key << std::endl;
       client.put(key, val);
+      std::cout << "Successfully put" << std::endl;
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.

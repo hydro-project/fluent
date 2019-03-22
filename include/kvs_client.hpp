@@ -442,6 +442,7 @@ class KvsClient {
    * a single request.
    */
   KeyResponse try_request(KeyRequest request, unsigned trial_limit) {
+    std::cout << "trying request " << trial_limit << std::endl;
     if (trial_limit == 0) {
       return bad_response_;
     }
@@ -453,6 +454,7 @@ class KvsClient {
     // we only get NULL back for the worker thread if the query to the routing
     // tier timed out, which should never happen.
     Address worker = get_worker_thread(request.tuples(0).key());
+    std::cout << "Successfully retrieved worker " << worker << std::endl;
     if (worker.length() == 0) {
       return bad_response_;
     }
@@ -460,6 +462,8 @@ class KvsClient {
     bool succeed;
     KeyResponse response = make_request<KeyRequest, KeyResponse>(
         request, socket_cache_[worker], response_puller_, succeed);
+
+    std::cout << response.DebugString() << std::endl;
 
     while (!succeed) {
       log_->info(
@@ -656,6 +660,7 @@ class KvsClient {
 
       // send the actual query to the routing tier
       Address rt_thread = get_routing_thread();
+      std::cout << "routing thread is " << rt_thread << std::endl;
       response = make_request<KeyAddressRequest, KeyAddressResponse>(
           request, socket_cache_[rt_thread], key_address_puller_, succeed);
 
