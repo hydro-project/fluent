@@ -19,7 +19,7 @@ import kubernetes as k8s
 import random
 from util import *
 
-ec2_client = boto3.client('ec2', 'us-east')
+ec2_client = boto3.client('ec2', 'us-east-1')
 
 def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
         route_addr=None):

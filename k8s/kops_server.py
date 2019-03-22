@@ -155,7 +155,7 @@ def run():
             check_hash_ring(client, context)
 
             logging.info('Checking for extra nodes...')
-            check_unused_nodes(client)
+            check_unused_nodes(client, cfile)
 
             if func_occ_map.values():
                 avg_focc = reduce(lambda a, b: a + b, func_occ_map.values(), \
@@ -246,7 +246,7 @@ def send_msg(msg, context, ip, port):
     sckt.connect('tcp://' + ip + ':' + str(port))
     sckt.send_string(msg)
 
-def check_unused_nodes(client):
+def check_unused_nodes(client, cfile):
     kinds = ['ebs', 'memory']
 
     for kind in kinds:
@@ -270,7 +270,7 @@ def check_unused_nodes(client):
             kind))
         for node_ip in unallocated:
             # note that the last argument is a list of lists
-            add_nodes(client, [kind], [1], mon_ips, route_ips, [[nodes[node_ip]]])
+            add_nodes(client, cfile, [kind], [1], mon_ips, route_ips, [[nodes[node_ip]]])
 
 if __name__ == '__main__':
     # wait for this file to appear before starting
