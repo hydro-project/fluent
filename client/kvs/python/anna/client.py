@@ -61,8 +61,8 @@ class AnnaClient():
         req.type = GET
 
         send_request(req, send_sock)
-        response = recv_response([req.request_id], KeyResponse,
-                self.response_puller)[0]
+        response = recv_response([req.request_id], self.response_puller,
+                KeyResponse)[0]
 
         # we currently only support single key operations
         tup = resp_obj.tuples[0]
@@ -73,7 +73,7 @@ class AnnaClient():
             # re-issue the request
             return self.get(tup.key)
 
-        return str(tup.value, 'utf-8')
+        return self._deserialize(tup)
 
     def get_all(self, key):
         worker_addresses = self._get_worker_address(key, False)
@@ -104,15 +104,15 @@ class AnnaClient():
             if tup.error != 0:
                 return None
 
-        return list(map(lambda resp: str(resp.tuples[0].value, 'utf-8'), responses))
+        return list(map(lambda resp: self._deserialize(resp), responses))
 
 
-    def durable_put(self, key, value):
+    def put_all(self, key, value):
         worker_addresses = self._get_worker_address(key, False)
 
         req, tup = self._prepare_data_request(key)
         req.type = PUT
-        tup.value = bytes(value, 'utf-8')
+        tup.payload, tup.lattice_type = self._serialize(value)
         tup.timestamp = 0
 
         req_ids = []
@@ -148,7 +148,7 @@ class AnnaClient():
 
         req, tup = self._prepare_data_request(key)
         req.type = PUT
-        tup.payload = self._serialize(value)
+        tup.payload, tup.lattice_type = self._serialize(value)
 
         send_request(req, send_sock)
         response = recv_response([req.request_id], self.response_puller,
@@ -165,18 +165,34 @@ class AnnaClient():
 
         return tup.error == 0
 
+    def _deserialize(self, tup):
+        if tup.lattice_type == LWW:
+            val = LWWValue()
+            val.ParseFromString(tup.payload)
+
+            return LWWPairLattice(val.val, val.timestamp)
+        elif tup.lattice_type == SET:
+            s = SetValue()
+            s.ParseFromString(tup.payload)
+
+            result = {}
+            for k in s.keys:
+                result.insert(k)
+
+            return SetLattice(result)
+
     def _serialize(self, val):
         if isinstance(val, LWWPairLattice):
             lww = LWWValue()
             lww.timestamp = val.ts
-            lww.value = bytes(val.val, 'utf-8')
-            return lww.SerializeToString()
+            lww.value = val.val
+            return lww.SerializeToString(), LWW
         elif isinstance(val, SetLattice):
             s = SetValue()
             for o in val:
                 s.values.append(o)
 
-            return s.SerializeToString()
+            return s.SerializeToString(), SET
 
     def _prepare_data_request(self, key):
         req = KeyRequest()
