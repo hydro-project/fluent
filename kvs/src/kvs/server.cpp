@@ -97,6 +97,12 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   map<Key, KeyMetadata> metadata_map;
 
+  // ZMQ socket for asking kops server for IP addrs of functional nodes.
+  zmq::socket_t func_nodes_requester(context, ZMQ_REQ);
+  func_nodes_requester.setsockopt(ZMQ_SNDTIMEO, 1000);  // 1s
+  func_nodes_requester.setsockopt(ZMQ_RCVTIMEO, 1000);  // 1s
+  func_nodes_requester.connect(get_func_nodes_req_address(management_ip));
+
   // request server addresses from the seed node
   zmq::socket_t addr_requester(context, ZMQ_REQ);
   addr_requester.connect(RoutingThread(seed_ip, 0).seed_connect_address());
@@ -587,12 +593,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       // Get the most recent list of cache IPs.
       // (Actually gets the list of all current functional nodes.)
-
-      zmq::socket_t func_nodes_requester(context, ZMQ_REQ);
-      func_nodes_requester.setsockopt(ZMQ_SNDTIMEO, 1000);  // 1s
-      func_nodes_requester.setsockopt(ZMQ_RCVTIMEO, 1000);  // 1s
-      func_nodes_requester.connect(get_func_nodes_req_address(management_ip));
-      // Send the request.
       // (The message content doesn't matter here; it's an argless RPC call.)
       kZmqUtil->send_string(" ", &func_nodes_requester);
       // Get the response.
