@@ -30,6 +30,7 @@ enum UserMetadataType { cache_ip };
 const string kMetadataIdentifier = "ANNA_METADATA";
 const string kMetadataDelimiter = "|";
 const char kMetadataDelimiterChar = '|';
+const string kMetadataTypeCacheIP = "cache_ip";
 
 inline void split(const string& s, char delim, vector<string>& elems) {
   std::stringstream ss(s);
@@ -61,8 +62,8 @@ inline unsigned long long generate_timestamp(const unsigned& id) {
 // TODO: There should probably be a less silent error check.
 inline Key get_user_metadata_key(string data_key, UserMetadataType type) {
   if (type == UserMetadataType::cache_ip) {
-    return kMetadataIdentifier + kMetadataDelimiter + data_key +
-           kMetadataDelimiter + "cache_ip";
+    return kMetadataIdentifier + kMetadataDelimiter + kMetadataTypeCacheIP +
+           kMetadataDelimiter + data_key;
   }
   return "";
 }
@@ -70,12 +71,15 @@ inline Key get_user_metadata_key(string data_key, UserMetadataType type) {
 // Inverse of get_user_metadata_key, returning just the key itself.
 // TODO: same problem as get_user_metadata_key with the metadata types.
 inline Key get_key_from_user_metadata(Key metadata_key) {
-  vector<string> tokens;
-  split(metadata_key, '|', tokens);
-
-  string metadata_type = tokens[tokens.size() - 1];
-  if (metadata_type == "cache_ip") {
-    return tokens[1];
+  string::size_type n_id;
+  string::size_type n_type;
+  // Find the first delimiter; this skips over the metadata identifier.
+  n_id = metadata_key.find(kMetadataDelimiter);
+  // Find the second delimiter; this skips over the metadata type.
+  n_type = metadata_key.find(kMetadataDelimiter, n_id + 1);
+  string metadata_type = metadata_key.substr(n_id + 1, n_type);
+  if (metadata_type == kMetadataTypeCacheIP) {
+    return metadata_key.substr(n_type + 1);
   }
 
   return "";
