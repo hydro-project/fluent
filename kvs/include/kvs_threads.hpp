@@ -41,6 +41,9 @@ const unsigned kMonitoringResponsePort = 6650;
 const unsigned kDepartDonePort = 6700;
 const unsigned kLatencyReportPort = 6750;
 
+// KVS nodes contact the kops server on this node
+const unsigned kKopsFuncNodesPort = 7002;
+
 class ServerThread {
   Address public_ip_;
   Address public_base_;
@@ -279,6 +282,10 @@ class BenchmarkThread {
 
 inline string get_join_count_req_address(string management_ip) {
   return "tcp://" + management_ip + ":" + std::to_string(kKopsRestartCountPort);
+}
+
+inline string get_func_nodes_req_address(string management_ip) {
+  return "tcp://" + management_ip + ":" + std::to_string(kKopsFuncNodesPort);
 }
 
 struct ThreadHash {
