@@ -589,8 +589,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       // (Actually gets the list of all current functional nodes.)
 
       zmq::socket_t func_nodes_requester(context, ZMQ_REQ);
-      func_nodes_requester.setsockopt(ZMQ_SNDTIMEO, 1000); // 1s
-      func_nodes_requester.setsockopt(ZMQ_RCVTIMEO, 1000); // 1s
+      func_nodes_requester.setsockopt(ZMQ_SNDTIMEO, 1000);  // 1s
+      func_nodes_requester.setsockopt(ZMQ_RCVTIMEO, 1000);  // 1s
       func_nodes_requester.connect(get_func_nodes_req_address(management_ip));
       // Send the request.
       // (The message content doesn't matter here; it's an argless RPC call.)
@@ -608,7 +608,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       }
 
       // Process deleted caches
-      // (cache IPs that we were tracking but were not in the newest list of caches).
+      // (cache IPs that we were tracking but were not in the newest list of
+      // caches).
       for (const auto& cache_ip : deleted_caches) {
         cache_ip_to_keys.erase(cache_ip);
         for (auto& key_and_caches : key_to_cache_ips) {
