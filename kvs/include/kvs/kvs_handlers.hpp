@@ -12,12 +12,14 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_KVS_KVS_HANDLERS_HPP_
-#define SRC_INCLUDE_KVS_KVS_HANDLERS_HPP_
+#ifndef KVS_INCLUDE_KVS_KVS_HANDLERS_HPP_
+#define KVS_INCLUDE_KVS_KVS_HANDLERS_HPP_
 
 #include "hash_ring.hpp"
+#include "metadata.pb.h"
+#include "replication.pb.h"
 #include "requests.hpp"
-#include "utils/server_utils.hpp"
+#include "server_utils.hpp"
 
 void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        Address private_ip, logger log, string& serialized,
@@ -79,6 +81,14 @@ void replication_change_handler(Address public_ip, Address private_ip,
                                 SerializerMap& serializers,
                                 SocketCache& pushers);
 
+// Postcondition:
+// cache_ip_to_keys, key_to_cache_ips are both updated
+// with the IPs and their fresh list of repsonsible keys
+// in the serialized response.
+void cache_ip_response_handler(string& serialized,
+                               map<Address, set<Key>>& cache_ip_to_keys,
+                               map<Key, set<Address>>& key_to_cache_ips);
+
 void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
                  SerializerMap& serializers,
                  map<Key, KeyMetadata>& metadata_map);
@@ -94,4 +104,4 @@ bool is_primary_replica(const Key& key, map<Key, KeyMetadata>& metadata_map,
                         map<TierId, LocalHashRing>& local_hash_rings,
                         ServerThread& st);
 
-#endif  // SRC_INCLUDE_KVS_KVS_HANDLERS_HPP_
+#endif  // KVS_INCLUDE_KVS_KVS_HANDLERS_HPP_

@@ -35,12 +35,12 @@ SET(VENDOR_DIR vendor)
 IF(${CMAKE_CXX_COMPILER} STREQUAL "/usr/bin/clang++") 
   SET(CMAKE_CXX_FLAGS_COMMON
       "-std=c++11 \
-      -stdlib=libc++")
+      -stdlib=libc++ -pthread")
 ENDIF()
 
 IF(${CMAKE_CXX_COMPILER} STREQUAL "/usr/bin/g++") 
   SET(CMAKE_CXX_FLAGS_COMMON
-      "-std=c++11")
+      "-std=c++11 -pthread")
 ENDIF()
 
 SET(CMAKE_CXX_FLAGS_DEBUG
@@ -70,7 +70,8 @@ INCLUDE(FindProtobuf)
 FIND_PACKAGE(Protobuf REQUIRED)
 INCLUDE_DIRECTORIES(${PROTOBUF_INCLUDE_DIR})
 PROTOBUF_GENERATE_CPP(PROTO_SRC PROTO_HEADER
-  ./include/proto/requests.proto)
+  ./include/proto/kvs.proto
+  ./include/proto/functions.proto)
 
 # need to build a target at this level or subdirs won't have the 
 # protobuf files generated.
@@ -101,6 +102,8 @@ ADD_SUBDIRECTORY(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 
 LINK_DIRECTORIES(${ZEROMQ_LINK_DIRS} ${YAMLCPP_LINK_DIRS})
 
+ADD_SUBDIRECTORY(client)
+ADD_SUBDIRECTORY(functions)
 ADD_SUBDIRECTORY(kvs)
 
 # TODO: Enable selective build of KVS and function runtime

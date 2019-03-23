@@ -57,14 +57,14 @@ def run_process(command):
         print('Unexpected error while running command %s:' % (e.cmd))
         print(e.stderr)
         print('')
-        print('Make sure to clean up the cluster object and state store \
-                before recreating the cluster.')
+        print('Make sure to clean up the cluster object and state store ' +
+                'before recreating the cluster.')
         sys.exit(1)
 
 def check_or_get_env_arg(argname):
     if argname not in os.environ:
-        print('Required argument %s not found as an environment variable. \
-                Please specify before re-running.' % (argname))
+        print('Required argument %s not found as an environment variable.' +
+                'Please specify before re-running.' % (argname))
         sys.exit(1)
 
     return os.environ[argname]
@@ -74,21 +74,17 @@ def get_pod_ips(client, selector, isRunning=False):
             label_selector=selector).items
 
     pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
-    print(pod_ips)
 
     running = False
     while None in pod_ips or not running:
         pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
                 label_selector=selector).items
         pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
-        print(pod_ips)
 
         if isRunning:
-            print(list(map(lambda pod: pod.status.phase, pod_list)))
             pod_statuses = list(filter(lambda pod: pod.status.phase !=
                 'Running', pod_list))
             running = len(pod_statuses) == 0
-            print('There are ' + str(len(pod_statuses)) + ' not running things.')
         else:
             running = True
 
@@ -107,14 +103,25 @@ def get_pod_from_ip(client, ip):
 
     return pod
 
+def get_service_address(client, svc_name):
+    service = client.read_namespaced_service(namespace=NAMESPACE,
+            name=svc_name)
+
+    while service.status.load_balancer.ingress == None or \
+            service.status.load_balancer.ingress[0].hostname == None:
+        service = client.read_namespaced_service(namespace=NAMESPACE,
+                name=svc_name)
+
+    return service.status.load_balancer.ingress[0].hostname
+
 # from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101
-def copy_file_to_pod(client, filepath, podname, podpath):
+def copy_file_to_pod(client, filepath, podname, podpath, container):
     exec_command = ['tar', 'xvf', '-', '-C', podpath]
     resp = stream(client.connect_get_namespaced_pod_exec, podname, NAMESPACE,
                   command=exec_command,
                   stderr=True, stdin=True,
                   stdout=True, tty=False,
-                  _preload_content=False)
+                  _preload_content=False, container=container)
 
     filename = filepath.split('/')[-1]
     with TemporaryFile() as tar_buffer:

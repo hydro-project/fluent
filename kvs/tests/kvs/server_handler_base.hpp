@@ -42,16 +42,21 @@ class ServerHandlerTest : public ::testing::Test {
   SerializerMap serializers;
   Serializer* lww_serializer;
   Serializer* set_serializer;
+  Serializer* causal_serializer;
   MemoryLWWKVS* lww_kvs;
   MemorySetKVS* set_kvs;
+  MemoryCausalKVS* causal_kvs;
 
   ServerHandlerTest() {
     lww_kvs = new MemoryLWWKVS();
     lww_serializer = new MemoryLWWSerializer(lww_kvs);
     set_kvs = new MemorySetKVS();
     set_serializer = new MemorySetSerializer(set_kvs);
+    causal_kvs = new MemoryCausalKVS();
+    causal_serializer = new MemoryCausalSerializer(causal_kvs);
     serializers[LatticeType::LWW] = lww_serializer;
     serializers[LatticeType::SET] = set_serializer;
+    serializers[LatticeType::CAUSAL] = causal_serializer;
 
     wt = ServerThread(ip, ip, thread_id);
     global_hash_rings[kMemoryTierId].insert(ip, ip, 0, thread_id);
@@ -85,8 +90,7 @@ class ServerHandlerTest : public ::testing::Test {
   string get_key_request(Key key, string ip) {
     KeyRequest request;
     request.set_type(RequestType::GET);
-    request.set_response_address(
-        UserThread(ip, 0).response_connect_address());
+    request.set_response_address(UserThread(ip, 0).response_connect_address());
     request.set_request_id(kRequestId);
 
     KeyTuple* tp = request.add_tuples();
@@ -102,8 +106,7 @@ class ServerHandlerTest : public ::testing::Test {
                          string ip) {
     KeyRequest request;
     request.set_type(RequestType::PUT);
-    request.set_response_address(
-        UserThread(ip, 0).response_connect_address());
+    request.set_response_address(UserThread(ip, 0).response_connect_address());
     request.set_request_id(kRequestId);
 
     KeyTuple* tp = request.add_tuples();

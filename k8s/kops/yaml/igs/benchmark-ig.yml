@@ -19,7 +19,7 @@ metadata:
     kops.k8s.io/cluster: CLUSTER_NAME
   name: benchmark-instances
 spec:
-  image: kope.io/k8s-1.8-debian-jessie-amd64-hvm-ebs-2018-03-11
+  image: kope.io/k8s-1.11-debian-stretch-amd64-hvm-ebs-2018-08-17
   machineType: r4.8xlarge
   maxSize: NUM_DUMMY
   minSize: NUM_DUMMY

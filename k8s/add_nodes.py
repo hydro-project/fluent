@@ -19,9 +19,10 @@ import kubernetes as k8s
 import random
 from util import *
 
-ec2_client = boto3.client('ec2')
+ec2_client = boto3.client('ec2', 'us-east')
 
-def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
+def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
+        route_addr=None):
     if node_ips:
         assert len(kinds) == len(counts) == len(node_ips), 'Must have same \
                 number of kinds and counts and node_ips.'
@@ -88,14 +89,17 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
             seed_ip = random.choice(route_ips) if route_ips else ''
 
             pod_spec['metadata']['name'] = pod_name
-            env = pod_spec['spec']['containers'][0]['env']
-            replace_yaml_val(env, 'ROUTING_IPS', route_str)
-            replace_yaml_val(env, 'MON_IPS', mon_str)
-            replace_yaml_val(env, 'MGMT_IP', kops_ip)
-            replace_yaml_val(env, 'SEED_IP', seed_ip)
-            pod_spec['spec']['nodeSelector']['podid'] = ('%s-%d' % (kind, j))
+            for container in pod_spec['spec']['containers']:
+                env = container['env']
+                replace_yaml_val(env, 'ROUTING_IPS', route_str)
+                replace_yaml_val(env, 'ROUTE_ADDR', route_addr)
+                replace_yaml_val(env, 'MON_IPS', mon_str)
+                replace_yaml_val(env, 'MGMT_IP', kops_ip)
+                replace_yaml_val(env, 'SEED_IP', seed_ip)
 
-            created_pods += [pod_name, ]
+                created_pods += [(pod_name, container['name'])]
+
+            pod_spec['spec']['nodeSelector']['podid'] = ('%s-%d' % (kind, j))
 
             if kind == 'ebs':
                 vols = pod_spec['spec']['volumes']
@@ -121,7 +125,8 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[]):
             ips = get_pod_ips(client, 'role='+kind, isRunning=True)
 
             os.system('cp %s ./kvs-config.yml' % cfile)
-            for pod in created_pods:
-                copy_file_to_pod(client, 'kvs-config.yml', pod, '/fluent/conf/')
+            for pname, cname in created_pods:
+                copy_file_to_pod(client, 'kvs-config.yml', pname,
+                        '/fluent/conf/', cname)
 
             os.system('rm ./kvs-config.yml')

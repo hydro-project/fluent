@@ -12,10 +12,10 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_KVS_BASE_KV_STORE_HPP_
-#define SRC_INCLUDE_KVS_BASE_KV_STORE_HPP_
+#ifndef KVS_INCLUDE_KVS_BASE_KV_STORE_HPP_
+#define KVS_INCLUDE_KVS_BASE_KV_STORE_HPP_
 
-#include "../lattices/core_lattices.hpp"
+#include "lattices/core_lattices.hpp"
 
 template <typename K, typename V>
 class KVStore {
@@ -41,4 +41,4 @@ class KVStore {
   void remove(const K& k) { db.remove(k); }
 };
 
-#endif  // SRC_INCLUDE_KVS_BASE_KV_STORE_HPP_
+#endif  // KVS_INCLUDE_KVS_BASE_KV_STORE_HPP_

@@ -21,10 +21,10 @@ import kubernetes as k8s
 import sys
 from util import *
 
-ec2_client = boto3.client('ec2')
+ec2_client = boto3.client('ec2', 'us-east-1')
 
-def create_cluster(mem_count, ebs_count, route_count, bench_count, cfile,
-        ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
+def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
+        cfile, ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
 
     # create the cluster object with kops
     run_process(['./create_cluster_object.sh', cluster_name, kops_bucket,
@@ -55,12 +55,13 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, cfile,
 
     # copy kube config file to kops pod, so it can execute kubectl commands
     kops_podname = kops_spec['metadata']['name']
+    kcname = kops_spec['spec']['containers'][0]['name']
     copy_file_to_pod(client, '/home/ubuntu/.kube/config', kops_podname,
-            '/root/.kube/')
-    copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/')
+            '/root/.kube/', kcname)
+    copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/', kcname)
     copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
-            '/root/.ssh/')
-    copy_file_to_pod(client, cfile, kops_podname, '/fluent/conf/')
+            '/root/.ssh/', kcname)
+    copy_file_to_pod(client, cfile, kops_podname, '/fluent/conf/', kcname)
 
     # start the monitoring pod
     mon_spec = load_yaml('yaml/pods/monitoring-pod.yml')
@@ -81,7 +82,7 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, cfile,
 
     print('Finished creating all pods...')
     os.system('touch setup_complete')
-    copy_file_to_pod(client, 'setup_complete', kops_podname, '/fluent')
+    copy_file_to_pod(client, 'setup_complete', kops_podname, '/fluent', kcname)
     os.system('rm setup_complete')
 
     print('Creating routing service...')
@@ -89,14 +90,20 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, cfile,
     client.create_namespaced_service(namespace=NAMESPACE,
             body=service_spec)
 
-    service_name = service_spec['metadata']['name']
-    service = client.read_namespaced_service(namespace=NAMESPACE,
-            name=service_name)
+    routing_svc = service_spec['metadata']['name']
+    routing_svc_addr = get_service_address(client, routing_svc)
 
-    while service.status.load_balancer.ingress == None or \
-            service.status.load_balancer.ingress[0].hostname == None:
-        service = client.read_namespaced_service(namespace=NAMESPACE,
-                name=service_name)
+    print('Adding function serving nodes...')
+    add_nodes(client, cfile, ['function'], [func_count], mon_ips,
+            route_addr=routing_svc_addr)
+
+    print('Creating function service...')
+    service_spec = load_yaml('yaml/services/function.yml')
+    client.create_namespaced_service(namespace=NAMESPACE,
+            body=service_spec)
+
+    function_svc = service_spec['metadata']['name']
+    function_svc_addr = get_service_address(client, function_svc)
 
     sg_name = 'nodes.' + cluster_name
     sg = ec2_client.describe_security_groups(Filters=[{'Name': 'group-name',
@@ -119,8 +126,10 @@ def create_cluster(mem_count, ebs_count, route_count, bench_count, cfile,
     ec2_client.authorize_security_group_ingress(GroupId=sg['GroupId'],
             IpPermissions=permissions)
 
-    print('The service can be accessed via the following address: \n\t%s' %
-            (service.status.load_balancer.ingress[0].hostname))
+    print('The routing service can be accessed here: \n\t%s' %
+            (routing_svc_addr))
+    print('The function service can be accessed here: \n\t%s' %
+            (function_svc_addr))
 
 
 
@@ -138,10 +147,10 @@ def parse_args(args, length, typ):
     return tuple(result)
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         print('Usage: ./create_cluster.py min_mem_instances min_ebs_instances \
-                routing_instance benchmark_instances <path-to-conf-file> \
-                <path-to-ssh-key>')
+                min_func_instances routing_instance benchmark_instances \
+                <path-to-conf-file> <path-to-ssh-key>')
         print()
         print('If no SSH key is specified, we will use the default SSH key \
                 (/home/ubuntu/.ssh/id_rsa). The corresponding public key is \
@@ -151,22 +160,22 @@ if __name__ == '__main__':
                 $FLUENT_HOME/conf/kvs-base.yml will be used.')
         sys.exit(1)
 
-    mem, ebs, route, bench = parse_args(sys.argv[1:], 4, int)
+    mem, ebs, func, route, bench = parse_args(sys.argv[1:], 5, int)
 
     cluster_name = check_or_get_env_arg('NAME')
     kops_bucket = check_or_get_env_arg('KOPS_STATE_STORE')
     aws_key_id = check_or_get_env_arg('AWS_ACCESS_KEY_ID')
     aws_key = check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
 
-    if len(sys.argv) <= 5:
+    if len(sys.argv) <= 6:
         conf_file = '../conf/kvs-base.yml'
     else:
-        conf_file = sys.argv[5]
+        conf_file = sys.argv[6]
 
-    if len(sys.argv) <= 6:
+    if len(sys.argv) <= 7:
         ssh_key = '/home/ubuntu/.ssh/id_rsa'
     else:
-        ssh_key = sys.argv[6]
+        ssh_key = sys.argv[7]
 
-    create_cluster(mem, ebs, route, bench, conf_file, ssh_key, cluster_name,
-            kops_bucket, aws_key_id, aws_key)
+    create_cluster(mem, ebs, func, route, bench, conf_file, ssh_key,
+            cluster_name, kops_bucket, aws_key_id, aws_key)

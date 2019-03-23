@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_MONITOR_POLICIES_HPP_
-#define SRC_INCLUDE_MONITOR_POLICIES_HPP_
+#ifndef KVS_INCLUDE_MONITOR_POLICIES_HPP_
+#define KVS_INCLUDE_MONITOR_POLICIES_HPP_
 
 #include "hash_ring.hpp"
 
@@ -49,4 +49,4 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 vector<Address>& routing_ips, unsigned& rid,
                 map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map);
 
-#endif  // SRC_INCLUDE_MONITOR_POLICIES_HPP_
+#endif  // KVS_INCLUDE_MONITOR_POLICIES_HPP_
