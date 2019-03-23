@@ -62,8 +62,8 @@ inline unsigned long long generate_timestamp(const unsigned& id) {
 // TODO: There should probably be a less silent error check.
 inline Key get_user_metadata_key(string data_key, UserMetadataType type) {
   if (type == UserMetadataType::cache_ip) {
-    return kMetadataIdentifier + kMetadataDelimiter +
-           kMetadataTypeCacheIP + kMetadataDelimiter + data_key;
+    return kMetadataIdentifier + kMetadataDelimiter + kMetadataTypeCacheIP +
+           kMetadataDelimiter + data_key;
   }
   return "";
 }

@@ -80,11 +80,10 @@ inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
                   // MetadataType::replication
   }
 
-  return kMetadataIdentifier  + kMetadataDelimiter + metadata_type +
+  return kMetadataIdentifier + kMetadataDelimiter + metadata_type +
          kMetadataDelimiter + st.public_ip() + kMetadataDelimiter +
-         st.private_ip() + kMetadataDelimiter +
-         std::to_string(thread_num) + kMetadataDelimiter +
-         std::to_string(tier_id);
+         st.private_ip() + kMetadataDelimiter + std::to_string(thread_num) +
+         kMetadataDelimiter + std::to_string(tier_id);
 }
 
 // This version of the function should only be called with
@@ -94,14 +93,15 @@ inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
 // TODO: There should probably be a less silent error check.
 inline Key get_metadata_key(string data_key, MetadataType type) {
   if (type == MetadataType::replication) {
-    return kMetadataIdentifier + kMetadataDelimiter +
-           kMetadataTypeReplication + kMetadataDelimiter + data_key;
+    return kMetadataIdentifier + kMetadataDelimiter + kMetadataTypeReplication +
+           kMetadataDelimiter + data_key;
   }
   return "";
 }
 
 // Inverse of get_metadata_key, returning just the key itself.
-// Precondition: metadata_key is actually a metadata key (output of get_metadata_key).
+// Precondition: metadata_key is actually a metadata key (output of
+// get_metadata_key).
 // TODO: same problem as get_metadata_key with the metadata types.
 inline Key get_key_from_metadata(Key metadata_key) {
   string::size_type n_id;
