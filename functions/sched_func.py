@@ -19,10 +19,6 @@ import time
 import uuid
 import zmq
 
-# needed to import things in ../include -- this feels hacky, but I don't know
-# if there is a better solution
-sys.path.append('..')
-
 from anna.client import AnnaClient
 from include.kvs_pb2 import *
 from include.functions_pb2 import *

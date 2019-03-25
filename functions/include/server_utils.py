@@ -12,6 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from .functions_pb2 import *
+
 # shared constants
 FUNCOBJ = 'funcs/index-allfuncs'
 FUNC_PREFIX = 'funcs/'
@@ -28,6 +30,15 @@ SCHED_UPDATE_PORT = 5007
 
 NODES_PORT = 7002
 SCHEDULERS_PORT = 7004
+
+# create generic error response
+error = GenericResponse()
+error.success = False
+
+# create generic OK response
+ok = GenericResponse()
+ok.success = True
+ok_resp = ok.SerializeToString()
 
 def _get_func_kvs_name(fname):
     return FUNC_PREFIX + fname

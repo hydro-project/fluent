@@ -16,15 +16,6 @@ from include.functions_pb2 import *
 from include.kvs_pb2 import *
 from include import server_utils, serializer
 
-# create generic error response
-error = GenericResponse()
-error.success = False
-
-# create generic OK response
-ok = GenericResponse()
-ok.success = True
-OK_RESP = ok.SerializeToString()
-
 def _retrieve_function(name, kvs):
     kvs_name = server_utils._get_func_kvs_name(name)
     latt = kvs.get(kvs_name, LWW)

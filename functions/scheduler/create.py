@@ -14,7 +14,6 @@
 
 import logging
 import sys
-sys.path.append('..')
 
 from anna.lattices import *
 from include.server_utils import *
@@ -34,7 +33,7 @@ def create_func(func_create_socket, kvs):
     funcs.append(name)
     _put_func_list(client, funcs)
 
-    func_create_socket.send_string('Success!')
+    func_create_socket.send(ok_resp)
 
 
 def create_dag(dag_create_socket, kvs, executors):
