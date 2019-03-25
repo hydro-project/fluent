@@ -126,7 +126,7 @@ def run():
             for ip in util.get_pod_ips(client, 'role=function'):
                 ks.keys.append(ip)
 
-            func_nodes_socket.send_string(ks.SerializeToString())
+            func_nodes_socket.send(ks.SerializeToString())
 
         if func_pull_socket in socks and socks[func_pull_socket] == zmq.POLLIN:
             msg = func_pull_socket.recv_string()
