@@ -14,7 +14,7 @@
 
 from include.functions_pb2 import *
 from include.kvs_pb2 import *
-from include import server_utils
+from include import server_utils, serializer
 
 # create generic error response
 error = GenericResponse()
@@ -30,7 +30,7 @@ def _retrieve_function(name, kvs):
     latt = kvs.get(kvs_name, LWW)
 
     if latt:
-        return function_ser.load(latt.value)
+        return serializer.function_ser.load(latt.reveal()[1])
     else:
         return None
 

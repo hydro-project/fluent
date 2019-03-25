@@ -86,6 +86,8 @@ numpy_ser = NumpySerializer()
 default_ser = DefaultSerializer()
 string_ser = StringSerializer()
 
+function_ser = default_ser
+
 def get_serializer(kind):
     global numpy_ser, default_ser, string_ser
 
