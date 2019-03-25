@@ -202,7 +202,8 @@ int main(int argc, char *argv[]) {
 
       memory_node_number =
           global_hash_rings[kMemoryTierId].size() / kVirtualThreadNum;
-      ebs_node_number = global_hash_rings[2].size() / kVirtualThreadNum;
+      ebs_node_number =
+          global_hash_rings[kEbsTierId].size() / kVirtualThreadNum;
       // clear stats
       key_access_frequency.clear();
       key_access_summary.clear();

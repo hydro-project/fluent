@@ -17,6 +17,8 @@
 
 #include "threads.hpp"
 
+const string kMetadataTypeReplication = "replication";
+
 // represents the replication state for each key
 struct KeyMetadata {
   map<TierId, unsigned> global_replication_;
@@ -67,21 +69,21 @@ enum MetadataType { replication, server_stats, key_access, key_size };
 
 inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
                             unsigned thread_num, MetadataType type) {
-  string suffix;
+  string metadata_type;
 
   switch (type) {
-    case MetadataType::server_stats: suffix = "stats"; break;
-    case MetadataType::key_access: suffix = "access"; break;
-    case MetadataType::key_size: suffix = "size"; break;
+    case MetadataType::server_stats: metadata_type = "stats"; break;
+    case MetadataType::key_access: metadata_type = "access"; break;
+    case MetadataType::key_size: metadata_type = "size"; break;
     default:
       return "";  // this should never happen; see note below about
                   // MetadataType::replication
   }
 
-  return kMetadataIdentifier + kMetadataDelimiter + st.public_ip() +
-         kMetadataDelimiter + st.private_ip() + kMetadataDelimiter +
-         std::to_string(thread_num) + kMetadataDelimiter +
-         std::to_string(tier_id) + kMetadataDelimiter + suffix;
+  return kMetadataIdentifier + kMetadataDelimiter + metadata_type +
+         kMetadataDelimiter + st.public_ip() + kMetadataDelimiter +
+         st.private_ip() + kMetadataDelimiter + std::to_string(thread_num) +
+         kMetadataDelimiter + std::to_string(tier_id);
 }
 
 // This version of the function should only be called with
@@ -91,26 +93,32 @@ inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
 // TODO: There should probably be a less silent error check.
 inline Key get_metadata_key(string data_key, MetadataType type) {
   if (type == MetadataType::replication) {
-    return kMetadataIdentifier + kMetadataDelimiter + data_key +
-           kMetadataDelimiter + "replication";
+    return kMetadataIdentifier + kMetadataDelimiter + kMetadataTypeReplication +
+           kMetadataDelimiter + data_key;
   }
   return "";
 }
 
 // Inverse of get_metadata_key, returning just the key itself.
+// Precondition: metadata_key is actually a metadata key (output of
+// get_metadata_key).
 // TODO: same problem as get_metadata_key with the metadata types.
 inline Key get_key_from_metadata(Key metadata_key) {
-  vector<string> tokens;
-  split(metadata_key, '|', tokens);
-
-  string metadata_type = tokens[tokens.size() - 1];
-  if (metadata_type == "replication") {
-    return tokens[1];
+  string::size_type n_id;
+  string::size_type n_type;
+  // Find the first delimiter; this skips over the metadata identifier.
+  n_id = metadata_key.find(kMetadataDelimiter);
+  // Find the second delimiter; this skips over the metadata type.
+  n_type = metadata_key.find(kMetadataDelimiter, n_id + 1);
+  string metadata_type = metadata_key.substr(n_id + 1, n_type - (n_id + 1));
+  if (metadata_type == kMetadataTypeReplication) {
+    return metadata_key.substr(n_type + 1);
   }
 
   return "";
 }
 
+// Precondition: key is from the non-data-key version of get_metadata_key.
 inline vector<string> split_metadata_key(Key key) {
   vector<string> tokens;
   split(key, kMetadataDelimiterChar, tokens);
