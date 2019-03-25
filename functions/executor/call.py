@@ -16,6 +16,7 @@ import logging
 import sys
 import uuid
 
+from anna.lattices import *
 from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
@@ -44,8 +45,10 @@ def exec_function(exec_socket, client, status, error):
     logging.info('Sending response of ' + obj_id)
     exec_socket.send_string(obj_id)
     result = _exec_func(client, f, fargs)
+    result = serialize_val(result)
 
-    client.put(obj_id, serialize_val(result).SerializeToString())
+    result_lattice = LWWPairLattice(generate_timestamp(0), result)
+    client.put(obj_id, result_lattice)
 
 
 def exec_dag_function(ctx, client, trigger, function, schedule):

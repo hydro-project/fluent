@@ -29,7 +29,7 @@ def generate_timestamp(tid=1):
     while tid >= p:
         p *= 10
 
-    return t * p + tid
+    return int(t * p + tid)
 
 class FluentFuture():
     def __init__(self, obj_id, kvs_client):
@@ -61,17 +61,3 @@ class FluentReference():
     def __init__(self, key, deserialize):
         self.key = key
         self.deserialize = deserialize
-
-def serialize_val(val, valobj=None):
-    if not valobj:
-        valobj = Value()
-
-    if isinstance(val, FluentFuture):
-        valobj.body = default_ser.dump(FluentReference(val.obj_id, True))
-    elif isinstance(val, np.ndarray):
-        valobj.body = numpy_ser.dump(val)
-        valobj.type = NUMPY
-    else:
-        valobj.body = default_ser.dump(val)
-
-    return valobj

@@ -113,4 +113,4 @@ def serialize_val(val, valobj=None):
     else:
         valobj.body = default_ser.dump(val)
 
-    return valobj
+    return valobj.SerializeToString()
