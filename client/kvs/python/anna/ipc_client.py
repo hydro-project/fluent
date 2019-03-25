@@ -52,7 +52,7 @@ class IpcAnnaClient:
             val = LWWValue()
             val.ParseFromString(tp.payload)
 
-            return LWWPairLattice(val.timestamp, str(val.value, 'utf-8'))
+            return LWWPairLattice(val.timestamp, val.value)
         elif tp.lattice_type == SET:
             res = set()
 
