@@ -124,7 +124,7 @@ def run():
 
             ks = KeySet()
             for ip in util.get_pod_ips(client, 'role=function'):
-                ks.add_keys(ip)
+                ks.keys.append(ip)
 
             func_nodes_socket.send_string(ks.SerializeToString())
 
