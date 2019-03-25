@@ -86,7 +86,6 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           case LatticeType::LWW: {
             if (local_lww_cache.find(key) == local_lww_cache.end()) {
               LWWPairLattice<string> resp = client.get(key);
-              log->info("Successfully retrieved key {} from KVS. TS is {}.", key, resp.reveal().timestamp);
               local_lww_cache[key] = resp;
               key_type_map[key] = LatticeType::LWW;
             }
@@ -168,6 +167,23 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
       std::string resp_string;
       response.SerializeToString(&resp_string);
       kZmqUtil->send_string(resp_string, &put_responder);
+
+      // PUT the values into the KVS
+      for (KeyTuple tuple : request.tuples()) {
+        Key key = tuple.key();
+        LatticeType type = tuple.lattice_type();
+
+        switch(type) {
+          case LatticeType::LWW:
+            client.put(key, local_lww_cache[key]);
+            break;
+          case LatticeType::SET:
+            client.put(key, local_set_cache[key]);
+            break;
+          default:
+            break; // this should never happen
+        }
+      }
     }
 
     // handle updates received from the KVS
@@ -238,7 +254,6 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
     // caching; we only do this periodically because we are okay with receiving
     // potentially stale updates
     if (duration >= kCacheReportThreshold) {
-      std::cout << "Starting the cache process." << std::endl;
       KeySet set;
 
       for (const auto& pair : key_type_map) {
@@ -251,9 +266,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
       LWWPairLattice<string> val(TimestampValuePair<string>(
           generate_timestamp(thread_id), serialized));
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
-      std::cout << "Key is " << key << std::endl;
       client.put(key, val);
-      std::cout << "Successfully put" << std::endl;
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.
