@@ -17,6 +17,7 @@ import codecs
 from .functions_pb2 import *
 from io import BytesIO
 import numpy as np
+from .shared import *
 
 SER_FORMAT = 'raw_unicode_escape'
 
@@ -104,8 +105,8 @@ def serialize_val(val, valobj=None):
     if not valobj:
         valobj = Value()
 
-    if isinstance(val, SkyFuture):
-        valobj.body = default_ser.dump(SkyReference(val.obj_id, True))
+    if isinstance(val, FluentFuture):
+        valobj.body = default_ser.dump(FluentReference(val.obj_id, True))
     elif isinstance(val, np.ndarray):
         valobj.body = numpy_ser.dump(val)
         valobj.type = NUMPY

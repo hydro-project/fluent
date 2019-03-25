@@ -17,6 +17,7 @@ import sys
 import uuid
 
 from include.functions_pb2 import *
+from include.shared import *
 from include.serializer import *
 from executor import utils
 
@@ -82,9 +83,6 @@ def _process_args(arg_list):
 
 
 def _exec_func(client, func, args):
-    global global_util
-    start = time.time()
-
     func_args = ()
 
     # resolve any references to KVS objects
