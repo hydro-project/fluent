@@ -31,7 +31,7 @@ from include.shared import *
 from include.serializer import *
 
 def _get_cache_ip_key(ip):
-    return 'ANNA_METADATA|' + ip + '|cache_ip'
+    return 'ANNA_METADATA|cache_ip|' + ip
 
 def _get_ip_list(mgmt_ip, port, ctx):
     sckt = ctx.socket(zmq.REQ)
