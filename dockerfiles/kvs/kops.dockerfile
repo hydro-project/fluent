@@ -23,13 +23,36 @@ USER root
 
 # update and install software
 RUN apt-get update -y
-RUN apt-get install -y vim curl jq wget git libpq-dev libssl-dev openssl libffi-dev zlib1g-dev python-software-properties software-properties-common
+RUN apt-get install -y vim curl jq wget git libpq-dev libssl-dev openssl libffi-dev zlib1g-dev python-software-properties software-properties-common build-essential autoconf automake libtool make unzip
 RUN add-apt-repository -y ppa:jonathonf/python-3.6
+RUN sudo apt-add-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main"
 RUN apt-get update
 RUN apt-get install -y python3.6
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python3.6 get-pip.py
 RUN pip3 install awscli zmq six kubernetes boto3 protobuf
+
+# this uses --force-yes because of some disk space warning
+RUN sudo apt-get install -y clang-5.0 lldb-5.0 --force-yes
+RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-5.0 1
+RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-5.0 1
+RUN apt-get install -y libc++-dev libc++abi-dev 
+
+# download protobuf
+RUN wget https://github.com/google/protobuf/releases/download/v3.5.1/protobuf-all-3.5.1.zip
+RUN unzip protobuf-all-3.5.1.zip 
+
+# install protobuf
+WORKDIR /protobuf-3.5.1/
+RUN ./autogen.sh
+RUN ./configure CXX=clang++ CXXFLAGS='-std=c++11 -stdlib=libc++ -O3 -g'
+RUN make -j4
+RUN make check -j4
+RUN make install
+RUN ldconfig
+
+WORKDIR /
+RUN rm -rf protobuf-3.5.1 protobuf-all-3.5.1.zip
 
 # install kops
 RUN wget -O kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep -Po '"tag_name": "\K.*?(?=")')/kops-linux-amd64

@@ -45,7 +45,14 @@ git checkout -b brnch origin/$REPO_BRANCH
 # generate Python protobufs
 cd include/proto
 protoc -I=./ --python_out=../../functions/include functions.proto
+protoc -I=./ --python_out=../../functions/include kvs.proto
 cd ../..
 
+# TODO: this might not be necessary permanently -- depends on whether you're
+# changing the client or not
+cd client/kvs/python
+python3.6 setup.py install --prefix=$HOME/.local
+cd ../../..
+
 # start python server
-cd functions && export MY_IP=$IP && python3.6 executor.py
+cd functions && export MY_IP=$IP && python3.6 exec_func.py

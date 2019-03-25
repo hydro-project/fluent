@@ -57,6 +57,7 @@ RUN ldconfig
 WORKDIR /
 RUN rm -rf protobuf-3.5.1 protobuf-all-3.5.1.zip
 
+RUN touch a
 # build Anna
 RUN git clone https://github.com/$repo_org/fluent
 WORKDIR /fluent
@@ -65,4 +66,5 @@ RUN bash scripts/build-all.sh -j4 -bRelease
 WORKDIR /
 
 COPY start-cache.sh /
+
 CMD bash start-cache.sh $SERVER_TYPE
