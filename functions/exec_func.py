@@ -31,10 +31,9 @@ def run():
     mgmt_ip = os.environ['MGMT_IP']
 
     sys_func = os.environ['SYSTEM_FUNC']
-    if sys_func in system_funcs:
-        if sys_func == 'scheduler':
-            route_addr = os.environ['ROUTE_ADDR']
-            scheduler(mgmt_ip, route_addr)
+    if sys_func == 'scheduler':
+        route_addr = os.environ['ROUTE_ADDR']
+        scheduler(mgmt_ip, route_addr)
 
     logging.basicConfig(filename='log.txt', level=logging.INFO)
 
