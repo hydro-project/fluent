@@ -25,11 +25,11 @@ spec:
     image: vsreekanti/fluent-kops
     env: 
     - name: AWS_ACCESS_KEY_ID
-      value: ACCESS_KEY_ID_DUMMY
+      value: AKIAIHYH737N5DUWR5FA
     - name: AWS_SECRET_ACCESS_KEY
-      value: SECRET_KEY_DUMMY
+      value: mZM1+ogqs0IwaWioCCm/KiUpy5FxTBidz2oY6vPp
     - name: KOPS_STATE_STORE
-      value: KOPS_BUCKET_DUMMY
+      value: s3://tiered-storage-state-store
     - name: NAME
       value: CLUSTER_NAME
     - name: REPO_ORG

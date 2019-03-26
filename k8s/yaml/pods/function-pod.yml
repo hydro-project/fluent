@@ -19,6 +19,7 @@ metadata:
   labels: 
     role: function
 spec:
+  restartPolicy: Never
   volumes:
   - name: ipc
     hostPath:
@@ -28,21 +29,33 @@ spec:
   containers:
   - name: function-container
     image: vsreekanti/fluent-func
+    imagePullPolicy: Always
     env: 
     - name: ROUTE_ADDR
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
+    - name: REPO_ORG
+      value: vsreekanti
+    - name: REPO_BRANCH
+      value: func-scheduling
+    - name: SCHED_IPS
+      value: ""
     volumeMounts:
     - mountPath: /requests
       name: ipc
   - name: cache-container
     image: vsreekanti/fluent-cache
+    imagePullPolicy: Always
     env:
     - name: ROUTE_ADDR
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
+    - name: REPO_ORG
+      value: vsreekanti
+    - name: REPO_BRANCH
+      value: func-scheduling
     volumeMounts:
     - mountPath: /requests
       name: ipc

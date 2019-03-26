@@ -20,16 +20,18 @@ metadata:
     role: memory
 spec:
   hostNetwork: true
+  restartPolicy: Never
   containers:
   - name: memory-container
-    image: fluentproject/annakvs
+    image: vsreekanti/anna
+    imagePullPolicy: Always
     resources:
       limits:
         memory: "40Gi"
         cpu: "3"
     env: 
     - name: SERVER_TYPE
-      value: "1"
+      value: "memory"
     - name: ROUTING_IPS
       value: ROUTING_IPS_DUMMY
     - name: MGMT_IP
@@ -38,6 +40,10 @@ spec:
       value: SEED_IP_DUMMY
     - name: MON_IPS
       value: MON_IPS_DUMMY
+    - name: REPO_ORG
+      value: vsreekanti
+    - name: REPO_BRANCH
+      value: func-scheduling
   nodeSelector:
     role: memory
     podid: memory-NUM_DUMMY
