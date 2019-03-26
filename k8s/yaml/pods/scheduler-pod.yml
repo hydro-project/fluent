@@ -12,20 +12,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-apiVersion: kops/v1alpha2
-kind: InstanceGroup
+apiVersion: v1
+kind: Pod
 metadata:
-  labels:
-    kops.k8s.io/cluster: CLUSTER_NAME
-  name: function-instances
+  name: scheduler-pod-NUM_DUMMY
+  labels: 
+    role: scheduler
 spec:
-  image: kope.io/k8s-1.11-debian-stretch-amd64-hvm-ebs-2018-08-17
-  machineType: c5.2xlarge
-  maxSize: NUM_DUMMY
-  minSize: NUM_DUMMY
-  rootVolumeSize: 32
-  role: Node
-  nodeLabels:
-    role: function
-  subnets:
-    - us-east-1a
+  restartPolicy: Never
+  hostNetwork: true
+  hostIPC: true
+  containers:
+  - name: scheduler-container
+    image: vsreekanti/fluent-func
+    imagePullPolicy: Always
+    env: 
+    - name: ROUTE_ADDR
+      value: ROUTE_ADDR_DUMMY
+    - name: MGMT_IP
+      value: MGMT_IP_DUMMY
+    - name: REPO_ORG
+      value: vsreekanti
+    - name: REPO_BRANCH
+      value: func-scheduling
+  nodeSelector:
+    role: scheduler
+    podid: scheduler-NUM_DUMMY

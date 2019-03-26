@@ -17,15 +17,15 @@ kind: InstanceGroup
 metadata:
   labels:
     kops.k8s.io/cluster: CLUSTER_NAME
-  name: function-instances
+  name: scheduler-instances
 spec:
   image: kope.io/k8s-1.11-debian-stretch-amd64-hvm-ebs-2018-08-17
-  machineType: c5.2xlarge
+  machineType: c5.large
   maxSize: NUM_DUMMY
   minSize: NUM_DUMMY
   rootVolumeSize: 32
   role: Node
   nodeLabels:
-    role: function
+    role: scheduler
   subnets:
     - us-east-1a

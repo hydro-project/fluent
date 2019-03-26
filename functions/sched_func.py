@@ -29,7 +29,6 @@ def _get_cache_ip_key(ip):
     return 'ANNA_METADATA|cache_ip|' + ip
 
 def _get_ip_list(mgmt_ip, port, ctx):
-    print('calling get ip list')
     sckt = ctx.socket(zmq.REQ)
     sckt.connect('tcp://' + mgmt_ip + ':' + str(port))
 
@@ -38,8 +37,6 @@ def _get_ip_list(mgmt_ip, port, ctx):
 
     ips = KeySet()
     ips.ParseFromString(sckt.recv())
-    print('Retrieved news ips set:')
-    print(str(ips))
     return list(ips.keys)
 
 def _update_key_maps(kc_map, key_ip_map, executors, kvs):
@@ -65,9 +62,7 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
 
 
 def scheduler(mgmt_ip, route_addr):
-    print("ASDF12354987asdfa")
-    import logging
-    logging.basicConfig(filename='log.txt', level=logging.INFO)
+    logging.basicConfig(filename='sched_log.txt', level=logging.INFO)
 
     kvs = AnnaClient(route_addr)
 
@@ -121,29 +116,28 @@ def scheduler(mgmt_ip, route_addr):
 
     start = time.time()
 
-    print('Starting the while loop.')
     while True:
         socks = dict(poller.poll(timeout=1000))
 
         if connect_socket in socks and socks[connect_socket] == zmq.POLLIN:
-            print('Received connect')
+            logging.info('Received connect')
             msg = connect_socket.recv_string()
             connect_socket.send_string(routing_addr)
 
         if func_create_socket in socks and socks[func_create_socket] == zmq.POLLIN:
-            print('Received create')
+            logging.info('Received create')
             create_func(func_create_socket, kvs)
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
-            print('Received call')
+            logging.info('Received call')
             call_function(func_call_socket, ctx, executors, key_ip_map)
 
         if dag_create_socket in socks and socks[list_socket] == zmq.POLLIN:
-            print('Received dag create')
+            logging.info('Received dag create')
             create_dag(dag_create_socket, kvs, executors)
 
         if dag_call_socket in socks and socks[list_socket] == zmq.POLLIN:
-            print('Received dag call')
+            logging.info('Received dag call')
             call = DagCall()
             call.ParseFromString(dag_call_socket.recv())
             exec_id = generate_timestamp(0)
@@ -160,7 +154,7 @@ def scheduler(mgmt_ip, route_addr):
 
 
         if list_socket in socks and socks[list_socket] == zmq.POLLIN:
-            print('Received list')
+            logging.info('Received list')
             msg = list_socket.recv_string()
             prefix = msg if msg else ''
 

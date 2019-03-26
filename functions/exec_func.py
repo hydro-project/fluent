@@ -19,38 +19,46 @@ import logging
 from include.server_utils import *
 from include.shared import *
 import os
+from sched_func import scheduler
 import time
 import zmq
 
 REPORT_THRESH = 30
 global_util = 0.0
 
-logging.basicConfig(filename='log.txt', level=logging.INFO)
-
 def run():
     global global_util
+    mgmt_ip = os.environ['MGMT_IP']
+
+    sys_func = os.environ['SYSTEM_FUNC']
+    if sys_func in system_funcs:
+        if sys_func == 'scheduler':
+            route_addr = os.environ['ROUTE_ADDR']
+            scheduler(mgmt_ip, route_addr)
+
+    logging.basicConfig(filename='log.txt', level=logging.INFO)
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()
 
-    mgmt_ip = os.environ['MGMT_IP']
     ip = os.environ['MY_IP']
     schedulers = os.environ['SCHED_IPS']
+    thread_id = int(os.environ['THREAD_ID'])
 
     pin_socket = ctx.socket(zmq.REP)
-    pin_socket.bind(BIND_ADDR_TEMPLATE % (PIN_PORT))
+    pin_socket.bind(BIND_ADDR_TEMPLATE % (PIN_PORT + thread_id))
 
     unpin_socket = ctx.socket(zmq.REP)
-    unpin_socket.bind(BIND_ADDR_TEMPLATE % (UNPIN_PORT))
+    unpin_socket.bind(BIND_ADDR_TEMPLATE % (UNPIN_PORT + thread_id))
 
     exec_socket = ctx.socket(zmq.REP)
-    exec_socket.bind(BIND_ADDR_TEMPLATE % (FUNC_EXEC_PORT))
+    exec_socket.bind(BIND_ADDR_TEMPLATE % (FUNC_EXEC_PORT + thread_id))
 
     dag_queue_socket = ctx.socket(zmq.REP)
-    dag_queue_socket.bind(BIND_ADDR_TEMPLATE % (DAG_QUEUE_PORT))
+    dag_queue_socket.bind(BIND_ADDR_TEMPLATE % (DAG_QUEUE_PORT + thread_id))
 
     dag_exec_socket = ctx.socket(zmq.PULL)
-    dag_exec_socket.bind(BIND_ADDR_TEMPLATE % (DAG_EXEC_PORT))
+    dag_exec_socket.bind(BIND_ADDR_TEMPLATE % (DAG_EXEC_PORT + thread_id))
 
     poller = zmq.Poller()
     poller.register(pin_socket, zmq.POLLIN)
@@ -61,7 +69,7 @@ def run():
 
     status = ThreadStatus()
     status.ip = ip
-    status.tid = 0 # TODO: change to support multiple tids
+    status.tid = thread_id
 
     # this is going to be a map of map of maps for every function that we have
     # pinnned, we will track a map of execution ids to DAG schedules

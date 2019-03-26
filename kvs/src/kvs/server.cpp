@@ -428,7 +428,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           // Get the caches that we need to gossip to.
           set<Address>& cache_ips = key_to_cache_ips[key];
           for (const Address& cache_ip : cache_ips) {
-            // TODO: enable multiple cache threads
             CacheThread ct(cache_ip, 0);
             addr_keyset_map[ct.cache_update_connect_address()].insert(key);
           }

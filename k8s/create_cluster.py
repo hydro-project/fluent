@@ -24,8 +24,9 @@ from util import *
 
 ec2_client = boto3.client('ec2', 'us-east-1')
 
-def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
-        cfile, ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
+def create_cluster(mem_count, ebs_count, func_count, route_count, sched_count,
+        bench_count, cfile, ssh_key, cluster_name, kops_bucket, aws_key_id,
+        aws_key):
 
     # create the cluster object with kops
     run_process(['./create_cluster_object.sh', cluster_name, kops_bucket,
@@ -101,6 +102,11 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
 
     routing_svc = service_spec['metadata']['name']
     routing_svc_addr = get_service_address(client, routing_svc)
+
+    print('Adding scheduler nodes...')
+    add_nodes(client, cfile, ['scheduler'], [sched_count], mon_ips,
+            route_addr=routing_svc_addr)
+    sched_ips = get_pod_ips(client, 'role=scheduler')
 
     print('Adding function serving nodes...')
     add_nodes(client, cfile, ['function'], [func_count], mon_ips,

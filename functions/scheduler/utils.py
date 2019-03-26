@@ -37,14 +37,14 @@ def _put_func_list(client, funclist):
     client.put(FUNCOBJ, default_ser.dump(list(set(funclist))))
 
 
-def _get_pin_address(ip):
-    return 'tcp://' + ip + ':' + str(PIN_PORT)
+def _get_pin_address(ip, tid):
+    return 'tcp://' + ip + ':' + str(PIN_PORT + tid)
 
 
-def _get_unpin_address(ip):
-    return 'tcp://' + ip + ':' + str(UNPIN_PORT)
+def _get_unpin_address(ip, tid):
+    return 'tcp://' + ip + ':' + str(UNPIN_PORT + tid)
 
 
-def _get_exec_address(ip):
-    return 'tcp://' + ip + ':' + str(EXEC_PORT)
+def _get_exec_address(ip, tid):
+    return 'tcp://' + ip + ':' + str(EXEC_PORT + tid)
 
