@@ -24,7 +24,7 @@ def create_func(func_create_socket, kvs):
     func.ParseFromString(func_create_socket.recv())
 
     name = _get_func_kvs_name(func.name)
-    logging.info('Creating function %s.' % (name))
+    print('Creating function %s.' % (name))
 
     body = LWWPairLattice(generate_timestamp(0), func.body)
     kvs.put(name, body)
