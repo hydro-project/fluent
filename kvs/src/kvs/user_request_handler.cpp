@@ -107,6 +107,13 @@ void user_request_handler(
 
         if (tuple.has_address_cache_size() &&
             tuple.address_cache_size() != threads.size()) {
+          log->info("Tuple's address cache size is {}", tuple.address_cache_size());
+          log->info("My address cache size is {}", threads.size());
+          log->info("Memory rep is {}", metadata_map[key].global_replication_[kMemoryTierId]);
+          log->info("Local rep is {}", metadata_map[key].local_replication_[kMemoryTierId]);
+          for (ServerThread t : threads) {
+            log->info("One thread is {}:", t.id());
+          }
           tp->set_invalidate(true);
         }
 
