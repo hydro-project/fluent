@@ -53,6 +53,7 @@ def run():
     poller.register(churn_pull_socket, zmq.POLLIN)
     poller.register(func_pull_socket, zmq.POLLIN)
     poller.register(func_nodes_socket, zmq.POLLIN)
+    poller.register(schedulers_socket, zmq.POLLIN)
 
     cfile = '/fluent/conf/kvs-base.yml'
 
@@ -120,7 +121,7 @@ def run():
         if func_nodes_socket in socks and socks[func_nodes_socket] == \
                 zmq.POLLIN:
             # It doesn't matter what is in this message
-            msg = func_nodes_socket.recv_string()
+            msg = func_nodes_socket.recv()
 
             ks = KeySet()
             for ip in util.get_pod_ips(client, 'role=function'):

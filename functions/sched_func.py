@@ -48,13 +48,16 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
 
     key_ip_map.clear()
     for ip in executors:
-        key = get_cache_ip_key(ip)
+        key = _get_cache_ip_key(ip)
+        logging.info('Getting key ' + key)
 
         # this is of type LWWPairLattice, which has a KeySet protobuf packed
         # into it; we want the keys in that KeySet protobuf
         l = kvs.get(key)
         ks = KeySet()
         ks.ParseFromString(l.reveal()[1])
+        logging.info('Key set is ')
+        logging.info(str(ks))
 
         kc_map[ip] = set(ks.keys())
 
@@ -115,7 +118,7 @@ def scheduler(mgmt_ip, route_addr):
     poller.register(sched_update_socket, zmq.POLLIN)
 
     executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
-    update_key_maps(key_cache_map, key_ip_map, executors, kvs)
+    _update_key_maps(key_cache_map, key_ip_map, executors, kvs)
     schedulers = _get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx)
 
     start = time.time()
