@@ -145,10 +145,10 @@ def run():
             msg = schedulers_socket.recv_string()
 
             ks = KeySet()
-            for ip in util.get_pod_ips(clinet, 'role=scheduler'):
-                ks.add_keys(ip)
+            for ip in util.get_pod_ips(client, 'role=scheduler'):
+                ks.keys.append(ip)
 
-            schedulers_socket.send_string(ks.SerializeToString())
+            schedulers_socket.send(ks.SerializeToString())
 
         end = time.time()
         if end - start > THRESHOLD:
@@ -214,7 +214,7 @@ def check_hash_ring(client, context):
     departed = []
     for node in mem_tier.servers:
         if node.private_ip not in mem_ips:
-            departed.append(('1', node))
+            departed.append(('0', node))
 
     # check EBS tier
     ebs_ips = []
@@ -222,7 +222,7 @@ def check_hash_ring(client, context):
         ebs_ips = util.get_pod_ips(client, 'role=ebs')
         for node in ebs_tier.servers:
             if node.private_ip not in ebs_ips:
-                ebs_departed.append(('2', node))
+                ebs_departed.append(('1', node))
 
     mon_ips = util.get_pod_ips(client, 'role=monitoring')
     storage_ips = mem_ips + ebs_ips

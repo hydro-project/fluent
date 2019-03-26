@@ -14,7 +14,7 @@
 
 from executor.utils import *
 
-def pin(pin_socket, client, status, pinned_functions):
+def pin(pin_socket, ctx, client, status, pinned_functions):
     name = pin_socket.recv_string()
     func = _retrieve_function(name, client)
 
@@ -28,9 +28,9 @@ def pin(pin_socket, client, status, pinned_functions):
 
     status.functions[name] = PINNED
     pinned_functions[name] = func
-    _push_status(schedulers, status)
+    _push_status(schedulers, ctx, status)
 
-def unpin(unpin_socket, status, pinned_functions):
+def unpin(unpin_socket, ctx, status, pinned_functions):
     name = unpin_socket.recv_string() # the name of the func to unpin
 
     if status.functions[name] != PINNED:
@@ -46,7 +46,7 @@ def unpin(unpin_socket, status, pinned_functions):
     if len(func_queue) == 0:
         del pinned_functions[name]
         del status.functions[name]
-        _push_status(schedulers, status)
+        _push_status(schedulers, ctx, status)
     else: # otherwise, we don't accept new requests and wait for the
           # queue to drain
         status.functions[name] = CLEARING

@@ -12,17 +12,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import sys
-sys.path.append('..')
-
+from anna.lattices import *
 from include.shared import *
 from include.serializer import *
+from include.server_utils import *
+
+FUNCOBJ = 'funcs/index-allfuncs'
 
 def _get_func_list(client, prefix, fullname=False):
     funcs = client.get(FUNCOBJ)
-    if len(funcs) == 0:
+    if not funcs:
         return []
-    funcs = default_ser.load(funcs)
+
+    funcs = default_ser.load(funcs.reveal()[1])
 
     prefix = FUNC_PREFIX + prefix
     result = list(filter(lambda fn: fn.startswith(prefix), funcs))
@@ -34,7 +36,11 @@ def _get_func_list(client, prefix, fullname=False):
 
 
 def _put_func_list(client, funclist):
-    client.put(FUNCOBJ, default_ser.dump(list(set(funclist))))
+    # remove duplicates
+    funclist = list(set(funclist))
+
+    l = LWWPairLattice(generate_timestamp(0), default_ser.dump(funclist))
+    client.put(FUNCOBJ, l)
 
 
 def _get_pin_address(ip, tid):

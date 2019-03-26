@@ -24,7 +24,7 @@ from util import *
 
 ec2_client = boto3.client('ec2', 'us-east-1')
 
-def create_cluster(mem_count, ebs_count, func_count, route_count, sched_count,
+def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
         bench_count, cfile, ssh_key, cluster_name, kops_bucket, aws_key_id,
         aws_key):
 
@@ -110,7 +110,7 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, sched_count,
 
     print('Adding function serving nodes...')
     add_nodes(client, cfile, ['function'], [func_count], mon_ips,
-            route_addr=routing_svc_addr)
+            route_addr=routing_svc_addr, scheduler_ips=sched_ips)
 
     print('Creating function service...')
     service_spec = load_yaml('yaml/services/function.yml')
@@ -163,34 +163,34 @@ def parse_args(args, length, typ):
 
 if __name__ == '__main__':
     if len(sys.argv) < 5:
-        print('Usage: ./create_cluster.py min_mem_instances min_ebs_instances \
-                min_func_instances routing_instance benchmark_instances \
-                <path-to-conf-file> <path-to-ssh-key>')
+        print('Usage: ./create_cluster.py min_mem_instances min_ebs_instances'
+                + ' min_func_instances scheduler_instances routing_instance'
+                + ' benchmark_instances <path-to-conf-file> <path-to-ssh-key>')
         print()
-        print('If no SSH key is specified, we will use the default SSH key \
-                (/home/ubuntu/.ssh/id_rsa). The corresponding public key is \
-                assumed to have the same path and end in .pub.')
+        print('If no SSH key is specified, we will use the default SSH key ' +
+                '(/home/ubuntu/.ssh/id_rsa). The corresponding public key is'
+                + ' assumed to have the same path and end in .pub.')
         print()
-        print('If no config file is specific, the default base config file in \
-                $FLUENT_HOME/conf/kvs-base.yml will be used.')
+        print('If no config file is specific, the default base config file in '
+                + '$FLUENT_HOME/conf/kvs-base.yml will be used.')
         sys.exit(1)
 
-    mem, ebs, func, route, bench = parse_args(sys.argv[1:], 5, int)
+    mem, ebs, func, sched, route, bench = parse_args(sys.argv[1:], 6, int)
 
     cluster_name = check_or_get_env_arg('NAME')
     kops_bucket = check_or_get_env_arg('KOPS_STATE_STORE')
     aws_key_id = check_or_get_env_arg('AWS_ACCESS_KEY_ID')
     aws_key = check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
 
-    if len(sys.argv) <= 6:
+    if len(sys.argv) <= 7:
         conf_file = '../conf/kvs-base.yml'
     else:
-        conf_file = sys.argv[6]
+        conf_file = sys.argv[7]
 
-    if len(sys.argv) <= 7:
+    if len(sys.argv) <= 8:
         ssh_key = '/home/ubuntu/.ssh/id_rsa'
     else:
-        ssh_key = sys.argv[7]
+        ssh_key = sys.argv[8]
 
-    create_cluster(mem, ebs, func, route, bench, conf_file, ssh_key,
+    create_cluster(mem, ebs, func, sched, route, bench, conf_file, ssh_key,
             cluster_name, kops_bucket, aws_key_id, aws_key)

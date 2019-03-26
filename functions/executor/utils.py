@@ -16,6 +16,8 @@ from include.functions_pb2 import *
 from include.kvs_pb2 import *
 from include import server_utils, serializer
 
+import zmq
+
 def _retrieve_function(name, kvs):
     kvs_name = server_utils._get_func_kvs_name(name)
     latt = kvs.get(kvs_name, LWW)
@@ -26,12 +28,15 @@ def _retrieve_function(name, kvs):
         return None
 
 
-def _push_status(schedulers, status):
+def _push_status(schedulers, ctx, status):
     msg = status.SerializeToString()
 
     # tell all the schedulers your new status
     for sched in schedulers:
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect(_get_status_ip(sched))
-        sckt.send_string(msg)
+        sckt.send(msg)
+
+def _get_status_ip(ip):
+    return 'tcp://' + ip + ':' + str(server_utils.STATUS_PORT)
 

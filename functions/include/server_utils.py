@@ -15,7 +15,6 @@
 from .functions_pb2 import *
 
 # shared constants
-FUNCOBJ = 'funcs/index-allfuncs'
 FUNC_PREFIX = 'funcs/'
 BIND_ADDR_TEMPLATE = 'tcp://*:%d'
 

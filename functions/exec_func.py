@@ -15,6 +15,7 @@
 from anna.ipc_client import IpcAnnaClient
 from executor.call import *
 from executor.pin import *
+from executor import utils
 import logging
 from include.server_utils import *
 from include.shared import *
@@ -29,18 +30,18 @@ global_util = 0.0
 def run():
     global global_util
     mgmt_ip = os.environ['MGMT_IP']
+    ip = os.environ['MY_IP']
 
     sys_func = os.environ['SYSTEM_FUNC']
     if sys_func == 'scheduler':
         route_addr = os.environ['ROUTE_ADDR']
-        scheduler(mgmt_ip, route_addr)
+        scheduler(ip, mgmt_ip, route_addr)
 
     logging.basicConfig(filename='log.txt', level=logging.INFO)
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()
 
-    ip = os.environ['MY_IP']
     schedulers = os.environ['SCHED_IPS']
     thread_id = int(os.environ['THREAD_ID'])
 
@@ -69,6 +70,7 @@ def run():
     status = ThreadStatus()
     status.ip = ip
     status.tid = thread_id
+    utils._push_status(schedulers, ctx, status)
 
     # this is going to be a map of map of maps for every function that we have
     # pinnned, we will track a map of execution ids to DAG schedules
@@ -83,10 +85,10 @@ def run():
         socks = dict(poller.poll(timeout=1000))
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
-            pin(pin_socket, client, status, pinned_functions)
+            pin(pin_socket, ctx, client, status, pinned_functions)
 
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
-            unpin(unpin, status, pinned_functions)
+            unpin(unpin, ctx, status, pinned_functions)
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
             exec_function(exec_socket, client, status, error)

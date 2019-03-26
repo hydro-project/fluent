@@ -25,6 +25,10 @@ from include.functions_pb2 import *
 from include.server_utils import *
 from include.shared import *
 from include.serializer import *
+from scheduler.create import *
+from scheduler.call import *
+
+THRESHOLD = 15 # how often metadata updated
 
 def _get_cache_ip_key(ip):
     return 'ANNA_METADATA|cache_ip|' + ip
@@ -68,10 +72,10 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
             key_ip_map[key].append(ip)
 
 
-def scheduler(mgmt_ip, route_addr):
+def scheduler(ip, mgmt_ip, route_addr):
     logging.basicConfig(filename='sched_log.txt', level=logging.INFO)
 
-    kvs = AnnaClient(route_addr)
+    kvs = AnnaClient(route_addr, ip)
 
     key_cache_map = {}
     key_ip_map = {}
@@ -178,6 +182,7 @@ def scheduler(mgmt_ip, route_addr):
             key = (status.ip, status.tid)
             if key not in executors:
                 pinned_functions[key] = status
+                exectuors.append(status.ip)
             elif pinned_functions[key] != status:
                 # remove all the old function locations, and all the new ones
                 # -- there will probably be a large overlap, but this shouldn't
@@ -207,10 +212,10 @@ def scheduler(mgmt_ip, route_addr):
 
 
         end = time.time()
-        if start - end > THRESHOLD:
+        if end - start > THRESHOLD:
             # update our local key-cache mapping information
             executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
-            update_key_maps(key_cache_map, key_ip_map, executors, kvs)
+            _update_key_maps(key_cache_map, key_ip_map, executors, kvs)
 
             schedulers = _get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx)
 

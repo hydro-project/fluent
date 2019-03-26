@@ -13,13 +13,11 @@
 #  limitations under the License.
 
 import logging
-import sys
-sys.path.append('..')
+import random
 
-from include.function_pb2 import *
-from include.misc_pb2 import *
+from include.functions_pb2 import *
 from include.serializer import *
-from utils import *
+from .utils import *
 
 def call_function(func_call_socket, ctx, executors, key_ip_map):
     call = FunctionCall()
@@ -38,12 +36,11 @@ def call_function(func_call_socket, ctx, executors, key_ip_map):
     # not found (so there's nothing for the scheduler to do) or the request was
     # accepted... we could make this async in the future, or there could be
     # other error checks one might want to do.
-    response = GenericResponse()
     func_call_socket.send(sckt.recv())
 
 
 def call_dag(call, ctx, dags, func_locations, key_ip_map, uid):
-    dag, sources = dags[call.name)
+    dag, sources = dags[call.name]
     chosen_locations = {}
     for f in dag.functions:
         locations = func_locations[f]

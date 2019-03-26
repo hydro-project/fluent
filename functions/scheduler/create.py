@@ -16,24 +16,25 @@ import logging
 import sys
 
 from anna.lattices import *
-from include.server_utils import *
-from utils import *
+import include.server_utils as sutils
+from include.shared import *
+from . import utils
 
 def create_func(func_create_socket, kvs):
     func = Function()
     func.ParseFromString(func_create_socket.recv())
 
-    name = _get_func_kvs_name(func.name)
+    name = sutils._get_func_kvs_name(func.name)
     print('Creating function %s.' % (name))
 
     body = LWWPairLattice(generate_timestamp(0), func.body)
     kvs.put(name, body)
 
-    funcs = _get_func_list(client, '', fullname=True)
+    funcs = utils._get_func_list(kvs, '', fullname=True)
     funcs.append(name)
-    _put_func_list(client, funcs)
+    utils._put_func_list(kvs, funcs)
 
-    func_create_socket.send(ok_resp)
+    func_create_socket.send(sutils.ok_resp)
 
 
 def create_dag(dag_create_socket, kvs, executors):
@@ -65,7 +66,7 @@ def create_dag(dag_create_socket, kvs, executors):
         pinned_nodes.append(node)
         dag_pin_map[dag.name][fname] = [node]
 
-    dags[dag.name] = (dag, _find_dag_source(dag)
+    dags[dag.name] = (dag, _find_dag_source(dag))
 
 def _find_dag_source(dag):
     sinks = {}
