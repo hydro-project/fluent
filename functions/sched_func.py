@@ -30,6 +30,7 @@ def _get_cache_ip_key(ip):
     return 'ANNA_METADATA|cache_ip|' + ip
 
 def _get_ip_list(mgmt_ip, port, ctx):
+    logging.info('Sending request to port ' + str(port))
     sckt = ctx.socket(zmq.REQ)
     sckt.connect('tcp://' + mgmt_ip + ':' + str(port))
 
@@ -38,6 +39,8 @@ def _get_ip_list(mgmt_ip, port, ctx):
 
     ips = KeySet()
     ips.ParseFromString(sckt.recv())
+    logging.info('Received response')
+    logging.info(str(ips))
     return list(ips.keys)
 
 def _update_key_maps(kc_map, key_ip_map, executors, kvs):
