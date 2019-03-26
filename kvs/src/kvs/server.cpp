@@ -272,6 +272,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // enter event loop
   while (true) {
     kZmqUtil->poll(0, &pollitems);
+
     // receives a node join
     if (pollitems[0].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
@@ -314,6 +315,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     }
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
+      std::cout << "Received a user request" << std::endl;
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&request_puller);
@@ -349,6 +351,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (pollitems[5].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
 
+      std::cout << "Received a rep factor response" << std::endl;
       string serialized = kZmqUtil->recv_string(&replication_response_puller);
       replication_response_handler(seed, access_count, log, serialized,
                                    global_hash_rings, local_hash_rings,
@@ -367,6 +370,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (pollitems[6].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
 
+      std::cout << "Received a rep change" << std::endl;
       string serialized = kZmqUtil->recv_string(&replication_change_puller);
       replication_change_handler(public_ip, private_ip, thread_id, seed, log,
                                  serialized, global_hash_rings,
@@ -384,6 +388,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (pollitems[7].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
 
+      std::cout << "Received a cache ip look up response" << std::endl;
       string serialized = kZmqUtil->recv_string(&cache_ip_response_puller);
       cache_ip_response_handler(serialized, cache_ip_to_keys, key_to_cache_ips);
 
@@ -423,11 +428,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           // Get the caches that we need to gossip to.
           set<Address>& cache_ips = key_to_cache_ips[key];
           for (const Address& cache_ip : cache_ips) {
-            // XXX TODO
-            // cache_ip here doesn't have a port and needs it added,
-            // probably through gossip_connect_address() of CacheThread
-            // once that's implemented.
-            addr_keyset_map[cache_ip].insert(key);
+            // TODO: enable multiple cache threads
+            CacheThread ct(cache_ip, 0);
+            addr_keyset_map[ct.cache_update_connect_address()].insert(key);
           }
         }
 
