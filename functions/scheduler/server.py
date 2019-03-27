@@ -25,8 +25,8 @@ from include.functions_pb2 import *
 from include.server_utils import *
 from include.shared import *
 from include.serializer import *
-from scheduler.create import *
-from scheduler.call import *
+from .create import *
+from .call import *
 
 THRESHOLD = 15 # how often metadata updated
 
@@ -140,11 +140,11 @@ def scheduler(ip, mgmt_ip, route_addr):
             logging.info('Received function call.')
             call_function(func_call_socket, ctx, executors, key_ip_map)
 
-        if dag_create_socket in socks and socks[list_socket] == zmq.POLLIN:
+        if dag_create_socket in socks and socks[dag_create_socket] == zmq.POLLIN:
             logging.info('Received DAG create request.')
-            create_dag(dag_create_socket, kvs, executors)
+            create_dag(dag_create_socket, ctx, kvs, executors, dags, func_locations)
 
-        if dag_call_socket in socks and socks[list_socket] == zmq.POLLIN:
+        if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
             logging.info('Received DAG call.')
             call = DagCall()
             call.ParseFromString(dag_call_socket.recv())
@@ -157,10 +157,13 @@ def scheduler(ip, mgmt_ip, route_addr):
                 executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
                 update_key_maps(key_cache_map, key_ip_map, executors, kvs)
 
-                accepted, error = call_dag(call, ctx, dags, func_locations,
+                accepted, error, rid = call_dag(call, ctx, dags, func_locations,
                         key_ip_map)
 
-
+            resp = GenericResponse()
+            resp.success = True
+            resp.repsonse_id = rid
+            dag_call_socket.send(resp.SerializeToString())
 
         if list_socket in socks and socks[list_socket] == zmq.POLLIN:
             logging.info('Received query for function list.')
@@ -223,7 +226,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             dag_names = KeySet()
             for name in dags.keys():
-                dag_names.add_keys(name)
+                dag_names.keys.append(name)
             msg = dag_names.SerializeToString()
 
             for sched_ip in schedulers:

@@ -42,12 +42,12 @@ def call_function(func_call_socket, ctx, executors, key_ip_map):
     func_call_socket.send(sckt.recv())
 
 
-def call_dag(call, ctx, dags, func_locations, key_ip_map, uid):
+def call_dag(call, ctx, dags, func_locations, key_ip_map):
     dag, sources = dags[call.name]
     chosen_locations = {}
     for f in dag.functions:
         locations = func_locations[f]
-        args = call.function_args[f]
+        args = call.function_args[f].args
 
         refs = list(filter(lambda arg: type(arg) == FluentReference,
             map(lambda arg: get_serializer(arg.type).load(arg.body),
@@ -57,13 +57,19 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map, uid):
 
     schedule = DagSchedule()
     schedule.id = generate_timestamp(0)
-    schedule.dag = dag
-    schedule.arguments = call.function_args
-    schedule.response_id = uuid.uuid4()
+    schedule.dag.CopyFrom(dag)
+
+    # copy over arguments into the dag schedule
+    for fname in call.function_args:
+        arg_list = schedule.arguments[fname]
+        arg_list.args.extend(call.function_args[fname].args)
+
+    resp_id = str(uuid.uuid4())
+    schedule.response_id = resp_id
 
     for func in chosen_locations:
         loc = chosen_locations[func]
-        schedule.locations[func] = loc[0] + ':' + loc[1]
+        schedule.locations[func] = loc[0] + ':' + str(loc[1])
 
     for func in chosen_locations:
         loc = chosen_locations[func]
@@ -78,7 +84,7 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map, uid):
         response.ParseFromString(sckt.recv())
 
         if not response.success:
-            return response.success, response.error
+            return response.success, response.error, None
 
     for source in sources:
         trigger = DagTrigger()
@@ -90,7 +96,7 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map, uid):
         sckt.connect(ip)
         sckt.send(trigger.SerializeToString())
 
-    return True, None
+    return True, None, resp_id
 
 
 def _pick_node(executors, key_ip_map, refs):

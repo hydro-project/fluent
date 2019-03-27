@@ -80,12 +80,13 @@ message ThreadStatus {
 }
 
 message DagSchedule {
-  required uint32 id = 1;
-  required Dag dag = 2;
-  required string target_function = 3;
-  map<string, string> locations = 4; // which functions should be executed where
+  required uint64 id = 1;
+  required string response_id = 2;
+  required Dag dag = 3;
+  required string target_function = 4;
+  map<string, string> locations = 5; // which functions should be executed where
   // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
-  map<string, ArgList> arguments = 5; 
+  map<string, ArgList> arguments = 6; 
 }
 
 message DagTrigger {

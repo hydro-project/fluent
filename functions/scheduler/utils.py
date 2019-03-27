@@ -56,3 +56,6 @@ def _get_unpin_address(ip, tid):
 def _get_exec_address(ip, tid):
     return 'tcp://' + ip + ':' + str(FUNC_EXEC_PORT + tid)
 
+def _get_queue_address(ip, tid):
+    return 'tcp://' + ip + ':' + str(DAG_QUEUE_PORT + tid)
+

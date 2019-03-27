@@ -13,37 +13,25 @@
 #  limitations under the License.
 
 from anna.ipc_client import IpcAnnaClient
-from executor.call import *
-from executor.pin import *
-from executor import utils
+from .call import *
+from .pin import *
+from . import utils
 import logging
 from include.server_utils import *
 from include.shared import *
 import os
-from sched_func import scheduler
 import time
 import zmq
 
 REPORT_THRESH = 30
 global_util = 0.0
 
-def run():
-    global global_util
-    mgmt_ip = os.environ['MGMT_IP']
-    ip = os.environ['MY_IP']
-
-    sys_func = os.environ['SYSTEM_FUNC']
-    if sys_func == 'scheduler':
-        route_addr = os.environ['ROUTE_ADDR']
-        scheduler(ip, mgmt_ip, route_addr)
-
+def executor(ip, mgmt_ip, schedulers, thread_id):
+    global_util = 0
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO)
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()
-
-    schedulers = os.environ['SCHED_IPS'].split(' ')
-    thread_id = int(os.environ['THREAD_ID'])
 
     pin_socket = ctx.socket(zmq.REP)
     pin_socket.bind(BIND_ADDR_TEMPLATE % (PIN_PORT + thread_id))
@@ -86,9 +74,11 @@ def run():
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             pin(pin_socket, ctx, client, status, pinned_functions)
+            utils._push_status(schedulers, ctx, status)
 
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
             unpin(unpin, ctx, status, pinned_functions)
+            utils._push_status(schedulers, ctx, status)
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
             exec_function(exec_socket, client, status, error)
@@ -134,7 +124,9 @@ def run():
             report_start = time.time()
             global_util = 0
 
+            # periodically clear any old data we have cached
+            for fname in queue:
+                if len(queue[fname]) == 0:
+                    del queue[fname]
+                    del pinned_functions[fname]
 
-
-if __name__ == '__main__':
-    run()

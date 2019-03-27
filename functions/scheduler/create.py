@@ -13,9 +13,12 @@
 #  limitations under the License.
 
 import logging
+import random
 import sys
+import zmq
 
 from anna.lattices import *
+from include.functions_pb2 import *
 import include.server_utils as sutils
 from include.shared import *
 from . import utils
@@ -37,36 +40,39 @@ def create_func(func_create_socket, kvs):
     func_create_socket.send(sutils.ok_resp)
 
 
-def create_dag(dag_create_socket, kvs, executors):
+def create_dag(dag_create_socket, ctx, kvs, executors, dags, func_locations):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
     dag.ParseFromString(serialized)
+    logging.info('Creating DAG %s.' % (dag.name))
 
-    kvs.put(dag.name, serialized)
+    payload = LWWPairLattice(generate_timestamp(0), serialized)
+    kvs.put(dag.name, payload)
+    logging.info('Putting dag into KVS')
 
-    available_nodes = current_ips.Difference(pinned_nodes)
-
-    dag_pin_map[dag.name] = {}
     for fname in dag.functions:
-        node = random.choice(available_nodes)
+        node = random.choice(executors)
+        tid = random.choice(list(range(utils.NUM_EXEC_THREADS)))
+        logging.info('Pinning func %s to node %s.' % (fname, node))
 
         sckt = ctx.socket(zmq.REQ)
-        sckt.connect(_get_pin_address(node))
+        sckt.connect(utils._get_pin_address(node, tid))
         sckt.send_string(fname)
 
-        resp = sckt.recv_string()
+        resp = GenericResponse()
+        resp.ParseFromString(sckt.recv())
 
         # figure out how to deal with the error -- we don't really want
         # to deal with error checking in detail rn?
-        if "Error" in resp:
-            continue
+        if not resp.success:
+            dag_create_utils.send(resp.SerializeToString())
 
-        success = True
-        pinned_nodes.append(node)
-        dag_pin_map[dag.name][fname] = [node]
+        logging.info('Succeeded!')
+        func_locations[fname] = node
 
     dags[dag.name] = (dag, _find_dag_source(dag))
+    dag_create_socket.send(sutils.ok_resp)
 
 def _find_dag_source(dag):
     sinks = {}

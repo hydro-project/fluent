@@ -12,41 +12,40 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from executor.utils import *
+from . import utils
+from include.functions_pb2 import *
+from include import server_utils as sutils
 
 def pin(pin_socket, ctx, client, status, pinned_functions):
     name = pin_socket.recv_string()
-    func = _retrieve_function(name, client)
+    func = utils._retrieve_function(name, client)
 
     # we send an error if we can't retrieve the requested function
     if not func:
-        ERROR.error = FUNC_NOT_FOUND
-        pin_socket.send(ERROR.SerializeToString())
+        sutils.error.error = FUNC_NOT_FOUND
+        pin_socket.send(sutils.error.SerializeToString())
         return
 
-    pin_socket.send_string(OK_RESP)
+    pin_socket.send(sutils.ok_resp)
 
-    status.functions[name] = PINNED
+    status.functions.append(name)
     pinned_functions[name] = func
-    _push_status(schedulers, ctx, status)
 
 def unpin(unpin_socket, ctx, status, pinned_functions):
     name = unpin_socket.recv_string() # the name of the func to unpin
 
     if status.functions[name] != PINNED:
-        error.error = NOT_PINNED
-        unpin_socket.send(error.SerializeToString())
+        sutils.error.error = NOT_PINNED
+        unpin_socket.send(sutils.error.SerializeToString())
         return
 
-    unpin_socket.send(ok_resp)
+    unpin_socket.send(sutils.ok_resp)
 
     func_queue = queue[name]
     # if there are no currently pending requests, then we can simply
     # unpin the existing function
     if len(func_queue) == 0:
         del pinned_functions[name]
-        del status.functions[name]
-        _push_status(schedulers, ctx, status)
-    else: # otherwise, we don't accept new requests and wait for the
-          # queue to drain
-        status.functions[name] = CLEARING
+
+    # tell everyone we're no longer accepting requests for this function
+    status.functions.remove(name)

@@ -21,7 +21,7 @@ from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
 from include.server_utils import *
-from executor import utils
+from . import utils
 
 def exec_function(exec_socket, kvs, status, error):
     call = FunctionCall()
