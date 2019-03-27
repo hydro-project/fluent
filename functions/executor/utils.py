@@ -39,4 +39,3 @@ def _push_status(schedulers, ctx, status):
 
 def _get_status_ip(ip):
     return 'tcp://' + ip + ':' + str(server_utils.STATUS_PORT)
-

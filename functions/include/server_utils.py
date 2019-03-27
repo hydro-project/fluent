@@ -43,3 +43,7 @@ def _get_func_kvs_name(fname):
     return FUNC_PREFIX + fname
 
 
+def _get_dag_trigger_address(ip_tid):
+    ip, tid = ip_tid.split(':')
+
+    return 'tcp://' + ip + ':' + str(int(tid) + DAG_EXEC_PORT)

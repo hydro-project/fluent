@@ -114,3 +114,14 @@ def serialize_val(val, valobj=None):
         valobj.body = default_ser.dump(val)
 
     return valobj.SerializeToString()
+
+def deserialize_val(val):
+    v = Value()
+    v.ParseFromString(val)
+
+    if v.type == DEFAULT:
+        return default_ser.load(v.body)
+    elif v.type == STRING:
+        return string_ser.load(v.body)
+    elif v.type == NUMPY:
+        return numpy_ser.load(v.body)

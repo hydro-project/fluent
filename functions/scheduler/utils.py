@@ -19,6 +19,8 @@ from include.server_utils import *
 
 FUNCOBJ = 'funcs/index-allfuncs'
 
+NUM_EXEC_THREADS = 1
+
 def _get_func_list(client, prefix, fullname=False):
     funcs = client.get(FUNCOBJ)
     if not funcs:
@@ -52,5 +54,5 @@ def _get_unpin_address(ip, tid):
 
 
 def _get_exec_address(ip, tid):
-    return 'tcp://' + ip + ':' + str(EXEC_PORT + tid)
+    return 'tcp://' + ip + ':' + str(FUNC_EXEC_PORT + tid)
 

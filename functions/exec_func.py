@@ -42,7 +42,7 @@ def run():
     ctx = zmq.Context(1)
     poller = zmq.Poller()
 
-    schedulers = os.environ['SCHED_IPS']
+    schedulers = os.environ['SCHED_IPS'].split(' ')
     thread_id = int(os.environ['THREAD_ID'])
 
     pin_socket = ctx.socket(zmq.REP)

@@ -18,7 +18,8 @@ import zmq
 
 from include.functions_pb2 import *
 from include.serializer import *
-from .utils import *
+from include.server_utils import *
+from . import utils
 
 def call_function(func_call_socket, ctx, executors, key_ip_map):
     call = FunctionCall()
@@ -28,9 +29,9 @@ def call_function(func_call_socket, ctx, executors, key_ip_map):
         map(lambda arg: get_serializer(arg.type).load(arg.body),
             call.args)))
 
-    ip = _pick_node(executors, key_ip_map, refs)
+    ip, tid = _pick_node(executors, key_ip_map, refs)
     sckt = ctx.socket(zmq.REQ)
-    sckt.connect(_get_exec_address(ip))
+    sckt.connect(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
 
     # we currently don't do any checking here because either the function is
@@ -50,8 +51,8 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map, uid):
         refs = list(filter(lambda arg: type(arg) == FluentReference,
             map(lambda arg: get_serializer(arg.type).load(arg.body),
                 args)))
-        ip = _pick_node(locations, key_ip_map, refs)
-        chosen_locations[f] = ip
+        loc = _pick_node(locations, key_ip_map, refs)
+        chosen_locations[f] = (loc[0], loc[1])
 
     schedule = DagSchedule()
     schedule.id = generate_timestamp(0)
@@ -59,10 +60,12 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map, uid):
     schedule.arguments = call.function_args
 
     for func in chosen_locations:
-        schedule.locations[func] = chosen_locations[func]
+        loc = chosen_locations[func]
+        schedule.locations[func] = loc[0] + ':' + loc[1]
 
     for func in chosen_locations:
-        ip = _get_queue_address(chosen_locations[func])
+        loc = chosen_locations[func]
+        ip = utils._get_queue_address(loc[0], loc[1])
         schedule.target_function = func
 
         sckt = ctx.socket(zmq.REQ)
@@ -80,7 +83,7 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map, uid):
         trigger.id = schedule.id
         trigger.target_function = source
 
-        ip = _get_trigger_address(schedule.locations[source])
+        ip = _get_dag_trigger_address(schedule.locations[source])
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect(ip)
         sckt.send(trigger.SerializeToString())
@@ -117,5 +120,7 @@ def _pick_node(executors, key_ip_map, refs):
     if not max_ip:
         max_ip = random.choice(executors)
 
-    return max_ip
+    tid = random.choice(list(range(utils.NUM_EXEC_THREADS)))
+
+    return max_ip, tid
 

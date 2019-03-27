@@ -60,9 +60,9 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
         ks = KeySet()
         ks.ParseFromString(l.reveal()[1])
 
-        kc_map[ip] = set(ks.keys())
+        kc_map[ip] = set(ks.keys)
 
-        for key in ks.keys():
+        for key in ks.keys:
             if key not in key_ip_map:
                 key_ip_map[key] = []
 
@@ -125,24 +125,29 @@ def scheduler(ip, mgmt_ip, route_addr):
     start = time.time()
 
     while True:
+        logging.info('Beginning of loop')
         socks = dict(poller.poll(timeout=1000))
 
         if connect_socket in socks and socks[connect_socket] == zmq.POLLIN:
             logging.info('Received connect')
             msg = connect_socket.recv_string()
             connect_socket.send_string(routing_addr)
+            logging.info('Finished connect')
 
         if func_create_socket in socks and socks[func_create_socket] == zmq.POLLIN:
             logging.info('Received create')
             create_func(func_create_socket, kvs)
+            logging.info('Finished create')
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
             logging.info('Received call')
             call_function(func_call_socket, ctx, executors, key_ip_map)
+            logging.info('Finished call')
 
         if dag_create_socket in socks and socks[list_socket] == zmq.POLLIN:
             logging.info('Received dag create')
             create_dag(dag_create_socket, kvs, executors)
+            logging.info('Finished dag create')
 
         if dag_call_socket in socks and socks[list_socket] == zmq.POLLIN:
             logging.info('Received dag call')
@@ -160,6 +165,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                 accepted, error = call_dag(call, ctx, dags, func_locations,
                         key_ip_map)
 
+            logging.info('Finished dag call')
+
 
         if list_socket in socks and socks[list_socket] == zmq.POLLIN:
             logging.info('Received list')
@@ -170,16 +177,18 @@ def scheduler(ip, mgmt_ip, route_addr):
             resp.names.append(_get_func_list(client, prefix))
 
             list_socket.send(resp.SerializeToString())
+            logging.info('Finished list')
 
         if exec_status_socket in socks and socks[exec_status_socket] == \
                 zmq.POLLIN:
+            logging.info('Received exec update')
             status = ThreadStatus()
             status.ParseFromString(exec_status_socket.recv())
 
             key = (status.ip, status.tid)
             if key not in executors:
                 pinned_functions[key] = status
-                exectuors.append(status.ip)
+                executors.append(status.ip)
             elif pinned_functions[key] != status:
                 # remove all the old function locations, and all the new ones
                 # -- there will probably be a large overlap, but this shouldn't
@@ -193,8 +202,11 @@ def scheduler(ip, mgmt_ip, route_addr):
 
                 pinned_functions[key] = status
 
+            logging.info('Finished exec update')
+
         if sched_update_socket in socks and socks[sched_update_socket] == \
                 zmq.POLLIN:
+            logging.info('Received sched update')
             ks = KeySet()
             ks.ParseFromString(sched_update_socket.recv())
 
@@ -207,9 +219,12 @@ def scheduler(ip, mgmt_ip, route_addr):
 
                     dags[dname] = dag
 
+            logging.info('Finished sched update')
+
 
         end = time.time()
         if end - start > THRESHOLD:
+            logging.info('About to do some updatin\'')
             # update our local key-cache mapping information
             executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
             _update_key_maps(key_cache_map, key_ip_map, executors, kvs)
@@ -222,8 +237,11 @@ def scheduler(ip, mgmt_ip, route_addr):
             msg = dag_names.SerializeToString()
 
             for sched_ip in schedulers:
-                sckt = ctx.socket(zmq.PUSH)
-                sckt.connect('tcp://' + sched_ip + ':' +
-                        str(SCHED_UPDATE_PORT))
-                sckt.send(msg)
+                if sched_ip != ip:
+                    sckt = ctx.socket(zmq.PUSH)
+                    sckt.connect('tcp://' + sched_ip + ':' +
+                            str(SCHED_UPDATE_PORT))
+                    sckt.send(msg)
 
+            start = time.time()
+            logging.info('Finished doing some updatin\'')

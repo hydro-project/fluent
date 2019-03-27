@@ -20,6 +20,7 @@ from anna.lattices import *
 from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
+from include.server_utils import *
 from executor import utils
 
 def exec_function(exec_socket, client, status, error):
@@ -42,8 +43,12 @@ def exec_function(exec_socket, client, status, error):
         exec_socket.send(error.SerializeToString())
         return
 
+    resp = GenericResponse()
+    resp.success = True
+    resp.response_id = obj_id
+
     logging.info('Sending response of ' + obj_id)
-    exec_socket.send_string(obj_id)
+    exec_socket.send(resp.SerializeToString())
     result = _exec_func(client, f, fargs)
     result = serialize_val(result)
 
@@ -76,7 +81,7 @@ def exec_dag_function(ctx, client, trigger, function, schedule):
 
             dest_ip = schedule.locations[conn.sink]
             sckt = ctx.socket(zmq.PUSH)
-            sckt.connect(_get_dag_exec_ip(dest_ip))
+            sckt.connect(_get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
 
