@@ -315,7 +315,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     }
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
-      std::cout << "Received a user request" << std::endl;
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&request_puller);

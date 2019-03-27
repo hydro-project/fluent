@@ -14,6 +14,7 @@
 
 import logging
 import random
+import zmq
 
 from include.functions_pb2 import *
 from include.serializer import *

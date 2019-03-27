@@ -70,10 +70,12 @@ class AnnaClient():
         if tup.invalidate:
             self._invalidate_cache(tup.key, tup.addresses)
 
-            # re-issue the request
-            return self.get(tup.key)
-
-        return self._deserialize(tup)
+        if tup.error == 0:
+            return self._deserialize(tup)
+        elif tup.error == 1:
+            return None # key does not exist
+        else:
+            return self.get(tup.key) # re-issue the request
 
     def get_all(self, key):
         worker_addresses = self._get_worker_address(key, False)

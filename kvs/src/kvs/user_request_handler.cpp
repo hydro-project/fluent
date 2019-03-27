@@ -83,6 +83,10 @@ void user_request_handler(
             tp->set_error(res.second);
           }
         } else if (request_type == "PUT") {
+          if (key == "ANNA_METADATA|cache_ip|172.20.48.14") {
+            std::cout << "found threads.size is " << threads.size() << std::endl;
+          }
+
           if (tuple.lattice_type() == LatticeType::NO) {
             log->error("PUT request missing lattice type.");
           } else if (metadata_map.find(key) != metadata_map.end() &&
@@ -105,15 +109,8 @@ void user_request_handler(
                      request_type);
         }
 
-        if (tuple.has_address_cache_size() &&
+        if (tuple.has_address_cache_size() && tuple.address_cache_size() > 0 &&
             tuple.address_cache_size() != threads.size()) {
-          log->info("Tuple's address cache size is {}", tuple.address_cache_size());
-          log->info("My address cache size is {}", threads.size());
-          log->info("Memory rep is {}", metadata_map[key].global_replication_[kMemoryTierId]);
-          log->info("Local rep is {}", metadata_map[key].local_replication_[kMemoryTierId]);
-          for (ServerThread t : threads) {
-            log->info("One thread is {}:", t.id());
-          }
           tp->set_invalidate(true);
         }
 

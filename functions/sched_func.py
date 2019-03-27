@@ -34,7 +34,6 @@ def _get_cache_ip_key(ip):
     return 'ANNA_METADATA|cache_ip|' + ip
 
 def _get_ip_list(mgmt_ip, port, ctx):
-    logging.info('Sending request to port ' + str(port))
     sckt = ctx.socket(zmq.REQ)
     sckt.connect('tcp://' + mgmt_ip + ':' + str(port))
 
@@ -43,8 +42,6 @@ def _get_ip_list(mgmt_ip, port, ctx):
 
     ips = KeySet()
     ips.ParseFromString(sckt.recv())
-    logging.info('Received response')
-    logging.info(str(ips))
     return list(ips.keys)
 
 def _update_key_maps(kc_map, key_ip_map, executors, kvs):
@@ -53,15 +50,15 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
     key_ip_map.clear()
     for ip in executors:
         key = _get_cache_ip_key(ip)
-        logging.info('Getting key ' + key)
 
         # this is of type LWWPairLattice, which has a KeySet protobuf packed
         # into it; we want the keys in that KeySet protobuf
         l = kvs.get(key)
+        if l is None: # this executor is still joining
+            continue
+
         ks = KeySet()
         ks.ParseFromString(l.reveal()[1])
-        logging.info('Key set is ')
-        logging.info(str(ks))
 
         kc_map[ip] = set(ks.keys())
 
@@ -203,7 +200,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             # retrieve any DAG that some other scheduler knows about that we do
             # not yet know about
-            for dname in ks:
+            for dname in ks.keys:
                 if dname not in dags:
                     dag = Dag()
                     dag.ParseFromString(kvs.get(dname).value)
