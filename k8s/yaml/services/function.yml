@@ -19,17 +19,23 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - port: 4999
-    targetPort: 4999
-    name: connect
   - port: 5000
     targetPort: 5000
-    name: create
+    name: connect
   - port: 5001
     targetPort: 5001
-    name: call
+    name: func-create
   - port: 5002
     targetPort: 5002
+    name: func-call
+  - port: 5003
+    targetPort: 5003
     name: list
+  - port: 5004
+    targetPort: 5004
+    name: dag-create
+  - port: 5005
+    targetPort: 5005
+    name: dag-call
   selector:
-    role: function
+    role: scheduler

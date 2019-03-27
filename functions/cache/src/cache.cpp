@@ -74,7 +74,6 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
         KeyTuple* resp = response.add_tuples();
         Key key = tuple.key();
         resp->set_key(key);
-        log->info("Received request for key {}.", key);
 
         if (!tuple.has_lattice_type()) {
           log->error("Cache requires type to retrieve key.");
@@ -267,6 +266,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           generate_timestamp(thread_id), serialized));
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
       client.put(key, val);
+      report_start = std::chrono::system_clock::now();
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.

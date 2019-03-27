@@ -41,9 +41,11 @@ spec:
     - name: REPO_BRANCH
       value: func-scheduling
     - name: SCHED_IPS
-      value: ""
+      value: SCHED_IPS_DUMMY
     - name: THREAD_ID
-      value: 0
+      value: "0"
+    - name: SYSTEM_FUNC
+      value: none
     volumeMounts:
     - mountPath: /requests
       name: ipc

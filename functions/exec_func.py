@@ -37,7 +37,7 @@ def run():
         route_addr = os.environ['ROUTE_ADDR']
         scheduler(ip, mgmt_ip, route_addr)
 
-    logging.basicConfig(filename='log.txt', level=logging.INFO)
+    logging.basicConfig(filename='log_executor.txt', level=logging.INFO)
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()

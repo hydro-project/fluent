@@ -35,6 +35,8 @@ spec:
       value: vsreekanti
     - name: REPO_BRANCH
       value: func-scheduling
+    - name: SYSTEM_FUNC
+      value: scheduler
   nodeSelector:
     role: scheduler
     podid: scheduler-NUM_DUMMY

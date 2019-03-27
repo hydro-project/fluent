@@ -70,7 +70,7 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
 
 
 def scheduler(ip, mgmt_ip, route_addr):
-    logging.basicConfig(filename='sched_log.txt', level=logging.INFO)
+    logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO)
 
     kvs = AnnaClient(route_addr, ip)
 
@@ -125,32 +125,27 @@ def scheduler(ip, mgmt_ip, route_addr):
     start = time.time()
 
     while True:
-        logging.info('Beginning of loop')
         socks = dict(poller.poll(timeout=1000))
 
         if connect_socket in socks and socks[connect_socket] == zmq.POLLIN:
-            logging.info('Received connect')
+            logging.info('Received connect message.')
             msg = connect_socket.recv_string()
             connect_socket.send_string(routing_addr)
-            logging.info('Finished connect')
 
         if func_create_socket in socks and socks[func_create_socket] == zmq.POLLIN:
-            logging.info('Received create')
+            logging.info('Received function create request.')
             create_func(func_create_socket, kvs)
-            logging.info('Finished create')
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
-            logging.info('Received call')
+            logging.info('Received function call.')
             call_function(func_call_socket, ctx, executors, key_ip_map)
-            logging.info('Finished call')
 
         if dag_create_socket in socks and socks[list_socket] == zmq.POLLIN:
-            logging.info('Received dag create')
+            logging.info('Received DAG create request.')
             create_dag(dag_create_socket, kvs, executors)
-            logging.info('Finished dag create')
 
         if dag_call_socket in socks and socks[list_socket] == zmq.POLLIN:
-            logging.info('Received dag call')
+            logging.info('Received DAG call.')
             call = DagCall()
             call.ParseFromString(dag_call_socket.recv())
             exec_id = generate_timestamp(0)
@@ -165,11 +160,10 @@ def scheduler(ip, mgmt_ip, route_addr):
                 accepted, error = call_dag(call, ctx, dags, func_locations,
                         key_ip_map)
 
-            logging.info('Finished dag call')
 
 
         if list_socket in socks and socks[list_socket] == zmq.POLLIN:
-            logging.info('Received list')
+            logging.info('Received query for function list.')
             msg = list_socket.recv_string()
             prefix = msg if msg else ''
 
@@ -177,11 +171,10 @@ def scheduler(ip, mgmt_ip, route_addr):
             resp.names.append(_get_func_list(client, prefix))
 
             list_socket.send(resp.SerializeToString())
-            logging.info('Finished list')
 
         if exec_status_socket in socks and socks[exec_status_socket] == \
                 zmq.POLLIN:
-            logging.info('Received exec update')
+            logging.info('Received status update from executor.')
             status = ThreadStatus()
             status.ParseFromString(exec_status_socket.recv())
 
@@ -202,11 +195,10 @@ def scheduler(ip, mgmt_ip, route_addr):
 
                 pinned_functions[key] = status
 
-            logging.info('Finished exec update')
 
         if sched_update_socket in socks and socks[sched_update_socket] == \
                 zmq.POLLIN:
-            logging.info('Received sched update')
+            logging.info('Received update from scheduler.')
             ks = KeySet()
             ks.ParseFromString(sched_update_socket.recv())
 
@@ -219,12 +211,10 @@ def scheduler(ip, mgmt_ip, route_addr):
 
                     dags[dname] = dag
 
-            logging.info('Finished sched update')
 
 
         end = time.time()
         if end - start > THRESHOLD:
-            logging.info('About to do some updatin\'')
             # update our local key-cache mapping information
             executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
             _update_key_maps(key_cache_map, key_ip_map, executors, kvs)
@@ -244,4 +234,3 @@ def scheduler(ip, mgmt_ip, route_addr):
                     sckt.send(msg)
 
             start = time.time()
-            logging.info('Finished doing some updatin\'')

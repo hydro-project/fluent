@@ -47,7 +47,6 @@ def exec_function(exec_socket, client, status, error):
     resp.success = True
     resp.response_id = obj_id
 
-    logging.info('Sending response of ' + obj_id)
     exec_socket.send(resp.SerializeToString())
     result = _exec_func(client, f, fargs)
     result = serialize_val(result)
