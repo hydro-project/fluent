@@ -14,6 +14,7 @@
 
 import logging
 import random
+import uuid
 import zmq
 
 from include.functions_pb2 import *
@@ -58,6 +59,7 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map, uid):
     schedule.id = generate_timestamp(0)
     schedule.dag = dag
     schedule.arguments = call.function_args
+    schedule.response_id = uuid.uuid4()
 
     for func in chosen_locations:
         loc = chosen_locations[func]
