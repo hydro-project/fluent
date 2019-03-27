@@ -49,12 +49,9 @@ def create_dag(dag_create_socket, ctx, kvs, executors, dags, func_locations):
 
     payload = LWWPairLattice(generate_timestamp(0), serialized)
     kvs.put(dag.name, payload)
-    logging.info('Putting dag into KVS')
 
     for fname in dag.functions:
-        node = random.choice(executors)
-        tid = random.choice(list(range(utils.NUM_EXEC_THREADS)))
-        logging.info('Pinning func %s to node %s.' % (fname, node))
+        node, tid = random.choice(executors)
 
         sckt = ctx.socket(zmq.REQ)
         sckt.connect(utils._get_pin_address(node, tid))
@@ -68,8 +65,10 @@ def create_dag(dag_create_socket, ctx, kvs, executors, dags, func_locations):
         if not resp.success:
             dag_create_utils.send(resp.SerializeToString())
 
-        logging.info('Succeeded!')
-        func_locations[fname] = node
+        if fname not in func_locations:
+            func_locations[fname] = []
+
+        func_locations[fname].append((node, tid))
 
     dags[dag.name] = (dag, _find_dag_source(dag))
     dag_create_socket.send(sutils.ok_resp)

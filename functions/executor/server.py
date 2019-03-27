@@ -52,6 +52,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     poller.register(pin_socket, zmq.POLLIN)
     poller.register(unpin_socket, zmq.POLLIN)
     poller.register(exec_socket, zmq.POLLIN)
+    poller.register(dag_queue_socket, zmq.POLLIN)
+    poller.register(dag_exec_socket, zmq.POLLIN)
 
     client = IpcAnnaClient()
 
@@ -84,30 +86,39 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             exec_function(exec_socket, client, status, error)
 
         if dag_queue_socket in socks and socks[dag_queue_socket] == zmq.POLLIN:
+            logging.info('Attempting to receive a message on the DAG queue socket.')
             schedule = DagSchedule()
             schedule.ParseFromString(dag_queue_socket.recv())
             fname = schedule.target_function
 
+            logging.info('Received a schedule for DAG %s, function %s.' %
+                    (schedule.dag.name, fname))
+
             # if we are trying to unpin this function, we don't accept requests
             # anymore for DAG schedules; this also checks to make sure it's the
             # right IP for the target
-            if schedule.id not in queue[fname].keys() or \
-                    status.functions[fname] == CLEARING or \
-                    schedule.locations[fname] != ip:
+            if (fname not in status.functions and \
+                    fname in queue and \
+                    schedule.id not in queue[fname].keys()) or \
+                    schedule.locations[fname].split(':')[0] != ip:
                 error.error = INVALID_TARGET
                 dag_queue_socket.send(error.SerializeToString())
                 continue
 
+            if fname not in queue:
+                queue[fname] = {}
+
             queue[fname][schedule.id] = schedule
-            dag_queue_socket.send_string(ok_resp)
+            dag_queue_socket.send(ok_resp)
 
         if dag_exec_socket in socks and socks[dag_exec_socket] == zmq.POLLIN:
             trigger = DagTrigger()
             trigger.ParseFromString(dag_exec_socket.recv())
 
-            exec_dag_function(ctx, client, trigger,
-                    pinned_functions[trigger.name],
-                    queue[trigger.name][trigger.id])
+            fname = trigger.target_function
+
+            exec_dag_function(ctx, client, trigger, pinned_functions[fname],
+                    queue[fname][trigger.id])
 
 
         # periodically report function occupancy

@@ -12,12 +12,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
+
 from . import utils
 from include.functions_pb2 import *
 from include import server_utils as sutils
 
 def pin(pin_socket, ctx, client, status, pinned_functions):
     name = pin_socket.recv_string()
+    logging.info('Adding function %s to my local pinned functions.' % (name))
+
     func = utils._retrieve_function(name, client)
 
     # we send an error if we can't retrieve the requested function
@@ -33,6 +37,8 @@ def pin(pin_socket, ctx, client, status, pinned_functions):
 
 def unpin(unpin_socket, ctx, status, pinned_functions):
     name = unpin_socket.recv_string() # the name of the func to unpin
+    logging.info('Removing function %s from my local pinned functions.' %
+            (name))
 
     if status.functions[name] != PINNED:
         sutils.error.error = NOT_PINNED

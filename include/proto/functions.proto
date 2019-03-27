@@ -90,7 +90,7 @@ message DagSchedule {
 }
 
 message DagTrigger {
-  required uint32 id = 1;
+  required uint64 id = 1;
   required string target_function = 2; // which function is this trigger for
   optional ArgList arguments = 3;
 }

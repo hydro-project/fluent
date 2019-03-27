@@ -56,8 +56,11 @@ def exec_function(exec_socket, kvs, status, error):
 
 
 def exec_dag_function(ctx, kvs, trigger, function, schedule):
-    schedule = queue[trigger.name][trigger.id]
-    fargs = list(schedule.arguments[trigger.name].args) + list(trigger.args)
+    fname = trigger.target_function
+    logging.info('Executing function %s for DAG %s (ID %d).' %
+            (schedule.dag.name, fname, trigger.id))
+
+    fargs = list(schedule.arguments[fname].args) + list(trigger.arguments.args)
     fargs = _process_args(fargs)
 
     result = _exec_func(kvs, function, fargs)
@@ -67,7 +70,7 @@ def exec_dag_function(ctx, kvs, trigger, function, schedule):
     # TODO: use socket cache
     is_sink = True
     for conn in schedule.dag.connections:
-        if conn.source == trigger.name:
+        if conn.source == fname:
             is_sink = False
             new_trigger = DagTrigger()
             new_trigger.id = trigger.id
@@ -86,7 +89,9 @@ def exec_dag_function(ctx, kvs, trigger, function, schedule):
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
-        l = LWWPairLattice(generate_timestamp(0), result)
+        logging.info('DAG %s (ID %d) completed; result at %s.' %
+                (schedule.dag.name, trigger.id, schedule.response_id))
+        l = LWWPairLattice(generate_timestamp(0), serialize_val(result))
         kvs.put(schedule.response_id, l)
 
 

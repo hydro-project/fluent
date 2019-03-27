@@ -27,13 +27,14 @@ from include.shared import *
 from include.serializer import *
 from .create import *
 from .call import *
+from . import utils
 
 THRESHOLD = 15 # how often metadata updated
 
 def _get_cache_ip_key(ip):
     return 'ANNA_METADATA|cache_ip|' + ip
 
-def _get_ip_list(mgmt_ip, port, ctx):
+def _get_ip_list(mgmt_ip, port, ctx, exec_threads=True):
     sckt = ctx.socket(zmq.REQ)
     sckt.connect('tcp://' + mgmt_ip + ':' + str(port))
 
@@ -42,13 +43,23 @@ def _get_ip_list(mgmt_ip, port, ctx):
 
     ips = KeySet()
     ips.ParseFromString(sckt.recv())
-    return list(ips.keys)
+    result = []
+
+    if exec_threads:
+        for ip in ips.keys:
+            for i in range(utils.NUM_EXEC_THREADS):
+                result.append((ip, i))
+
+        return result
+    else:
+        return list(ips.keys)
 
 def _update_key_maps(kc_map, key_ip_map, executors, kvs):
-    for ip in set(kc_map.keys()).difference(executors): del kc_map[ip]
+    exec_ips = set(map(lambda e: e[0], executors))
+    for ip in set(kc_map.keys()).difference(exec_ips): del kc_map[ip]
 
     key_ip_map.clear()
-    for ip in executors:
+    for ip in exec_ips:
         key = _get_cache_ip_key(ip)
 
         # this is of type LWWPairLattice, which has a KeySet protobuf packed
@@ -81,7 +92,7 @@ def scheduler(ip, mgmt_ip, route_addr):
     # Each dag consists of a set of functions and connections. Each one of
     # the functions is pinned to one or more nodes, which is tracked here.
     dags = {}
-    pinned_functions = {}
+    thread_statuses = {}
     func_locations = {}
 
     connect_socket = ctx.socket(zmq.REP)
@@ -118,9 +129,9 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(exec_status_socket, zmq.POLLIN)
     poller.register(sched_update_socket, zmq.POLLIN)
 
-    executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
+    executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx, True)
     _update_key_maps(key_cache_map, key_ip_map, executors, kvs)
-    schedulers = _get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx)
+    schedulers = _get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx, False)
 
     start = time.time()
 
@@ -128,16 +139,13 @@ def scheduler(ip, mgmt_ip, route_addr):
         socks = dict(poller.poll(timeout=1000))
 
         if connect_socket in socks and socks[connect_socket] == zmq.POLLIN:
-            logging.info('Received connect message.')
             msg = connect_socket.recv_string()
             connect_socket.send_string(routing_addr)
 
         if func_create_socket in socks and socks[func_create_socket] == zmq.POLLIN:
-            logging.info('Received function create request.')
             create_func(func_create_socket, kvs)
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
-            logging.info('Received function call.')
             call_function(func_call_socket, ctx, executors, key_ip_map)
 
         if dag_create_socket in socks and socks[dag_create_socket] == zmq.POLLIN:
@@ -145,24 +153,23 @@ def scheduler(ip, mgmt_ip, route_addr):
             create_dag(dag_create_socket, ctx, kvs, executors, dags, func_locations)
 
         if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
-            logging.info('Received DAG call.')
             call = DagCall()
             call.ParseFromString(dag_call_socket.recv())
             exec_id = generate_timestamp(0)
 
-            accepted, error = call_dag(call, ctx, dags, func_locations,
+            accepted, error, rid = call_dag(call, ctx, dags, func_locations,
                     key_ip_map)
 
             while not accepted:
-                executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
-                update_key_maps(key_cache_map, key_ip_map, executors, kvs)
+                executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx, True)
+                _update_key_maps(key_cache_map, key_ip_map, executors, kvs)
 
                 accepted, error, rid = call_dag(call, ctx, dags, func_locations,
                         key_ip_map)
 
             resp = GenericResponse()
             resp.success = True
-            resp.repsonse_id = rid
+            resp.response_id = rid
             dag_call_socket.send(resp.SerializeToString())
 
         if list_socket in socks and socks[list_socket] == zmq.POLLIN:
@@ -177,31 +184,38 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if exec_status_socket in socks and socks[exec_status_socket] == \
                 zmq.POLLIN:
-            logging.info('Received status update from executor.')
             status = ThreadStatus()
             status.ParseFromString(exec_status_socket.recv())
 
             key = (status.ip, status.tid)
-            if key not in executors:
-                pinned_functions[key] = status
-                executors.append(status.ip)
-            elif pinned_functions[key] != status:
+            logging.info('Received status update from executor %s:%d.' %
+                    (key[0], key[1]))
+
+            if key not in thread_statuses:
+                thread_statuses[key] = status
+
+                if key not in executors:
+                    executors.append(key)
+            elif thread_statuses[key] != status:
                 # remove all the old function locations, and all the new ones
                 # -- there will probably be a large overlap, but this shouldn't
                 # be much different than calculating two different set
                 # differences anyway
-                for func in pinned_functions[key].functions:
-                    func_locations[key].remove(key)
+                for func in thread_statuses[key].functions:
+                    if func in func_locations:
+                        func_locations[func].remove(key)
 
                 for func in status.functions:
-                    func_locations[key].insert(key)
+                    if func not in func_locations:
+                        func_locations[func] = []
 
-                pinned_functions[key] = status
+                    func_locations[func].append(key)
 
+                thread_statuses[key] = status
 
         if sched_update_socket in socks and socks[sched_update_socket] == \
                 zmq.POLLIN:
-            logging.info('Received update from scheduler.')
+            logging.info('Received update from another scheduler.')
             ks = KeySet()
             ks.ParseFromString(sched_update_socket.recv())
 
@@ -219,10 +233,10 @@ def scheduler(ip, mgmt_ip, route_addr):
         end = time.time()
         if end - start > THRESHOLD:
             # update our local key-cache mapping information
-            executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx)
+            executors = _get_ip_list(mgmt_ip, NODES_PORT, ctx, True)
             _update_key_maps(key_cache_map, key_ip_map, executors, kvs)
 
-            schedulers = _get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx)
+            schedulers = _get_ip_list(mgmt_ip, SCHEDULERS_PORT, ctx, False)
 
             dag_names = KeySet()
             for name in dags.keys():
