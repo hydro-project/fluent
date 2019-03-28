@@ -51,8 +51,6 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map):
     chosen_locations = {}
     for f in dag.functions:
         locations = func_locations[f]
-        logging.info('All locations are %s.' % (str(func_locations)))
-        logging.info('Potential locations are %s.' % (str(locations)))
         args = call.function_args[f].args
 
         refs = list(filter(lambda arg: type(arg) == FluentReference,
@@ -77,20 +75,15 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map):
         loc = chosen_locations[func]
         schedule.locations[func] = loc[0] + ':' + str(loc[1])
 
-    logging.info('Successfully constructed schedule!')
 
     for func in chosen_locations:
         loc = chosen_locations[func]
         ip = utils._get_queue_address(loc[0], loc[1])
         schedule.target_function = func
 
-        logging.info('Sending schedule to %s.' % (ip))
-
         sckt = ctx.socket(zmq.REQ)
         sckt.connect(ip)
         sckt.send(schedule.SerializeToString())
-
-        logging.info('Successfully sent the schedule. Now waiting for a response.')
 
         response = GenericResponse()
         response.ParseFromString(sckt.recv())
@@ -98,10 +91,7 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map):
         if not response.success:
             logging.info('Pin operation for %s at %s failed.' % (func, ip))
             return response.success, response.error, None
-        else:
-            logging.info('Pin operation for %s at %s succeeded.' % (func, ip))
 
-    logging.info('Attempting to trigger the following sources: %s.' %
             (str(sources)))
     for source in sources:
         trigger = DagTrigger()
@@ -109,12 +99,10 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map):
         trigger.target_function = source
 
         ip = sutils._get_dag_trigger_address(schedule.locations[source])
-        logging.info('Sending DAG trigger to source %s at %s.' % (source, ip))
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect(ip)
         sckt.send(trigger.SerializeToString())
 
-    logging.info('Success! Response ID is %s.' % (resp_id))
     return True, None, resp_id
 
 
