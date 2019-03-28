@@ -327,7 +327,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
                               std::chrono::system_clock::now() - work_start)
                               .count();
 
-      log_->info("Handling a user request took {} seconds.",
+      log->info("Handling a user request took {} seconds.",
           std::to_string((double) time_elapsed / (double) 1000000));
       working_time += time_elapsed;
       working_time_map[3] += time_elapsed;
@@ -353,7 +353,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (pollitems[5].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
 
-      std::cout << "Received a rep factor response" << std::endl;
       string serialized = kZmqUtil->recv_string(&replication_response_puller);
       replication_response_handler(seed, access_count, log, serialized,
                                    global_hash_rings, local_hash_rings,
@@ -372,7 +371,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (pollitems[6].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
 
-      std::cout << "Received a rep change" << std::endl;
       string serialized = kZmqUtil->recv_string(&replication_change_puller);
       replication_change_handler(public_ip, private_ip, thread_id, seed, log,
                                  serialized, global_hash_rings,
@@ -390,7 +388,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (pollitems[7].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
 
-      std::cout << "Received a cache ip look up response" << std::endl;
       string serialized = kZmqUtil->recv_string(&cache_ip_response_puller);
       cache_ip_response_handler(serialized, cache_ip_to_keys, key_to_cache_ips);
 
