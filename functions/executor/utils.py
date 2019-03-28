@@ -18,6 +18,8 @@ from include import server_utils, serializer
 
 import zmq
 
+UTILIZATION_REPORT_PORT = 7003
+
 def _retrieve_function(name, kvs):
     kvs_name = server_utils._get_func_kvs_name(name)
     latt = kvs.get(kvs_name, LWW)
@@ -28,14 +30,16 @@ def _retrieve_function(name, kvs):
         return None
 
 
-def _push_status(schedulers, ctx, status):
+def _push_status(schedulers, pusher_cache, status):
     msg = status.SerializeToString()
 
     # tell all the schedulers your new status
     for sched in schedulers:
-        sckt = ctx.socket(zmq.PUSH)
-        sckt.connect(_get_status_ip(sched))
+        sckt = pusher_cache.get(_get_status_address(sched))
         sckt.send(msg)
 
-def _get_status_ip(ip):
+def _get_status_address(ip):
     return 'tcp://' + ip + ':' + str(server_utils.STATUS_PORT)
+
+def _get_util_report_address(mgmt_ip):
+    return 'tcp://' + mgmt_ip + ':' + str(UTILIZATION_REPORT_PORT)

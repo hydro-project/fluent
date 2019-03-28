@@ -31,6 +31,8 @@ class SocketCache():
             sock = self.context.socket(self.zmq_type)
             sock.connect(addr)
 
+            self._cache[addr] = sock
+
             return sock
         else:
             return self._cache[addr]

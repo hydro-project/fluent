@@ -22,7 +22,7 @@ from include.serializer import *
 from include import server_utils as sutils
 from . import utils
 
-def call_function(func_call_socket, ctx, executors, key_ip_map):
+def call_function(func_call_socket, requestor_cache, executors, key_ip_map):
     call = FunctionCall()
     call.ParseFromString(func_call_socket.recv())
 
@@ -33,8 +33,7 @@ def call_function(func_call_socket, ctx, executors, key_ip_map):
             call.args)))
 
     ip, tid = _pick_node(executors, key_ip_map, refs)
-    sckt = ctx.socket(zmq.REQ)
-    sckt.connect(utils._get_exec_address(ip, tid))
+    sckt = requestor_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
 
     # we currently don't do any checking here because either the function is
@@ -44,7 +43,8 @@ def call_function(func_call_socket, ctx, executors, key_ip_map):
     func_call_socket.send(sckt.recv())
 
 
-def call_dag(call, ctx, dags, func_locations, key_ip_map):
+def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,
+        key_ip_map):
     logging.info('Calling DAG %s.' % (call.name))
 
     dag, sources = dags[call.name]
@@ -81,8 +81,7 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map):
         ip = utils._get_queue_address(loc[0], loc[1])
         schedule.target_function = func
 
-        sckt = ctx.socket(zmq.REQ)
-        sckt.connect(ip)
+        sckt = requestor_cache.get(ip)
         sckt.send(schedule.SerializeToString())
 
         response = GenericResponse()
@@ -92,15 +91,13 @@ def call_dag(call, ctx, dags, func_locations, key_ip_map):
             logging.info('Pin operation for %s at %s failed.' % (func, ip))
             return response.success, response.error, None
 
-            (str(sources)))
     for source in sources:
         trigger = DagTrigger()
         trigger.id = schedule.id
         trigger.target_function = source
 
         ip = sutils._get_dag_trigger_address(schedule.locations[source])
-        sckt = ctx.socket(zmq.PUSH)
-        sckt.connect(ip)
+        sckt = pusher_cache.get(ip)
         sckt.send(trigger.SerializeToString())
 
     return True, None, resp_id
@@ -133,7 +130,7 @@ def _pick_node(executors, key_ip_map, refs):
     # we pick a random IP that was in the set of IPs that was running
     # most recently.
     if not max_ip:
-        max_ip = random.choice(executors)
+        max_ip = random.sample(executors, 1)[0]
 
     return max_ip
 

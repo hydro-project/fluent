@@ -27,8 +27,6 @@ DAG_EXEC_PORT = 4040
 STATUS_PORT = 5006
 SCHED_UPDATE_PORT = 5007
 
-NODES_PORT = 7002
-SCHEDULERS_PORT = 7004
 
 # create generic error response
 error = GenericResponse()

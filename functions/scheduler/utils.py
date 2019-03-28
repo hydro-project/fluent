@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 from anna.lattices import *
+from include.kvs_pb2 import *
 from include.shared import *
 from include.serializer import *
 from include.server_utils import *
@@ -20,6 +21,9 @@ from include.server_utils import *
 FUNCOBJ = 'funcs/index-allfuncs'
 
 NUM_EXEC_THREADS = 1
+
+EXECUTORS_PORT = 7002
+SCHEDULERS_PORT = 7004
 
 def _get_func_list(client, prefix, fullname=False):
     funcs = client.get(FUNCOBJ)
@@ -45,6 +49,10 @@ def _put_func_list(client, funclist):
     client.put(FUNCOBJ, l)
 
 
+def _get_cache_ip_key(ip):
+    return 'ANNA_METADATA|cache_ip|' + ip
+
+
 def _get_pin_address(ip, tid):
     return 'tcp://' + ip + ':' + str(PIN_PORT + tid)
 
@@ -56,6 +64,65 @@ def _get_unpin_address(ip, tid):
 def _get_exec_address(ip, tid):
     return 'tcp://' + ip + ':' + str(FUNC_EXEC_PORT + tid)
 
+
 def _get_queue_address(ip, tid):
     return 'tcp://' + ip + ':' + str(DAG_QUEUE_PORT + tid)
+
+
+def _get_scheduler_list_address(mgmt_ip):
+    return 'tcp://' + mgmt_ip + ':' + str(SCHEDULERS_PORT)
+
+
+def _get_executor_list_address(mgmt_ip):
+    return 'tcp://' + mgmt_ip + ':' + str(EXECUTORS_PORT)
+
+
+def _get_scheduler_update_address(ip):
+    return 'tcp://' + ip + ':' + str(SCHED_UPDATE_PORT)
+
+
+def _get_ip_set(request_ip, socket_cache, exec_threads=True):
+    sckt = socket_cache.get(request_ip)
+
+    # we can send an empty request because the response is always thes same
+    sckt.send(b'')
+
+    ips = KeySet()
+    ips.ParseFromString(sckt.recv())
+    result = set()
+
+    if exec_threads:
+        for ip in ips.keys:
+            for i in range(NUM_EXEC_THREADS):
+                result.add((ip, i))
+
+        return result
+    else:
+        return set(ips.keys)
+
+
+def _update_key_maps(kc_map, key_ip_map, executors, kvs):
+    exec_ips = set(map(lambda e: e[0], executors))
+    for ip in set(kc_map.keys()).difference(exec_ips): del kc_map[ip]
+
+    key_ip_map.clear()
+    for ip in exec_ips:
+        key = _get_cache_ip_key(ip)
+
+        # this is of type LWWPairLattice, which has a KeySet protobuf packed
+        # into it; we want the keys in that KeySet protobuf
+        l = kvs.get(key)
+        if l is None: # this executor is still joining
+            continue
+
+        ks = KeySet()
+        ks.ParseFromString(l.reveal()[1])
+
+        kc_map[ip] = set(ks.keys)
+
+        for key in ks.keys:
+            if key not in key_ip_map:
+                key_ip_map[key] = []
+
+            key_ip_map[key].append(ip)
 
