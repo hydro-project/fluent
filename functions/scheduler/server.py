@@ -149,7 +149,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             key = (status.ip, status.tid)
             logging.info('Received status update from executor %s:%d.' %
-                    (key[0], key[1]))
+                    (key[0], int(key[1])))
 
             if key not in thread_statuses:
                 thread_statuses[key] = status

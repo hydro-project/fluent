@@ -116,7 +116,7 @@ def _pick_node(executors, key_ip_map, refs):
                 if ip not in arg_map:
                     arg_map[ip] = 0
 
-                arg_map_ip += 1
+                arg_map[ip] += 1
 
     max_ip = None
     max_count = 0
@@ -124,6 +124,10 @@ def _pick_node(executors, key_ip_map, refs):
         if arg_map[ip] > max_count:
             max_count = arg_map[ip]
             max_ip = ip
+
+    # pick a random thrad on that IP address
+    if max_ip:
+        max_ip = (max_ip, random.choice(list(range(utils.NUM_EXEC_THREADS))))
 
     # This only happens if max_ip is never set, and that means that
     # there were no machines with any of the keys cached. In this case,

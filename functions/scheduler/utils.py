@@ -66,6 +66,9 @@ def _get_exec_address(ip, tid):
 
 
 def _get_queue_address(ip, tid):
+    print('in get quueue addr')
+    print(ip)
+    print(tid)
     return 'tcp://' + ip + ':' + str(DAG_QUEUE_PORT + tid)
 
 

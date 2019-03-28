@@ -58,6 +58,7 @@ class FluentFunction():
         return FluentFuture(obj_id, self._kvs_client)
 
 class FluentReference():
-    def __init__(self, key, deserialize):
+    def __init__(self, key, deserialize, obj_type):
         self.key = key
         self.deserialize = deserialize
+        self.obj_type = obj_type

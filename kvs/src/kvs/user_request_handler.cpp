@@ -83,10 +83,6 @@ void user_request_handler(
             tp->set_error(res.second);
           }
         } else if (request_type == "PUT") {
-          if (key == "ANNA_METADATA|cache_ip|172.20.48.14") {
-            std::cout << "found threads.size is " << threads.size() << std::endl;
-          }
-
           if (tuple.lattice_type() == LatticeType::NO) {
             log->error("PUT request missing lattice type.");
           } else if (metadata_map.find(key) != metadata_map.end() &&
@@ -118,6 +114,7 @@ void user_request_handler(
         access_count += 1;
       }
     } else {
+      log->info("We did not have the replication factor. Made the request pending.");
       pending_requests[key].push_back(
           PendingRequest(request_type, tuple.lattice_type(), payload,
                          response_address, response_id));
