@@ -40,7 +40,8 @@ def create_func(func_create_socket, kvs):
     func_create_socket.send(sutils.ok_resp)
 
 
-def create_dag(dag_create_socket, ctx, kvs, executors, dags, func_locations):
+def create_dag(dag_create_socket, requestor_cache, kvs, executors, dags,
+        func_locations):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -51,10 +52,9 @@ def create_dag(dag_create_socket, ctx, kvs, executors, dags, func_locations):
     kvs.put(dag.name, payload)
 
     for fname in dag.functions:
-        node, tid = random.choice(executors)
+        node, tid = random.sample(executors, 1)[0]
 
-        sckt = ctx.socket(zmq.REQ)
-        sckt.connect(utils._get_pin_address(node, tid))
+        sckt = requestor_cache.get(utils._get_pin_address(node, tid))
         sckt.send_string(fname)
 
         resp = GenericResponse()
@@ -66,19 +66,19 @@ def create_dag(dag_create_socket, ctx, kvs, executors, dags, func_locations):
             dag_create_utils.send(resp.SerializeToString())
 
         if fname not in func_locations:
-            func_locations[fname] = []
+            func_locations[fname] = set()
 
-        func_locations[fname].append((node, tid))
+        func_locations[fname].add((node, tid))
 
     dags[dag.name] = (dag, _find_dag_source(dag))
     dag_create_socket.send(sutils.ok_resp)
 
 def _find_dag_source(dag):
-    sinks = {}
+    sinks = set()
     for conn in dag.connections:
-        sinks.insert(conn.sink)
+        sinks.add(conn.sink)
 
-    funcs = list(dag.functions)
+    funcs = set(dag.functions)
     for sink in sinks:
         funcs.remove(sink)
 

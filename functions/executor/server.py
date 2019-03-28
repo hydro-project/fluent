@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 from anna.ipc_client import IpcAnnaClient
+from anna.zmq_util import SocketCache
 from .call import *
 from .pin import *
 from . import utils
@@ -48,6 +49,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     dag_exec_socket = ctx.socket(zmq.PULL)
     dag_exec_socket.bind(BIND_ADDR_TEMPLATE % (DAG_EXEC_PORT + thread_id))
 
+    pusher_cache = SocketCache(ctx, zmq.PUSH)
+
     poller = zmq.Poller()
     poller.register(pin_socket, zmq.POLLIN)
     poller.register(unpin_socket, zmq.POLLIN)
@@ -60,7 +63,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     status = ThreadStatus()
     status.ip = ip
     status.tid = thread_id
-    utils._push_status(schedulers, ctx, status)
+    utils._push_status(schedulers, pusher_cache, status)
 
     # this is going to be a map of map of maps for every function that we have
     # pinnned, we will track a map of execution ids to DAG schedules
@@ -75,15 +78,15 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         socks = dict(poller.poll(timeout=1000))
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
-            pin(pin_socket, ctx, client, status, pinned_functions)
-            utils._push_status(schedulers, ctx, status)
+            pin(pin_socket, client, status, pinned_functions)
+            utils._push_status(schedulers, pusher_cache, status)
 
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
-            unpin(unpin, ctx, status, pinned_functions)
-            utils._push_status(schedulers, ctx, status)
+            unpin(unpin, status, pinned_functions)
+            utils._push_status(schedulers, pusher_cache, status)
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
-            exec_function(exec_socket, client, status, error)
+            exec_function(exec_socket, client, status)
 
         if dag_queue_socket in socks and socks[dag_queue_socket] == zmq.POLLIN:
             logging.info('Attempting to receive a message on the DAG queue socket.')
@@ -117,8 +120,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             fname = trigger.target_function
 
-            exec_dag_function(ctx, client, trigger, pinned_functions[fname],
-                    queue[fname][trigger.id])
+            exec_dag_function(pusher_cache, client, trigger,
+                    pinned_functions[fname], queue[fname][trigger.id])
 
 
         # periodically report function occupancy
@@ -126,8 +129,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if report_end - report_start > REPORT_THRESH:
             util = global_util / (report_end - report_start)
 
-            sckt = ctx.socket(zmq.PUSH)
-            sckt.connect('tcp://' + mgmt_ip + ':7003')
+            sckt = pusher_cache.get(utils._get_util_report_address(mgmt_ip))
             sckt.send_string(ip + '|' + str(util))
 
             logging.info('Sending utilization of %.2f%%.' % (util * 100))

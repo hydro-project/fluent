@@ -15,15 +15,16 @@
 import logging
 import sys
 import uuid
+import zmq
 
 from anna.lattices import *
 from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
-from include.server_utils import *
+from include import server_utils as sutils
 from . import utils
 
-def exec_function(exec_socket, kvs, status, error):
+def exec_function(exec_socket, kvs, status):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
     logging.info('Received call for ' + call.name)
@@ -39,8 +40,8 @@ def exec_function(exec_socket, kvs, status, error):
 
     f = utils._retrieve_function(call.name, kvs)
     if not f:
-        error.error = FUNC_NOT_FOUND
-        exec_socket.send(error.SerializeToString())
+        sutils.error.error = FUNC_NOT_FOUND
+        exec_socket.send(sutils.error.SerializeToString())
         return
 
     resp = GenericResponse()
@@ -55,7 +56,7 @@ def exec_function(exec_socket, kvs, status, error):
     kvs.put(obj_id, result_lattice)
 
 
-def exec_dag_function(ctx, kvs, trigger, function, schedule):
+def exec_dag_function(pusher_cache, kvs, trigger, function, schedule):
     fname = trigger.target_function
     logging.info('Executing function %s for DAG %s (ID %d).' %
             (schedule.dag.name, fname, trigger.id))
@@ -67,7 +68,6 @@ def exec_dag_function(ctx, kvs, trigger, function, schedule):
 
     result_triggers = []
 
-    # TODO: use socket cache
     is_sink = True
     for conn in schedule.dag.connections:
         if conn.source == fname:
@@ -76,16 +76,15 @@ def exec_dag_function(ctx, kvs, trigger, function, schedule):
             new_trigger.id = trigger.id
             new_trigger.target_function = conn.sink
 
-            if type(result) == tuple:
-                for r in result:
-                    val = Value()
-                    val.type = DEFAULT
-                    val.body = get_serializer(val.type).dump(r)
-                    new_trigger.add_args(val)
+            if type(result) != tuple:
+                result = (result,)
+
+            al = new_trigger.arguments
+            al.args.extend(list(map(lambda v: serialize_val(v, None, False),
+                result)))
 
             dest_ip = schedule.locations[conn.sink]
-            sckt = ctx.socket(zmq.PUSH)
-            sckt.connect(_get_dag_trigger_address(dest_ip))
+            sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:

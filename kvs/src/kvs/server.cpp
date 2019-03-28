@@ -326,6 +326,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
                               .count();
+
+      log_->info("Handling a user request took {} seconds.",
+          std::to_string((double) time_elapsed / (double) 1000000));
       working_time += time_elapsed;
       working_time_map[3] += time_elapsed;
     }

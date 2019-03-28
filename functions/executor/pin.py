@@ -18,7 +18,7 @@ from . import utils
 from include.functions_pb2 import *
 from include import server_utils as sutils
 
-def pin(pin_socket, ctx, client, status, pinned_functions):
+def pin(pin_socket, client, status, pinned_functions):
     name = pin_socket.recv_string()
     logging.info('Adding function %s to my local pinned functions.' % (name))
 
@@ -35,7 +35,7 @@ def pin(pin_socket, ctx, client, status, pinned_functions):
     status.functions.append(name)
     pinned_functions[name] = func
 
-def unpin(unpin_socket, ctx, status, pinned_functions):
+def unpin(unpin_socket, status, pinned_functions):
     name = unpin_socket.recv_string() # the name of the func to unpin
     logging.info('Removing function %s from my local pinned functions.' %
             (name))

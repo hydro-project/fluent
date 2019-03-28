@@ -101,7 +101,7 @@ def get_serializer(kind):
     else:
         return default_ser
 
-def serialize_val(val, valobj=None):
+def serialize_val(val, valobj=None, serialize=True):
     if not valobj:
         valobj = Value()
 
@@ -112,6 +112,9 @@ def serialize_val(val, valobj=None):
         valobj.type = NUMPY
     else:
         valobj.body = default_ser.dump(val)
+
+    if not serialize:
+        return valobj
 
     return valobj.SerializeToString()
 
