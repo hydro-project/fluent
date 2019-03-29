@@ -77,6 +77,8 @@ message ThreadStatus {
   required string ip = 1;
   required uint32 tid = 2;
   repeated string functions = 3;
+  optional double utilization = 4;
+  required bool running = 5 [default = true];
 }
 
 message DagSchedule {

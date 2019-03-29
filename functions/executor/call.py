@@ -29,6 +29,11 @@ def exec_function(exec_socket, kvs, status):
     call.ParseFromString(exec_socket.recv())
     logging.info('Received call for ' + call.name)
 
+    if not status.running:
+        sutils.error.error = INVALID_TARGET
+        exec_socket.send(sutils.SerializeToString())
+        return
+
     obj_id = str(uuid.uuid4())
     if not call.HasField('resp_id'):
         call.resp_id = obj_id

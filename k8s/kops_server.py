@@ -14,21 +14,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from add_nodes import add_nodes
 from functools import reduce
-from kvs_pb2 import *
 import logging
-from metadata_pb2 import *
 import os
 import random
-from remove_node import remove_node
 import subprocess
 import time
-import util
 import zmq
 
-THRESHOLD = 30
-FOCC_THRESHOLD = .75
+from add_nodes import add_nodes
+from functions_pb2 import *
+from kvs_pb2 import *
+from metadata_pb2 import *
+from remove_node import remove_node
+import util
+
+REPORT_PERIOD = 15
+UTILIZATION_MAX = .60
+PINNED_COUNT_MAX = 15
+UTILIZATION_MIN = .10
+
+NUM_EXEC_THREADS = 3
+EXECUTOR_INCREASE = 2 # the number of exec nodes to add at once
+
 logging.basicConfig(filename='log.txt',level=logging.INFO)
 
 def run():
@@ -39,21 +47,25 @@ def run():
     churn_pull_socket = context.socket(zmq.PULL)
     churn_pull_socket.bind('tcp://*:7001')
 
-    func_nodes_socket = context.socket(zmq.REP)
-    func_nodes_socket.bind('tcp://*:7002')
+    list_executors_socket = context.socket(zmq.REP)
+    list_executors_socket.bind('tcp://*:7002')
 
-    func_pull_socket = context.socket(zmq.PULL)
-    func_pull_socket.bind('tcp://*:7003')
+    function_status_socket = context.socket(zmq.PULL)
+    function_status_socket.bind('tcp://*:7003')
 
-    schedulers_socket = context.socket(zmq.REP)
-    schedulers_socket.bind('tcp://*:7004')
+    list_schedulers_socket = context.socket(zmq.REP)
+    list_schedulers_socket.bind('tcp://*:7004')
+
+    executor_depart_socket = context.socket(zmq.PULL)
+    executor_depart_socket.bind('tcp://*:7005')
 
     poller = zmq.Poller()
     poller.register(restart_pull_socket, zmq.POLLIN)
     poller.register(churn_pull_socket, zmq.POLLIN)
-    poller.register(func_pull_socket, zmq.POLLIN)
-    poller.register(func_nodes_socket, zmq.POLLIN)
-    poller.register(schedulers_socket, zmq.POLLIN)
+    poller.register(function_status_socket, zmq.POLLIN)
+    poller.register(list_executors_socket, zmq.POLLIN)
+    poller.register(list_schedulers_socket, zmq.POLLIN)
+    poller.register(executor_depart_socket, zmq.POLLIN)
 
     cfile = '/fluent/conf/kvs-base.yml'
 
@@ -65,7 +77,9 @@ def run():
 
     client = util.init_k8s()
 
-    func_occ_map = {}
+    # track the self-reported status of each function execution thread
+    executor_statuses = {}
+    departing_executors = {}
 
     start = time.time()
     while True:
@@ -90,11 +104,6 @@ def run():
                 mon_ips = util.get_pod_ips(client, 'role=monitoring')
                 route_ips = util.get_pod_ips(client, 'role=routing')
 
-                os.system('sed -i "s|%s: [0-9][0-9]*|%s: %d|g" %s' % (ntype,
-                    ntype, num_threads, cfile))
-                os.system('sed -i "s|%s-cap: [0-9][0-9]*|%s: %d|g" %s' % (ntype,
-                    ntype, num_threads * 15, cfile))
-
                 add_nodes(client, cfile, [ntype], [num], mon_ips, route_ips)
                 logging.info('Successfully added %d %s node(s).' % (num, ntype))
             elif args[0] == 'remove':
@@ -115,74 +124,120 @@ def run():
 
             count = str(pod.status.container_statuses[0].restart_count)
 
-            logging.info('Returning restart count ' + count + ' for IP ' + ip + '.')
+            logging.info('Returning restart count %d for IP %s.' % (count, ip))
             restart_pull_socket.send_string(count)
 
-        if func_nodes_socket in socks and socks[func_nodes_socket] == \
+        if list_executors_socket in socks and socks[list_executors_socket] == \
                 zmq.POLLIN:
-            # It doesn't matter what is in this message
-            msg = func_nodes_socket.recv()
+            # it doesn't matter what is in this message
+            msg = list_executors_socket.recv_string()
 
             ks = KeySet()
             for ip in util.get_pod_ips(client, 'role=function'):
                 ks.keys.append(ip)
 
-            func_nodes_socket.send(ks.SerializeToString())
+            list_executors_socket.send(ks.SerializeToString())
 
-        if func_pull_socket in socks and socks[func_pull_socket] == zmq.POLLIN:
-            msg = func_pull_socket.recv_string()
-            args = msg.split('|')
-            ip, mutil = args[0], float(args[1])
+        if function_status_socket in socks and \
+                socks[function_status_socket] == zmq.POLLIN:
+            status = ThreadStatus()
+            status.ParseFromString(function_status_socket.recv())
 
-            logging.info('Received node occupancy of %.2f%% from IP %s.' %
-                    (mutil * 100, ip))
+            key = (status.ip, status.tid)
 
-            func_occ_map[ip] = mutil
+            # if this executor is one of the ones that's currently departing,
+            # we can just ignore its status updates since we don't want
+            # utilization to be skewed downwards
+            if key in departing_executors:
+                continue
 
-        if schedulers_socket in socks and socks[schedulers_socket] == \
+            executor_statuses[key] = status
+            logging.info('Received thread status update from %s:%d: %.4f ' +
+                    'occupancy, %d functions pinned' % (status.ip, status.tid,
+                        status.utilization, len(status.functions)))
+
+        if list_schedulers_socket in socks and socks[list_schedulers_socket] == \
                 zmq.POLLIN:
             # It doesn't matter what is in this message
-            msg = schedulers_socket.recv_string()
+            msg = list_schedulers_socket.recv_string()
 
             ks = KeySet()
             for ip in util.get_pod_ips(client, 'role=scheduler'):
                 ks.keys.append(ip)
 
-            schedulers_socket.send(ks.SerializeToString())
+            list_schedulers_socket.send(ks.SerializeToString())
+
+        if executor_depart_socket in socks and \
+                socks[executor_depart_socket] == zmq.POLLIN:
+            ip = executor_depart_socket.recv_string()
+            departing_executors[ip] -= 1
+
+            # wait until all the executors on this IP have cleared their queues
+            # and left; then we remove the node
+            if departing_executors[ip] == 0:
+                remove_node(ip, 'function')
+                del departing_executors[ip]
 
         end = time.time()
-        if end - start > THRESHOLD:
+        if end - start > REPORT_PERIOD:
             logging.info('Checking hash ring...')
             check_hash_ring(client, context)
 
             logging.info('Checking for extra nodes...')
             check_unused_nodes(client, cfile)
 
-            if func_occ_map.values():
-                avg_focc = reduce(lambda a, b: a + b, func_occ_map.values(), \
-                        0) / len(func_occ_map)
-            else:
-                avg_focc = 0
-            logging.info('Average node occupancy is %f%%...' % (avg_focc * 100))
-
-            if avg_focc > FOCC_THRESHOLD:
-                mon_ips = util.get_pod_ips(client, 'role=monitoring')
-                route_addr = get_service_address(client, 'routing-service')
-                add_nodes(client, ['function'], [1], mon_ips,
-                        route_addr=route_addr)
-
+            check_executor_utilization(client, context, cfile,
+                    executor_statuses, departing_executors)
             start = time.time()
+
+def check_executor_utilization(client, ctx, cfile, executor_statuses,
+        departing_executors):
+    utilization_sum = 0.0
+    pinned_function_count = 0
+
+    for status in executor_statuses:
+        utilization_sum += status.utilization
+        pinned_function_count += len(status.functions)
+
+    avg_utilization = utilization / len(executor_statuses)
+    avg_pinned_count = pinned_function_count / len(executor_statuses)
+    logging.info('Average executor utilization: %.4f' % (avg_utilization))
+    logging.info('Average pinned function count: %.2f' % (avg_pinned_count))
+
+    if avg_utilization > UTILIZATION_MAX or avg_pinned_count > PINNED_COUNT_MAX:
+        mon_ips = util.get_pod_ips(client, 'role=monitoring')
+        route_addr = get_service_address(client, 'routing-service')
+        scheduler_ips = util.get_pod_ips(client, 'role=scheduler')
+
+        add_node(client, cfile, ['function'], [EXECUTOR_INCREASE], mon_ips,
+                route_addr=route_addr, scheduler_ips=scheduler_ips)
+
+    # we only decide to kill nodes if they are underutilized and if there are
+    # at last two executors in the system -- we never scale down past that
+    if avg_utilization < UTILIZATION_MIN and len(executor_statuses) > 2:
+        ip = random.choice(executor_statuses.values()).ip
+
+        for tid in range(NUM_EXEC_THREADS):
+            sckt = ctx.socket(zmq.PUSH)
+            sckt.connect(_get_executor_depart_address(ip))
+
+            # this message does not matter
+            sckt.send(b'')
+
+        departing_executors[ip] = NUM_EXEC_THREADS
 
 
 def check_hash_ring(client, context):
-    # get routing IPs
     route_ips = util.get_pod_ips(client, 'role=routing')
 
+    # if there are no routing nodes in the system currently, the system is
+    # still starting, so we do nothing
     if not route_ips:
         return
 
     ip = random.choice(route_ips)
 
+    # TODO: move all of these into a shared location?
     route_addr_port = 6350
     storage_depart_port = 6050
     route_depart_port = 6400

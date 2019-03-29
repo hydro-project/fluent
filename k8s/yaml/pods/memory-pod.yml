@@ -25,10 +25,6 @@ spec:
   - name: memory-container
     image: vsreekanti/anna
     imagePullPolicy: Always
-    resources:
-      limits:
-        memory: "40Gi"
-        cpu: "3"
     env: 
     - name: SERVER_TYPE
       value: "memory"
