@@ -24,8 +24,8 @@ USER root
 # update and install software
 RUN apt-get update -y
 RUN apt-get install -y vim curl jq wget git libpq-dev libssl-dev openssl libffi-dev zlib1g-dev python-software-properties software-properties-common build-essential autoconf automake libtool make unzip
+RUN apt-add-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main"
 RUN add-apt-repository -y ppa:jonathonf/python-3.6
-RUN sudo apt-add-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main"
 RUN apt-get update
 RUN apt-get install -y python3.6
 RUN wget https://bootstrap.pypa.io/get-pip.py

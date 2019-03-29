@@ -64,7 +64,7 @@ RUN rm -rf protobuf-3.5.1 protobuf-all-3.5.1.zip
 # clone and install relevant libraries
 RUN git clone https://github.com/$repo_org/fluent
 WORKDIR /fluent
-RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
+RUN git fetch -p origin && git checkout -b $build_branch origin/$source_branch
 RUN cd client/kvs/python && python3.6 setup.py install --prefix=$HOME/.local
 WORKDIR /
 

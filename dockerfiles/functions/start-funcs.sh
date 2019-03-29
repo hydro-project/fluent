@@ -15,13 +15,7 @@
 #  limitations under the License.
 
 IS_EC2=`curl -s http://instance-data.ec2.internal`
-if [[ ! -z "$IS_EC2" ]]; then
-  # NOTE: We use the local IPv4 here because we cannot connect to the public
-  # IPv4 -- those ports are not open!
-  MY_IP=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
-else
-  MY_IP=`ifconfig eth0 | grep 'inet addr:' | grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1 }'`
-fi
+IP=`ifconfig eth0 | grep 'inet addr:' | grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1 }'`
 
 # move into the fluent directory for the rest of the script
 cd fluent
@@ -55,4 +49,4 @@ python3.6 setup.py install --prefix=$HOME/.local
 cd ../../..
 
 # start python server
-cd functions && export MY_IP=$IP && python3.6 exec_func.py
+cd functions && export MY_IP=$IP && python3.6 server.py
