@@ -22,6 +22,11 @@ def pin(pin_socket, client, status, pinned_functions):
     name = pin_socket.recv_string()
     logging.info('Adding function %s to my local pinned functions.' % (name))
 
+    if not status.running:
+        sutils.error.error = INVALID_TARGET
+        pin_sockt.send(sutils.error.SerializeToString())
+        return
+
     func = utils._retrieve_function(name, client)
 
     # we send an error if we can't retrieve the requested function
@@ -39,6 +44,11 @@ def unpin(unpin_socket, status, pinned_functions):
     name = unpin_socket.recv_string() # the name of the func to unpin
     logging.info('Removing function %s from my local pinned functions.' %
             (name))
+
+    if not status.running:
+        sutils.error.error = INVALID_TARGET
+        pin_sockt.send(sutils.error.SerializeToString())
+        return
 
     if status.functions[name] != PINNED:
         sutils.error.error = NOT_PINNED
