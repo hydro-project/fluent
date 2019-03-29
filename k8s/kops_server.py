@@ -35,6 +35,7 @@ PINNED_COUNT_MAX = 15
 UTILIZATION_MIN = .10
 
 NUM_EXEC_THREADS = 3
+EXECUTOR_INCREASE = 2 # the number of exec nodes to add at once
 
 logging.basicConfig(filename='log.txt',level=logging.INFO)
 
