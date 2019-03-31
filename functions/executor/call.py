@@ -29,6 +29,11 @@ def exec_function(exec_socket, kvs, status):
     call.ParseFromString(exec_socket.recv())
     logging.info('Received call for ' + call.name)
 
+    if not status.running:
+        sutils.error.error = INVALID_TARGET
+        exec_socket.send(sutils.SerializeToString())
+        return
+
     obj_id = str(uuid.uuid4())
     if not call.HasField('resp_id'):
         call.resp_id = obj_id
@@ -95,8 +100,7 @@ def exec_dag_function(pusher_cache, kvs, trigger, function, schedule):
 
 
 def _process_args(arg_list):
-    return list(map(lambda arg: get_serializer(arg.type).load(arg.body),
-        arg_list))
+    return list(map(lambda v: get_serializer(v.type).load(v.body), arg_list))
 
 
 def _exec_func(kvs, func, args):
@@ -113,17 +117,15 @@ def _exec_func(kvs, func, args):
     return  func(*func_args)
 
 def _resolve_ref(ref, kvs):
-    ref_data = kvs.get(ref.key)
+    ref_data = kvs.get(ref.key, ref.obj_type)
+    print(ref.key)
 
     # when chaining function executions, we must wait
     while not ref_data:
-        ref_data = kvs.get(ref.key)
-
-    refval = Value()
-    refval.ParseFromString(ref_data)
+        ref_data = kvs.get(ref.key, ref.obj_type)
 
     if ref.deserialize:
-        refval = get_serializer(refval.type).load(refval.body)
+        ref_data = deserialize_val(ref_data.reveal()[1])
 
-    return refval
+    return ref_data
 
