@@ -87,7 +87,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
     departed_executors = set()
     executors, schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
-            departed_executors, key_cache_map, key_ip_map)
+            departed_executors, key_cache_map, key_ip_map, kvs)
 
     start = time.time()
 
@@ -122,7 +122,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                 # because the cluster was out of date -- so we update cluster
                 # state before proceeding
                 executors, schedulers = _update_cluster_state(requestor_cache,
-                        mgmt_ip, departed_executors, key_cache_map, key_ip_map)
+                        mgmt_ip, departed_executors, key_cache_map, key_ip_map,
+                        kvs)
 
                 accepted, error, rid = call_dag(call, requestor_cache,
                         pusher_cache, dags, func_locations, key_ip_map)
@@ -202,7 +203,7 @@ def scheduler(ip, mgmt_ip, route_addr):
         end = time.time()
         if end - start > THRESHOLD:
             executors, schedulers = _update_cluster_state(requestor_cache,
-                    mgmt_ip, departed_executors, key_cache_map, key_ip_map)
+                    mgmt_ip, departed_executors, key_cache_map, key_ip_map, kvs)
 
             dag_names = KeySet()
             for name in dags.keys():
@@ -217,7 +218,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             start = time.time()
 
 def _update_cluster_state(requestor_cache, mgmt_ip, departed_executors,
-        key_cache_map, key_ip_map):
+        key_cache_map, key_ip_map, kvs):
     # update our local key-cache mapping information
     executors = utils._get_ip_set(utils._get_executor_list_address(mgmt_ip),
             requestor_cache, True)

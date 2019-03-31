@@ -215,6 +215,7 @@ class AnnaClient():
 
     def _get_worker_address(self, key, pick=True):
         if key not in self.address_cache:
+            print('Updating address cache for %s.' % (key))
             port = random.choice(self.elb_ports)
             addresses = self._query_routing(key, port)
             self.address_cache[key] = addresses
@@ -245,6 +246,9 @@ class AnnaClient():
         send_request(key_request, send_sock)
         response = recv_response([key_request.request_id],
                 self.key_address_puller,  KeyAddressResponse)[0]
+
+        print('Queried routing! Response is: ')
+        print(response)
 
         result = []
         for t in response.addresses:

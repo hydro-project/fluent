@@ -62,6 +62,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     poller.register(exec_socket, zmq.POLLIN)
     poller.register(dag_queue_socket, zmq.POLLIN)
     poller.register(dag_exec_socket, zmq.POLLIN)
+    poller.register(self_depart_socket, zmq.POLLIN)
 
     client = IpcAnnaClient()
 
@@ -70,6 +71,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     status.tid = thread_id
     status.running = True
     utils._push_status(schedulers, pusher_cache, status)
+
+    departing = False
 
     # this is going to be a map of map of maps for every function that we have
     # pinnned, we will track a map of execution ids to DAG schedules
@@ -170,6 +173,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             status.running = False
             utils._push_status(schedulers, pusher_cache, status)
 
+            departing = True
+
         # periodically report function occupancy
         report_end = time.time()
         if report_end - report_start > REPORT_THRESH:
@@ -177,13 +182,13 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             status.utilization = utilization
 
             sckt = pusher_cache.get(utils._get_util_report_address(mgmt_ip))
-            sckt.send_string(status.SerializeToString())
+            sckt.send(status.SerializeToString())
 
-            logging.info('Total thread occupancy: %.4f%%' % (util * 100))
+            logging.info('Total thread occupancy: %.4f%%' % (utilization))
 
             for event in event_occupancy:
                 occ = event_occupancy[event]
-                logging.info('Event %s occupancy: %.4f%%' % (event, occ * 100))
+                logging.info('Event %s occupancy: %.4f%%' % (event, occ))
                 event_occupancy[event] = 0.0
 
             report_start = time.time()
@@ -199,7 +204,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             # if we are departing and have cleared our queues, let the
             # management server know, and exit the process
             if departing and len(queue) == 0:
-                sckt = pusher_cache.get(_get_depart_done_addr(mgmt_ip))
+                sckt = pusher_cache.get(utils._get_depart_done_addr(mgmt_ip))
                 sckt.send_string(ip)
 
                 return 0

@@ -30,9 +30,12 @@ from remove_node import remove_node
 import util
 
 REPORT_PERIOD = 15
-UTILIZATION_MAX = .60
+UTILIZATION_MAX = .30
 PINNED_COUNT_MAX = 15
 UTILIZATION_MIN = .10
+
+GRACE_PERIOD = 120
+grace_start = 0
 
 NUM_EXEC_THREADS = 3
 EXECUTOR_INCREASE = 2 # the number of exec nodes to add at once
@@ -124,7 +127,7 @@ def run():
 
             count = str(pod.status.container_statuses[0].restart_count)
 
-            logging.info('Returning restart count %d for IP %s.' % (count, ip))
+            logging.info('Returning restart count %s for IP %s.' % (count, ip))
             restart_pull_socket.send_string(count)
 
         if list_executors_socket in socks and socks[list_executors_socket] == \
@@ -152,8 +155,8 @@ def run():
                 continue
 
             executor_statuses[key] = status
-            logging.info('Received thread status update from %s:%d: %.4f ' +
-                    'occupancy, %d functions pinned' % (status.ip, status.tid,
+            logging.info(('Received thread status update from %s:%d: %.4f ' +
+                    'occupancy, %d functions pinned') % (status.ip, status.tid,
                         status.utilization, len(status.functions)))
 
         if list_schedulers_socket in socks and socks[list_schedulers_socket] == \
@@ -192,39 +195,68 @@ def run():
 
 def check_executor_utilization(client, ctx, cfile, executor_statuses,
         departing_executors):
+    global grace_start
+
     utilization_sum = 0.0
     pinned_function_count = 0
 
-    for status in executor_statuses:
+    # if no executors have joined yet, we don't need to do any reporting
+    if len(executor_statuses) == 0:
+        return
+
+    for status in executor_statuses.values():
         utilization_sum += status.utilization
         pinned_function_count += len(status.functions)
 
-    avg_utilization = utilization / len(executor_statuses)
+    avg_utilization = utilization_sum / len(executor_statuses)
     avg_pinned_count = pinned_function_count / len(executor_statuses)
     logging.info('Average executor utilization: %.4f' % (avg_utilization))
     logging.info('Average pinned function count: %.2f' % (avg_pinned_count))
 
-    if avg_utilization > UTILIZATION_MAX or avg_pinned_count > PINNED_COUNT_MAX:
-        mon_ips = util.get_pod_ips(client, 'role=monitoring')
-        route_addr = get_service_address(client, 'routing-service')
-        scheduler_ips = util.get_pod_ips(client, 'role=scheduler')
+    logging.info('time.time is %f; grace_start + GRACE_PERIOD is %f' %
+            (time.time(), grace_start + GRACE_PERIOD))
+    logging.info('avg_utilization > UTILIZATION_MAX: %s' % (str(avg_utilization
+        > UTILIZATION_MAX)))
 
-        add_node(client, cfile, ['function'], [EXECUTOR_INCREASE], mon_ips,
-                route_addr=route_addr, scheduler_ips=scheduler_ips)
+    # we check to see if the grace period has ended; we only check to implement
+    # some of the elasticity decisions if that is the case
+    if time.time() > (grace_start + GRACE_PERIOD):
+        grace_start = 0
 
-    # we only decide to kill nodes if they are underutilized and if there are
-    # at last two executors in the system -- we never scale down past that
-    if avg_utilization < UTILIZATION_MIN and len(executor_statuses) > 2:
-        ip = random.choice(executor_statuses.values()).ip
+        if avg_utilization > UTILIZATION_MAX or avg_pinned_count > \
+                PINNED_COUNT_MAX:
+            logging.info(('Average utilization is %.4f. Adding %d nodes to '
+                 + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
+            mon_ips = util.get_pod_ips(client, 'role=monitoring')
+            route_addr = util.get_service_address(client, 'routing-service')
+            scheduler_ips = util.get_pod_ips(client, 'role=scheduler')
 
-        for tid in range(NUM_EXEC_THREADS):
-            sckt = ctx.socket(zmq.PUSH)
-            sckt.connect(_get_executor_depart_address(ip))
+            add_nodes(client, cfile, ['function'], [EXECUTOR_INCREASE], mon_ips,
+                    route_addr=route_addr, scheduler_ips=scheduler_ips)
 
-            # this message does not matter
-            sckt.send(b'')
+            # start the grace period after adding nodes
+            grace_start = time.time()
 
-        departing_executors[ip] = NUM_EXEC_THREADS
+        # we only decide to kill nodes if they are underutilized and if there
+        # are at last two executors in the system -- we never scale down past
+        # that
+        num_nodes = len(executor_statuses) / NUM_EXEC_THREADS
+
+        if avg_utilization < UTILIZATION_MIN and num_nodes > 2:
+            ip = random.choice(list(executor_statuses.values())).ip
+            logging.info(('Average utilization is %.4f, and there are %d '
+                    + 'executors. Removing IP %s.') % (avg_utilization,
+                        len(executor_statuses), ip))
+
+            for tid in range(NUM_EXEC_THREADS):
+                sckt = ctx.socket(zmq.PUSH)
+                sckt.connect(util._get_executor_depart_address(ip, tid))
+                del executor_statuses[(ip, tid)]
+
+                # this message does not matter
+                sckt.send(b'')
+
+            departing_executors[ip] = NUM_EXEC_THREADS
 
 
 def check_hash_ring(client, context):
