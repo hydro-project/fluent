@@ -199,7 +199,7 @@ def check_executor_utilization(client, ctx, cfile, executor_statuses,
         utilization_sum += status.utilization
         pinned_function_count += len(status.functions)
 
-    avg_utilization = utilization / len(executor_statuses)
+    avg_utilization = utilization_sum / len(executor_statuses)
     avg_pinned_count = pinned_function_count / len(executor_statuses)
     logging.info('Average executor utilization: %.4f' % (avg_utilization))
     logging.info('Average pinned function count: %.2f' % (avg_pinned_count))
