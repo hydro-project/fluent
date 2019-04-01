@@ -133,7 +133,7 @@ def run():
         if list_executors_socket in socks and socks[list_executors_socket] == \
                 zmq.POLLIN:
             # it doesn't matter what is in this message
-            msg = list_executors_socket.recv_string()
+            msg = list_executors_socket.recv()
 
             ks = KeySet()
             for ip in util.get_pod_ips(client, 'role=function'):
