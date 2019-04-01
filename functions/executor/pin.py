@@ -41,7 +41,7 @@ def pin(pin_socket, client, status, pinned_functions, call_frequency,
     status.functions.append(name)
     pinned_functions[name] = func
     call_frequency[name] = 0
-    call_latencies[name = 0.0
+    call_latencies[name] = 0.0
 
 def unpin(unpin_socket, status, pinned_functions):
     name = unpin_socket.recv_string() # the name of the func to unpin

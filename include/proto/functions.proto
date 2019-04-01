@@ -96,3 +96,13 @@ message DagTrigger {
   required string target_function = 2; // which function is this trigger for
   optional ArgList arguments = 3;
 }
+
+message ExecutorStatistics {
+  message FunctionStatistics {
+    required string fname = 1;
+    required uint32 call_count = 2;
+    required double runtime = 3;
+  }
+
+  repeated FunctionStatistics statistics = 1;
+}
