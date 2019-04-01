@@ -30,8 +30,7 @@ from .create import *
 from .call import *
 from . import utils
 
-THRESHOLD = 15 # how often metadata updated
-
+THRESHOLD = 10 # how often metadata is updated
 
 def scheduler(ip, mgmt_ip, route_addr):
     logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO)
@@ -105,7 +104,6 @@ def scheduler(ip, mgmt_ip, route_addr):
             call_function(func_call_socket, requestor_cache, executors, key_ip_map)
 
         if dag_create_socket in socks and socks[dag_create_socket] == zmq.POLLIN:
-            logging.info('Received DAG create request.')
             create_dag(dag_create_socket, requestor_cache, kvs, executors,
                     dags, func_locations)
 
@@ -155,9 +153,14 @@ def scheduler(ip, mgmt_ip, route_addr):
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking
             if not status.running:
+                old_status = thread_statuses[key]
+
+                executors.remove(key)
                 departed_executors.add(status.ip)
                 del thread_statuses[key]
-                executors.remove(key)
+
+                for fname in old_status.functions:
+                    func_locations[fname].remove(old_status.ip, old_status.tid)
 
                 continue
 
@@ -197,8 +200,6 @@ def scheduler(ip, mgmt_ip, route_addr):
                     dag.ParseFromString(kvs.get(dname).value)
 
                     dags[dname] = dag
-
-
 
         end = time.time()
         if end - start > THRESHOLD:
