@@ -30,8 +30,7 @@ from .create import *
 from .call import *
 from . import utils
 
-THRESHOLD = 15 # how often metadata updated
-
+THRESHOLD = 10 # how often metadata is updated
 
 def scheduler(ip, mgmt_ip, route_addr):
     logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO)
@@ -87,7 +86,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
     departed_executors = set()
     executors, schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
-            departed_executors, key_cache_map, key_ip_map)
+            departed_executors, key_cache_map, key_ip_map, kvs)
 
     start = time.time()
 
@@ -105,7 +104,6 @@ def scheduler(ip, mgmt_ip, route_addr):
             call_function(func_call_socket, requestor_cache, executors, key_ip_map)
 
         if dag_create_socket in socks and socks[dag_create_socket] == zmq.POLLIN:
-            logging.info('Received DAG create request.')
             create_dag(dag_create_socket, requestor_cache, kvs, executors,
                     dags, func_locations)
 
@@ -122,7 +120,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                 # because the cluster was out of date -- so we update cluster
                 # state before proceeding
                 executors, schedulers = _update_cluster_state(requestor_cache,
-                        mgmt_ip, departed_executors, key_cache_map, key_ip_map)
+                        mgmt_ip, departed_executors, key_cache_map, key_ip_map,
+                        kvs)
 
                 accepted, error, rid = call_dag(call, requestor_cache,
                         pusher_cache, dags, func_locations, key_ip_map)
@@ -154,9 +153,14 @@ def scheduler(ip, mgmt_ip, route_addr):
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking
             if not status.running:
+                old_status = thread_statuses[key]
+
+                executors.remove(key)
                 departed_executors.add(status.ip)
                 del thread_statuses[key]
-                executors.remove(key)
+
+                for fname in old_status.functions:
+                    func_locations[fname].remove(old_status.ip, old_status.tid)
 
                 continue
 
@@ -197,12 +201,10 @@ def scheduler(ip, mgmt_ip, route_addr):
 
                     dags[dname] = dag
 
-
-
         end = time.time()
         if end - start > THRESHOLD:
             executors, schedulers = _update_cluster_state(requestor_cache,
-                    mgmt_ip, departed_executors, key_cache_map, key_ip_map)
+                    mgmt_ip, departed_executors, key_cache_map, key_ip_map, kvs)
 
             dag_names = KeySet()
             for name in dags.keys():
@@ -217,7 +219,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             start = time.time()
 
 def _update_cluster_state(requestor_cache, mgmt_ip, departed_executors,
-        key_cache_map, key_ip_map):
+        key_cache_map, key_ip_map, kvs):
     # update our local key-cache mapping information
     executors = utils._get_ip_set(utils._get_executor_list_address(mgmt_ip),
             requestor_cache, True)

@@ -20,7 +20,7 @@ from include.server_utils import *
 
 FUNCOBJ = 'funcs/index-allfuncs'
 
-NUM_EXEC_THREADS = 1
+NUM_EXEC_THREADS = 3
 
 EXECUTORS_PORT = 7002
 SCHEDULERS_PORT = 7004
@@ -66,9 +66,6 @@ def _get_exec_address(ip, tid):
 
 
 def _get_queue_address(ip, tid):
-    print('in get quueue addr')
-    print(ip)
-    print(tid)
     return 'tcp://' + ip + ':' + str(DAG_QUEUE_PORT + tid)
 
 

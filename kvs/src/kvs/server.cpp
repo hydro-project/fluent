@@ -595,10 +595,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       // Get the most recent list of cache IPs.
       // (Actually gets the list of all current functional nodes.)
       // (The message content doesn't matter here; it's an argless RPC call.)
-      kZmqUtil->send_string(" ", &func_nodes_requester);
+      kZmqUtil->send("", &func_nodes_requester);
       // Get the response.
       KeySet func_nodes;
-      func_nodes.ParseFromString(kZmqUtil->recv_string(&func_nodes_requester));
+      func_nodes.ParseFromString(kZmqUtil->recv(&func_nodes_requester));
 
       // Update extant_caches with the response.
       set<Address> deleted_caches = std::move(extant_caches);

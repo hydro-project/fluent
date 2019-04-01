@@ -55,6 +55,10 @@ class AnnaClient():
 
     def get(self, key):
         worker_address = self._get_worker_address(key)
+
+        if not worker_address:
+            return None
+
         send_sock = self.pusher_cache.get(worker_address)
 
         req, _ = self._prepare_data_request(key)
@@ -79,6 +83,9 @@ class AnnaClient():
 
     def get_all(self, key):
         worker_addresses = self._get_worker_address(key, False)
+
+        if not worker_addresses:
+            return None
 
         req, _ = self._prepare_data_request(key)
         req.type = GET
@@ -111,6 +118,9 @@ class AnnaClient():
 
     def put_all(self, key, value):
         worker_addresses = self._get_worker_address(key, False)
+
+        if not worker_addresses:
+            return False
 
         req, tup = self._prepare_data_request(key)
         req.type = PUT
@@ -145,6 +155,10 @@ class AnnaClient():
 
     def put(self, key, value):
         worker_address = self._get_worker_address(key)
+
+        if not worker_address:
+            return False
+
         send_sock = self.pusher_cache.get(worker_address)
 
         req, tup = self._prepare_data_request(key)
@@ -219,6 +233,9 @@ class AnnaClient():
             addresses = self._query_routing(key, port)
             self.address_cache[key] = addresses
 
+        if len(self.address_cache[key]) == 0:
+            return None
+
         if pick:
             return random.choice(self.address_cache[key])
         else:
@@ -245,6 +262,9 @@ class AnnaClient():
         send_request(key_request, send_sock)
         response = recv_response([key_request.request_id],
                 self.key_address_puller,  KeyAddressResponse)[0]
+
+        if response.error != 0:
+            return []
 
         result = []
         for t in response.addresses:
