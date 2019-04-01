@@ -34,6 +34,9 @@ UTILIZATION_MAX = .30
 PINNED_COUNT_MAX = 15
 UTILIZATION_MIN = .10
 
+LATENCY_RATIO = 1.25
+CALL_COUNT_THRESHOLD = 200
+
 GRACE_PERIOD = 120
 grace_start = 0
 
@@ -62,6 +65,9 @@ def run():
     executor_depart_socket = context.socket(zmq.PULL)
     executor_depart_socket.bind('tcp://*:7005')
 
+    executor_statistics_socket = context.socket(zmq.PULL)
+    executor_statistics_socket.bind('tcp://*:7006')
+
     poller = zmq.Poller()
     poller.register(restart_pull_socket, zmq.POLLIN)
     poller.register(churn_pull_socket, zmq.POLLIN)
@@ -69,6 +75,7 @@ def run():
     poller.register(list_executors_socket, zmq.POLLIN)
     poller.register(list_schedulers_socket, zmq.POLLIN)
     poller.register(executor_depart_socket, zmq.POLLIN)
+    poller.register(executor_statistics_socket, zmq.POLLIN)
 
     cfile = '/fluent/conf/kvs-base.yml'
 
@@ -83,6 +90,9 @@ def run():
     # track the self-reported status of each function execution thread
     executor_statuses = {}
     departing_executors = {}
+    function_frequencies = {}
+    function_runtimes = {}
+    latency_history = {}
 
     start = time.time()
     while True:
@@ -181,6 +191,16 @@ def run():
                 remove_node(ip, 'function')
                 del departing_executors[ip]
 
+        if executor_statistics_socket in socks and \
+                socks[executor_statistics_socket] == zmq.POLLIN:
+            stats = ExecutorStatistics()
+            stats.ParseFromString(executor_statistics_socket.recv())
+
+            for fstats in stats.statistics:
+                fname = fstats.name
+                function_frequencies[fname] += fstats.call_count
+                function_runtimes[fname] += fstats.runtime
+
         end = time.time()
         if end - start > REPORT_PERIOD:
             logging.info('Checking hash ring...')
@@ -191,7 +211,84 @@ def run():
 
             check_executor_utilization(client, context, cfile,
                     executor_statuses, departing_executors)
+
+            check_function_load(function_frequencies, function_runtimes,
+                    executor_statuses, latency_history)
             start = time.time()
+
+def check_function_load(function_frequencies, function_runtimes,
+        executor_statuses, latency_history):
+
+    # construct a reverse index that tracks where each function is currently
+    # replicated
+    func_locations = {}
+    for key in executor_statuses:
+        status = executor_statuses[key]
+        for fname in status.functions:
+            if fname not in func_locations:
+                func_locations[fname] = set()
+
+            func_locations[fname].add(key)
+
+    for fname in function_frequencies:
+        runtime = function_runtimes[fname]
+        call_count = function_frequencies[fname]
+
+        avg_latency = runtime / call_count
+
+        if fname in latency_history:
+            historical, count = latency_history[fname]
+
+            ratio = avg_latency / historical
+            if ratio > LATENCY_RATIO:
+                logging.info(('Function %s: recent latency average (%.4f) is ' +
+                        '%.2f times the historical average. Adding replicas.')
+                        % (fname, avg_latency, ratio))
+                num_replicas = math.ceil(ratio) - len(func_locations[fname])
+                replicate_function(fname, num_replicas, func_locations,
+                        executor_statuses.keys())
+
+            # update these variables based on history, so we can insert them
+            # into the history tracker
+            runtime += historical * count
+            call_count += count
+            avg_latency = runtime / call_count
+        else:
+            if call_count > CALL_COUNT_THRESHOLD:
+                logging.info(('Function %s: %d calls in recent period exceeds'
+                    + ' threshold. Adding replicas.') % (fname, call_count))
+                num_replicas = math.ceil(call_count / CALL_COUNT_THRESHOLD) - \
+                        len(func_locations[fname])
+                replicate_function(fname, num_replicas, func_locations,
+                        executor_statuses.keys())
+
+        latency_history[fname] = (avg_latency, call_count)
+        function_frequencies[fname] = 0
+        function_runtimes[fname] = 0.0
+
+def replicate_function(fname, num_replicas, func_locations, executors):
+    if num_replicas < 0:
+        return
+
+    for _ in range(num_replicas):
+        existing_replicas = func_locations[fname]
+        candiate_nodes = executors.difference(existing_replicas)
+
+        ip, tid = random.sample(candiate_nodes, 1)[0]
+
+        sckt = ctx.socket(zmq.REQ)
+        sckt.connect(util._get_executor_pin_address(ip, tid))
+        sckt.send(fname)
+
+        response = GenericResponse()
+        response.ParseFromString(sckt.recv())
+
+        if not response.success:
+            # TODO: figure out what to do with the error here -- just try
+            # again?
+            return
+
+        func_locations[fname].add((ip, tid))
 
 def check_executor_utilization(client, ctx, cfile, executor_statuses,
         departing_executors):

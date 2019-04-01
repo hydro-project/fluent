@@ -81,6 +81,12 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # track the actual function objects that we are storing here
     pinned_functions = {}
 
+    # tracks how often each DAG function is called
+    call_frequency = {}
+
+    # tracks runtime cost of excuting a DAG function
+    runtimes = {}
+
     # metadata to track thread utilization
     report_start = time.time()
     event_occupancy = { 'pin': 0.0, 'unpin': 0.0, 'func_exec': 0.0,
@@ -153,6 +159,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             trigger.ParseFromString(dag_exec_socket.recv())
 
             fname = trigger.target_function
+            call_frequency[fname] += 1
 
             exec_dag_function(pusher_cache, client, trigger,
                     pinned_functions[fname], queue[fname][trigger.id])
@@ -160,6 +167,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             elapsed = time.time() - work_start
             event_occupancy['dag_exec'] += elapsed
             total_occupancy += elapsed
+            runtimes[fname] += elapsed
 
         if self_depart_socket in socks and socks[self_depart_socket] == \
                 zmq.POLLIN:
@@ -190,6 +198,20 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 occ = event_occupancy[event]
                 logging.info('Event %s occupancy: %.4f%%' % (event, occ))
                 event_occupancy[event] = 0.0
+
+            stats = ExecutorStatistics()
+            for fname in call_frequency:
+                fstats = stats.statistics.add()
+                fstats.name = fname
+                fstats.call_count = call_frequency[fname]
+                fstats.runtimes = runtimes[fname]
+
+                call_frequency[fname] = 0
+                runtimes[fname] = 0.0
+
+            sckt = pusher_cache.get(utils._get_statistics_report_address(mgmt_ip))
+            sckt.send(stats.SerializeToString())
+
 
             report_start = time.time()
             total_occupancy = 0.0

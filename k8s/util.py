@@ -25,6 +25,7 @@ NAMESPACE = 'default'
 EBS_VOL_COUNT = 4
 
 EXECUTOR_DEPART_PORT = 4050
+EXECUTOR_PIN_PORT = 4000
 
 def replace_yaml_val(yamlobj, name, val):
     for pair in yamlobj:
@@ -94,6 +95,9 @@ def get_pod_ips(client, selector, isRunning=False):
 
 def _get_executor_depart_address(ip, tid):
     return 'tcp://' + ip + ':' + str(tid + EXECUTOR_DEPART_PORT)
+
+def _get_executor_pin_address(ip, tid):
+    return 'tcp://' + ip + ':' + str(tid + EXECUTOR_PIN_PORT)
 
 def get_previous_count(client, kind):
     selector = 'role=%s' % (kind)
