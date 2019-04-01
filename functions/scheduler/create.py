@@ -41,7 +41,7 @@ def create_func(func_create_socket, kvs):
 
 
 def create_dag(dag_create_socket, requestor_cache, kvs, executors, dags,
-        func_locations):
+        func_locations, call_frequency):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -64,6 +64,9 @@ def create_dag(dag_create_socket, requestor_cache, kvs, executors, dags,
         # to deal with error checking in detail rn?
         if not resp.success:
             dag_create_utils.send(resp.SerializeToString())
+
+        if fname not in call_frequency:
+            call_frequency[fname] = 0
 
         if fname not in func_locations:
             func_locations[fname] = set()

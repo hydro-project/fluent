@@ -23,7 +23,7 @@ from anna.client import AnnaClient
 from anna.zmq_util import SocketCache
 from include.kvs_pb2 import *
 from include.functions_pb2 import *
-from include.server_utils import *
+from include import server_utils as sutils
 from include.shared import *
 from include.serializer import *
 from .create import *
@@ -48,28 +48,28 @@ def scheduler(ip, mgmt_ip, route_addr):
     func_locations = {}
 
     connect_socket = ctx.socket(zmq.REP)
-    connect_socket.bind(BIND_ADDR_TEMPLATE % (CONNECT_PORT))
+    connect_socket.bind(sutils.BIND_ADDR_TEMPLATE % (CONNECT_PORT))
 
     func_create_socket = ctx.socket(zmq.REP)
-    func_create_socket.bind(BIND_ADDR_TEMPLATE % (FUNC_CREATE_PORT))
+    func_create_socket.bind(sutils.BIND_ADDR_TEMPLATE % (FUNC_CREATE_PORT))
 
     func_call_socket = ctx.socket(zmq.REP)
-    func_call_socket.bind(BIND_ADDR_TEMPLATE % (FUNC_CALL_PORT))
+    func_call_socket.bind(sutils.BIND_ADDR_TEMPLATE % (FUNC_CALL_PORT))
 
     dag_create_socket = ctx.socket(zmq.REP)
-    dag_create_socket.bind(BIND_ADDR_TEMPLATE % (DAG_CREATE_PORT))
+    dag_create_socket.bind(sutils.BIND_ADDR_TEMPLATE % (DAG_CREATE_PORT))
 
     dag_call_socket = ctx.socket(zmq.REP)
-    dag_call_socket.bind(BIND_ADDR_TEMPLATE % (DAG_CALL_PORT))
+    dag_call_socket.bind(sutils.BIND_ADDR_TEMPLATE % (DAG_CALL_PORT))
 
     list_socket = ctx.socket(zmq.REP)
-    list_socket.bind(BIND_ADDR_TEMPLATE % (LIST_PORT))
+    list_socket.bind(sutils.BIND_ADDR_TEMPLATE % (LIST_PORT))
 
     exec_status_socket = ctx.socket(zmq.PULL)
-    exec_status_socket.bind(BIND_ADDR_TEMPLATE % (STATUS_PORT))
+    exec_status_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.STATUS_PORT))
 
     sched_update_socket = ctx.socket(zmq.PULL)
-    sched_update_socket.bind(BIND_ADDR_TEMPLATE % (SCHED_UPDATE_PORT))
+    sched_update_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.SCHED_UPDATE_PORT))
 
     requestor_cache = SocketCache(ctx, zmq.REQ)
     pusher_cache = SocketCache(ctx, zmq.PUSH)
@@ -88,6 +88,10 @@ def scheduler(ip, mgmt_ip, route_addr):
     executors, schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
             departed_executors, key_cache_map, key_ip_map, kvs)
 
+    # track how often each DAG function is called
+    call_frequency = {}
+
+
     start = time.time()
 
     while True:
@@ -105,12 +109,16 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if dag_create_socket in socks and socks[dag_create_socket] == zmq.POLLIN:
             create_dag(dag_create_socket, requestor_cache, kvs, executors,
-                    dags, func_locations)
+                    dags, func_locations, call_frequency)
 
         if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
             call = DagCall()
             call.ParseFromString(dag_call_socket.recv())
             exec_id = generate_timestamp(0)
+
+            dag = dags[call.name]
+            for fname in dag[0].functions:
+                call_frequency[fname] += 1
 
             accepted, error, rid = call_dag(call, requestor_cache,
                     pusher_cache, dags, func_locations, key_ip_map)
@@ -215,6 +223,18 @@ def scheduler(ip, mgmt_ip, route_addr):
                 if sched_ip != ip:
                     pusher_cache.get(utils._get_scheduler_update_address(sched_ip))
                     sckt.send(msg)
+
+            stats = ExecutorStatistics()
+            for fname in call_frequency:
+                fstats = stats.statistics.add()
+                fstats.fname = fname
+                fstats.call_count = call_frequency[fname]
+
+                call_frequency[fname] = 0
+
+            sckt = pusher_cache.get(sutils._get_statistics_report_address \
+                    (mgmt_ip))
+            sckt.send(stats.SerializeToString())
 
             start = time.time()
 

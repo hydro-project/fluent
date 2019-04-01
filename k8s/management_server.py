@@ -19,19 +19,16 @@ import logging
 import math
 import os
 import random
-import subprocess
 import time
 import zmq
 
-from add_nodes import add_nodes
 from functions_pb2 import *
 from kvs_pb2 import *
 from metadata_pb2 import *
-from remove_node import remove_node
 import util
 
 REPORT_PERIOD = 15
-UTILIZATION_MAX = .60
+UTILIZATION_MAX = .30
 PINNED_COUNT_MAX = 15
 UTILIZATION_MIN = .10
 
@@ -41,13 +38,16 @@ CALL_COUNT_THRESHOLD = 200
 GRACE_PERIOD = 120
 grace_start = 0
 
+EXECUTOR_REPORT_PERIOD = 20
+
 NUM_EXEC_THREADS = 3
 EXECUTOR_INCREASE = 2 # the number of exec nodes to add at once
 
-logging.basicConfig(filename='log.txt',level=logging.INFO)
+logging.basicConfig(filename='log_management.txt', level=logging.INFO)
 
 def run():
     context = zmq.Context(1)
+
     restart_pull_socket = context.socket(zmq.REP)
     restart_pull_socket.bind('tcp://*:7000')
 
@@ -78,7 +78,11 @@ def run():
     poller.register(executor_depart_socket, zmq.POLLIN)
     poller.register(executor_statistics_socket, zmq.POLLIN)
 
-    cfile = '/fluent/conf/kvs-base.yml'
+    add_push_socket = context.socket(zmq.PUSH)
+    add_push_socket.connect('ipc:///tmp/node_add')
+
+    remove_push_socket = context.socket(zmq.PUSH)
+    remove_push_socket.connect('ipc:///tmp/node_remove')
 
     # waits until the kubecfg file gets copied into the pod -- this might be
     # brittle if we try to move to a non-Ubuntu setting, but I'm not worried
@@ -101,35 +105,17 @@ def run():
 
         if churn_pull_socket in socks and socks[churn_pull_socket] == \
                 zmq.POLLIN:
-
-            msg = churn_pull_socket.recv_string()
-            args = msg.split(':')
+            addrgs = msg.split(':')
 
             if args[0] == 'add':
-                num = int(args[1])
-                ntype = args[2]
-                logging.info('Adding %d new %s node(s)...' % (num, ntype))
-
-                if len(args) > 3:
-                    num_threads = args[3]
-                else:
-                    num_threads = 3
-
-                mon_ips = util.get_pod_ips(client, 'role=monitoring')
-                route_ips = util.get_pod_ips(client, 'role=routing')
-
-                add_nodes(client, cfile, [ntype], [num], mon_ips, route_ips)
-                logging.info('Successfully added %d %s node(s).' % (num, ntype))
+                msg = args[2] + args[1]
+                add_push_socket.send_string(msg)
             elif args[0] == 'remove':
-                ip = args[1]
-                ntype = args[2]
-
-                remove_node(ip, ntype)
-                logging.info('Successfully removed node %s.' % (ip))
+                msg = args[2] = args[1]
+                remove_push_socket.send_string(msg)
 
         if restart_pull_socket in socks and socks[restart_pull_socket] == \
                 zmq.POLLIN:
-
             msg = restart_pull_socket.recv_string()
             args = msg.split(':')
 
@@ -189,14 +175,14 @@ def run():
             # wait until all the executors on this IP have cleared their queues
             # and left; then we remove the node
             if departing_executors[ip] == 0:
-                remove_node(ip, 'function')
+                msg = 'function:' + ip
+                remove_push_socket.send_string(msg)
                 del departing_executors[ip]
 
         if executor_statistics_socket in socks and \
                 socks[executor_statistics_socket] == zmq.POLLIN:
             stats = ExecutorStatistics()
             stats.ParseFromString(executor_statistics_socket.recv())
-            logging.info(stats)
 
             for fstats in stats.statistics:
                 fname = fstats.fname
@@ -214,10 +200,10 @@ def run():
             check_hash_ring(client, context)
 
             logging.info('Checking for extra nodes...')
-            check_unused_nodes(client, cfile)
+            check_unused_nodes(client, add_push_socket)
 
-            check_executor_utilization(client, context, cfile,
-                    executor_statuses, departing_executors)
+            check_executor_utilization(client, context, executor_statuses,
+                    departing_executors, add_push_socket)
 
             check_function_load(context, function_frequencies, function_runtimes,
                     executor_statuses, latency_history)
@@ -239,19 +225,30 @@ def check_function_load(context, function_frequencies, function_runtimes,
 
     executors = set(executor_statuses.keys())
 
-    logging.info(function_frequencies)
-    logging.info(function_runtimes)
     for fname in function_frequencies:
         runtime = function_runtimes[fname]
         call_count = function_frequencies[fname]
 
-        if call_count == 0:
+        if call_count == 0 or runtime == 0:
             continue
 
         avg_latency = runtime / call_count
+        logging.info('Function %s: %d calls, %.4f average latency.' % (fname,
+            call_count, avg_latency))
 
-        if fname in latency_history:
+        num_replicas = len(func_locations[fname])
+        thruput = num_replicas * EXECUTOR_REPORT_PERIOD * (1 / avg_latency)
+
+        if call_count > thruput:
+            logging.info(('Function %s: %d calls in recent period exceeds'
+                + ' threshold. Adding replicas.') % (fname, call_count))
+            increase = math.ceil(call_count / thruput) -  num_replicas
+            replicate_function(fname, context, increase, func_locations,
+                    executors)
+        elif fname in latency_history:
             historical, count = latency_history[fname]
+            logging.info('Function %s: %.4f historical latency.' %
+                    (fname, historical))
 
             ratio = avg_latency / historical
             if ratio > LATENCY_RATIO:
@@ -267,14 +264,6 @@ def check_function_load(context, function_frequencies, function_runtimes,
             runtime += historical * count
             call_count += count
             avg_latency = runtime / call_count
-        else:
-            if call_count > CALL_COUNT_THRESHOLD:
-                logging.info(('Function %s: %d calls in recent period exceeds'
-                    + ' threshold. Adding replicas.') % (fname, call_count))
-                num_replicas = math.ceil(call_count / CALL_COUNT_THRESHOLD) - \
-                        len(func_locations[fname])
-                replicate_function(fname, context, num_replicas, func_locations,
-                        executors)
 
         latency_history[fname] = (avg_latency, call_count)
         function_frequencies[fname] = 0
@@ -288,11 +277,14 @@ def replicate_function(fname, context, num_replicas, func_locations, executors):
         existing_replicas = func_locations[fname]
         candiate_nodes = executors.difference(existing_replicas)
 
+        if len(candiate_nodes) == 0:
+            continue
+
         ip, tid = random.sample(candiate_nodes, 1)[0]
 
         sckt = context.socket(zmq.REQ)
         sckt.connect(util._get_executor_pin_address(ip, tid))
-        sckt.send(fname)
+        sckt.send_string(fname)
 
         response = GenericResponse()
         response.ParseFromString(sckt.recv())
@@ -304,8 +296,8 @@ def replicate_function(fname, context, num_replicas, func_locations, executors):
 
         func_locations[fname].add((ip, tid))
 
-def check_executor_utilization(client, ctx, cfile, executor_statuses,
-        departing_executors):
+def check_executor_utilization(client, ctx, executor_statuses,
+        departing_executors, add_push_socket):
     global grace_start
 
     utilization_sum = 0.0
@@ -333,12 +325,9 @@ def check_executor_utilization(client, ctx, cfile, executor_statuses,
                 PINNED_COUNT_MAX:
             logging.info(('Average utilization is %.4f. Adding %d nodes to '
                  + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
-            mon_ips = util.get_pod_ips(client, 'role=monitoring')
-            route_addr = util.get_service_address(client, 'routing-service')
-            scheduler_ips = util.get_pod_ips(client, 'role=scheduler')
 
-            add_nodes(client, cfile, ['function'], [EXECUTOR_INCREASE], mon_ips,
-                    route_addr=route_addr, scheduler_ips=scheduler_ips)
+            msg = 'function:' + str(EXECUTOR_INCREASE)
+            add_push_socket.send_string(msg)
 
             # start the grace period after adding nodes
             grace_start = time.time()
@@ -440,7 +429,7 @@ def send_msg(msg, context, ip, port):
     sckt.connect('tcp://' + ip + ':' + str(port))
     sckt.send_string(msg)
 
-def check_unused_nodes(client, cfile):
+def check_unused_nodes(client, add_push_socket):
     kinds = ['ebs', 'memory']
 
     for kind in kinds:
@@ -464,7 +453,8 @@ def check_unused_nodes(client, cfile):
             kind))
         for node_ip in unallocated:
             # note that the last argument is a list of lists
-            add_nodes(client, cfile, [kind], [1], mon_ips, route_ips, [[nodes[node_ip]]])
+            msg = kind + ':1'
+            add_push_socket.send_string(msg)
 
 if __name__ == '__main__':
     # wait for this file to appear before starting

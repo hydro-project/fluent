@@ -22,10 +22,10 @@ from anna.zmq_util import SocketCache
 from .call import *
 from .pin import *
 from . import utils
-from include.server_utils import *
+from include import server_utils as sutils
 from include.shared import *
 
-REPORT_THRESH = 30
+REPORT_THRESH = 20
 global_util = 0.0
 
 def executor(ip, mgmt_ip, schedulers, thread_id):
@@ -36,22 +36,24 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     poller = zmq.Poller()
 
     pin_socket = ctx.socket(zmq.REP)
-    pin_socket.bind(BIND_ADDR_TEMPLATE % (PIN_PORT + thread_id))
+    pin_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.PIN_PORT + thread_id))
 
     unpin_socket = ctx.socket(zmq.REP)
-    unpin_socket.bind(BIND_ADDR_TEMPLATE % (UNPIN_PORT + thread_id))
+    unpin_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.UNPIN_PORT + thread_id))
 
     exec_socket = ctx.socket(zmq.REP)
-    exec_socket.bind(BIND_ADDR_TEMPLATE % (FUNC_EXEC_PORT + thread_id))
+    exec_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.FUNC_EXEC_PORT + thread_id))
 
     dag_queue_socket = ctx.socket(zmq.REP)
-    dag_queue_socket.bind(BIND_ADDR_TEMPLATE % (DAG_QUEUE_PORT + thread_id))
+    dag_queue_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_QUEUE_PORT
+        + thread_id))
 
     dag_exec_socket = ctx.socket(zmq.PULL)
-    dag_exec_socket.bind(BIND_ADDR_TEMPLATE % (DAG_EXEC_PORT + thread_id))
+    dag_exec_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_EXEC_PORT
+        + thread_id))
 
     self_depart_socket = ctx.socket(zmq.PULL)
-    self_depart_socket.bind(BIND_ADDR_TEMPLATE % (SELF_DEPART_PORT +
+    self_depart_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.SELF_DEPART_PORT +
         thread_id))
 
     pusher_cache = SocketCache(ctx, zmq.PUSH)
@@ -81,9 +83,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # track the actual function objects that we are storing here
     pinned_functions = {}
 
-    # tracks how often each DAG function is called
-    call_frequency = {}
-
     # tracks runtime cost of excuting a DAG function
     runtimes = {}
 
@@ -98,8 +97,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
-            pin(pin_socket, client, status, pinned_functions, call_frequency,
-                    runtimes)
+            pin(pin_socket, client, status, pinned_functions, runtimes)
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -108,8 +106,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
             work_start = time.time()
-            unpin(unpin_socket, status, pinned_functions, call_frequency,
-                    runtimes)
+            unpin(unpin_socket, status, pinned_functions, runtimes)
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -141,15 +138,15 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     fname in queue and \
                     schedule.id not in queue[fname].keys()) or \
                     schedule.locations[fname].split(':')[0] != ip:
-                error.error = INVALID_TARGET
-                dag_queue_socket.send(error.SerializeToString())
+                sutils.error.error = INVALID_TARGET
+                dag_queue_socket.send(sutils.error.SerializeToString())
                 continue
 
             if fname not in queue:
                 queue[fname] = {}
 
             queue[fname][schedule.id] = schedule
-            dag_queue_socket.send(ok_resp)
+            dag_queue_socket.send(sutils.ok_resp)
 
             elapsed = time.time() - work_start
             event_occupancy['dag_queue'] += elapsed
@@ -161,7 +158,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             trigger.ParseFromString(dag_exec_socket.recv())
 
             fname = trigger.target_function
-            call_frequency[fname] += 1
 
             exec_dag_function(pusher_cache, client, trigger,
                     pinned_functions[fname], queue[fname][trigger.id])
@@ -202,16 +198,15 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 event_occupancy[event] = 0.0
 
             stats = ExecutorStatistics()
-            for fname in call_frequency:
+            for fname in runtimes:
                 fstats = stats.statistics.add()
                 fstats.fname = fname
-                fstats.call_count = call_frequency[fname]
                 fstats.runtime = runtimes[fname]
 
-                call_frequency[fname] = 0
                 runtimes[fname] = 0.0
 
-            sckt = pusher_cache.get(utils._get_statistics_report_address(mgmt_ip))
+            sckt = pusher_cache.get(sutils._get_statistics_report_address \
+                    (mgmt_ip))
             sckt.send(stats.SerializeToString())
 
 

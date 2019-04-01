@@ -100,8 +100,8 @@ message DagTrigger {
 message ExecutorStatistics {
   message FunctionStatistics {
     required string fname = 1;
-    required uint32 call_count = 2;
-    required double runtime = 3;
+    optional uint32 call_count = 2;
+    optional double runtime = 3;
   }
 
   repeated FunctionStatistics statistics = 1;
