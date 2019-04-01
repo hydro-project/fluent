@@ -16,6 +16,7 @@
 
 from functools import reduce
 import logging
+import math
 import os
 import random
 import subprocess
@@ -30,7 +31,7 @@ from remove_node import remove_node
 import util
 
 REPORT_PERIOD = 15
-UTILIZATION_MAX = .30
+UTILIZATION_MAX = .60
 PINNED_COUNT_MAX = 15
 UTILIZATION_MIN = .10
 
@@ -195,9 +196,15 @@ def run():
                 socks[executor_statistics_socket] == zmq.POLLIN:
             stats = ExecutorStatistics()
             stats.ParseFromString(executor_statistics_socket.recv())
+            logging.info(stats)
 
             for fstats in stats.statistics:
-                fname = fstats.name
+                fname = fstats.fname
+
+                if fname not in function_frequencies:
+                    function_frequencies[fname] = 0
+                    function_runtimes[fname] = 0.0
+
                 function_frequencies[fname] += fstats.call_count
                 function_runtimes[fname] += fstats.runtime
 
@@ -212,11 +219,11 @@ def run():
             check_executor_utilization(client, context, cfile,
                     executor_statuses, departing_executors)
 
-            check_function_load(function_frequencies, function_runtimes,
+            check_function_load(context, function_frequencies, function_runtimes,
                     executor_statuses, latency_history)
             start = time.time()
 
-def check_function_load(function_frequencies, function_runtimes,
+def check_function_load(context, function_frequencies, function_runtimes,
         executor_statuses, latency_history):
 
     # construct a reverse index that tracks where each function is currently
@@ -230,9 +237,16 @@ def check_function_load(function_frequencies, function_runtimes,
 
             func_locations[fname].add(key)
 
+    executors = set(executor_statuses.keys())
+
+    logging.info(function_frequencies)
+    logging.info(function_runtimes)
     for fname in function_frequencies:
         runtime = function_runtimes[fname]
         call_count = function_frequencies[fname]
+
+        if call_count == 0:
+            continue
 
         avg_latency = runtime / call_count
 
@@ -245,8 +259,8 @@ def check_function_load(function_frequencies, function_runtimes,
                         '%.2f times the historical average. Adding replicas.')
                         % (fname, avg_latency, ratio))
                 num_replicas = math.ceil(ratio) - len(func_locations[fname])
-                replicate_function(fname, num_replicas, func_locations,
-                        executor_statuses.keys())
+                replicate_function(fname, context, num_replicas, func_locations,
+                        executors)
 
             # update these variables based on history, so we can insert them
             # into the history tracker
@@ -259,14 +273,14 @@ def check_function_load(function_frequencies, function_runtimes,
                     + ' threshold. Adding replicas.') % (fname, call_count))
                 num_replicas = math.ceil(call_count / CALL_COUNT_THRESHOLD) - \
                         len(func_locations[fname])
-                replicate_function(fname, num_replicas, func_locations,
-                        executor_statuses.keys())
+                replicate_function(fname, context, num_replicas, func_locations,
+                        executors)
 
         latency_history[fname] = (avg_latency, call_count)
         function_frequencies[fname] = 0
         function_runtimes[fname] = 0.0
 
-def replicate_function(fname, num_replicas, func_locations, executors):
+def replicate_function(fname, context, num_replicas, func_locations, executors):
     if num_replicas < 0:
         return
 
@@ -276,7 +290,7 @@ def replicate_function(fname, num_replicas, func_locations, executors):
 
         ip, tid = random.sample(candiate_nodes, 1)[0]
 
-        sckt = ctx.socket(zmq.REQ)
+        sckt = context.socket(zmq.REQ)
         sckt.connect(util._get_executor_pin_address(ip, tid))
         sckt.send(fname)
 
@@ -309,11 +323,6 @@ def check_executor_utilization(client, ctx, cfile, executor_statuses,
     avg_pinned_count = pinned_function_count / len(executor_statuses)
     logging.info('Average executor utilization: %.4f' % (avg_utilization))
     logging.info('Average pinned function count: %.2f' % (avg_pinned_count))
-
-    logging.info('time.time is %f; grace_start + GRACE_PERIOD is %f' %
-            (time.time(), grace_start + GRACE_PERIOD))
-    logging.info('avg_utilization > UTILIZATION_MAX: %s' % (str(avg_utilization
-        > UTILIZATION_MAX)))
 
     # we check to see if the grace period has ended; we only check to implement
     # some of the elasticity decisions if that is the case

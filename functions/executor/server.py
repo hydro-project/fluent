@@ -98,7 +98,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
-            pin(pin_socket, client, status, pinned_functions)
+            pin(pin_socket, client, status, pinned_functions, call_frequency,
+                    runtimes)
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -107,7 +108,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
             work_start = time.time()
-            unpin(unpin, status, pinned_functions)
+            unpin(unpin_socket, status, pinned_functions, call_frequency,
+                    runtimes)
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -202,9 +204,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             stats = ExecutorStatistics()
             for fname in call_frequency:
                 fstats = stats.statistics.add()
-                fstats.name = fname
+                fstats.fname = fname
                 fstats.call_count = call_frequency[fname]
-                fstats.runtimes = runtimes[fname]
+                fstats.runtime = runtimes[fname]
 
                 call_frequency[fname] = 0
                 runtimes[fname] = 0.0
