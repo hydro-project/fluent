@@ -22,7 +22,7 @@ spec:
   restartPolicy: Never
   containers:
   - name: kops-container
-    image: vsreekanti/fluent-kops
+    image: fluentproject/kops
     env: 
     - name: AWS_ACCESS_KEY_ID
       value: ACCESS_KEY_ID_DUMMY
@@ -32,9 +32,5 @@ spec:
       value: KOPS_BUCKET_DUMMY
     - name: NAME
       value: CLUSTER_NAME
-    - name: REPO_ORG
-      value: vsreekanti
-    - name: REPO_BRANCH
-      value: func-scheduling
   nodeSelector:
     role: general

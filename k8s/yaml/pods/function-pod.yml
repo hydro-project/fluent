@@ -29,17 +29,13 @@ spec:
   containers:
   ### FUNCTION CONTAINER 2
   - name: function-1
-    image: vsreekanti/fluent-func
+    image: fluentproject/executor
     imagePullPolicy: Always
     env: 
     - name: ROUTE_ADDR
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
-    - name: REPO_ORG
-      value: vsreekanti
-    - name: REPO_BRANCH
-      value: func-scheduling
     - name: SCHED_IPS
       value: SCHED_IPS_DUMMY
     - name: THREAD_ID
@@ -51,17 +47,13 @@ spec:
       name: ipc
   ### FUNCTION CONTAINER 2
   - name: function-2
-    image: vsreekanti/fluent-func
+    image: fluentproject/executor
     imagePullPolicy: Always
     env: 
     - name: ROUTE_ADDR
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
-    - name: REPO_ORG
-      value: vsreekanti
-    - name: REPO_BRANCH
-      value: func-scheduling
     - name: SCHED_IPS
       value: SCHED_IPS_DUMMY
     - name: THREAD_ID
@@ -73,17 +65,13 @@ spec:
       name: ipc
   ### FUNCTION CONTAINER 3
   - name: function-3
-    image: vsreekanti/fluent-func
+    image: fluentproject/executor
     imagePullPolicy: Always
     env: 
     - name: ROUTE_ADDR
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
-    - name: REPO_ORG
-      value: vsreekanti
-    - name: REPO_BRANCH
-      value: func-scheduling
     - name: SCHED_IPS
       value: SCHED_IPS_DUMMY
     - name: THREAD_ID
@@ -95,17 +83,13 @@ spec:
       name: ipc
   ### CACHE CONTAINER
   - name: cache-container
-    image: vsreekanti/fluent-cache
+    image: fluentproject/cache
     imagePullPolicy: Always
     env:
     - name: ROUTE_ADDR
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
-    - name: REPO_ORG
-      value: vsreekanti
-    - name: REPO_BRANCH
-      value: func-scheduling
     volumeMounts:
     - mountPath: /requests
       name: ipc

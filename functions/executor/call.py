@@ -118,7 +118,6 @@ def _exec_func(kvs, func, args):
 
 def _resolve_ref(ref, kvs):
     ref_data = kvs.get(ref.key, ref.obj_type)
-    print(ref.key)
 
     # when chaining function executions, we must wait
     while not ref_data:

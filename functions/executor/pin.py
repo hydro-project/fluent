@@ -51,7 +51,7 @@ def unpin(unpin_socket, status, pinned_functions, runtimes):
         pin_sockt.send(sutils.error.SerializeToString())
         return
 
-    if status.functions[name] != PINNED:
+    if name not in status.functions:
         sutils.error.error = NOT_PINNED
         unpin_socket.send(sutils.error.SerializeToString())
         return
@@ -64,7 +64,5 @@ def unpin(unpin_socket, status, pinned_functions, runtimes):
     if len(func_queue) == 0:
         del pinned_functions[name]
 
-    # tell everyone we're no longer accepting requests for this function
     status.functions.remove(name)
-
     del runtimes[name]

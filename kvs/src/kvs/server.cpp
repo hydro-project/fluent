@@ -595,14 +595,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       // Get the most recent list of cache IPs.
       // (Actually gets the list of all current function executor nodes.)
       // (The message content doesn't matter here; it's an argless RPC call.)
-      std::cout << "Attempting to query func node requester." << std::endl;
       kZmqUtil->send_string("", &func_nodes_requester);
-      std::cout << "Query sent to node requester." << std::endl;
       // Get the response.
       KeySet func_nodes;
-      std::cout << "Attempting to retrieve from fun node requester." << std::endl;
       func_nodes.ParseFromString(kZmqUtil->recv_string(&func_nodes_requester));
-      std::cout << "Retrieved from fun node requester." << std::endl;
 
       // Update extant_caches with the response.
       set<Address> deleted_caches = std::move(extant_caches);

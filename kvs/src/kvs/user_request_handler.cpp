@@ -114,7 +114,6 @@ void user_request_handler(
         access_count += 1;
       }
     } else {
-      log->info("We did not have the replication factor. Made the request pending.");
       pending_requests[key].push_back(
           PendingRequest(request_type, tuple.lattice_type(), payload,
                          response_address, response_id));
