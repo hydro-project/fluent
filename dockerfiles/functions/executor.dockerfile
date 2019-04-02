@@ -14,7 +14,7 @@
 
 FROM fluentproject/base:latest
 
-MAINTAINER Vikram Sreekanti <vsreekanti@gmail..com> version: 0.1
+MAINTAINER Vikram Sreekanti <vsreekanti@gmail.com> version: 0.1
 
 ARG repo_org=fluent-project
 ARG source_branch=master
@@ -22,11 +22,16 @@ ARG build_branch=docker-build
 
 USER root
 
-# check out to the appropriate branch and build the C++ project
+# pipeline specific installs
+RUN pip3 install numpy sklearn scikit-image torch torchvision
+
+# check out to the appropriate branch and install the Python KVS client
 WORKDIR /fluent
-RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
-RUN bash scripts/build-all.sh -j4 -bRelease
+RUN git fetch -p origin && git checkout -b $build_branch origin/$source_branch
+RUN cd client/kvs/python && python3.6 setup.py install --prefix=$HOME/.local
 WORKDIR /
 
-COPY start.sh /
-CMD bash start.sh $SERVER_TYPE
+COPY start-funcs.sh /start-funcs.sh
+
+# start the executor server
+CMD bash start-funcs.sh
