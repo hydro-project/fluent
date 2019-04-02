@@ -73,7 +73,7 @@ RES make_request(const REQ& request, zmq::socket_t& send_socket,
   vector<RES> responses;
   set<string> req_ids{request.request_id()};
   succeed = receive<RES>(recv_socket, req_ids, responses);
-  
+
   if (succeed) {
     return responses[0];
   } else {

@@ -328,7 +328,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
                               .count();
 
       log->info("Handling a user request took {} seconds.",
-          std::to_string((double) time_elapsed / (double) 1000000));
+                std::to_string((double)time_elapsed / (double)1000000));
       working_time += time_elapsed;
       working_time_map[3] += time_elapsed;
     }
