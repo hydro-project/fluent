@@ -145,7 +145,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             prefix = msg if msg else ''
 
             resp = FunctionList()
-            resp.names.append(_get_func_list(client, prefix))
+            resp.names.extend(utils._get_func_list(kvs, prefix))
 
             list_socket.send(resp.SerializeToString())
 

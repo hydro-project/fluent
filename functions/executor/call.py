@@ -62,15 +62,15 @@ def exec_function(exec_socket, kvs, status):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
-    fname = trigger.target_function
-    logging.info('Executing function %s for DAG %s (ID %d).' %
-            (schedule.dag.name, fname, trigger.id))
-
+    fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
     for trname in schedule.triggers:
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
+
+    logging.info('Executing function %s for DAG %s (ID %d).' %
+            (schedule.dag.name, fname, trigger.id))
 
     fargs = _process_args(fargs)
 
@@ -85,6 +85,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
             new_trigger = DagTrigger()
             new_trigger.id = trigger.id
             new_trigger.target_function = conn.sink
+            new_trigger.source = fname
 
             if type(result) != tuple:
                 result = (result,)

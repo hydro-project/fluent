@@ -105,7 +105,8 @@ def run():
 
         if churn_pull_socket in socks and socks[churn_pull_socket] == \
                 zmq.POLLIN:
-            addrgs = msg.split(':')
+            msg = churn_pull_socket.recv_string()
+            args = msg.split(':')
 
             if args[0] == 'add':
                 msg = args[2] + args[1]
