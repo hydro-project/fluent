@@ -16,7 +16,7 @@
 
 # only build a new Docker image if this is a master branch build -- ignore this
 # for PR builds
-if [[ "$TRAVIS_BRANCH" = "master" ]]; then
+if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
   docker pull fluentproject/base
   docker pull fluentproject/annakvs
   docker pull fluentproject/kops
