@@ -31,6 +31,12 @@ const unsigned kKopsRestartCountPort = 7000;
 // used by the cache system
 const unsigned kCacheUpdatePort = 7150;
 
+// used by the local store
+const unsigned kLocalStoreUpdatePort = 7150;
+const unsigned kLocalStoreVersionGCPort = 7200;
+const unsigned kLocalStoreCutTransmitRequestPort = 7250;
+const unsigned kLocalStoreVersionedKeyRequestPort = 7300;
+
 const string kBindBase = "tcp://*:";
 
 class CacheThread {
@@ -62,6 +68,62 @@ class CacheThread {
 
   Address cache_update_connect_address() const {
     return ip_base_ + std::to_string(tid_ + kCacheUpdatePort);
+  }
+};
+
+class LocalStoreThread {
+  Address ip_;
+  Address ip_base_;
+  unsigned tid_;
+
+ public:
+  LocalStoreThread(Address ip, unsigned tid) :
+      ip_(ip),
+      ip_base_("tcp://" + ip_ + ":"),
+      tid_(tid) {}
+
+  Address ip() const { return ip_; }
+
+  unsigned tid() const { return tid_; }
+
+  Address local_store_get_bind_address() const { return "ipc:///requests/get"; }
+
+  Address local_store_get_connect_address() const { return "ipc:///requests/get"; }
+
+  Address local_store_put_bind_address() const { return "ipc:///requests/put"; }
+
+  Address local_store_put_connect_address() const { return "ipc:///requests/put"; }
+
+  Address local_store_update_bind_address() const {
+    return kBindBase + std::to_string(tid_ + kLocalStoreUpdatePort);
+  }
+
+  Address local_store_update_connect_address() const {
+    return ip_base_ + std::to_string(tid_ + kLocalStoreUpdatePort);
+  }
+
+  Address local_store_version_gc_bind_address() const {
+    return kBindBase + std::to_string(tid_ + kLocalStoreVersionGCPort);
+  }
+
+  Address local_store_version_gc_connect_address() const {
+    return ip_base_ + std::to_string(tid_ + kLocalStoreVersionGCPort);
+  }
+
+  Address local_store_cut_transmit_request_bind_address() const {
+    return kBindBase + std::to_string(tid_ + kLocalStoreCutTransmitRequestPort);
+  }
+
+  Address local_store_cut_transmit_request_connect_address() const {
+    return ip_base_ + std::to_string(tid_ + kLocalStoreCutTransmitRequestPort);
+  }
+
+  Address local_store_versioned_key_request_bind_address() const {
+    return kBindBase + std::to_string(tid_ + kLocalStoreVersionedKeyRequestPort);
+  }
+  
+  Address local_store_versioned_key_request_connect_address() const {
+    return ip_base_ + std::to_string(tid_ + kLocalStoreVersionedKeyRequestPort);
   }
 };
 

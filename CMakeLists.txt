@@ -71,7 +71,8 @@ FIND_PACKAGE(Protobuf REQUIRED)
 INCLUDE_DIRECTORIES(${PROTOBUF_INCLUDE_DIR})
 PROTOBUF_GENERATE_CPP(PROTO_SRC PROTO_HEADER
   ./include/proto/kvs.proto
-  ./include/proto/functions.proto)
+  ./include/proto/functions.proto
+  ./include/proto/causal.proto)
 
 # need to build a target at this level or subdirs won't have the 
 # protobuf files generated.

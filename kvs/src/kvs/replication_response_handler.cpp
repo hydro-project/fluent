@@ -85,6 +85,8 @@ void replication_response_handler(
         if (!responsible && request.addr_ != "") {
           KeyResponse response;
 
+          response.set_type(request.type_);
+
           if (request.response_id_ != "") {
             response.set_response_id(request.response_id_);
           }
@@ -102,7 +104,7 @@ void replication_response_handler(
           kZmqUtil->send_string(serialized_response, &pushers[request.addr_]);
         } else if (responsible && request.addr_ == "") {
           // only put requests should fall into this category
-          if (request.type_ == "PUT") {
+          if (request.type_ == RequestType::PUT) {
             if (request.lattice_type_ == LatticeType::NO) {
               log->error("PUT request missing lattice type.");
             } else if (stored_key_map.find(key) != stored_key_map.end() &&
@@ -127,6 +129,8 @@ void replication_response_handler(
         } else if (responsible && request.addr_ != "") {
           KeyResponse response;
 
+          response.set_type(request.type_);
+
           if (request.response_id_ != "") {
             response.set_response_id(request.response_id_);
           }
@@ -134,9 +138,9 @@ void replication_response_handler(
           KeyTuple* tp = response.add_tuples();
           tp->set_key(key);
 
-          if (request.type_ == "GET") {
-            if (stored_key_map.find(key) == stored_key_map.end() ||
-                stored_key_map[key].type_ == LatticeType::NO) {
+          if (request.type_ == RequestType::GET) {
+            if (metadata_map.find(key) == metadata_map.end() ||
+                metadata_map[key].type_ == LatticeType::NO) {
               tp->set_error(1);
             } else {
               auto res =

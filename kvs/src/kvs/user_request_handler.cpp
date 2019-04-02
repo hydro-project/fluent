@@ -29,13 +29,15 @@ void user_request_handler(
   KeyResponse response;
   string response_id = "";
 
+  response.set_type(request.type());
+
   if (request.has_request_id()) {
     response_id = request.request_id();
     response.set_response_id(response_id);
   }
 
   bool succeed;
-  string request_type = RequestType_Name(request.type());
+  RequestType request_type = request.type();
   string response_address =
       request.has_response_address() ? request.response_address() : "";
 
@@ -73,9 +75,9 @@ void user_request_handler(
       } else {  // if we know the responsible threads, we process the request
         KeyTuple* tp = response.add_tuples();
         tp->set_key(key);
-        if (request_type == "GET") {
-          if (stored_key_map.find(key) == stored_key_map.end() ||
-              stored_key_map[key].type_ == LatticeType::NO) {
+        if (request_type == RequestType::GET) {
+          if (metadata_map.find(key) == metadata_map.end() ||
+              metadata_map[key].type_ == LatticeType::NO) {
             tp->set_error(1);
           } else {
             auto res = process_get(key, serializers[stored_key_map[key].type_]);
@@ -83,7 +85,7 @@ void user_request_handler(
             tp->set_payload(res.first);
             tp->set_error(res.second);
           }
-        } else if (request_type == "PUT") {
+        } else if (request_type == RequestType::PUT) {
           if (tuple.lattice_type() == LatticeType::NO) {
             log->error("PUT request missing lattice type.");
           } else if (stored_key_map.find(key) != stored_key_map.end() &&
