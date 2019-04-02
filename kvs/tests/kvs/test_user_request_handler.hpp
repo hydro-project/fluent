@@ -94,8 +94,8 @@ TEST_F(ServerHandlerTest, UserGetSetTest) {
 TEST_F(ServerHandlerTest, UserGetCausalTest) {
   Key key = "key";
   VectorClockValuePair<SetLattice<string>> p;
-  p.vector_clock.insert(1, 1);
-  p.vector_clock.insert(2, 1);
+  p.vector_clock.insert("1", 1);
+  p.vector_clock.insert("2", 1);
   p.value.insert("value1");
   p.value.insert("value2");
   p.value.insert("value3");
@@ -146,8 +146,8 @@ TEST_F(ServerHandlerTest, UserGetCausalTest) {
 
   EXPECT_THAT(left_set, testing::UnorderedElementsAreArray(right_set));
 
-  map<unsigned, unsigned> left_map;
-  map<unsigned, unsigned> right_map;
+  map<string, unsigned> left_map;
+  map<string, unsigned> right_map;
 
   for (const auto& pair : left_value.vector_clock()) {
     left_map[pair.first] = pair.second;
@@ -287,8 +287,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetSetTest) {
 TEST_F(ServerHandlerTest, UserPutAndGetCausalTest) {
   Key key = "key";
   VectorClockValuePair<SetLattice<string>> p;
-  p.vector_clock.insert(1, 1);
-  p.vector_clock.insert(2, 1);
+  p.vector_clock.insert("1", 1);
+  p.vector_clock.insert("2", 1);
   p.value.insert("value1");
   p.value.insert("value2");
   p.value.insert("value3");
@@ -359,8 +359,8 @@ TEST_F(ServerHandlerTest, UserPutAndGetCausalTest) {
 
   EXPECT_THAT(left_set, testing::UnorderedElementsAreArray(right_set));
 
-  map<unsigned, unsigned> left_map;
-  map<unsigned, unsigned> right_map;
+  map<string, unsigned> left_map;
+  map<string, unsigned> right_map;
 
   for (const auto& pair : left_value.vector_clock()) {
     left_map[pair.first] = pair.second;
