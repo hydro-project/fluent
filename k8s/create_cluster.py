@@ -19,12 +19,14 @@ import boto3
 import json
 import kubernetes as k8s
 import sys
+import time
 from util import *
 
 ec2_client = boto3.client('ec2', 'us-east-1')
 
-def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
-        cfile, ssh_key, cluster_name, kops_bucket, aws_key_id, aws_key):
+def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
+        bench_count, cfile, ssh_key, cluster_name, kops_bucket, aws_key_id,
+        aws_key):
 
     # create the cluster object with kops
     run_process(['./create_cluster_object.sh', cluster_name, kops_bucket,
@@ -61,7 +63,8 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
     copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/', kcname)
     copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
             '/root/.ssh/', kcname)
-    copy_file_to_pod(client, cfile, kops_podname, '/fluent/conf/', kcname)
+    os.system('cp %s kvs-config.yml' % cfile)
+    copy_file_to_pod(client, 'kvs-config.yml', kops_podname, '/fluent/conf/', kcname)
 
     # start the monitoring pod
     mon_spec = load_yaml('yaml/pods/monitoring-pod.yml')
@@ -70,6 +73,13 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
     client.create_namespaced_pod(namespace=NAMESPACE, body=mon_spec)
 
     mon_ips = get_pod_ips(client, 'role=monitoring')
+
+    # copy config file into monitoring pod -- wait till we create routing pods,
+    # so we're sure that the monitoring nodes are up and running
+    copy_file_to_pod(client, 'kvs-config.yml', mon_spec['metadata']['name'],
+            '/fluent/conf/', mon_spec['spec']['containers'][0]['name'])
+    os.system('rm kvs-config.yml')
+
 
     print('Creating %d routing nodes...' % (route_count))
     add_nodes(client, cfile, ['routing'], [route_count], mon_ips)
@@ -93,9 +103,14 @@ def create_cluster(mem_count, ebs_count, func_count, route_count, bench_count,
     routing_svc = service_spec['metadata']['name']
     routing_svc_addr = get_service_address(client, routing_svc)
 
+    print('Adding scheduler nodes...')
+    add_nodes(client, cfile, ['scheduler'], [sched_count], mon_ips,
+            route_addr=routing_svc_addr)
+    sched_ips = get_pod_ips(client, 'role=scheduler')
+
     print('Adding function serving nodes...')
     add_nodes(client, cfile, ['function'], [func_count], mon_ips,
-            route_addr=routing_svc_addr)
+            route_addr=routing_svc_addr, scheduler_ips=sched_ips)
 
     print('Creating function service...')
     service_spec = load_yaml('yaml/services/function.yml')
@@ -148,34 +163,34 @@ def parse_args(args, length, typ):
 
 if __name__ == '__main__':
     if len(sys.argv) < 5:
-        print('Usage: ./create_cluster.py min_mem_instances min_ebs_instances \
-                min_func_instances routing_instance benchmark_instances \
-                <path-to-conf-file> <path-to-ssh-key>')
+        print('Usage: ./create_cluster.py min_mem_instances min_ebs_instances'
+                + ' min_func_instances scheduler_instances routing_instance'
+                + ' benchmark_instances <path-to-conf-file> <path-to-ssh-key>')
         print()
-        print('If no SSH key is specified, we will use the default SSH key \
-                (/home/ubuntu/.ssh/id_rsa). The corresponding public key is \
-                assumed to have the same path and end in .pub.')
+        print('If no SSH key is specified, we will use the default SSH key ' +
+                '(/home/ubuntu/.ssh/id_rsa). The corresponding public key is'
+                + ' assumed to have the same path and end in .pub.')
         print()
-        print('If no config file is specific, the default base config file in \
-                $FLUENT_HOME/conf/kvs-base.yml will be used.')
+        print('If no config file is specific, the default base config file in '
+                + '$FLUENT_HOME/conf/kvs-base.yml will be used.')
         sys.exit(1)
 
-    mem, ebs, func, route, bench = parse_args(sys.argv[1:], 5, int)
+    mem, ebs, func, sched, route, bench = parse_args(sys.argv[1:], 6, int)
 
     cluster_name = check_or_get_env_arg('NAME')
     kops_bucket = check_or_get_env_arg('KOPS_STATE_STORE')
     aws_key_id = check_or_get_env_arg('AWS_ACCESS_KEY_ID')
     aws_key = check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
 
-    if len(sys.argv) <= 6:
+    if len(sys.argv) <= 7:
         conf_file = '../conf/kvs-base.yml'
     else:
-        conf_file = sys.argv[6]
+        conf_file = sys.argv[7]
 
-    if len(sys.argv) <= 7:
+    if len(sys.argv) <= 8:
         ssh_key = '/home/ubuntu/.ssh/id_rsa'
     else:
-        ssh_key = sys.argv[7]
+        ssh_key = sys.argv[8]
 
-    create_cluster(mem, ebs, func, route, bench, conf_file, ssh_key,
+    create_cluster(mem, ebs, func, sched, route, bench, conf_file, ssh_key,
             cluster_name, kops_bucket, aws_key_id, aws_key)

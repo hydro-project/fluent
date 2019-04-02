@@ -65,4 +65,5 @@ RUN bash scripts/build-all.sh -j4 -bRelease
 WORKDIR /
 
 COPY start-cache.sh /
+
 CMD bash start-cache.sh $SERVER_TYPE

@@ -20,7 +20,7 @@ metadata:
   name: misc-instances
 spec:
   image: kope.io/k8s-1.11-debian-stretch-amd64-hvm-ebs-2018-08-17
-  machineType: m4.4xlarge
+  machineType: m4.xlarge
   maxSize: 1
   minSize: 1
   role: Node

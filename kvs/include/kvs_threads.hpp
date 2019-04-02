@@ -129,11 +129,11 @@ class ServerThread {
   }
 
   Address cache_ip_response_connect_address() const {
-    return private_base_ + std::to_string(kCacheIpResponsePort);
+    return private_base_ + std::to_string(tid_ + kCacheIpResponsePort);
   }
 
   Address cache_ip_response_bind_address() const {
-    return kBindBase + std::to_string(kCacheIpResponsePort);
+    return kBindBase + std::to_string(tid_ + kCacheIpResponsePort);
   }
 
   Address gossip_connect_address() const {

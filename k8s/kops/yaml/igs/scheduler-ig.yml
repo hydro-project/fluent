@@ -12,30 +12,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-apiVersion: v1
-kind: Service
+apiVersion: kops/v1alpha2
+kind: InstanceGroup
 metadata:
-  name: function-service
+  labels:
+    kops.k8s.io/cluster: CLUSTER_NAME
+  name: scheduler-instances
 spec:
-  type: LoadBalancer
-  ports:
-  - port: 5000
-    targetPort: 5000
-    name: connect
-  - port: 5001
-    targetPort: 5001
-    name: func-create
-  - port: 5002
-    targetPort: 5002
-    name: func-call
-  - port: 5003
-    targetPort: 5003
-    name: list
-  - port: 5004
-    targetPort: 5004
-    name: dag-create
-  - port: 5005
-    targetPort: 5005
-    name: dag-call
-  selector:
+  image: kope.io/k8s-1.11-debian-stretch-amd64-hvm-ebs-2018-08-17
+  machineType: c5.large
+  maxSize: NUM_DUMMY
+  minSize: NUM_DUMMY
+  rootVolumeSize: 32
+  role: Node
+  nodeLabels:
     role: scheduler
+  subnets:
+    - us-east-1a

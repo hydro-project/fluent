@@ -25,6 +25,12 @@ enum SerializerType {
   NUMPY = 2;
 }
 
+enum ErrorType {
+  FUNC_NOT_FOUND = 1;
+  NOT_PINNED = 2;
+  INVALID_TARGET = 3;
+}
+
 message Value {
   required bytes body = 1;
   optional SerializerType type = 2;
@@ -34,8 +40,69 @@ message FunctionCall {
   required string name = 1;
   required uint32 request_id = 2;
   repeated Value args = 3;
+  optional string resp_id = 4;
 }
 
 message FunctionList {
   repeated string names = 1;
+}
+
+message Dag {
+  message DagPair {
+    required string source = 1;
+    required string sink = 2;
+  }
+
+  required string name = 1;
+  repeated string functions = 2;
+  repeated DagPair connections = 3;
+}
+
+message ArgList { 
+  repeated Value args = 1;
+}
+
+message DagCall {
+  required string name = 1;
+  map<string, ArgList> function_args = 2;
+}
+
+message GenericResponse {
+  required bool success = 1;
+  optional string response_id = 2;
+  optional ErrorType error = 3;
+}
+
+message ThreadStatus {
+  required string ip = 1;
+  required uint32 tid = 2;
+  repeated string functions = 3;
+  optional double utilization = 4;
+  required bool running = 5 [default = true];
+}
+
+message DagSchedule {
+  required uint64 id = 1;
+  required string response_id = 2;
+  required Dag dag = 3;
+  required string target_function = 4;
+  map<string, string> locations = 5; // which functions should be executed where
+  // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
+  map<string, ArgList> arguments = 6; 
+}
+
+message DagTrigger {
+  required uint64 id = 1;
+  required string target_function = 2; // which function is this trigger for
+  optional ArgList arguments = 3;
+}
+
+message ExecutorStatistics {
+  message FunctionStatistics {
+    required string fname = 1;
+    optional uint32 call_count = 2;
+    optional double runtime = 3;
+  }
+
+  repeated FunctionStatistics statistics = 1;
 }

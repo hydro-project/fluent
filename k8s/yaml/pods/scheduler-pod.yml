@@ -13,29 +13,26 @@
 #  limitations under the License.
 
 apiVersion: v1
-kind: Service
+kind: Pod
 metadata:
-  name: function-service
-spec:
-  type: LoadBalancer
-  ports:
-  - port: 5000
-    targetPort: 5000
-    name: connect
-  - port: 5001
-    targetPort: 5001
-    name: func-create
-  - port: 5002
-    targetPort: 5002
-    name: func-call
-  - port: 5003
-    targetPort: 5003
-    name: list
-  - port: 5004
-    targetPort: 5004
-    name: dag-create
-  - port: 5005
-    targetPort: 5005
-    name: dag-call
-  selector:
+  name: scheduler-pod-NUM_DUMMY
+  labels: 
     role: scheduler
+spec:
+  restartPolicy: Never
+  hostNetwork: true
+  hostIPC: true
+  containers:
+  - name: scheduler-container
+    image: fluentproject/executor
+    imagePullPolicy: Always
+    env: 
+    - name: ROUTE_ADDR
+      value: ROUTE_ADDR_DUMMY
+    - name: MGMT_IP
+      value: MGMT_IP_DUMMY
+    - name: SYSTEM_FUNC
+      value: scheduler
+  nodeSelector:
+    role: scheduler
+    podid: scheduler-NUM_DUMMY

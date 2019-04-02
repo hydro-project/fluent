@@ -19,6 +19,7 @@ metadata:
   labels: 
     role: function
 spec:
+  restartPolicy: Never
   volumes:
   - name: ipc
     hostPath:
@@ -26,18 +27,64 @@ spec:
   hostNetwork: true
   hostIPC: true
   containers:
-  - name: function-container
-    image: vsreekanti/fluent-func
+  ### FUNCTION CONTAINER 2
+  - name: function-1
+    image: fluentproject/executor
+    imagePullPolicy: Always
     env: 
     - name: ROUTE_ADDR
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
+    - name: SCHED_IPS
+      value: SCHED_IPS_DUMMY
+    - name: THREAD_ID
+      value: "0"
+    - name: SYSTEM_FUNC
+      value: none
     volumeMounts:
     - mountPath: /requests
       name: ipc
+  ### FUNCTION CONTAINER 2
+  - name: function-2
+    image: fluentproject/executor
+    imagePullPolicy: Always
+    env: 
+    - name: ROUTE_ADDR
+      value: ROUTE_ADDR_DUMMY
+    - name: MGMT_IP
+      value: MGMT_IP_DUMMY
+    - name: SCHED_IPS
+      value: SCHED_IPS_DUMMY
+    - name: THREAD_ID
+      value: "1"
+    - name: SYSTEM_FUNC
+      value: none
+    volumeMounts:
+    - mountPath: /requests
+      name: ipc
+  ### FUNCTION CONTAINER 3
+  - name: function-3
+    image: fluentproject/executor
+    imagePullPolicy: Always
+    env: 
+    - name: ROUTE_ADDR
+      value: ROUTE_ADDR_DUMMY
+    - name: MGMT_IP
+      value: MGMT_IP_DUMMY
+    - name: SCHED_IPS
+      value: SCHED_IPS_DUMMY
+    - name: THREAD_ID
+      value: "2"
+    - name: SYSTEM_FUNC
+      value: none
+    volumeMounts:
+    - mountPath: /requests
+      name: ipc
+  ### CACHE CONTAINER
   - name: cache-container
-    image: vsreekanti/fluent-cache
+    image: fluentproject/cache
+    imagePullPolicy: Always
     env:
     - name: ROUTE_ADDR
       value: ROUTE_ADDR_DUMMY

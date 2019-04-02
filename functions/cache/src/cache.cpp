@@ -166,6 +166,19 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
       std::string resp_string;
       response.SerializeToString(&resp_string);
       kZmqUtil->send_string(resp_string, &put_responder);
+
+      // PUT the values into the KVS
+      for (KeyTuple tuple : request.tuples()) {
+        Key key = tuple.key();
+        LatticeType type = tuple.lattice_type();
+
+        switch (type) {
+          case LatticeType::LWW: client.put(key, local_lww_cache[key]); break;
+          case LatticeType::SET: client.put(key, local_set_cache[key]); break;
+          default:  // this should never happen
+            break;
+        }
+      }
     }
 
     // handle updates received from the KVS
@@ -194,8 +207,8 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           switch (key_type_map[key]) {
             case LatticeType::LWW: local_lww_cache.erase(key); break;
             case LatticeType::SET: local_set_cache.erase(key); break;
-            default:
-              break;  // this can never happen
+            default:  // this can never happen
+              break;
           }
 
           key_type_map[key] = tuple.lattice_type();
@@ -220,8 +233,8 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
 
             local_set_cache[key] = new_val;
           }
-          default:
-            break;  // this should never happen!
+          default:  // this should never happen!
+            break;
         }
       }
     }
@@ -249,6 +262,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           generate_timestamp(thread_id), serialized));
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
       client.put(key, val);
+      report_start = std::chrono::system_clock::now();
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.
