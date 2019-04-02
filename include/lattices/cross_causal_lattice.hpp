@@ -43,7 +43,7 @@ struct CrossCausalPayload {
   }
   unsigned size() {
     unsigned dep_size = 0;
-    for (const auto& pair : dependency.reveal()) {
+    for (const auto &pair : dependency.reveal()) {
       dep_size += pair.first.size();
       dep_size += pair.second.size().reveal() * 2 * sizeof(unsigned);
     }
@@ -56,8 +56,7 @@ template <typename T>
 class CrossCausalLattice : public Lattice<CrossCausalPayload<T>> {
  protected:
   void do_merge(const CrossCausalPayload<T> &p) {
-    VC prev =
-        this->element.vector_clock;
+    VC prev = this->element.vector_clock;
     this->element.vector_clock.merge(p.vector_clock);
 
     if (this->element.vector_clock == p.vector_clock) {

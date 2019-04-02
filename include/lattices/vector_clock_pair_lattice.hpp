@@ -47,8 +47,7 @@ template <typename T>
 class CausalPairLattice : public Lattice<VectorClockValuePair<T>> {
  protected:
   void do_merge(const VectorClockValuePair<T> &p) {
-    VC prev =
-        this->element.vector_clock;
+    VC prev = this->element.vector_clock;
     this->element.vector_clock.merge(p.vector_clock);
 
     if (this->element.vector_clock == p.vector_clock) {

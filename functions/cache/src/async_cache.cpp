@@ -22,12 +22,17 @@ unsigned kCacheReportThreshold = 5;
 
 struct PendingClientMetadata {
   PendingClientMetadata() = default;
-  PendingClientMetadata(set<Key> read_set, set<Key> to_cover_set) : read_set_(std::move(read_set)), to_cover_set_(std::move(to_cover_set)) {}
+  PendingClientMetadata(set<Key> read_set, set<Key> to_cover_set) :
+      read_set_(std::move(read_set)),
+      to_cover_set_(std::move(to_cover_set)) {}
   set<Key> read_set_;
   set<Key> to_cover_set_;
 };
 
-string get_serialized_value_from_cache(const Key& key, LatticeType type, const map<Key, LWWPairLattice<string>>& local_lww_cache, const map<Key, SetLattice<string>>& local_set_cache, logger log) {
+string get_serialized_value_from_cache(
+    const Key& key, LatticeType type,
+    const map<Key, LWWPairLattice<string>>& local_lww_cache,
+    const map<Key, SetLattice<string>>& local_set_cache, logger log) {
   if (type == LatticeType::LWW) {
     if (local_lww_cache.find(key) != local_lww_cache.end()) {
       return serialize(local_lww_cache.at(key));
@@ -48,7 +53,9 @@ string get_serialized_value_from_cache(const Key& key, LatticeType type, const m
   }
 }
 
-void update_cache(const Key& key, LatticeType type, const string& payload, map<Key, LWWPairLattice<string>>& local_lww_cache, map<Key, SetLattice<string>>& local_set_cache, logger log) {
+void update_cache(const Key& key, LatticeType type, const string& payload,
+                  map<Key, LWWPairLattice<string>>& local_lww_cache,
+                  map<Key, SetLattice<string>>& local_set_cache, logger log) {
   if (type == LatticeType::LWW) {
     local_lww_cache[key].merge(deserialize_lww(payload));
   } else if (type == LatticeType::SET) {
@@ -58,14 +65,19 @@ void update_cache(const Key& key, LatticeType type, const string& payload, map<K
   }
 }
 
-void send_get_response(const set<Key>& read_set, const Address& response_addr, const map<Key, LatticeType>& key_type_map, const map<Key, LWWPairLattice<string>>& local_lww_cache, const map<Key, SetLattice<string>>& local_set_cache, SocketCache& pushers, logger log) {
+void send_get_response(const set<Key>& read_set, const Address& response_addr,
+                       const map<Key, LatticeType>& key_type_map,
+                       const map<Key, LWWPairLattice<string>>& local_lww_cache,
+                       const map<Key, SetLattice<string>>& local_set_cache,
+                       SocketCache& pushers, logger log) {
   KeyResponse response;
   response.set_type(RequestType::GET);
   for (const Key& key : read_set) {
     KeyTuple* tp = response.add_tuples();
     tp->set_key(key);
     tp->set_lattice_type(key_type_map.at(key));
-    tp->set_payload(get_serialized_value_from_cache(key, key_type_map.at(key), local_lww_cache, local_set_cache, log));
+    tp->set_payload(get_serialized_value_from_cache(
+        key, key_type_map.at(key), local_lww_cache, local_set_cache, log));
   }
   std::string resp_string;
   response.SerializeToString(&resp_string);
@@ -126,14 +138,14 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       set<Key> to_cover;
 
       for (KeyTuple tuple : request.tuples()) {
-
         Key key = tuple.key();
         read_set.insert(key);
 
         if (!tuple.has_lattice_type()) {
           log->error("Cache requires type to retrieve key.");
           continue;
-        } else if ((key_type_map.find(key) != key_type_map.end()) && (key_type_map[key] != tuple.lattice_type())) {
+        } else if ((key_type_map.find(key) != key_type_map.end()) &&
+                   (key_type_map[key] != tuple.lattice_type())) {
           log->error("lattice type mismatch.");
           continue;
         }
@@ -159,16 +171,16 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
             }
             break;
           }
-          default: {
-            break;
-          }
+          default: { break; }
         }
       }
 
       if (covered) {
-        send_get_response(read_set, request.response_address(), key_type_map, local_lww_cache, local_set_cache, pushers, log);
+        send_get_response(read_set, request.response_address(), key_type_map,
+                          local_lww_cache, local_set_cache, pushers, log);
       } else {
-        pending_request_read_set[request.response_address()] = PendingClientMetadata(read_set, to_cover);
+        pending_request_read_set[request.response_address()] =
+            PendingClientMetadata(read_set, to_cover);
       }
     }
 
@@ -184,13 +196,16 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
         if (!tuple.has_lattice_type()) {
           log->error("Cache requires type to retrieve key.");
           continue;
-        } else if ((key_type_map.find(key) != key_type_map.end()) && (key_type_map[key] != tuple.lattice_type())) {
+        } else if ((key_type_map.find(key) != key_type_map.end()) &&
+                   (key_type_map[key] != tuple.lattice_type())) {
           log->error("lattice type mismatch.");
           continue;
         }
 
-        update_cache(key, tuple.lattice_type(), tuple.payload(), local_lww_cache, local_set_cache, log);
-        client.put_async(key, tuple.payload(), tuple.lattice_type(), request.response_address());
+        update_cache(key, tuple.lattice_type(), tuple.payload(),
+                     local_lww_cache, local_set_cache, log);
+        client.put_async(key, tuple.payload(), tuple.lattice_type(),
+                         request.response_address());
       }
     }
 
@@ -222,42 +237,53 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           switch (key_type_map[key]) {
             case LatticeType::LWW: local_lww_cache.erase(key); break;
             case LatticeType::SET: local_set_cache.erase(key); break;
-            default: break;  // this can never happen
+            default:
+              break;  // this can never happen
           }
 
           key_type_map[key] = tuple.lattice_type();
         }
 
-        update_cache(key, tuple.lattice_type(), tuple.payload(), local_lww_cache, local_set_cache, log);
+        update_cache(key, tuple.lattice_type(), tuple.payload(),
+                     local_lww_cache, local_set_cache, log);
       }
     }
 
-    vector<pair<KeyResponse, Address>> responses = client.receive_async(kZmqUtil);
+    vector<pair<KeyResponse, Address>> responses =
+        client.receive_async(kZmqUtil);
     for (const auto& response : responses) {
       Key key = response.first.tuples(0).key();
-      // TODO: assert that key_type_map[key] and response.first.tuples(0).lattice_type() are the same
-      // first, check if the request failed
+      // TODO: assert that key_type_map[key] and
+      // response.first.tuples(0).lattice_type() are the same first, check if
+      // the request failed
       if (response.first.response_id() == "NULL_ERROR") {
         if (response.first.type() == RequestType::GET) {
           client.get_async(key);
         } else {
           if (response.second != "") {
-            // we only retry for client-issued requests, not for the periodic stat report
-            client.put_async(key, response.first.tuples(0).payload(), response.first.tuples(0).lattice_type(), response.second);
+            // we only retry for client-issued requests, not for the periodic
+            // stat report
+            client.put_async(key, response.first.tuples(0).payload(),
+                             response.first.tuples(0).lattice_type(),
+                             response.second);
           }
         }
       } else {
         // good response
         if (response.first.type() == RequestType::GET) {
           // update cache first
-          update_cache(key, response.first.tuples(0).lattice_type(), response.first.tuples(0).payload(), local_lww_cache, local_set_cache, log);
+          update_cache(key, response.first.tuples(0).lattice_type(),
+                       response.first.tuples(0).payload(), local_lww_cache,
+                       local_set_cache, log);
           // notify clients
           if (cover_map.find(key) != cover_map.end()) {
             for (const Address& addr : cover_map[key]) {
               pending_request_read_set[addr].to_cover_set_.erase(key);
               if (pending_request_read_set[addr].to_cover_set_.size() == 0) {
                 // all keys covered
-                send_get_response(pending_request_read_set[addr].read_set_, addr, key_type_map, local_lww_cache, local_set_cache, pushers, log);
+                send_get_response(pending_request_read_set[addr].read_set_,
+                                  addr, key_type_map, local_lww_cache,
+                                  local_set_cache, pushers, log);
                 pending_request_read_set.erase(addr);
               }
             }

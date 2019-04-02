@@ -36,7 +36,8 @@
 typedef KVStore<Key, LWWPairLattice<string>> MemoryLWWKVS;
 typedef KVStore<Key, SetLattice<string>> MemorySetKVS;
 typedef KVStore<Key, CausalPairLattice<SetLattice<string>>> MemoryCausalKVS;
-typedef KVStore<Key, CrossCausalLattice<SetLattice<string>>> MemoryCrossCausalKVS;
+typedef KVStore<Key, CrossCausalLattice<SetLattice<string>>>
+    MemoryCrossCausalKVS;
 
 // a map that represents which keys should be sent to which IP-port combinations
 typedef map<Address, set<Key>> AddressKeysetMap;
@@ -111,7 +112,8 @@ class MemoryCausalSerializer : public Serializer {
 
   unsigned put(const Key& key, const string& serialized) {
     CausalValue causal_value = deserialize_causal(serialized);
-    VectorClockValuePair<SetLattice<string>> p = to_vector_clock_value_pair(causal_value);
+    VectorClockValuePair<SetLattice<string>> p =
+        to_vector_clock_value_pair(causal_value);
     kvs_->put(key, CausalPairLattice<SetLattice<string>>(p));
     return kvs_->size(key);
   }
@@ -135,7 +137,8 @@ class MemoryCrossCausalSerializer : public Serializer {
 
   unsigned put(const Key& key, const string& serialized) {
     CrossCausalValue cross_causal_value = deserialize_cross_causal(serialized);
-    CrossCausalPayload<SetLattice<string>> p = to_cross_causal_payload(cross_causal_value);
+    CrossCausalPayload<SetLattice<string>> p =
+        to_cross_causal_payload(cross_causal_value);
     kvs_->put(key, CrossCausalLattice<SetLattice<string>>(p));
     return kvs_->size(key);
   }

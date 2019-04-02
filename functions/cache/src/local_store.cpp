@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#include "kvs_async_client.hpp"
 #include "causal.pb.h"
+#include "kvs_async_client.hpp"
 #include "yaml-cpp/yaml.h"
 
 ZmqUtil zmq_util;
@@ -26,30 +26,44 @@ unsigned kCausalGreaterOrEqual = 0;
 unsigned kCausalLess = 1;
 unsigned kCausalConcurrent = 2;
 
-using StoreType = map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>;
-using InPreparationType = map<Key, pair<set<Address>, map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>>>;
-using VersionStoreType = map<string, map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>>;
+using StoreType =
+    map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>;
+using InPreparationType = map<
+    Key,
+    pair<set<Address>,
+         map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>>>;
+using VersionStoreType =
+    map<string,
+        map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>>;
 
 struct PendingClientMetadata {
   PendingClientMetadata() = default;
-  PendingClientMetadata(string client_id, set<Key> read_set, set<Key> to_cover_set) : client_id_(std::move(client_id)), read_set_(std::move(read_set)), to_cover_set_(std::move(to_cover_set)) {}
+  PendingClientMetadata(string client_id, set<Key> read_set,
+                        set<Key> to_cover_set) :
+      client_id_(std::move(client_id)),
+      read_set_(std::move(read_set)),
+      to_cover_set_(std::move(to_cover_set)) {}
   string client_id_;
   set<Key> read_set_;
   set<Key> to_cover_set_;
 };
 
 struct VectorClockHash {
-  std::size_t operator() (const VC &vc) const {
+  std::size_t operator()(const VC& vc) const {
     std::size_t result = std::hash<int>()(-1);
     for (const auto& pair : vc.reveal()) {
-      result = result ^ std::hash<string>()(pair.first) ^ std::hash<unsigned>()(pair.second.reveal());
+      result = result ^ std::hash<string>()(pair.first) ^
+               std::hash<unsigned>()(pair.second.reveal());
     }
     return result;
   }
 };
 
-// given two cross causal lattices (of the same key), compare which one is bigger
-unsigned causal_comparison(const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lhs, const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& rhs) {
+// given two cross causal lattices (of the same key), compare which one is
+// bigger
+unsigned causal_comparison(
+    const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lhs,
+    const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& rhs) {
   VC lhs_prev_vc = lhs->reveal().vector_clock;
   VC lhs_vc = lhs->reveal().vector_clock;
   VC rhs_vc = rhs->reveal().vector_clock;
@@ -78,7 +92,9 @@ unsigned vc_comparison(const VC& lhs, const VC& rhs) {
   }
 }
 
-std::shared_ptr<CrossCausalLattice<SetLattice<string>>> causal_merge(const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lhs, const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& rhs) {
+std::shared_ptr<CrossCausalLattice<SetLattice<string>>> causal_merge(
+    const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lhs,
+    const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& rhs) {
   unsigned comp_result = causal_comparison(lhs, rhs);
   if (comp_result == kCausalGreaterOrEqual) {
     return lhs;
@@ -92,10 +108,9 @@ std::shared_ptr<CrossCausalLattice<SetLattice<string>>> causal_merge(const std::
   }
 }
 
-/*Key find_key_from_in_preparation(const InPreparationType& in_preparation, const Key& key, bool& succeed) {
-  for (const auto& pair : in_preparation) {
-    for (const auto& inner_pair : pair.second.second) {
-      if (inner_pair.first == key) {
+/*Key find_key_from_in_preparation(const InPreparationType& in_preparation,
+const Key& key, bool& succeed) { for (const auto& pair : in_preparation) { for
+(const auto& inner_pair : pair.second.second) { if (inner_pair.first == key) {
         succeed = true;
         return pair.first;
       }
@@ -107,10 +122,14 @@ std::shared_ptr<CrossCausalLattice<SetLattice<string>>> causal_merge(const std::
 // may be more efficient to find the smallest lattice that
 // satisfies the condition...
 // maybe prioritize head key search?
-std::shared_ptr<CrossCausalLattice<SetLattice<string>>> find_lattice_from_in_preparation(const InPreparationType& in_preparation, const Key& key, const VC& vc = VC()) {
+std::shared_ptr<CrossCausalLattice<SetLattice<string>>>
+find_lattice_from_in_preparation(const InPreparationType& in_preparation,
+                                 const Key& key, const VC& vc = VC()) {
   for (const auto& pair : in_preparation) {
     for (const auto& inner_pair : pair.second.second) {
-      if (inner_pair.first == key && vc_comparison(inner_pair.second->reveal().vector_clock, vc) == kCausalGreaterOrEqual) {
+      if (inner_pair.first == key &&
+          vc_comparison(inner_pair.second->reveal().vector_clock, vc) ==
+              kCausalGreaterOrEqual) {
         return inner_pair.second;
       }
     }
@@ -118,17 +137,23 @@ std::shared_ptr<CrossCausalLattice<SetLattice<string>>> find_lattice_from_in_pre
   return nullptr;
 }
 
-bool populate_in_preparation(const Key& head_key, const Key& dep_key, const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lattice, InPreparationType& in_preparation) {
-  if (in_preparation[head_key].second.find(dep_key) == in_preparation[head_key].second.end()) {
+bool populate_in_preparation(
+    const Key& head_key, const Key& dep_key,
+    const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lattice,
+    InPreparationType& in_preparation) {
+  if (in_preparation[head_key].second.find(dep_key) ==
+      in_preparation[head_key].second.end()) {
     in_preparation[head_key].second[dep_key] = lattice;
     return true;
   } else {
-    bool comp_result = causal_comparison(in_preparation[head_key].second[dep_key], lattice);
+    bool comp_result =
+        causal_comparison(in_preparation[head_key].second[dep_key], lattice);
     if (comp_result == kCausalLess) {
       in_preparation[head_key].second[dep_key] = lattice;
       return true;
     } else if (comp_result == kCausalConcurrent) {
-      in_preparation[head_key].second[dep_key] = causal_merge(in_preparation[head_key].second[dep_key], lattice);
+      in_preparation[head_key].second[dep_key] =
+          causal_merge(in_preparation[head_key].second[dep_key], lattice);
       return true;
     } else {
       return false;
@@ -136,45 +161,76 @@ bool populate_in_preparation(const Key& head_key, const Key& dep_key, const std:
   }
 }
 
-void recursive_dependency_check(const Key& head_key, const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lattice, InPreparationType& in_preparation, const StoreType& causal_cut_store, const StoreType& unmerged_store, map<Key, set<Key>>& to_fetch_map, map<Key, std::unordered_map<VC, set<Key>, VectorClockHash>>& cover_map, KvsAsyncClient& client) {
+void recursive_dependency_check(
+    const Key& head_key,
+    const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lattice,
+    InPreparationType& in_preparation, const StoreType& causal_cut_store,
+    const StoreType& unmerged_store, map<Key, set<Key>>& to_fetch_map,
+    map<Key, std::unordered_map<VC, set<Key>, VectorClockHash>>& cover_map,
+    KvsAsyncClient& client) {
   for (const auto& dep_key : lattice->reveal().dependency.key_set().reveal()) {
     // first, check if the dependency is already satisfied in the causal cut
-    if (causal_cut_store.find(dep_key) != causal_cut_store.end() && vc_comparison(causal_cut_store.at(dep_key)->reveal().vector_clock, lattice->reveal().dependency.reveal().at(dep_key)) == kCausalGreaterOrEqual) {
+    if (causal_cut_store.find(dep_key) != causal_cut_store.end() &&
+        vc_comparison(causal_cut_store.at(dep_key)->reveal().vector_clock,
+                      lattice->reveal().dependency.reveal().at(dep_key)) ==
+            kCausalGreaterOrEqual) {
       continue;
     }
     // then, check if the dependency is already satisfied in the in_preparation
-    auto target_lattice = find_lattice_from_in_preparation(in_preparation, dep_key, lattice->reveal().dependency.reveal().at(dep_key));
+    auto target_lattice = find_lattice_from_in_preparation(
+        in_preparation, dep_key,
+        lattice->reveal().dependency.reveal().at(dep_key));
     if (target_lattice != nullptr) {
-      if (populate_in_preparation(head_key, dep_key, target_lattice, in_preparation)) {
-        recursive_dependency_check(head_key, target_lattice, in_preparation, causal_cut_store, unmerged_store, to_fetch_map, cover_map, client);
+      if (populate_in_preparation(head_key, dep_key, target_lattice,
+                                  in_preparation)) {
+        recursive_dependency_check(head_key, target_lattice, in_preparation,
+                                   causal_cut_store, unmerged_store,
+                                   to_fetch_map, cover_map, client);
       }
-      //in_preparation[head_key].second[dep_key] = target_lattice;
+      // in_preparation[head_key].second[dep_key] = target_lattice;
     } else {
-      // check if the dependency is satisfied in unmerged_store (unmerged store should always dominate the in_preparation)
-      if (unmerged_store.find(dep_key) != unmerged_store.end() && vc_comparison(unmerged_store.at(dep_key)->reveal().vector_clock, lattice->reveal().dependency.reveal().at(dep_key)) == kCausalGreaterOrEqual) {
-        if (populate_in_preparation(head_key, dep_key, unmerged_store.at(dep_key), in_preparation)) {
-          recursive_dependency_check(head_key, unmerged_store.at(dep_key), in_preparation, causal_cut_store, unmerged_store, to_fetch_map, cover_map, client);
+      // check if the dependency is satisfied in unmerged_store (unmerged store
+      // should always dominate the in_preparation)
+      if (unmerged_store.find(dep_key) != unmerged_store.end() &&
+          vc_comparison(unmerged_store.at(dep_key)->reveal().vector_clock,
+                        lattice->reveal().dependency.reveal().at(dep_key)) ==
+              kCausalGreaterOrEqual) {
+        if (populate_in_preparation(head_key, dep_key,
+                                    unmerged_store.at(dep_key),
+                                    in_preparation)) {
+          recursive_dependency_check(head_key, unmerged_store.at(dep_key),
+                                     in_preparation, causal_cut_store,
+                                     unmerged_store, to_fetch_map, cover_map,
+                                     client);
         }
       } else {
         // we issue GET to KVS
         to_fetch_map[head_key].insert(dep_key);
-        cover_map[dep_key][lattice->reveal().dependency.reveal().at(dep_key)].insert(head_key);
+        cover_map[dep_key][lattice->reveal().dependency.reveal().at(dep_key)]
+            .insert(head_key);
         client.get_async(dep_key);
       }
     }
   }
 }
 
-void save_versions(const string& id, const Key& key, VersionStoreType& version_store, const StoreType& causal_cut_store) {
+void save_versions(const string& id, const Key& key,
+                   VersionStoreType& version_store,
+                   const StoreType& causal_cut_store) {
   if (version_store[id].find(key) == version_store[id].end()) {
     version_store[id][key] = causal_cut_store.at(key);
-    for (const auto& dep_key : causal_cut_store.at(key)->reveal().dependency.key_set().reveal()) {
+    for (const auto& dep_key :
+         causal_cut_store.at(key)->reveal().dependency.key_set().reveal()) {
       save_versions(id, dep_key, version_store, causal_cut_store);
     }
   }
 }
 
-void merge_into_causal_cut(const Key& key, StoreType& causal_cut_store, InPreparationType& in_preparation, VersionStoreType& version_store, map<Address, PendingClientMetadata>& pending_cross_request_read_set, SocketCache& pushers) {
+void merge_into_causal_cut(
+    const Key& key, StoreType& causal_cut_store,
+    InPreparationType& in_preparation, VersionStoreType& version_store,
+    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    SocketCache& pushers) {
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
     if (causal_cut_store.find(pair.first) == causal_cut_store.end()) {
@@ -182,27 +238,32 @@ void merge_into_causal_cut(const Key& key, StoreType& causal_cut_store, InPrepar
       causal_cut_store[pair.first] = pair.second;
     } else {
       // we compare two lattices
-      unsigned comp_result = causal_comparison(causal_cut_store[pair.first], pair.second);
+      unsigned comp_result =
+          causal_comparison(causal_cut_store[pair.first], pair.second);
       if (comp_result == kCausalLess) {
         causal_cut_store[pair.first] = pair.second;
       } else if (comp_result == kCausalConcurrent) {
-        causal_cut_store[pair.first] = causal_merge(causal_cut_store[pair.first], pair.second);
+        causal_cut_store[pair.first] =
+            causal_merge(causal_cut_store[pair.first], pair.second);
       }
     }
   }
   // notify clients
-  for (const auto& addr: in_preparation[key].first) {
-    if (pending_cross_request_read_set.find(addr) != pending_cross_request_read_set.end()) {
+  for (const auto& addr : in_preparation[key].first) {
+    if (pending_cross_request_read_set.find(addr) !=
+        pending_cross_request_read_set.end()) {
       pending_cross_request_read_set[addr].to_cover_set_.erase(key);
       if (pending_cross_request_read_set[addr].to_cover_set_.size() == 0) {
         // all keys are covered, safe to read
         CausalResponse response;
-        for (const Key& key_to_read : pending_cross_request_read_set[addr].read_set_) {
+        for (const Key& key_to_read :
+             pending_cross_request_read_set[addr].read_set_) {
           CausalTuple* tp = response.add_tuples();
           tp->set_key(key_to_read);
           tp->set_payload(serialize(*(causal_cut_store[key_to_read])));
           // copy pointer to keep the version
-          save_versions(pending_cross_request_read_set[addr].client_id_, key_to_read, version_store, causal_cut_store);
+          save_versions(pending_cross_request_read_set[addr].client_id_,
+                        key_to_read, version_store, causal_cut_store);
         }
 
         // send response
@@ -218,11 +279,17 @@ void merge_into_causal_cut(const Key& key, StoreType& causal_cut_store, InPrepar
   in_preparation.erase(key);
 }
 
-void process_response(const Key& key, const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lattice,
-                      StoreType& unmerged_store, InPreparationType& in_preparation, StoreType& causal_cut_store, VersionStoreType& version_store,
-                      map<Key, set<Address>>& single_callback_map, map<Address, PendingClientMetadata>& pending_single_request_read_set,
-                      map<Address, PendingClientMetadata>& pending_cross_request_read_set, map<Key, set<Key>>& to_fetch_map,
-                      map<Key, std::unordered_map<VC, set<Key>, VectorClockHash>>& cover_map, SocketCache& pushers,  KvsAsyncClient& client, logger log) {
+void process_response(
+    const Key& key,
+    const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lattice,
+    StoreType& unmerged_store, InPreparationType& in_preparation,
+    StoreType& causal_cut_store, VersionStoreType& version_store,
+    map<Key, set<Address>>& single_callback_map,
+    map<Address, PendingClientMetadata>& pending_single_request_read_set,
+    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Key, set<Key>>& to_fetch_map,
+    map<Key, std::unordered_map<VC, set<Key>, VectorClockHash>>& cover_map,
+    SocketCache& pushers, KvsAsyncClient& client, logger log) {
   // first, update unmerged store
   if (unmerged_store.find(key) == unmerged_store.end()) {
     // key doesn't exist in unmerged map
@@ -230,12 +297,14 @@ void process_response(const Key& key, const std::shared_ptr<CrossCausalLattice<S
     // check call back addresses for single obj causal consistency
     if (single_callback_map.find(key) != single_callback_map.end()) {
       // notify clients
-      for (const auto& addr: single_callback_map[key]) {
-        // pending_single_request_read_set[addr].to_cover_set should have this key, and we remove it
+      for (const auto& addr : single_callback_map[key]) {
+        // pending_single_request_read_set[addr].to_cover_set should have this
+        // key, and we remove it
         pending_single_request_read_set[addr].to_cover_set_.erase(key);
         if (pending_single_request_read_set[addr].to_cover_set_.size() == 0) {
           CausalResponse response;
-          for (const Key& key : pending_single_request_read_set[addr].read_set_) {
+          for (const Key& key :
+               pending_single_request_read_set[addr].read_set_) {
             CausalTuple* tp = response.add_tuples();
             tp->set_key(key);
             tp->set_payload(serialize(*(unmerged_store[key])));
@@ -260,13 +329,18 @@ void process_response(const Key& key, const std::shared_ptr<CrossCausalLattice<S
     }
   }
   // then, inspect the to_fetch_map
-  if (to_fetch_map.find(key) != to_fetch_map.end() && to_fetch_map[key].size() == 0) {
+  if (to_fetch_map.find(key) != to_fetch_map.end() &&
+      to_fetch_map[key].size() == 0) {
     // here, we know that this key is queried by the client directly
     in_preparation[key].second[key] = unmerged_store[key];
-    recursive_dependency_check(key, unmerged_store[key], in_preparation, causal_cut_store, unmerged_store, to_fetch_map, cover_map, client);
+    recursive_dependency_check(key, unmerged_store[key], in_preparation,
+                               causal_cut_store, unmerged_store, to_fetch_map,
+                               cover_map, client);
     if (to_fetch_map[key].size() == 0) {
       // this key has no dependency
-      merge_into_causal_cut(key, causal_cut_store, in_preparation, version_store, pending_cross_request_read_set, pushers);
+      merge_into_causal_cut(key, causal_cut_store, in_preparation,
+                            version_store, pending_cross_request_read_set,
+                            pushers);
       to_fetch_map.erase(key);
     }
   }
@@ -274,13 +348,16 @@ void process_response(const Key& key, const std::shared_ptr<CrossCausalLattice<S
   if (cover_map.find(key) != cover_map.end()) {
     std::unordered_map<VC, set<Key>, VectorClockHash> to_remove;
     // loop through the set to see if anything is covered
-    for (const auto& pair: cover_map[key]) {
-      if (vc_comparison(unmerged_store.at(key)->reveal().vector_clock, pair.first) == kCausalGreaterOrEqual) {
+    for (const auto& pair : cover_map[key]) {
+      if (vc_comparison(unmerged_store.at(key)->reveal().vector_clock,
+                        pair.first) == kCausalGreaterOrEqual) {
         for (const auto& head_key : pair.second) {
           // found a dependency that is covered
           in_preparation[head_key].second[key] = unmerged_store[key];
-          if (to_fetch_map[head_key].find(key) == to_fetch_map[head_key].end()) {
-            log->error("Missing dependency {} in the to_fetch_map of key {}.", key, head_key);
+          if (to_fetch_map[head_key].find(key) ==
+              to_fetch_map[head_key].end()) {
+            log->error("Missing dependency {} in the to_fetch_map of key {}.",
+                       key, head_key);
           }
           to_fetch_map[head_key].erase(key);
           to_remove[pair.first].insert(head_key);
@@ -290,10 +367,14 @@ void process_response(const Key& key, const std::shared_ptr<CrossCausalLattice<S
     for (const auto& pair : to_remove) {
       cover_map[key].erase(pair.first);
       for (const auto& head_key : pair.second) {
-        recursive_dependency_check(head_key, unmerged_store[key], in_preparation, causal_cut_store, unmerged_store, to_fetch_map, cover_map, client);
+        recursive_dependency_check(
+            head_key, unmerged_store[key], in_preparation, causal_cut_store,
+            unmerged_store, to_fetch_map, cover_map, client);
         if (to_fetch_map[head_key].size() == 0) {
           // all dependency is met
-          merge_into_causal_cut(head_key, causal_cut_store, in_preparation, version_store, pending_cross_request_read_set, pushers);
+          merge_into_causal_cut(head_key, causal_cut_store, in_preparation,
+                                version_store, pending_cross_request_read_set,
+                                pushers);
           to_fetch_map.erase(head_key);
         }
       }
@@ -351,10 +432,12 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
   version_gc_puller.bind(lst.local_store_version_gc_bind_address());
 
   zmq::socket_t cut_transmit_request_puller(*context, ZMQ_PULL);
-  cut_transmit_request_puller.bind(lst.local_store_cut_transmit_request_bind_address());
+  cut_transmit_request_puller.bind(
+      lst.local_store_cut_transmit_request_bind_address());
 
   zmq::socket_t versioned_key_request_puller(*context, ZMQ_PULL);
-  versioned_key_request_puller.bind(lst.local_store_versioned_key_request_bind_address());
+  versioned_key_request_puller.bind(
+      lst.local_store_versioned_key_request_bind_address());
 
   vector<zmq::pollitem_t> pollitems = {
       {static_cast<void*>(get_puller), 0, ZMQ_POLLIN, 0},
@@ -399,7 +482,8 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           }
         }
         if (!covered_locally) {
-          pending_single_request_read_set[request.response_address()] = PendingClientMetadata(request.id(), read_set, to_cover);
+          pending_single_request_read_set[request.response_address()] =
+              PendingClientMetadata(request.id(), read_set, to_cover);
         } else {
           CausalResponse response;
           for (const Key& key : read_set) {
@@ -411,14 +495,15 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           // send response
           string resp_string;
           response.SerializeToString(&resp_string);
-          kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
+          kZmqUtil->send_string(resp_string,
+                                &pushers[request.response_address()]);
         }
       } else if (request.consistency() == ConsistencyLevel::CROSS) {
         for (CausalTuple tuple : request.tuples()) {
           Key key = tuple.key();
           read_set.insert(key);
           key_set.insert(key);
-          
+
           if (causal_cut_store.find(key) == causal_cut_store.end()) {
             // check if the key is in in_preparation
             if (in_preparation.find(key) != in_preparation.end()) {
@@ -427,14 +512,20 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
               in_preparation[key].first.insert(request.response_address());
             } else {
               to_fetch_map[key] = set<Key>();
-              // check if key is in one of the sub-key of in_preparation or in unmerged_store
-              auto lattice = find_lattice_from_in_preparation(in_preparation, key);
+              // check if key is in one of the sub-key of in_preparation or in
+              // unmerged_store
+              auto lattice =
+                  find_lattice_from_in_preparation(in_preparation, key);
               if (lattice != nullptr) {
                 in_preparation[key].second[key] = lattice;
-                recursive_dependency_check(key, lattice, in_preparation, causal_cut_store, unmerged_store, to_fetch_map, cover_map, client);
+                recursive_dependency_check(key, lattice, in_preparation,
+                                           causal_cut_store, unmerged_store,
+                                           to_fetch_map, cover_map, client);
                 if (to_fetch_map[key].size() == 0) {
                   // all dependency met
-                  merge_into_causal_cut(key, causal_cut_store, in_preparation, version_store, pending_cross_request_read_set, pushers);
+                  merge_into_causal_cut(
+                      key, causal_cut_store, in_preparation, version_store,
+                      pending_cross_request_read_set, pushers);
                   to_fetch_map.erase(key);
                 } else {
                   in_preparation[key].first.insert(request.response_address());
@@ -443,10 +534,14 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
                 }
               } else if (unmerged_store.find(key) != unmerged_store.end()) {
                 in_preparation[key].second[key] = unmerged_store[key];
-                recursive_dependency_check(key, unmerged_store[key], in_preparation, causal_cut_store, unmerged_store, to_fetch_map, cover_map, client);
+                recursive_dependency_check(
+                    key, unmerged_store[key], in_preparation, causal_cut_store,
+                    unmerged_store, to_fetch_map, cover_map, client);
                 if (to_fetch_map[key].size() == 0) {
                   // all dependency met
-                  merge_into_causal_cut(key, causal_cut_store, in_preparation, version_store, pending_cross_request_read_set, pushers);
+                  merge_into_causal_cut(
+                      key, causal_cut_store, in_preparation, version_store,
+                      pending_cross_request_read_set, pushers);
                   to_fetch_map.erase(key);
                 } else {
                   in_preparation[key].first.insert(request.response_address());
@@ -463,7 +558,8 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           }
         }
         if (!covered_locally) {
-          pending_cross_request_read_set[request.response_address()] = PendingClientMetadata(request.id(), read_set, to_cover);
+          pending_cross_request_read_set[request.response_address()] =
+              PendingClientMetadata(request.id(), read_set, to_cover);
         } else {
           CausalResponse response;
           for (const Key& key : read_set) {
@@ -477,7 +573,8 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           // send response
           string resp_string;
           response.SerializeToString(&resp_string);
-          kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
+          kZmqUtil->send_string(resp_string,
+                                &pushers[request.response_address()]);
         }
       } else {
         log->error("Unrecognized consistency level.");
@@ -493,12 +590,13 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       for (CausalTuple tuple : request.tuples()) {
         Key key = tuple.key();
         auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>(
-                                                              to_cross_causal_payload(deserialize_cross_causal(tuple.payload())));
+            to_cross_causal_payload(deserialize_cross_causal(tuple.payload())));
         // first, update unmerged store
         if (unmerged_store.find(key) == unmerged_store.end()) {
           unmerged_store[key] = lattice;
         } else {
-          unsigned comp_result = causal_comparison(unmerged_store[key], lattice);
+          unsigned comp_result =
+              causal_comparison(unmerged_store[key], lattice);
           if (comp_result == kCausalLess) {
             unmerged_store[key] = lattice;
           } else if (comp_result == kCausalConcurrent) {
@@ -508,17 +606,20 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
         // if cross causal, also update causal cut
         if (request.consistency() == ConsistencyLevel::CROSS) {
           // we compare two lattices
-          unsigned comp_result = causal_comparison(causal_cut_store[key], lattice);
+          unsigned comp_result =
+              causal_comparison(causal_cut_store[key], lattice);
           if (comp_result == kCausalLess) {
             causal_cut_store[key] = lattice;
           } else if (comp_result == kCausalConcurrent) {
-            causal_cut_store[key] = causal_merge(causal_cut_store[key], lattice);
+            causal_cut_store[key] =
+                causal_merge(causal_cut_store[key], lattice);
           }
           // keep this version
           version_store[request.id()][key] = lattice;
         }
         // write to KVS
-        client.put_async(key, serialize(*unmerged_store[key]), LatticeType::CROSSCAUSAL, request.response_address());
+        client.put_async(key, serialize(*unmerged_store[key]),
+                         LatticeType::CROSSCAUSAL, request.response_address());
       }
     }
 
@@ -538,11 +639,13 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
         }
 
         auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>(
-                                                      to_cross_causal_payload(deserialize_cross_causal(tuple.payload())));
+            to_cross_causal_payload(deserialize_cross_causal(tuple.payload())));
 
-        process_response(key, lattice, unmerged_store, in_preparation, causal_cut_store, version_store, single_callback_map, 
-                        pending_single_request_read_set, pending_cross_request_read_set, to_fetch_map, cover_map, pushers, client, log);
-        
+        process_response(key, lattice, unmerged_store, in_preparation,
+                         causal_cut_store, version_store, single_callback_map,
+                         pending_single_request_read_set,
+                         pending_cross_request_read_set, to_fetch_map,
+                         cover_map, pushers, client, log);
       }
     }
 
@@ -561,13 +664,15 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
 
       CutTransmitResponse response;
       response.set_id(request.id());
-      response.set_local_store_address(lst.local_store_versioned_key_request_connect_address());
+      response.set_local_store_address(
+          lst.local_store_versioned_key_request_connect_address());
       if (version_store.find(request.id()) != version_store.end()) {
         for (const auto& pair : version_store[request.id()]) {
           VersionedKey* versioned_key = response.add_versioned_keys();
           versioned_key->set_key(pair.first);
           auto vc_ptr = versioned_key->mutable_vector_clock();
-          for (const auto& vc_pair : pair.second->reveal().vector_clock.reveal()) {
+          for (const auto& vc_pair :
+               pair.second->reveal().vector_clock.reveal()) {
             (*vc_ptr)[vc_pair.first] = vc_pair.second.reveal();
           }
         }
@@ -586,11 +691,16 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
 
       VersionedKeyResponse response;
       response.set_id(request.id());
-      response.set_local_store_address(lst.local_store_versioned_key_request_connect_address());
+      response.set_local_store_address(
+          lst.local_store_versioned_key_request_connect_address());
       if (version_store.find(request.id()) != version_store.end()) {
         for (const auto& key : request.keys()) {
-          if (version_store[request.id()].find(key) == version_store[request.id()].end()) {
-            log->error("Requested key {} for client ID {} not available in versioned store.", key, request.id());
+          if (version_store[request.id()].find(key) ==
+              version_store[request.id()].end()) {
+            log->error(
+                "Requested key {} for client ID {} not available in versioned "
+                "store.",
+                key, request.id());
           } else {
             CausalTuple* tp = response.add_tuples();
             tp->set_key(key);
@@ -598,7 +708,8 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           }
         }
       } else {
-        log->error("Client ID {} not available in versioned store.", request.id());
+        log->error("Client ID {} not available in versioned store.",
+                   request.id());
       }
       // send response
       string resp_string;
@@ -606,7 +717,8 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
 
-    vector<pair<KeyResponse, Address>> responses = client.receive_async(kZmqUtil);
+    vector<pair<KeyResponse, Address>> responses =
+        client.receive_async(kZmqUtil);
     for (const auto& response : responses) {
       Key key = response.first.tuples(0).key();
       // first, check if the request failed
@@ -615,20 +727,28 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           client.get_async(key);
         } else {
           if (response.second != "") {
-            // we only retry for client-issued requests, not for the periodic stat report
-            client.put_async(key, response.first.tuples(0).payload(), LatticeType::CROSSCAUSAL, response.second);
+            // we only retry for client-issued requests, not for the periodic
+            // stat report
+            client.put_async(key, response.first.tuples(0).payload(),
+                             LatticeType::CROSSCAUSAL, response.second);
           }
         }
       } else {
         // good response
         if (response.first.type() == RequestType::GET) {
-          auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>();
+          auto lattice =
+              std::make_shared<CrossCausalLattice<SetLattice<string>>>();
           if (response.first.tuples(0).error() != 1) {
             // key exists
-            *lattice = CrossCausalLattice<SetLattice<string>>(to_cross_causal_payload(deserialize_cross_causal(response.first.tuples(0).payload())));
+            *lattice = CrossCausalLattice<SetLattice<string>>(
+                to_cross_causal_payload(deserialize_cross_causal(
+                    response.first.tuples(0).payload())));
           }
-          process_response(key, lattice, unmerged_store, in_preparation, causal_cut_store, version_store, single_callback_map, 
-                          pending_single_request_read_set, pending_cross_request_read_set, to_fetch_map, cover_map, pushers, client, log);
+          process_response(key, lattice, unmerged_store, in_preparation,
+                           causal_cut_store, version_store, single_callback_map,
+                           pending_single_request_read_set,
+                           pending_cross_request_read_set, to_fetch_map,
+                           cover_map, pushers, client, log);
         } else {
           CausalResponse resp;
           CausalTuple* tp = resp.add_tuples();
@@ -638,7 +758,6 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           kZmqUtil->send_string(resp_string, &pushers[response.second]);
         }
       }
-
     }
 
     // collect and store internal statistics
@@ -668,22 +787,28 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
     }
 
     migrate_end = std::chrono::system_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::seconds>(
-                        migrate_end - migrate_start)
-                        .count();
+    duration = std::chrono::duration_cast<std::chrono::seconds>(migrate_end -
+                                                                migrate_start)
+                   .count();
 
     // check if any key in unmerged_store is newer and migrate
     if (duration >= kMigrateThreshold) {
       for (const auto& pair : unmerged_store) {
-        if ((causal_cut_store.find(pair.first) == causal_cut_store.end() || 
-            causal_comparison(causal_cut_store[pair.first], pair.second) != kCausalGreaterOrEqual)
-            && find_lattice_from_in_preparation(in_preparation, pair.first) == nullptr) {
+        if ((causal_cut_store.find(pair.first) == causal_cut_store.end() ||
+             causal_comparison(causal_cut_store[pair.first], pair.second) !=
+                 kCausalGreaterOrEqual) &&
+            find_lattice_from_in_preparation(in_preparation, pair.first) ==
+                nullptr) {
           to_fetch_map[pair.first] = set<Key>();
           in_preparation[pair.first].second[pair.first] = pair.second;
-          recursive_dependency_check(pair.first, pair.second, in_preparation, causal_cut_store, unmerged_store, to_fetch_map, cover_map, client);
+          recursive_dependency_check(pair.first, pair.second, in_preparation,
+                                     causal_cut_store, unmerged_store,
+                                     to_fetch_map, cover_map, client);
           if (to_fetch_map[pair.first].size() == 0) {
             // all dependency met
-            merge_into_causal_cut(pair.first, causal_cut_store, in_preparation, version_store, pending_cross_request_read_set, pushers);
+            merge_into_causal_cut(pair.first, causal_cut_store, in_preparation,
+                                  version_store, pending_cross_request_read_set,
+                                  pushers);
             to_fetch_map.erase(pair.first);
           }
         }
