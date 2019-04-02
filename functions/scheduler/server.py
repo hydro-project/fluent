@@ -249,7 +249,9 @@ def _update_cluster_state(requestor_cache, mgmt_ip, departed_executors,
     for departed in departed_executors:
         executors.remove(departed)
 
+    logging.info('Calling update')
     utils._update_key_maps(key_cache_map, key_ip_map, executors, kvs)
+    logging.info('Returned update')
 
     schedulers = utils._get_ip_set(utils._get_scheduler_list_address(mgmt_ip),
             requestor_cache, False)

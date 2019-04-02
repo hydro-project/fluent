@@ -12,6 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
+
 from anna.lattices import *
 from include.kvs_pb2 import *
 from include.shared import *
@@ -111,7 +113,9 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
 
         # this is of type LWWPairLattice, which has a KeySet protobuf packed
         # into it; we want the keys in that KeySet protobuf
+        logging.info('Calling GET on %s.' % (key))
         l = kvs.get(key)
+        logging.info('l is None: %s' % (str(l is None)))
         if l is None: # this executor is still joining
             continue
 

@@ -51,3 +51,12 @@ def _get_dag_trigger_address(ip_tid):
 
 def _get_statistics_report_address(mgmt_ip):
     return 'tcp://' + mgmt_ip + ':' + str(STATISTICS_REPORT_PORT)
+
+def _get_dag_predecessors(dag, fname):
+    result = []
+
+    for connection in dag.connections:
+        if connection.sink == fname:
+            result.append(connection.source)
+
+    return result
