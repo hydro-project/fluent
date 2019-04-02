@@ -18,9 +18,9 @@
 #include <algorithm>
 
 #include "kvs.pb.h"
+#include "lattices/cross_causal_lattice.hpp"
 #include "lattices/lww_pair_lattice.hpp"
 #include "lattices/vector_clock_pair_lattice.hpp"
-#include "lattices/cross_causal_lattice.hpp"
 #include "types.hpp"
 #include "zmq/socket_cache.hpp"
 #include "zmq/zmq_util.hpp"
@@ -222,7 +222,8 @@ inline CrossCausalValue deserialize_cross_causal(const string& serialized) {
   return cross_causal;
 }
 
-inline VectorClockValuePair<SetLattice<string>> to_vector_clock_value_pair(const CausalValue& cv) {
+inline VectorClockValuePair<SetLattice<string>> to_vector_clock_value_pair(
+    const CausalValue& cv) {
   VectorClockValuePair<SetLattice<string>> p;
   for (const auto& pair : cv.vector_clock()) {
     p.vector_clock.insert(pair.first, pair.second);
@@ -233,7 +234,8 @@ inline VectorClockValuePair<SetLattice<string>> to_vector_clock_value_pair(const
   return p;
 }
 
-inline CrossCausalPayload<SetLattice<string>> to_cross_causal_payload(const CrossCausalValue& ccv) {
+inline CrossCausalPayload<SetLattice<string>> to_cross_causal_payload(
+    const CrossCausalValue& ccv) {
   CrossCausalPayload<SetLattice<string>> p;
   for (const auto& pair : ccv.vector_clock()) {
     p.vector_clock.insert(pair.first, pair.second);
