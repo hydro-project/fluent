@@ -1,0 +1,64 @@
+//  Copyright 2018 U.C. Berkeley RISE Lab
+// 
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+// 
+//      http://www.apache.org/licenses/LICENSE-2.0
+// 
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+
+syntax = "proto2";
+
+enum ConsistencyLevel {
+  SINGLE = 0;
+  CROSS = 1;
+}
+
+message VersionedKey {
+  required string key = 1;
+  map<string, uint32> vector_clock = 2;
+}
+
+message CausalTuple {
+  required string key = 1;
+  optional bytes payload = 2;
+}
+
+message CausalRequest {
+  required ConsistencyLevel consistency = 1;
+  required string id = 2;
+  repeated CausalTuple tuples = 3;
+  optional string response_address = 4;
+}
+
+message CausalResponse {
+  repeated CausalTuple tuples = 2;
+}
+
+message CutTransmitRequest {
+  required string id = 1;
+  required string response_address = 2;
+}
+
+message CutTransmitResponse {
+  required string id = 1;
+  required string local_store_address = 2;
+  repeated VersionedKey versioned_keys = 3;
+}
+
+message VersionedKeyRequest {
+  required string id = 1;
+  required string response_address = 2;
+  repeated string keys = 3;
+}
+
+message VersionedKeyResponse {
+  required string id = 1;
+  required string local_store_address = 2;
+  repeated CausalTuple tuples = 3;
+}

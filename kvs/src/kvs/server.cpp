@@ -185,6 +185,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   Serializer* lww_serializer;
   Serializer* set_serializer;
   Serializer* causal_serializer;
+  Serializer* cross_causal_serializer;
 
   if (kSelfTierId == kMemoryTierId) {
     MemoryLWWKVS* lww_kvs = new MemoryLWWKVS();
@@ -193,10 +194,13 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     set_serializer = new MemorySetSerializer(set_kvs);
     MemoryCausalKVS* causal_kvs = new MemoryCausalKVS();
     causal_serializer = new MemoryCausalSerializer(causal_kvs);
+    MemoryCrossCausalKVS* cross_causal_kvs = new MemoryCrossCausalKVS();
+    cross_causal_serializer = new MemoryCrossCausalSerializer(cross_causal_kvs);
   } else if (kSelfTierId == kEbsTierId) {
     lww_serializer = new EBSLWWSerializer(thread_id);
     set_serializer = new EBSSetSerializer(thread_id);
     causal_serializer = new EBSCausalSerializer(thread_id);
+    cross_causal_serializer = new EBSCrossCausalSerializer(thread_id);
   } else {
     log->info("Invalid node type");
     exit(1);
@@ -205,6 +209,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   serializers[LatticeType::LWW] = lww_serializer;
   serializers[LatticeType::SET] = set_serializer;
   serializers[LatticeType::CAUSAL] = causal_serializer;
+  serializers[LatticeType::CROSSCAUSAL] = cross_causal_serializer;
 
   // the set of changes made on this thread since the last round of gossip
   set<Key> local_changeset;

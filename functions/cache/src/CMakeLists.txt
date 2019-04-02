@@ -14,10 +14,26 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.6 FATAL_ERROR)
 
-SET(FUNC_SOURCE 
+SET(FUNC_CACHE_SOURCE 
 	cache.cpp
   )
 
-ADD_EXECUTABLE(flfunc-cache ${FUNC_SOURCE})
+ADD_EXECUTABLE(flfunc-cache ${FUNC_CACHE_SOURCE})
 TARGET_LINK_LIBRARIES(flfunc-cache ${FUNC_DEPENDENCIES})
 ADD_DEPENDENCIES(flfunc-cache flzmq zeromq zeromqcpp)
+
+SET(FUNC_ASYNC_CACHE_SOURCE 
+	async_cache.cpp
+  )
+
+ADD_EXECUTABLE(flfunc-async-cache ${FUNC_ASYNC_CACHE_SOURCE})
+TARGET_LINK_LIBRARIES(flfunc-async-cache ${FUNC_DEPENDENCIES})
+ADD_DEPENDENCIES(flfunc-async-cache flzmq zeromq zeromqcpp)
+
+SET(FUNC_LOCAL_STORE_SOURCE 
+	local_store.cpp
+  )
+
+ADD_EXECUTABLE(flfunc-local-store ${FUNC_LOCAL_STORE_SOURCE})
+TARGET_LINK_LIBRARIES(flfunc-local-store ${FUNC_DEPENDENCIES})
+ADD_DEPENDENCIES(flfunc-local-store flzmq zeromq zeromqcpp)
