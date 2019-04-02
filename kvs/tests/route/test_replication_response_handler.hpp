@@ -26,8 +26,9 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   EXPECT_EQ(metadata_map[key].local_replication_[kEbsTierId], 1);
 
   KeyResponse response;
+  response.set_type(RequestType::PUT);
   KeyTuple* tp = response.add_tuples();
-  tp->set_key("|key|replication");
+  tp->set_key(get_metadata_key(key, MetadataType::replication));
   tp->set_lattice_type(LatticeType::LWW);
   tp->set_error(0);
 

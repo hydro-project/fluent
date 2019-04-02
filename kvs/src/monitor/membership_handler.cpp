@@ -34,7 +34,7 @@ void membership_handler(
     log->info("Received join from server {}/{} in tier {}.",
               new_server_public_ip, new_server_private_ip,
               std::to_string(tier));
-    if (tier == 1) {
+    if (tier == kMemoryTierId) {
       global_hash_rings[tier].insert(new_server_public_ip,
                                      new_server_private_ip, 0, 0);
 
@@ -44,7 +44,7 @@ void membership_handler(
 
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();
-    } else if (tier == 2) {
+    } else if (tier == kEbsTierId) {
       global_hash_rings[tier].insert(new_server_public_ip,
                                      new_server_private_ip, 0, 0);
 
@@ -54,7 +54,7 @@ void membership_handler(
 
       // reset grace period timer
       grace_start = std::chrono::system_clock::now();
-    } else if (tier == 0) {
+    } else if (tier == kRoutingTierId) {
       routing_ips.push_back(new_server_public_ip);
     } else {
       log->error("Invalid tier: {}.", std::to_string(tier));
@@ -71,7 +71,7 @@ void membership_handler(
     // update hash ring
     global_hash_rings[tier].remove(new_server_public_ip, new_server_private_ip,
                                    0);
-    if (tier == 1) {
+    if (tier == kMemoryTierId) {
       memory_storage.erase(new_server_private_ip);
       memory_occupancy.erase(new_server_private_ip);
 
@@ -82,7 +82,7 @@ void membership_handler(
                                        std::to_string(i));
         }
       }
-    } else if (tier == 2) {
+    } else if (tier == kEbsTierId) {
       ebs_storage.erase(new_server_private_ip);
       ebs_occupancy.erase(new_server_private_ip);
 

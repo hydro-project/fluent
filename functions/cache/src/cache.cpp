@@ -196,7 +196,8 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           switch (key_type_map[key]) {
             case LatticeType::LWW: local_lww_cache.erase(key); break;
             case LatticeType::SET: local_set_cache.erase(key); break;
-            default: break;  // this can never happen
+            default:
+              break;  // this can never happen
           }
 
           key_type_map[key] = tuple.lattice_type();
@@ -221,7 +222,8 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
 
             local_set_cache[key] = new_val;
           }
-          default: break;  // this should never happen!
+          default:
+            break;  // this should never happen!
         }
       }
     }

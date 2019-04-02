@@ -88,11 +88,15 @@ class LocalStoreThread {
 
   Address local_store_get_bind_address() const { return "ipc:///requests/get"; }
 
-  Address local_store_get_connect_address() const { return "ipc:///requests/get"; }
+  Address local_store_get_connect_address() const {
+    return "ipc:///requests/get";
+  }
 
   Address local_store_put_bind_address() const { return "ipc:///requests/put"; }
 
-  Address local_store_put_connect_address() const { return "ipc:///requests/put"; }
+  Address local_store_put_connect_address() const {
+    return "ipc:///requests/put";
+  }
 
   Address local_store_update_bind_address() const {
     return kBindBase + std::to_string(tid_ + kLocalStoreUpdatePort);
@@ -119,9 +123,10 @@ class LocalStoreThread {
   }
 
   Address local_store_versioned_key_request_bind_address() const {
-    return kBindBase + std::to_string(tid_ + kLocalStoreVersionedKeyRequestPort);
+    return kBindBase +
+           std::to_string(tid_ + kLocalStoreVersionedKeyRequestPort);
   }
-  
+
   Address local_store_versioned_key_request_connect_address() const {
     return ip_base_ + std::to_string(tid_ + kLocalStoreVersionedKeyRequestPort);
   }
