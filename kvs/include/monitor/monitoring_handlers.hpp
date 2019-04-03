@@ -25,7 +25,9 @@ void membership_handler(logger log, string& serialized,
                         StorageStats& memory_storage, StorageStats& ebs_storage,
                         OccupancyStats& memory_occupancy,
                         OccupancyStats& ebs_occupancy,
-                        map<Key, map<Address, unsigned>>& key_access_frequency);
+                        map<Key, map<Address, unsigned>>& key_access_frequency,
+                        map<Key, map<Address, unsigned>>& hot_key_access_frequency,
+                        map<Key, map<Address, unsigned>>& cold_key_access_frequency);
 
 void depart_done_handler(logger log, string& serialized,
                          map<Address, unsigned>& departing_node_map,

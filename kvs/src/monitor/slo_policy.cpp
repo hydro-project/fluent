@@ -21,7 +21,9 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 unsigned& memory_node_number, unsigned& adding_memory_node,
                 bool& removing_memory_node, Address management_ip,
                 map<Key, KeyReplication>& key_replication_map,
-                map<Key, unsigned>& key_access_summary, MonitoringThread& mt,
+                map<Key, unsigned>& key_access_summary,
+                map<Key, unsigned>& hot_key_access_summary,
+                map<Key, unsigned>& cold_key_access_summary, MonitoringThread& mt,
                 map<Address, unsigned>& departing_node_map,
                 SocketCache& pushers, zmq::socket_t& response_puller,
                 vector<Address>& routing_ips, unsigned& rid,
@@ -48,15 +50,15 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
     } else {  // hot key replication
       // find hot keys
       log->info("Classifying hot keys...");
-      for (const auto& key_access_pair : key_access_summary) {
+      for (const auto& key_access_pair : hot_key_access_summary) {
         Key key = key_access_pair.first;
         unsigned access_count = key_access_pair.second;
 
         if (!is_metadata(key) &&
-            access_count > ss.key_access_mean + ss.key_access_std &&
+            access_count > ss.hot_key_access_mean &&
             latency_miss_ratio_map.find(key) != latency_miss_ratio_map.end()) {
           log->info("Key {} accessed {} times (threshold is {}).", key,
-                    access_count, ss.key_access_mean + ss.key_access_std);
+                    access_count, ss.hot_key_access_mean);
           unsigned target_rep_factor =
               key_replication_map[key].global_replication_[kMemoryTierId] *
               latency_miss_ratio_map[key].first;
@@ -116,7 +118,29 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
     if (time_elapsed > kGracePeriod) {
       // before sending remove command, first adjust relevant key's replication
       // factor
-      for (const auto& key_access_pair : key_access_summary) {
+      for (const auto& key_access_pair : hot_key_access_summary) {
+        Key key = key_access_pair.first;
+
+        if (!is_metadata(key) &&
+            metadata_map[key].global_replication_[kMemoryTierId] ==
+                (global_hash_rings[kMemoryTierId].size() / kVirtualThreadNum)) {
+          unsigned new_mem_rep =
+              metadata_map[key].global_replication_[kMemoryTierId] - 1;
+          unsigned new_ebs_rep =
+              std::max(kMinimumReplicaNumber - new_mem_rep, (unsigned)0);
+          requests[key] = create_new_replication_vector(
+              new_mem_rep, new_ebs_rep,
+              metadata_map[key].local_replication_[kMemoryTierId],
+              metadata_map[key].local_replication_[kEbsTierId]);
+          log->info("Dereplication for key {}. M: {}->{}. E: {}->{}", key,
+                    metadata_map[key].global_replication_[kMemoryTierId],
+                    requests[key].global_replication_[kMemoryTierId],
+                    metadata_map[key].global_replication_[kEbsTierId],
+                    requests[key].global_replication_[kEbsTierId]);
+        }
+      }
+
+      for (const auto& key_access_pair : cold_key_access_summary) {
         Key key = key_access_pair.first;
 
         if (!is_metadata(key) &&

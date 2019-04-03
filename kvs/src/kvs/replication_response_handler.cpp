@@ -23,7 +23,9 @@ void replication_response_handler(
     map<Key, std::multiset<TimePoint>>& key_access_tracker,
     map<Key, KeyProperty>& stored_key_map,
     map<Key, KeyReplication>& key_replication_map, set<Key>& local_changeset,
-    ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
+    ServerThread& wt, SerializerMap& serializers, SocketCache& pushers,
+    AdaptiveThresholdHeavyHitters* sketch) {
+
   KeyResponse response;
   response.ParseFromString(serialized);
 
@@ -119,6 +121,7 @@ void replication_response_handler(
               process_put(key, request.lattice_type_, request.payload_,
                           serializers[request.lattice_type_], stored_key_map);
               key_access_tracker[key].insert(now);
+              sketch->report_key(key);
 
               access_count += 1;
               local_changeset.insert(key);
@@ -168,6 +171,7 @@ void replication_response_handler(
             }
           }
           key_access_tracker[key].insert(now);
+          sketch->report_key(key);
           access_count += 1;
 
           string serialized_response;

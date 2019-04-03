@@ -97,7 +97,7 @@ inline bool is_metadata(Key key) {
 // NOTE: This needs to be here because it needs the definition of TierMetadata
 extern map<TierId, TierMetadata> kTierMetadata;
 
-enum MetadataType { replication, server_stats, key_access, key_size };
+enum MetadataType { replication, server_stats, key_access, key_size, key_access_hot, key_access_cold };
 
 inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
                             unsigned thread_num, MetadataType type) {
@@ -106,6 +106,8 @@ inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
   switch (type) {
     case MetadataType::server_stats: metadata_type = "stats"; break;
     case MetadataType::key_access: metadata_type = "access"; break;
+    case MetadataType::key_access_hot: metadata_type = "hot_access"; break;
+    case MetadataType::key_access_cold: metadata_type = "cold_access"; break;
     case MetadataType::key_size: metadata_type = "size"; break;
     default:
       return "";  // this should never happen; see note below about

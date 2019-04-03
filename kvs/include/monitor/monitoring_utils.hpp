@@ -50,6 +50,10 @@ struct SummaryStats {
   void clear() {
     key_access_mean = 0;
     key_access_std = 0;
+    hot_key_access_mean = 0;
+    hot_key_access_std = 0;
+    cold_key_access_mean = 0;
+    cold_key_access_std = 0;
     total_memory_access = 0;
     total_ebs_access = 0;
     total_memory_consumption = 0;
@@ -74,6 +78,10 @@ struct SummaryStats {
   SummaryStats() { clear(); }
   double key_access_mean;
   double key_access_std;
+  double hot_key_access_mean;
+  double hot_key_access_std;
+  double cold_key_access_mean;
+  double cold_key_access_std;
   unsigned total_memory_access;
   unsigned total_ebs_access;
   unsigned long long total_memory_consumption;
@@ -101,6 +109,8 @@ void collect_internal_stats(
     map<TierId, LocalHashRing>& local_hash_rings, SocketCache& pushers,
     MonitoringThread& mt, zmq::socket_t& response_puller, logger log,
     unsigned& rid, map<Key, map<Address, unsigned>>& key_access_frequency,
+    map<Key, map<Address, unsigned>>& hot_key_access_frequency,
+    map<Key, map<Address, unsigned>>& cold_key_access_frequency,
     map<Key, unsigned>& key_size, StorageStats& memory_storage,
     StorageStats& ebs_storage, OccupancyStats& memory_occupancy,
     OccupancyStats& ebs_occupancy, AccessStats& memory_access,
@@ -108,10 +118,14 @@ void collect_internal_stats(
 
 void compute_summary_stats(
     map<Key, map<Address, unsigned>>& key_access_frequency,
+    map<Key, map<Address, unsigned>>& hot_key_access_frequency,
+    map<Key, map<Address, unsigned>>& cold_key_access_frequency,
     StorageStats& memory_storage, StorageStats& ebs_storage,
     OccupancyStats& memory_occupancy, OccupancyStats& ebs_occupancy,
     AccessStats& memory_access, AccessStats& ebs_access,
-    map<Key, unsigned>& key_access_summary, SummaryStats& ss, logger log,
+    map<Key, unsigned>& key_access_summary,
+    map<Key, unsigned>& hot_key_access_summary,
+    map<Key, unsigned>& cold_key_access_summary, SummaryStats& ss, logger log,
     unsigned& server_monitoring_epoch);
 
 void collect_external_stats(map<string, double>& user_latency,

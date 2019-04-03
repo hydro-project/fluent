@@ -21,7 +21,9 @@ void membership_handler(
     vector<Address>& routing_ips, StorageStats& memory_storage,
     StorageStats& ebs_storage, OccupancyStats& memory_occupancy,
     OccupancyStats& ebs_occupancy,
-    map<Key, map<Address, unsigned>>& key_access_frequency) {
+    map<Key, map<Address, unsigned>>& key_access_frequency,
+    map<Key, map<Address, unsigned>>& hot_key_access_frequency,
+    map<Key, map<Address, unsigned>>& cold_key_access_frequency) {
   vector<string> v;
 
   split(serialized, ':', v);
@@ -76,7 +78,13 @@ void membership_handler(
       memory_occupancy.erase(new_server_private_ip);
 
       // NOTE: No const here because we are calling erase
-      for (auto& key_access_pair : key_access_frequency) {
+      for (auto& key_access_pair : hot_key_access_frequency) {
+        for (unsigned i = 0; i < kMemoryThreadCount; i++) {
+          key_access_pair.second.erase(new_server_private_ip + ":" +
+                                       std::to_string(i));
+        }
+      }
+      for (auto& key_access_pair : cold_key_access_frequency) {
         for (unsigned i = 0; i < kMemoryThreadCount; i++) {
           key_access_pair.second.erase(new_server_private_ip + ":" +
                                        std::to_string(i));
@@ -87,7 +95,13 @@ void membership_handler(
       ebs_occupancy.erase(new_server_private_ip);
 
       // NOTE: No const here because we are calling erase
-      for (auto& key_access_pair : key_access_frequency) {
+      for (auto& key_access_pair : hot_key_access_frequency) {
+        for (unsigned i = 0; i < kEbsThreadCount; i++) {
+          key_access_pair.second.erase(new_server_private_ip + ":" +
+                                       std::to_string(i));
+        }
+      }
+      for (auto& key_access_pair : cold_key_access_frequency) {
         for (unsigned i = 0; i < kEbsThreadCount; i++) {
           key_access_pair.second.erase(new_server_private_ip + ":" +
                                        std::to_string(i));

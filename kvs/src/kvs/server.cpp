@@ -282,6 +282,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   unsigned long long working_time_map[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
   unsigned epoch = 0;
 
+  // Initialize a Heavy Hitters Sketch
+  AdaptiveThresholdHeavyHitters* sketch = new AdaptiveThresholdHeavyHitters();
+
   // enter event loop
   while (true) {
     kZmqUtil->poll(0, &pollitems);
@@ -335,7 +338,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
                            global_hash_rings, local_hash_rings,
                            pending_requests, key_access_tracker, stored_key_map,
                            key_replication_map, local_changeset, wt,
-                           serializers, pushers);
+                           serializers, pushers, sketch);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -369,7 +372,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           seed, access_count, log, serialized, global_hash_rings,
           local_hash_rings, pending_requests, pending_gossip,
           key_access_tracker, stored_key_map, key_replication_map,
-          local_changeset, wt, serializers, pushers);
+          local_changeset, wt, serializers, pushers, sketch);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -523,33 +526,22 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         kZmqUtil->send_string(serialized, &pushers[target_address]);
       }
 
-      // compute key access stats
+      // Get map of hot keys
+      std::unordered_map<Key, int> hot_key_map = sketch->get_hot_map();
       KeyAccessData access;
-      auto current_time = std::chrono::system_clock::now();
-
-      for (const auto& key_access_pair : key_access_tracker) {
+      for (const auto& key_access_pair : hot_key_map) {
         Key key = key_access_pair.first;
-        auto access_times = key_access_pair.second;
-
-        // garbage collect
-        for (const auto& time : access_times) {
-          if (std::chrono::duration_cast<std::chrono::seconds>(current_time -
-                                                               time)
-                  .count() >= kKeyMonitoringThreshold) {
-            access_times.erase(time);
-            break;
-          }
-        }
+        unsigned count = key_access_pair.second;
 
         // update key_access_frequency
         KeyAccessData_KeyCount* tp = access.add_keys();
         tp->set_key(key);
-        tp->set_access_count(access_times.size());
+        tp->set_access_count(count);
       }
 
-      // report key access stats
+      // report hot key access stats
       key =
-          get_metadata_key(wt, kSelfTierId, wt.tid(), MetadataType::key_access);
+          get_metadata_key(wt, kSelfTierId, wt.tid(), MetadataType::key_access_hot);
       string serialized_access;
       access.SerializeToString(&serialized_access);
 
@@ -571,6 +563,47 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         kZmqUtil->send_string(serialized, &pushers[target_address]);
       }
 
+      // Get map of cold keys
+      std::unordered_map<Key, int> cold_key_map = sketch->get_cold_map();
+      KeyAccessData cold_access;
+      for (const auto& key_access_pair : cold_key_map) {
+        Key key = key_access_pair.first;
+        unsigned count = key_access_pair.second;
+
+        // update key_access_frequency
+        KeyAccessData_KeyCount* tp = cold_access.add_keys();
+        tp->set_key(key);
+        tp->set_access_count(count);
+      }
+
+      // report cold key access stats
+      key =
+          get_metadata_key(wt, kSelfTierId, wt.tid(), MetadataType::key_access_cold);
+      string cold_serialized_access;
+      cold_access.SerializeToString(&cold_serialized_access);
+
+      req.Clear();
+      req.set_type(RequestType::PUT);
+      prepare_put_tuple(req, key, LatticeType::LWW,
+                        serialize(ts, cold_serialized_access));
+
+      threads = kHashRingUtil->get_responsible_threads_metadata(
+          key, global_hash_rings[kMemoryTierId],
+          local_hash_rings[kMemoryTierId]);
+
+      if (threads.size() != 0) {
+        Address target_address =
+            std::next(begin(threads), rand_r(&seed) % threads.size())
+                ->key_request_connect_address();
+        string serialized;
+        req.SerializeToString(&serialized);
+        kZmqUtil->send_string(serialized, &pushers[target_address]);
+      }
+
+      // Reset sketch for next epoch
+      sketch->reset();
+
+      // report key size stats
       KeySizeData primary_key_size;
       for (const auto& key_pair : stored_key_map) {
         if (is_primary_replica(key_pair.first, key_replication_map,

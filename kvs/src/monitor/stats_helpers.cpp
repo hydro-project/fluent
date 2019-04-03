@@ -20,6 +20,8 @@ void collect_internal_stats(
     map<TierId, LocalHashRing>& local_hash_rings, SocketCache& pushers,
     MonitoringThread& mt, zmq::socket_t& response_puller, logger log,
     unsigned& rid, map<Key, map<Address, unsigned>>& key_access_frequency,
+    map<Key, map<Address, unsigned>>& hot_key_access_frequency,
+    map<Key, map<Address, unsigned>>& cold_key_access_frequency,
     map<Key, unsigned>& key_size, StorageStats& memory_storage,
     StorageStats& ebs_storage, OccupancyStats& memory_occupancy,
     OccupancyStats& ebs_occupancy, AccessStats& memory_accesses,
@@ -37,7 +39,13 @@ void collect_internal_stats(
                                      addr_request_map,
                                      mt.response_connect_address(), rid);
 
-        key = get_metadata_key(st, tier_id, i, MetadataType::key_access);
+        key = get_metadata_key(st, tier_id, i, MetadataType::key_access_hot);
+        prepare_metadata_get_request(key, global_hash_rings[kMemoryTierId],
+                                     local_hash_rings[kMemoryTierId],
+                                     addr_request_map,
+                                     mt.response_connect_address(), rid);
+
+        key = get_metadata_key(st, tier_id, i, MetadataType::key_access_cold);
         prepare_metadata_get_request(key, global_hash_rings[kMemoryTierId],
                                      local_hash_rings[kMemoryTierId],
                                      addr_request_map,
@@ -97,6 +105,26 @@ void collect_internal_stats(
               key_access_frequency[key][ip_pair + ":" + std::to_string(tid)] =
                   key_count.access_count();
             }
+          } else if (metadata_type == "hot_access") {
+            // deserialized the value
+            KeyAccessData access;
+            access.ParseFromString(lww_value.value());
+
+            for (const auto& key_count : access.keys()) {
+              Key key = key_count.key();
+              hot_key_access_frequency[key][ip_pair + ":" + std::to_string(tid)] =
+                  key_count.access_count();
+            }
+          } else if (metadata_type == "cold_access") {
+            // deserialized the value
+            KeyAccessData access;
+            access.ParseFromString(lww_value.value());
+
+            for (const auto& key_count : access.keys()) {
+              Key key = key_count.key();
+              cold_key_access_frequency[key][ip_pair + ":" + std::to_string(tid)] =
+                  key_count.access_count();
+            }
           } else if (metadata_type == "size") {
             // deserialized the size
             KeySizeData key_size_msg;
@@ -122,17 +150,21 @@ void collect_internal_stats(
 
 void compute_summary_stats(
     map<Key, map<Address, unsigned>>& key_access_frequency,
+    map<Key, map<Address, unsigned>>& hot_key_access_frequency,
+    map<Key, map<Address, unsigned>>& cold_key_access_frequency,    
     StorageStats& memory_storage, StorageStats& ebs_storage,
     OccupancyStats& memory_occupancy, OccupancyStats& ebs_occupancy,
     AccessStats& memory_accesses, AccessStats& ebs_accesses,
-    map<Key, unsigned>& key_access_summary, SummaryStats& ss, logger log,
+    map<Key, unsigned>& key_access_summary,
+    map<Key, unsigned>& hot_key_access_summary,
+    map<Key, unsigned>& cold_key_access_summary, SummaryStats& ss, logger log,
     unsigned& server_monitoring_epoch) {
   // compute key access summary
   unsigned cnt = 0;
   double mean = 0;
   double ms = 0;
 
-  for (const auto& key_access_pair : key_access_frequency) {
+  for (const auto& key_access_pair : hot_key_access_frequency) {
     Key key = key_access_pair.first;
     unsigned access_count = 0;
 
@@ -140,7 +172,8 @@ void compute_summary_stats(
       access_count += per_machine_pair.second;
     }
 
-    key_access_summary[key] = access_count;
+    hot_key_access_summary[key] = access_count;
+    std::cout << "Hot Key: " << key << ", Count: " << access_count << std::endl;
 
     if (access_count > 0) {
       cnt += 1;
@@ -153,10 +186,41 @@ void compute_summary_stats(
     }
   }
 
-  ss.key_access_mean = mean;
-  ss.key_access_std = sqrt((double)ms / cnt);
+  ss.hot_key_access_mean = mean;
+  ss.hot_key_access_std = sqrt((double)ms / cnt);
 
-  log->info("Access: mean={}, std={}", ss.key_access_mean, ss.key_access_std);
+  log->info("Hot Access: mean={}, std={}", ss.hot_key_access_mean, ss.hot_key_access_std);
+
+  cnt = 0;
+  mean = 0;
+  ms = 0;
+
+  for (const auto& key_access_pair : cold_key_access_frequency) {
+    Key key = key_access_pair.first;
+    unsigned access_count = 0;
+
+    for (const auto& per_machine_pair : key_access_pair.second) {
+      access_count += per_machine_pair.second;
+    }
+
+    cold_key_access_summary[key] = access_count;
+    std::cout << "Cold Key: " << key << ", Count: " << access_count << std::endl;
+
+    if (access_count > 0) {
+      cnt += 1;
+
+      double delta = access_count - mean;
+      mean += (double)delta / cnt;
+
+      double delta2 = access_count - mean;
+      ms += delta * delta2;
+    }
+  }
+
+  ss.cold_key_access_mean = mean;
+  ss.cold_key_access_std = sqrt((double)ms / cnt);
+
+  log->info("Cold Access: mean={}, std={}", ss.cold_key_access_mean, ss.cold_key_access_std);
 
   // compute tier access summary
   for (const auto& accesses : memory_accesses) {
