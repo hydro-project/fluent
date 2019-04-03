@@ -81,6 +81,13 @@ def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,
         ip = utils._get_queue_address(loc[0], loc[1])
         schedule.target_function = func
 
+        triggers = sutils._get_dag_predecessors(dag, func)
+        if len(triggers) == 0:
+            triggers.append('BEGIN')
+
+        schedule.ClearField('triggers')
+        schedule.triggers.extend(triggers)
+
         sckt = requestor_cache.get(ip)
         sckt.send(schedule.SerializeToString())
 
@@ -88,12 +95,13 @@ def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,
         response.ParseFromString(sckt.recv())
 
         if not response.success:
-            logging.info('Pin operation for %s at %s failed.' % (func, ip))
+            logging.info('Schedule operation for %s at %s failed.' % (func, ip))
             return response.success, response.error, None
 
     for source in sources:
         trigger = DagTrigger()
         trigger.id = schedule.id
+        trigger.source = 'BEGIN'
         trigger.target_function = source
 
         ip = sutils._get_dag_trigger_address(schedule.locations[source])

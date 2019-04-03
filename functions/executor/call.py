@@ -61,12 +61,17 @@ def exec_function(exec_socket, kvs, status):
     kvs.put(obj_id, result_lattice)
 
 
-def exec_dag_function(pusher_cache, kvs, trigger, function, schedule):
-    fname = trigger.target_function
+def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
+    fname = schedule.target_function
+    fargs = list(schedule.arguments[fname].args)
+
+    for trname in schedule.triggers:
+        trigger = triggers[trname]
+        fargs += list(trigger.arguments.args)
+
     logging.info('Executing function %s for DAG %s (ID %d).' %
             (schedule.dag.name, fname, trigger.id))
 
-    fargs = list(schedule.arguments[fname].args) + list(trigger.arguments.args)
     fargs = _process_args(fargs)
 
     result = _exec_func(kvs, function, fargs)
@@ -80,6 +85,7 @@ def exec_dag_function(pusher_cache, kvs, trigger, function, schedule):
             new_trigger = DagTrigger()
             new_trigger.id = trigger.id
             new_trigger.target_function = conn.sink
+            new_trigger.source = fname
 
             if type(result) != tuple:
                 result = (result,)

@@ -86,6 +86,10 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # tracks runtime cost of excuting a DAG function
     runtimes = {}
 
+    # if multiple triggers are necessary for a function, track the triggers as
+    # we receive them
+    received_triggers = {}
+
     # metadata to track thread utilization
     report_start = time.time()
     event_occupancy = { 'pin': 0.0, 'unpin': 0.0, 'func_exec': 0.0,
@@ -159,8 +163,19 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             fname = trigger.target_function
 
-            exec_dag_function(pusher_cache, client, trigger,
-                    pinned_functions[fname], queue[fname][trigger.id])
+            schedule = queue[fname][trigger.id]
+
+            if trigger.id not in received_triggers:
+                received_triggers[trigger.id] = {}
+
+
+            received_triggers[trigger.id][trigger.source] = trigger
+            if len(received_triggers[trigger.id]) == \
+                    len(schedule.triggers):
+                exec_dag_function(pusher_cache, client,
+                        received_triggers[trigger.id],
+                        pinned_functions[fname], schedule)
+                del received_triggers[trigger.id]
 
             elapsed = time.time() - work_start
             event_occupancy['dag_exec'] += elapsed

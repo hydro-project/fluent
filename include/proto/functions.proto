@@ -86,15 +86,17 @@ message DagSchedule {
   required string response_id = 2;
   required Dag dag = 3;
   required string target_function = 4;
-  map<string, string> locations = 5; // which functions should be executed where
+  repeated string triggers = 5;
+  map<string, string> locations = 6; // which functions should be executed where
   // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
-  map<string, ArgList> arguments = 6; 
+  map<string, ArgList> arguments = 7; 
 }
 
 message DagTrigger {
   required uint64 id = 1;
   required string target_function = 2; // which function is this trigger for
-  optional ArgList arguments = 3;
+  required string source = 3;
+  optional ArgList arguments = 4;
 }
 
 message ExecutorStatistics {

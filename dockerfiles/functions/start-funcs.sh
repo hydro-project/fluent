@@ -44,7 +44,7 @@ cd ../..
 
 # TODO: this might not be necessary permanently -- depends on whether you're
 # changing the client or not
-cd client/kvs/python
+cd kvs/client/python
 python3.6 setup.py install --prefix=$HOME/.local
 cd ../../..
 
