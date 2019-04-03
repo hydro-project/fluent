@@ -73,6 +73,7 @@ message KeyResponse {
   required RequestType type = 1;
   repeated KeyTuple tuples = 2;
   optional string response_id = 3;
+  optional string error_msg = 4;
 }
 
 message KeyAddressRequest {

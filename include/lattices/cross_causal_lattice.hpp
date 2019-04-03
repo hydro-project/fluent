@@ -15,32 +15,35 @@
 #ifndef SRC_INCLUDE_KVS_CROSS_CAUSAL_LATTICE_HPP_
 #define SRC_INCLUDE_KVS_CROSS_CAUSAL_LATTICE_HPP_
 
-#include "../lattices/core_lattices.hpp"
+#include "core_lattices.hpp"
 
-using VC = MapLattice<string, MaxLattice<unsigned>>;
+using VectorClock = MapLattice<string, MaxLattice<unsigned>>;
 
 template <typename T>
 struct CrossCausalPayload {
-  VC vector_clock;
-  MapLattice<Key, VC> dependency;
+  VectorClock vector_clock;
+  MapLattice<Key, VectorClock> dependency;
   T value;
 
   CrossCausalPayload<T>() {
-    vector_clock = VC();
-    dependency = MapLattice<Key, VC>();
+    vector_clock = VectorClock();
+    dependency = MapLattice<Key, VectorClock>();
     value = T();
   }
+
   // need this because of static cast
   CrossCausalPayload<T>(unsigned) {
-    vector_clock = VC();
-    dependency = MapLattice<Key, VC>();
+    vector_clock = VectorClock();
+    dependency = MapLattice<Key, VectorClock>();
     value = T();
   }
-  CrossCausalPayload<T>(VC vc, MapLattice<Key, VC> dep, T v) {
+
+  CrossCausalPayload<T>(VectorClock vc, MapLattice<Key, VectorClock> dep, T v) {
     vector_clock = vc;
     dependency = dep;
     value = v;
   }
+  
   unsigned size() {
     unsigned dep_size = 0;
     for (const auto &pair : dependency.reveal()) {
@@ -56,7 +59,7 @@ template <typename T>
 class CrossCausalLattice : public Lattice<CrossCausalPayload<T>> {
  protected:
   void do_merge(const CrossCausalPayload<T> &p) {
-    VC prev = this->element.vector_clock;
+    VectorClock prev = this->element.vector_clock;
     this->element.vector_clock.merge(p.vector_clock);
 
     if (this->element.vector_clock == p.vector_clock) {
