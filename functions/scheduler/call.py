@@ -62,16 +62,13 @@ def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,
         chosen_locations[f] = (loc[0], loc[1])
 
     schedule = DagSchedule()
-    schedule.id = uuid.uuid1().int & (1<<64) -1
+    schedule.id = str(uuid.uuid4())
     schedule.dag.CopyFrom(dag)
 
     # copy over arguments into the dag schedule
     for fname in call.function_args:
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(call.function_args[fname].args)
-
-    resp_id = str(uuid.uuid4())
-    schedule.response_id = resp_id
 
     for func in chosen_locations:
         loc = chosen_locations[func]
@@ -110,7 +107,7 @@ def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,
         sckt = pusher_cache.get(ip)
         sckt.send(trigger.SerializeToString())
 
-    return True, None, resp_id
+    return True, None, schedule.id
 
 
 def _pick_node(executors, key_ip_map, refs):

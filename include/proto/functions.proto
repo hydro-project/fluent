@@ -82,8 +82,7 @@ message ThreadStatus {
 }
 
 message DagSchedule {
-  required uint64 id = 1;
-  required string response_id = 2;
+  required string id = 1;
   required Dag dag = 3;
   required string target_function = 4;
   repeated string triggers = 5;
@@ -93,7 +92,7 @@ message DagSchedule {
 }
 
 message DagTrigger {
-  required uint64 id = 1;
+  required string id = 1;
   required string target_function = 2; // which function is this trigger for
   required string source = 3;
   optional ArgList arguments = 4;

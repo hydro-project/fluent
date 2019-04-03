@@ -48,8 +48,9 @@ def run(flconn, kvs, num_requests):
 
     arg_map = { 'incr' : [1] }
 
-    scheduler_time = 0.0
-    kvs_time = 0.0
+    total_time = []
+    scheduler_time = []
+    kvs_time = []
 
     retries = 0
 
@@ -58,7 +59,7 @@ def run(flconn, kvs, num_requests):
         rid = flconn.call_dag(dag_name, arg_map)
         end = time.time()
 
-        scheduler_time += (end - start)
+        stime = end - start
 
         start = time.time()
         res = kvs.get(rid)
@@ -68,13 +69,11 @@ def run(flconn, kvs, num_requests):
         res = deserialize_val(res.reveal()[1])
         end = time.time()
 
-        kvs_time += (end - start)
+        ktime = end - start
 
-    print('Total computation time: %.4f' % (scheduler_time + kvs_time))
-    print('Average latency: %.4f' % ((scheduler_time + kvs_time) / num_requests))
+        total_time += [stime + ktime]
+        scheduler_time += [stime]
+        kvs_time += [ktime]
 
-    print()
+    return total_time, scheduler_time, kvs_time, retries
 
-    print('Average scheduler latency: %.4f' % (scheduler_time / num_requests))
-    print('Average KVS get latency: %.4f' % (kvs_time / num_requests))
-    print('Number of KVS get retries: %d' % (retries))

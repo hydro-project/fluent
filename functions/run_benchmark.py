@@ -1,5 +1,7 @@
 #!/usr/bin/env python3.6
 
+import numpy as np
+import scipy.stats
 import sys
 
 from benchmarks import composition
@@ -24,6 +26,32 @@ kvs = flconn.kvs_client
 bname = sys.argv[1]
 
 if bname == 'composition':
-    composition.run(flconn, kvs, num_requests)
+    total, scheduler, kvs, retries = composition.run(flconn, kvs, num_requests)
 else:
     print('Unknown benchmark type: %s!' % (bname))
+
+total = np.array(total)
+scheduler = np.array(scheduler)
+kvs = np.array(kvs)
+
+def mean_confidence_interval(data, confidence=0.95):
+    n = len(data)
+    m, se = np.mean(data), scipy.stats.sem(data)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+    return m, m-h, m+h
+
+interval = mean_confidence_interval(total)
+
+print('Total computation time: %.4f' % (total.sum()))
+print('Average latency: %.4f (%.4f, %.4f)' % (interval[0], interval[1],
+    interval[2]))
+
+print()
+
+interval = mean_confidence_interval(scheduler)
+print('Average scheduler latency: %.4f (%.4f, %.4f)' % (interval[0], interval[1],
+    interval[2]))
+interval = mean_confidence_interval(kvs)
+print('Average KVS get latency: %.4f (%.4f, %.4f)' % (interval[0], interval[1],
+    interval[2]))
+print('Number of KVS get retries: %d' % (retries))

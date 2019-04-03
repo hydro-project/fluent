@@ -70,7 +70,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
 
-    logging.info('Executing function %s for DAG %s (ID %d): started at %.6f.' %
+    logging.info('Executing function %s for DAG %s (ID %s): started at %.6f.' %
             (schedule.dag.name, fname, trigger.id, time.time()))
 
     fargs = _process_args(fargs)
@@ -99,13 +99,13 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
-    logging.info('Finished executing function %s for DAG %s (ID %d): started at %.6f.' %
+    logging.info('Finished executing function %s for DAG %s (ID %s): started at %.6f.' %
             (schedule.dag.name, fname, trigger.id, time.time()))
     if is_sink:
-        logging.info('DAG %s (ID %d) completed; result at %s.' %
-                (schedule.dag.name, trigger.id, schedule.response_id))
+        logging.info('DAG %s (ID %s) completed; result at %s.' %
+                (schedule.dag.name, trigger.id, schedule.id))
         l = LWWPairLattice(generate_timestamp(0), serialize_val(result))
-        kvs.put(schedule.response_id, l)
+        kvs.put(schedule.id, l)
 
 
 
