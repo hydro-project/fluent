@@ -352,7 +352,7 @@ TEST_F(ServerHandlerTest, UserPutAndGetOrderedSetTest) {
   user_request_handler(access_count, seed, put_request, log_, global_hash_rings,
                        local_hash_rings, pending_requests, key_access_tracker,
                        stored_key_map, key_replication_map, local_changeset, wt,
-                       serializers, pushers);
+                       serializers, pushers, sketch);
 
   vector<string> messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 1);
@@ -377,7 +377,7 @@ TEST_F(ServerHandlerTest, UserPutAndGetOrderedSetTest) {
   user_request_handler(access_count, seed, get_request, log_, global_hash_rings,
                        local_hash_rings, pending_requests, key_access_tracker,
                        stored_key_map, key_replication_map, local_changeset, wt,
-                       serializers, pushers);
+                       serializers, pushers, sketch);
 
   messages = get_zmq_messages();
   EXPECT_EQ(messages.size(), 2);

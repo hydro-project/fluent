@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 //  Copyright 2018 U.C. Berkeley RISE Lab
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +13,22 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#include <stdbool.h>
-#include <stdio.h>
-#include <chrono>
-#include <climits>
-#include <iomanip>
+#include <cstdlib>
 #include <thread>
+#include <climits>
+#include <iostream>
+#include <ctime>
+#include <cmath>
 #include <utility>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #include "heavy_hitters.hpp"
+#include <iomanip>
+#include <chrono>
+#include <stdio.h>
 
 #define alpha 0.2
 

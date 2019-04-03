@@ -134,9 +134,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   for (const auto& key_access_pair : cold_key_access_summary) {
     Key key = key_access_pair.first;
     unsigned access_count = key_access_pair.second;
-
-    if (!is_metadata(key) &&
-        !(key_replication_map[key] == minimum_rep)) {
+    if (!is_metadata(key) && !(key_replication_map[key] == minimum_rep)) {
       log->info("Key {} accessed {} times (threshold is {}).", key,
                 access_count, ss.cold_key_access_mean + ss.cold_key_access_std);
       requests[key] =

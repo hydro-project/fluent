@@ -25,6 +25,7 @@ void replication_response_handler(
     map<Key, KeyReplication>& key_replication_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers,
     AdaptiveThresholdHeavyHitters* sketch) {
+
   KeyResponse response;
   response.ParseFromString(serialized);
 

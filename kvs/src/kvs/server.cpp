@@ -540,8 +540,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       }
 
       // report hot key access stats
-      key = get_metadata_key(wt, kSelfTierId, wt.tid(),
-                             MetadataType::key_access_hot);
+      key =
+          get_metadata_key(wt, kSelfTierId, wt.tid(), MetadataType::key_access_hot);
       string serialized_access;
       access.SerializeToString(&serialized_access);
 
@@ -603,7 +603,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       // Reset sketch for next epoch
       sketch->reset();
 
-      // report key size stats
       KeySizeData primary_key_size;
       for (const auto& key_pair : stored_key_map) {
         if (is_primary_replica(key_pair.first, key_replication_map,

@@ -236,18 +236,18 @@ int main(int argc, char *argv[]) {
       // collect internal statistics
       collect_internal_stats(
           global_hash_rings, local_hash_rings, pushers, mt, response_puller,
-          log, rid, key_access_frequency, hot_key_access_frequency,
-          cold_key_access_frequency, key_size, memory_storage, ebs_storage,
+          log, rid, key_access_frequency, hot_key_access_frequency, cold_key_access_frequency,
+          key_size, memory_storage, ebs_storage,
           memory_occupancy, ebs_occupancy, memory_accesses, ebs_accesses);
 
       // compute summary statistics
-      compute_summary_stats(key_access_frequency, hot_key_access_frequency,
-                            cold_key_access_frequency, memory_storage,
-                            ebs_storage, memory_occupancy, ebs_occupancy,
-                            memory_accesses, ebs_accesses, key_access_summary,
-                            hot_key_access_summary, cold_key_access_summary, ss,
-                            log, server_monitoring_epoch);
-
+      compute_summary_stats(key_access_frequency, hot_key_access_frequency, cold_key_access_frequency,
+                            memory_storage, ebs_storage,
+                            memory_occupancy, ebs_occupancy, memory_accesses,
+                            ebs_accesses, key_access_summary, 
+                            hot_key_access_summary, cold_key_access_summary,
+                            ss, log,
+                            server_monitoring_epoch);
       // collect external statistics
       collect_external_stats(user_latency, user_throughput, ss, log);
 
