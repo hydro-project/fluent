@@ -40,7 +40,8 @@ def call_function(func_call_socket, requestor_cache, executors, key_ip_map):
     # not found (so there's nothing for the scheduler to do) or the request was
     # accepted... we could make this async in the future, or there could be
     # other error checks one might want to do.
-    func_call_socket.send(sckt.recv())
+    r = sckt.recv()
+    func_call_socket.send(r)
 
 
 def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,

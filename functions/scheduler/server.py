@@ -99,7 +99,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if connect_socket in socks and socks[connect_socket] == zmq.POLLIN:
             msg = connect_socket.recv_string()
-            connect_socket.send_string(routing_addr)
+            connect_socket.send_string(route_addr)
 
         if func_create_socket in socks and socks[func_create_socket] == zmq.POLLIN:
             create_func(func_create_socket, kvs)
