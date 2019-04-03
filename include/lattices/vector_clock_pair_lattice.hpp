@@ -15,7 +15,7 @@
 #ifndef SRC_INCLUDE_KVS_VECTOR_CLOCK_PAIR_LATTICE_HPP_
 #define SRC_INCLUDE_KVS_VECTOR_CLOCK_PAIR_LATTICE_HPP_
 
-#include "../lattices/core_lattices.hpp"
+#include "core_lattices.hpp"
 
 using VC = MapLattice<string, MaxLattice<unsigned>>;
 
@@ -28,15 +28,18 @@ struct VectorClockValuePair {
     vector_clock = VC();
     value = T();
   }
+
   // need this because of static cast
   VectorClockValuePair<T>(unsigned) {
     vector_clock = VC();
     value = T();
   }
+
   VectorClockValuePair<T>(VC vc, T v) {
     vector_clock = vc;
     value = v;
   }
+  
   unsigned size() {
     return vector_clock.size().reveal() * 2 * sizeof(unsigned) +
            value.size().reveal();

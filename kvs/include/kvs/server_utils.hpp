@@ -509,7 +509,7 @@ class EBSCrossCausalSerializer : public Serializer {
         orig_payload.vector_clock.insert(pair.first, pair.second);
       }
       for (const auto& dep : original_value.deps()) {
-        VC vc;
+        VectorClock vc;
         for (const auto& pair : dep.vector_clock()) {
           vc.insert(pair.first, pair.second);
         }
@@ -525,7 +525,7 @@ class EBSCrossCausalSerializer : public Serializer {
         input_payload.vector_clock.insert(pair.first, pair.second);
       }
       for (const auto& dep : input_value.deps()) {
-        VC vc;
+        VectorClock vc;
         for (const auto& pair : dep.vector_clock()) {
           vc.insert(pair.first, pair.second);
         }

@@ -26,7 +26,7 @@ using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
 struct PendingRequest {
   TimePoint tp_;
   Address worker_addr_;
-  pair<KeyRequest, Address> request_addr_pair_;
+  KeyRequest request_;
 };
 
 class KvsAsyncClient {
@@ -79,22 +79,22 @@ class KvsAsyncClient {
   /**
    * Issue an async PUT request to the KVS for a certain lattice typed value.
    */
-  void put_async(const Key& key, const string& payload,
-                 LatticeType lattice_type,
-                 const Address& response_addr = string()) {
+  string put_async(const Key& key, const string& payload,
+                 LatticeType lattice_type) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
     tuple->set_lattice_type(lattice_type);
     tuple->set_payload(payload);
 
-    try_request(request, response_addr);
+    try_request(request);
+    return request.request_id();
   }
 
   /**
-   * Issue an async GET request to the KVS for a cross causal lattice value.
+   * Issue an async GET request to the KVS.
    */
-  void get_async(const Key& key, const Address& response_addr = string()) {
+  string get_async(const Key& key) {
     // we issue GET only when it is not in the pending map
     if (pending_get_response_map_.find(key) ==
         pending_get_response_map_.end()) {
@@ -102,12 +102,13 @@ class KvsAsyncClient {
       prepare_data_request(request, key);
       request.set_type(RequestType::GET);
 
-      try_request(request, response_addr);
+      try_request(request);
     }
+    return pending_get_response_map_[key].request_.request_id();
   }
 
-  vector<pair<KeyResponse, Address>> receive_async(ZmqUtilInterface* kZmqUtil) {
-    vector<pair<KeyResponse, Address>> result;
+  vector<KeyResponse> receive_async(ZmqUtilInterface* kZmqUtil) {
+    vector<KeyResponse> result;
 
     kZmqUtil->poll(0, &pollitems_);
     // handle a key address response
@@ -128,8 +129,8 @@ class KvsAsyncClient {
             key_address_cache_[key].insert(ip);
           }
           // handle stuff in pending request map
-          for (auto& pair : pending_request_map_[key].second) {
-            try_request(pair.first, pair.second);
+          for (auto& req : pending_request_map_[key].second) {
+            try_request(req);
           }
           // GC the pending request map
           pending_request_map_.erase(key);
@@ -143,7 +144,6 @@ class KvsAsyncClient {
       response.ParseFromString(serialized);
       Key key = response.tuples(0).key();
       if (response.type() == RequestType::GET) {
-        // GET
         if (pending_get_response_map_.find(key) !=
             pending_get_response_map_.end()) {
           if (check_tuple(response.tuples(0))) {
@@ -151,19 +151,15 @@ class KvsAsyncClient {
             pending_get_response_map_[key].tp_ =
                 std::chrono::system_clock::now();
             try_request(
-                pending_get_response_map_[key].request_addr_pair_.first,
-                pending_get_response_map_[key].request_addr_pair_.second);
+                pending_get_response_map_[key].request_);
           } else {
             // error no == 0 or 1
-            result.push_back(
-                {response,
-                 pending_get_response_map_[key].request_addr_pair_.second});
+            result.push_back(response);
             // GC
             pending_get_response_map_.erase(key);
           }
         }
       } else {
-        // PUT
         if (pending_put_response_map_.find(key) !=
                 pending_put_response_map_.end() &&
             pending_put_response_map_[key].find(response.response_id()) !=
@@ -172,16 +168,10 @@ class KvsAsyncClient {
             // error no == 2, so re-issue request
             pending_put_response_map_[key][response.response_id()].tp_ =
                 std::chrono::system_clock::now();
-            try_request(pending_put_response_map_[key][response.response_id()]
-                            .request_addr_pair_.first,
-                        pending_put_response_map_[key][response.response_id()]
-                            .request_addr_pair_.second);
+            try_request(pending_put_response_map_[key][response.response_id()].request_);
           } else {
-            // error no == 0 or 1
-            result.push_back(
-                {response,
-                 pending_put_response_map_[key][response.response_id()]
-                     .request_addr_pair_.second});
+            // error no == 0
+            result.push_back(response);
             // GC
             pending_put_response_map_[key].erase(response.response_id());
             if (pending_put_response_map_[key].size() == 0) {
@@ -199,9 +189,8 @@ class KvsAsyncClient {
               std::chrono::system_clock::now() - pair.second.first)
               .count() > timeout_) {
         // query to the routing tier timed out
-        for (const auto& req_addr_pair : pair.second.second) {
-          result.push_back({generate_bad_response(req_addr_pair.first),
-                            req_addr_pair.second});
+        for (const auto& req : pair.second.second) {
+          result.push_back(generate_bad_response(req));
         }
         to_remove.insert(pair.first);
       }
@@ -209,6 +198,7 @@ class KvsAsyncClient {
     for (const Key& key : to_remove) {
       pending_request_map_.erase(key);
     }
+
     // GC the pending get response map
     to_remove.clear();
     for (const auto& pair : pending_get_response_map_) {
@@ -216,9 +206,7 @@ class KvsAsyncClient {
               std::chrono::system_clock::now() - pair.second.tp_)
               .count() > timeout_) {
         // query to server timed out
-        result.push_back(
-            {generate_bad_response(pair.second.request_addr_pair_.first),
-             pair.second.request_addr_pair_.second});
+        result.push_back(generate_bad_response(pair.second.request_));
         to_remove.insert(pair.first);
         invalidate_cache_for_worker(pair.second.worker_addr_);
       }
@@ -226,6 +214,7 @@ class KvsAsyncClient {
     for (const Key& key : to_remove) {
       pending_get_response_map_.erase(key);
     }
+
     // GC the pending put response map
     map<Key, set<string>> to_remove_put;
     for (const auto& key_map_pair : pending_put_response_map_) {
@@ -236,9 +225,7 @@ class KvsAsyncClient {
                 pending_put_response_map_[key_map_pair.first][id_map_pair.first]
                     .tp_)
                 .count() > timeout_) {
-          result.push_back({generate_bad_response(
-                                id_map_pair.second.request_addr_pair_.first),
-                            id_map_pair.second.request_addr_pair_.second});
+          result.push_back(generate_bad_response(id_map_pair.second.request_));
           to_remove_put[key_map_pair.first].insert(id_map_pair.first);
           invalidate_cache_for_worker(id_map_pair.second.worker_addr_);
         }
@@ -283,7 +270,7 @@ class KvsAsyncClient {
    * the above implementation of try_multi_request, except it only operates on
    * a single request.
    */
-  void try_request(KeyRequest& request, const Address& response_addr) {
+  void try_request(KeyRequest& request) {
     // we only get NULL back for the worker thread if the query to the routing
     // tier timed out, which should never happen.
     Key key = request.tuples(0).key();
@@ -293,7 +280,7 @@ class KvsAsyncClient {
       if (pending_request_map_.find(key) == pending_request_map_.end()) {
         pending_request_map_[key].first = std::chrono::system_clock::now();
       }
-      pending_request_map_[key].second.push_back({request, response_addr});
+      pending_request_map_[key].second.push_back(request);
       return;
     }
 
@@ -306,8 +293,7 @@ class KvsAsyncClient {
       if (pending_get_response_map_.find(key) ==
           pending_get_response_map_.end()) {
         pending_get_response_map_[key].tp_ = std::chrono::system_clock::now();
-        pending_get_response_map_[key].request_addr_pair_ =
-            pair<KeyRequest, Address>(request, response_addr);
+        pending_get_response_map_[key].request_ = request;
       }
       pending_get_response_map_[key].worker_addr_ = worker;
     } else {
@@ -315,9 +301,7 @@ class KvsAsyncClient {
           pending_put_response_map_[key].end()) {
         pending_put_response_map_[key][request.request_id()].tp_ =
             std::chrono::system_clock::now();
-        pending_put_response_map_[key][request.request_id()]
-            .request_addr_pair_ =
-            pair<KeyRequest, Address>(request, response_addr);
+        pending_put_response_map_[key][request.request_id()].request_= request;
       }
       pending_put_response_map_[key][request.request_id()].worker_addr_ =
           worker;
@@ -487,7 +471,8 @@ class KvsAsyncClient {
   KeyResponse generate_bad_response(const KeyRequest& req) {
     KeyResponse resp;
     resp.set_type(req.type());
-    resp.set_response_id("NULL_ERROR");
+    resp.set_response_id(req.request_id());
+    resp.set_error_msg("NULL_ERROR");
     KeyTuple* tp = resp.add_tuples();
     tp->set_key(req.tuples(0).key());
     if (req.type() == RequestType::PUT) {
@@ -535,7 +520,7 @@ class KvsAsyncClient {
   unsigned timeout_;
 
   // keeps track of pending requests due to missing worker address
-  map<Key, pair<TimePoint, vector<pair<KeyRequest, Address>>>>
+  map<Key, pair<TimePoint, vector<KeyRequest>>>
       pending_request_map_;
 
   // keeps track of pending get responses
