@@ -20,6 +20,7 @@ import zmq
 from include.functions_pb2 import *
 from include.serializer import *
 from include import server_utils as sutils
+from include.shared import *
 from . import utils
 
 def call_function(func_call_socket, requestor_cache, executors, key_ip_map):
@@ -61,7 +62,7 @@ def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,
         chosen_locations[f] = (loc[0], loc[1])
 
     schedule = DagSchedule()
-    schedule.id = generate_timestamp(0)
+    schedule.id = uuid.uuid1().int & (1<<64) -1
     schedule.dag.CopyFrom(dag)
 
     # copy over arguments into the dag schedule

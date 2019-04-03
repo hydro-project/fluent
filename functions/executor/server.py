@@ -25,12 +25,13 @@ from . import utils
 from include import server_utils as sutils
 from include.shared import *
 
+logging.basicConfig(filename='log_executor.txt', level=logging.INFO)
+
 REPORT_THRESH = 20
 global_util = 0.0
 
 def executor(ip, mgmt_ip, schedulers, thread_id):
     global_util = 0
-    logging.basicConfig(filename='log_executor.txt', level=logging.INFO)
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()
