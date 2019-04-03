@@ -41,7 +41,6 @@ void user_request_handler(
   for (const auto& tuple : request.tuples()) {
     // first check if the thread is responsible for the key
     Key key = tuple.key();
-    log->info("Key is {}.", key);
     string payload = tuple.has_payload() ? (std::move(tuple.payload())) : "";
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(

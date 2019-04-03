@@ -40,7 +40,6 @@ void address_handler(logger log, string& serialized, SocketCache& pushers,
     respond = true;
   } else {  // if there are servers, attempt to return the correct threads
     for (const Key& key : addr_request.keys()) {
-    log->info("Received key address request for {}.", key);
       unsigned tier_id = 0;
       ServerThreadList threads = {};
 

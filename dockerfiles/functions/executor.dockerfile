@@ -28,7 +28,7 @@ RUN pip3 install numpy sklearn scikit-image torch torchvision
 # check out to the appropriate branch and install the Python KVS client
 WORKDIR /fluent
 RUN git fetch -p origin && git checkout -b $build_branch origin/$source_branch
-RUN cd client/kvs/python && python3.6 setup.py install --prefix=$HOME/.local
+RUN cd kvs/client/python && python3.6 setup.py install --prefix=$HOME/.local
 WORKDIR /
 
 COPY start-funcs.sh /start-funcs.sh
