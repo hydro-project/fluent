@@ -41,7 +41,7 @@ else
   PUBLIC_IP=$PRIVATE_IP
 fi
 
- download latest version of the code from relevant repository & branch
+# download latest version of the code from relevant repository & branch
 git remote remove origin
 if [[ -z "$REPO_ORG" ]]; then
   REPO_ORG="fluent-project"

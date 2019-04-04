@@ -272,6 +272,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   // enter event loop
   while (true) {
     kZmqUtil->poll(0, &pollitems);
+
     // receives a node join
     if (pollitems[0].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
@@ -325,6 +326,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
                               .count();
+
+      log->info("Handling a user request took {} seconds.",
+                std::to_string((double)time_elapsed / (double)1000000));
       working_time += time_elapsed;
       working_time_map[3] += time_elapsed;
     }
@@ -423,11 +427,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           // Get the caches that we need to gossip to.
           set<Address>& cache_ips = key_to_cache_ips[key];
           for (const Address& cache_ip : cache_ips) {
-            // XXX TODO
-            // cache_ip here doesn't have a port and needs it added,
-            // probably through gossip_connect_address() of CacheThread
-            // once that's implemented.
-            addr_keyset_map[cache_ip].insert(key);
+            CacheThread ct(cache_ip, 0);
+            addr_keyset_map[ct.cache_update_connect_address()].insert(key);
           }
         }
 
@@ -592,9 +593,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       report_start = std::chrono::system_clock::now();
 
       // Get the most recent list of cache IPs.
-      // (Actually gets the list of all current functional nodes.)
+      // (Actually gets the list of all current function executor nodes.)
       // (The message content doesn't matter here; it's an argless RPC call.)
-      kZmqUtil->send_string(" ", &func_nodes_requester);
+      kZmqUtil->send_string("", &func_nodes_requester);
       // Get the response.
       KeySet func_nodes;
       func_nodes.ParseFromString(kZmqUtil->recv_string(&func_nodes_requester));

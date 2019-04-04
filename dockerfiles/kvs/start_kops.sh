@@ -40,11 +40,14 @@ git fetch -p origin
 git checkout -b brnch origin/$REPO_BRANCH
 
 # generate Python protobuf libraries
-cd kvs/include/proto
-protoc -I=./ --python_out=../../../k8s/ misc.proto
-cd ../../../include/proto
-protoc -I=./ --python_out=../../../k8s/ kvs.proto
-cd ../..
+cd include/proto
+protoc -I=./ --python_out=../../k8s kvs.proto
+protoc -I=./ --python_out=../../k8s functions.proto
+cd ../../kvs/include/proto
+protoc -I=./ --python_out=../../../k8s metadata.proto
+cd ../../..
 
-# start python server
-cd fluent/k8s && python3.6 kops_server.py
+# start k8s actuation and management servers
+cd k8s
+python3.6 k8s_server.py &
+python3.6 management_server.py

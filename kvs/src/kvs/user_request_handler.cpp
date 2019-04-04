@@ -105,7 +105,7 @@ void user_request_handler(
                      request_type);
         }
 
-        if (tuple.has_address_cache_size() &&
+        if (tuple.has_address_cache_size() && tuple.address_cache_size() > 0 &&
             tuple.address_cache_size() != threads.size()) {
           tp->set_invalidate(true);
         }

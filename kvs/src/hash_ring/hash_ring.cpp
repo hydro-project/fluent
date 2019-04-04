@@ -178,6 +178,7 @@ ServerThreadList HashRingUtilInterface::get_responsible_threads_metadata(
   ServerThreadList threads = responsible_global(key, kMetadataReplicationFactor,
                                                 global_memory_hash_ring);
 
+  ServerThreadList result;
   for (const ServerThread& thread : threads) {
     Address public_ip = thread.public_ip();
     Address private_ip = thread.private_ip();
@@ -185,11 +186,11 @@ ServerThreadList HashRingUtilInterface::get_responsible_threads_metadata(
                                            local_memory_hash_ring);
 
     for (const unsigned& tid : tids) {
-      threads.push_back(ServerThread(public_ip, private_ip, tid));
+      result.push_back(ServerThread(public_ip, private_ip, tid));
     }
   }
 
-  return threads;
+  return result;
 }
 
 void HashRingUtilInterface::issue_replication_factor_request(

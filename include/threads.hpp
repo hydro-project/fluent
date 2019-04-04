@@ -41,7 +41,7 @@ class CacheThread {
  public:
   CacheThread(Address ip, unsigned tid) :
       ip_(ip),
-      ip_base_("ipc://" + ip_ + ":"),
+      ip_base_("tcp://" + ip_ + ":"),
       tid_(tid) {}
 
   Address ip() const { return ip_; }
@@ -57,7 +57,7 @@ class CacheThread {
   Address cache_put_connect_address() const { return "ipc:///requests/put"; }
 
   Address cache_update_bind_address() const {
-    return ip_base_ + std::to_string(tid_ + kCacheUpdatePort);
+    return kBindBase + std::to_string(tid_ + kCacheUpdatePort);
   }
 
   Address cache_update_connect_address() const {

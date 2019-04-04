@@ -13,16 +13,23 @@
 #  limitations under the License.
 
 from .functions_pb2 import *
+import time
 
-# shared constants
-FUNCOBJ = 'funcs/index-allfuncs'
-FUNC_PREFIX = 'funcs/'
-BIND_ADDR_TEMPLATE = 'tcp://*:%d'
+CONNECT_PORT = 5000
+FUNC_CREATE_PORT = 5001
+FUNC_CALL_PORT = 5002
+LIST_PORT = 5003
+DAG_CREATE_PORT = 5004
+DAG_CALL_PORT = 5005
 
-CONNECT_PORT = 4999
-CREATE_PORT = 5000
-CALL_PORT = 5001
-LIST_PORT = 5002
+def generate_timestamp(tid=1):
+    t = time.time()
+
+    p = 10
+    while tid >= p:
+        p *= 10
+
+    return int(t * p + tid)
 
 class FluentFuture():
     def __init__(self, obj_id, kvs_client):
@@ -51,20 +58,7 @@ class FluentFunction():
         return FluentFuture(obj_id, self._kvs_client)
 
 class FluentReference():
-    def __init__(self, key, deserialize):
+    def __init__(self, key, deserialize, obj_type):
         self.key = key
         self.deserialize = deserialize
-
-def serialize_val(val, valobj=None):
-    if not valobj:
-        valobj = Value()
-
-    if isinstance(val, FluentFuture):
-        valobj.body = default_ser.dump(FluentReference(val.obj_id, True))
-    elif isinstance(val, np.ndarray):
-        valobj.body = numpy_ser.dump(val)
-        valobj.type = NUMPY
-    else:
-        valobj.body = default_ser.dump(val)
-
-    return valobj
+        self.obj_type = obj_type

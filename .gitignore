@@ -16,6 +16,7 @@
 build
 vendor/gtest/build
 *log*.txt
+*tmp*
 
 # ignore compiled byte code
 target

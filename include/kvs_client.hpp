@@ -498,12 +498,11 @@ class KvsClient {
 
     if (tuple.has_invalidate() && tuple.invalidate()) {
       invalidate_cache_for_key(key, tuple);
-
       log_->info("Server ordered invalidation of key address cache for key {}",
                  key);
     }
 
-    return false;
+    return tuple.error() != 0;
   }
 
   /**

@@ -12,21 +12,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-FROM fluentproject/base:latest
-
-MAINTAINER Vikram Sreekanti <vsreekanti@gmail..com> version: 0.1
-
-ARG repo_org=fluent-project
-ARG source_branch=master
-ARG build_branch=docker-build
-
-USER root
-
-# check out to the appropriate branch and build the C++ project
-WORKDIR /fluent
-RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
-RUN bash scripts/build-all.sh -j4 -bRelease
-WORKDIR /
-
-COPY start.sh /
-CMD bash start.sh $SERVER_TYPE
+apiVersion: kops/v1alpha2
+kind: InstanceGroup
+metadata:
+  labels:
+    kops.k8s.io/cluster: CLUSTER_NAME
+  name: scheduler-instances
+spec:
+  image: kope.io/k8s-1.11-debian-stretch-amd64-hvm-ebs-2018-08-17
+  machineType: c5.large
+  maxSize: NUM_DUMMY
+  minSize: NUM_DUMMY
+  rootVolumeSize: 32
+  role: Node
+  nodeLabels:
+    role: scheduler
+  subnets:
+    - us-east-1a

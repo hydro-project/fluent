@@ -15,13 +15,7 @@
 #  limitations under the License.
 
 IS_EC2=`curl -s http://instance-data.ec2.internal`
-if [[ ! -z "$IS_EC2" ]]; then
-  # NOTE: We use the local IPv4 here because we cannot connect to the public
-  # IPv4 -- those ports are not open!
-  MY_IP=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
-else
-  MY_IP=`ifconfig eth0 | grep 'inet addr:' | grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1 }'`
-fi
+IP=`ifconfig eth0 | grep 'inet addr:' | grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1 }'`
 
 # move into the fluent directory for the rest of the script
 cd fluent
@@ -44,8 +38,15 @@ git checkout -b brnch origin/$REPO_BRANCH
 
 # generate Python protobufs
 cd include/proto
-protoc -I=./ --python_out=../../function/include functions.proto
+protoc -I=./ --python_out=../../functions/include functions.proto
+protoc -I=./ --python_out=../../functions/include kvs.proto
 cd ../..
 
+# TODO: this might not be necessary permanently -- depends on whether you're
+# changing the client or not
+cd kvs/client/python
+python3.6 setup.py install --prefix=$HOME/.local
+cd ../../..
+
 # start python server
-cd fluent/functions/executor && export MY_IP=$IP && python3.6 function_server.py
+cd functions && export MY_IP=$IP && python3.6 server.py

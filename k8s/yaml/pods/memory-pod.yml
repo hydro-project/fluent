@@ -20,16 +20,14 @@ metadata:
     role: memory
 spec:
   hostNetwork: true
+  restartPolicy: Never
   containers:
   - name: memory-container
     image: fluentproject/annakvs
-    resources:
-      limits:
-        memory: "40Gi"
-        cpu: "3"
+    imagePullPolicy: Always
     env: 
     - name: SERVER_TYPE
-      value: "1"
+      value: "memory"
     - name: ROUTING_IPS
       value: ROUTING_IPS_DUMMY
     - name: MGMT_IP

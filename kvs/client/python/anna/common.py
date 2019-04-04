@@ -74,10 +74,3 @@ class UserThread(Thread):
 
     def get_key_address_bind_addr(self):
         return self._base + str(self.tid + KEY_ADDRESS_BASE_PORT)
-
-class ProxyThread(Thread):
-    def get_key_address_connect_addr(self):
-        return self._ip_base + str(self.tid + KEY_ADDRESS_BASE_PORT)
-
-    def key_address_bind_addr(self):
-        return self._base + str(self.tid + KEY_ADDRESS_BASE_PORT)

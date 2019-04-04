@@ -17,16 +17,17 @@ import random
 import socket
 import zmq
 
+from .lattices import *
 from .common import *
 from .zmq_util import *
 
 if not os.path.isfile('kvs_pb2.py'):
-    print('You are running in an environment where protobufs were not \
-            automatically compiled. Please run protoc before proceeding.')
+    print('You are running in an environment where protobufs were not ' +
+            'automatically compiled. Please run protoc before proceeding.')
 from .kvs_pb2 import *
 
 class AnnaClient():
-    def __init__(self, elb_addr, ip=None, elb_ports=list(range(6000, 6004)), offset=0):
+    def __init__(self, elb_addr, ip=None, elb_ports=list(range(6450, 6454)), offset=0):
         assert type(elb_addr) == str, \
             'ELB IP argument must be a string.'
 
@@ -54,28 +55,37 @@ class AnnaClient():
 
     def get(self, key):
         worker_address = self._get_worker_address(key)
+
+        if not worker_address:
+            return None
+
         send_sock = self.pusher_cache.get(worker_address)
 
         req, _ = self._prepare_data_request(key)
         req.type = GET
 
         send_request(req, send_sock)
-        response = recv_response([req.request_id], KeyResponse,
-                self.response_puller)[0]
+        response = recv_response([req.request_id], self.response_puller,
+                KeyResponse)[0]
 
         # we currently only support single key operations
-        tup = resp_obj.tuples[0]
+        tup = response.tuples[0]
 
         if tup.invalidate:
             self._invalidate_cache(tup.key, tup.addresses)
 
-            # re-issue the request
-            return self.get(tup.key)
-
-        return str(tup.value, 'utf-8')
+        if tup.error == 0:
+            return self._deserialize(tup)
+        elif tup.error == 1:
+            return None # key does not exist
+        else:
+            return self.get(tup.key) # re-issue the request
 
     def get_all(self, key):
         worker_addresses = self._get_worker_address(key, False)
+
+        if not worker_addresses:
+            return None
 
         req, _ = self._prepare_data_request(key)
         req.type = GET
@@ -103,15 +113,18 @@ class AnnaClient():
             if tup.error != 0:
                 return None
 
-        return list(map(lambda resp: str(resp.tuples[0].value, 'utf-8'), responses))
+        return list(map(lambda resp: self._deserialize(resp), responses))
 
 
-    def durable_put(self, key, value):
+    def put_all(self, key, value):
         worker_addresses = self._get_worker_address(key, False)
+
+        if not worker_addresses:
+            return False
 
         req, tup = self._prepare_data_request(key)
         req.type = PUT
-        tup.value = bytes(value, 'utf-8')
+        tup.payload, tup.lattice_type = self._serialize(value)
         tup.timestamp = 0
 
         req_ids = []
@@ -142,12 +155,15 @@ class AnnaClient():
 
     def put(self, key, value):
         worker_address = self._get_worker_address(key)
+
+        if not worker_address:
+            return False
+
         send_sock = self.pusher_cache.get(worker_address)
 
         req, tup = self._prepare_data_request(key)
         req.type = PUT
-        tup.value = bytes(value, 'utf-8')
-        tup.timestamp = 0
+        tup.payload, tup.lattice_type = self._serialize(value)
 
         send_request(req, send_sock)
         response = recv_response([req.request_id], self.response_puller,
@@ -164,6 +180,34 @@ class AnnaClient():
 
         return tup.error == 0
 
+    def _deserialize(self, tup):
+        if tup.lattice_type == LWW:
+            val = LWWValue()
+            val.ParseFromString(tup.payload)
+
+            return LWWPairLattice(val.timestamp, val.value)
+        elif tup.lattice_type == SET:
+            s = SetValue()
+            s.ParseFromString(tup.payload)
+
+            result = {}
+            for k in s.keys:
+                result.insert(k)
+
+            return SetLattice(result)
+
+    def _serialize(self, val):
+        if isinstance(val, LWWPairLattice):
+            lww = LWWValue()
+            lww.timestamp = val.ts
+            lww.value = val.val
+            return lww.SerializeToString(), LWW
+        elif isinstance(val, SetLattice):
+            s = SetValue()
+            for o in val:
+                s.values.append(o)
+
+            return s.SerializeToString(), SET
 
     def _prepare_data_request(self, key):
         req = KeyRequest()
@@ -188,6 +232,9 @@ class AnnaClient():
             port = random.choice(self.elb_ports)
             addresses = self._query_routing(key, port)
             self.address_cache[key] = addresses
+
+        if len(self.address_cache[key]) == 0:
+            return None
 
         if pick:
             return random.choice(self.address_cache[key])
@@ -215,6 +262,9 @@ class AnnaClient():
         send_request(key_request, send_sock)
         response = recv_response([key_request.request_id],
                 self.key_address_puller,  KeyAddressResponse)[0]
+
+        if response.error != 0:
+            return []
 
         result = []
         for t in response.addresses:
