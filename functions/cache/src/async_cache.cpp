@@ -84,7 +84,8 @@ void send_get_response(const set<Key>& read_set, const Address& response_addr,
   kZmqUtil->send_string(resp_string, &pushers[response_addr]);
 }
 
-void send_error_response(RequestType type, const Address& response_addr, SocketCache& pushers) {
+void send_error_response(RequestType type, const Address& response_addr,
+                         SocketCache& pushers) {
   KeyResponse response;
   response.set_type(type);
   response.set_error_msg("LATTICE_ERROR");
@@ -156,13 +157,15 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
 
         if (!tuple.has_lattice_type()) {
           log->error("Cache requires type to retrieve key.");
-          send_error_response(RequestType::GET, request.response_address(), pushers);
+          send_error_response(RequestType::GET, request.response_address(),
+                              pushers);
           error = true;
           break;
         } else if ((key_type_map.find(key) != key_type_map.end()) &&
                    (key_type_map[key] != tuple.lattice_type())) {
           log->error("lattice type mismatch.");
-          send_error_response(RequestType::GET, request.response_address(), pushers);
+          send_error_response(RequestType::GET, request.response_address(),
+                              pushers);
           error = true;
           break;
         }
@@ -216,13 +219,15 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
 
         if (!tuple.has_lattice_type()) {
           log->error("Cache requires type to retrieve key.");
-          send_error_response(RequestType::PUT, request.response_address(), pushers);
+          send_error_response(RequestType::PUT, request.response_address(),
+                              pushers);
           error = true;
           break;
         } else if ((key_type_map.find(key) != key_type_map.end()) &&
                    (key_type_map[key] != tuple.lattice_type())) {
           log->error("lattice type mismatch.");
-          send_error_response(RequestType::PUT, request.response_address(), pushers);
+          send_error_response(RequestType::PUT, request.response_address(),
+                              pushers);
           error = true;
           break;
         }
@@ -230,7 +235,8 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
         if (!error) {
           update_cache(key, tuple.lattice_type(), tuple.payload(),
                        local_lww_cache, local_set_cache, log);
-          string req_id = client.put_async(key, tuple.payload(), tuple.lattice_type());
+          string req_id =
+              client.put_async(key, tuple.payload(), tuple.lattice_type());
           request_address_map[req_id] = request.response_address();
         }
       }
@@ -276,8 +282,7 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       }
     }
 
-    vector<KeyResponse> responses =
-        client.receive_async(kZmqUtil);
+    vector<KeyResponse> responses = client.receive_async(kZmqUtil);
     for (const auto& response : responses) {
       Key key = response.tuples(0).key();
       // TODO: assert that key_type_map[key] and
@@ -287,12 +292,15 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
         if (response.type() == RequestType::GET) {
           client.get_async(key);
         } else {
-          if (request_address_map.find(response.response_id()) != request_address_map.end()) {
+          if (request_address_map.find(response.response_id()) !=
+              request_address_map.end()) {
             // we only retry for client-issued requests, not for the periodic
             // stat report
-            string new_req_id = client.put_async(key, response.tuples(0).payload(),
-                             response.tuples(0).lattice_type());
-            request_address_map[new_req_id] = request_address_map[response.response_id()];
+            string new_req_id =
+                client.put_async(key, response.tuples(0).payload(),
+                                 response.tuples(0).lattice_type());
+            request_address_map[new_req_id] =
+                request_address_map[response.response_id()];
             // GC the original request_id address pair
             request_address_map.erase(response.response_id());
           }
@@ -319,12 +327,16 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           }
         } else {
           // forward the PUT response to client
-          if (request_address_map.find(response.response_id()) == request_address_map.end()) {
-            log->error("Missing request id - address entry for this PUT response");
+          if (request_address_map.find(response.response_id()) ==
+              request_address_map.end()) {
+            log->error(
+                "Missing request id - address entry for this PUT response");
           } else {
             string resp_string;
             response.SerializeToString(&resp_string);
-            kZmqUtil->send_string(resp_string, &pushers[request_address_map[response.response_id()]]);
+            kZmqUtil->send_string(
+                resp_string,
+                &pushers[request_address_map[response.response_id()]]);
             request_address_map.erase(response.response_id());
           }
         }

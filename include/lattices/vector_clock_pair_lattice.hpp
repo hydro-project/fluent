@@ -39,7 +39,7 @@ struct VectorClockValuePair {
     vector_clock = vc;
     value = v;
   }
-  
+
   unsigned size() {
     return vector_clock.size().reveal() * 2 * sizeof(unsigned) +
            value.size().reveal();

@@ -80,7 +80,7 @@ class KvsAsyncClient {
    * Issue an async PUT request to the KVS for a certain lattice typed value.
    */
   string put_async(const Key& key, const string& payload,
-                 LatticeType lattice_type) {
+                   LatticeType lattice_type) {
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
@@ -150,8 +150,7 @@ class KvsAsyncClient {
             // error no == 2, so re-issue request
             pending_get_response_map_[key].tp_ =
                 std::chrono::system_clock::now();
-            try_request(
-                pending_get_response_map_[key].request_);
+            try_request(pending_get_response_map_[key].request_);
           } else {
             // error no == 0 or 1
             result.push_back(response);
@@ -168,7 +167,8 @@ class KvsAsyncClient {
             // error no == 2, so re-issue request
             pending_put_response_map_[key][response.response_id()].tp_ =
                 std::chrono::system_clock::now();
-            try_request(pending_put_response_map_[key][response.response_id()].request_);
+            try_request(pending_put_response_map_[key][response.response_id()]
+                            .request_);
           } else {
             // error no == 0
             result.push_back(response);
@@ -301,7 +301,7 @@ class KvsAsyncClient {
           pending_put_response_map_[key].end()) {
         pending_put_response_map_[key][request.request_id()].tp_ =
             std::chrono::system_clock::now();
-        pending_put_response_map_[key][request.request_id()].request_= request;
+        pending_put_response_map_[key][request.request_id()].request_ = request;
       }
       pending_put_response_map_[key][request.request_id()].worker_addr_ =
           worker;
@@ -520,8 +520,7 @@ class KvsAsyncClient {
   unsigned timeout_;
 
   // keeps track of pending requests due to missing worker address
-  map<Key, pair<TimePoint, vector<KeyRequest>>>
-      pending_request_map_;
+  map<Key, pair<TimePoint, vector<KeyRequest>>> pending_request_map_;
 
   // keeps track of pending get responses
   map<Key, PendingRequest> pending_get_response_map_;
