@@ -29,3 +29,11 @@ SET(FUNC_ASYNC_CACHE_SOURCE
 ADD_EXECUTABLE(flfunc-async-cache ${FUNC_ASYNC_CACHE_SOURCE})
 TARGET_LINK_LIBRARIES(flfunc-async-cache ${FUNC_DEPENDENCIES})
 ADD_DEPENDENCIES(flfunc-async-cache flzmq zeromq zeromqcpp)
+
+SET(FUNC_LOCAL_STORE_SOURCE 
+	local_store.cpp
+  )
+
+ADD_EXECUTABLE(flfunc-local-store ${FUNC_LOCAL_STORE_SOURCE})
+TARGET_LINK_LIBRARIES(flfunc-local-store ${FUNC_DEPENDENCIES})
+ADD_DEPENDENCIES(flfunc-local-store flzmq zeromq zeromqcpp)

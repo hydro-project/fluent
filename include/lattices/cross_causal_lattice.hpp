@@ -43,7 +43,7 @@ struct CrossCausalPayload {
     dependency = dep;
     value = v;
   }
-  
+
   unsigned size() {
     unsigned dep_size = 0;
     for (const auto &pair : dependency.reveal()) {
