@@ -1,3 +1,4 @@
+import cloudpickle as cp
 import logging
 import numpy as np
 import random
@@ -11,119 +12,126 @@ from include.functions_pb2 import *
 from include.kvs_pb2 import *
 from include.serializer import *
 from include.shared import *
+from . import utils
 
-logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO)
-
-def run(flconn, kvs, num_requests):
-    ### DEFINE AND REGISTER FUNCTIONS ###
-    def all_mean(arr):
-        return arr.mean(axis=0).mean()
-
-    cloud_mean = flconn.register(all_mean, 'mean')
-
-    if cloud_mean:
-        print('Successfully registered the mean function.')
-    else:
-        sys.exit(1)
-
-    ### TEST REGISTERED FUNCTIONS ###
-    inp = np.zeros((2048, 2048))
-    val = LWWPairLattice(0, serialize_val(inp))
-    key = str(uuid.uuid4())
-    kvs.put(key, val)
-
-    ref = FluentReference(key, True, LWW)
-    mean_test = cloud_mean(ref).get()
-    if mean_test != 0.0:
-        print('Unexpected result from mean(array): %s' % (str(incr_test)))
-
-    print('Successfully tested function!')
-
-    ### CREATE DAG ###
-
+def run(flconn, kvs, num_requests, create):
     dag_name = 'locality'
 
-    functions = ['mean']
-    connections = []
-    success, error = flconn.register_dag(dag_name, functions, connections)
+    if create:
+        ### DEFINE AND REGISTER FUNCTIONS ###
+        def all_mean(arr):
+            return arr.mean(axis=0).mean()
 
-    if not success:
-        print('Failed to register DAG: %s' % (ErrorType.Name(error)))
-        sys.exit(1)
+        cloud_mean = flconn.register(all_mean, 'mean')
 
-    ### GENERATE_DATA ###
+        if cloud_mean:
+            logging.info('Successfully registered the mean function.')
+        else:
+            sys.exit(1)
 
-    NUM_OBJECTS = 100
-    oids = []
+        ### TEST REGISTERED FUNCTIONS ###
+        inp = np.zeros((2048, 2048))
+        val = LWWPairLattice(0, serialize_val(inp))
+        key = str(uuid.uuid4())
+        kvs.put(key, val)
 
-    for _ in range(NUM_OBJECTS):
-        array = np.random.rand(2048, 2048)
-        oid = str(uuid.uuid4())
-        val = LWWPairLattice(0, serialize_val(array))
+        ref = FluentReference(key, True, LWW)
+        mean_test = cloud_mean(ref).get()
+        if mean_test != 0.0:
+            logging.error('Unexpected result from mean(array): %s' % (str(incr_test)))
 
-        kvs.put(oid, val)
-        oids.append(oid)
+        logging.info('Successfully tested function!')
 
-    ### RUN DAG ###
+        ### CREATE DAG ###
 
-    total_time = []
-    scheduler_time = []
-    kvs_time = []
+        functions = ['mean']
+        connections = []
+        success, error = flconn.register_dag(dag_name, functions, connections)
 
-    retries = 0
+        if not success:
+            rint('Failed to register DAG: %s' % (ErrorType.Name(error)))
+            sys.exit(1)
 
-    log_start = time.time()
+        ### GENERATE_DATA ###
 
-    def mean_confidence_interval(data, confidence=0.95):
-        n = len(data)
-        m, se = np.mean(data), scipy.stats.sem(data)
-        h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
-        return m, m-h, m+h
+        NUM_OBJECTS = 100
+        oids = []
 
-    log_epoch = 0
-    for _ in range(num_requests):
-        start = time.time()
-        oid = random.choice(oids)
-        ref = FluentReference(oid, True, LWW)
-        arg_map = { 'mean' : [ref] }
+        for _ in range(NUM_OBJECTS):
+            array = np.random.rand(2048, 2048)
+            oid = str(uuid.uuid4())
+            val = LWWPairLattice(0, serialize_val(array))
 
-        rid = flconn.call_dag(dag_name, arg_map)
-        end = time.time()
+            kvs.put(oid, val)
+            oids.append(oid)
 
-        stime = end - start
+        oid_data = cp.dumps(oids)
+        l = LWWPairLattice(generate_timestamp(0), oid_data)
+        kvs.put('LOCALITY_OIDS', l)
+        logging.info('Successfully created all data!')
 
-        start = time.time()
-        res = kvs.get(rid)
-        while not res:
-            retries += 1
+        return [], [], [], []
+    else:
+        ### RUN DAG ###
+        l = kvs.get('LOCALITY_OIDS')
+        oids = cp.loads(l.reveal()[1])
+
+        total_time = []
+        scheduler_time = []
+        kvs_time = []
+
+        retries = 0
+
+        log_start = time.time()
+
+        log_epoch = 0
+        epoch_total = []
+        epoch_scheduler = []
+        epoch_kvs = []
+
+        for _ in range(num_requests):
+            start = time.time()
+            oid = random.choice(oids)
+            ref = FluentReference(oid, True, LWW)
+            arg_map = { 'mean' : [ref] }
+
+            rid = flconn.call_dag(dag_name, arg_map)
+            end = time.time()
+
+            stime = end - start
+
+            start = time.time()
             res = kvs.get(rid)
-        res = deserialize_val(res.reveal()[1])
-        end = time.time()
+            while not res:
+                retries += 1
+                res = kvs.get(rid)
+            res = deserialize_val(res.reveal()[1])
+            end = time.time()
 
-        ktime = end - start
+            ktime = end - start
 
-        total_time += [stime + ktime]
-        scheduler_time += [stime]
-        kvs_time += [ktime]
+            total_time += [stime + ktime]
+            scheduler_time += [stime]
+            kvs_time += [ktime]
 
-        log_end = time.time()
-        if (log_end - log_start) > 5:
-            total_latency = np.array(total_time)
-            sched_latency = np.array(scheduler_time)
-            kvs_latency = np.array(kvs_time)
+            epoch_total += [stime + ktime]
+            epoch_scheduler += [stime]
+            epoch_kvs += [ktime]
 
-            interval = mean_confidence_interval(total_latency)
-            logging.info('Epoch %d e2e latency: mean %.6f (%.6f, %.6f)' %
-                    (log_epoch, interval[0], interval[1], interval[2]))
-            interval = mean_confidence_interval(sched_latency)
-            logging.info('Epoch %d scheduler latency: mean %.6f (%.6f, %.6f)' %
-                    (log_epoch, interval[0], interval[1], interval[2]))
-            interval = mean_confidence_interval(kvs_latency)
-            logging.info('Epoch %d kvs latency: mean %.6f (%.6f, %.6f)' %
-                    (log_epoch, interval[0], interval[1], interval[2]))
+            log_end = time.time()
+            if (log_end - log_start) > 5:
+                utils.print_latency_stats(epoch_total, 'EPOCH %d E2E' %
+                        (log_epoch), True)
+                utils.print_latency_stats(epoch_scheduler, 'EPOCH %d SCHEDULER' %
+                        (log_epoch), True)
+                utils.print_latency_stats(epoch_kvs, 'EPOCH %d KVS' %
+                        (log_epoch), True)
 
-            log_epoch += 1
-            log_start = time.time()
+                epoch_total.clear()
+                epoch_scheduler.clear()
+                epoch_kvs.clear()
+                log_epoch += 1
+                log_start = time.time()
 
-    return total_time, scheduler_time, kvs_time, retries
+        return total_time, scheduler_time, kvs_time, retries
 

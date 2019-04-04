@@ -46,6 +46,8 @@ def exec_function(exec_socket, kvs, status):
 
     f = utils._retrieve_function(call.name, kvs)
     if not f:
+        logging.info('Functions %s not found! Returning an error.' %
+                (call.name))
         sutils.error.error = FUNC_NOT_FOUND
         exec_socket.send(sutils.error.SerializeToString())
         return

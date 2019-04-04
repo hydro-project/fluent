@@ -23,15 +23,15 @@ from include.shared import *
 from include.serializer import *
 
 class FluentConnection():
-    def __init__(self, func_addr, ip=None):
+    def __init__(self, func_addr, ip=None, tid=0):
         self.service_addr = 'tcp://'+  func_addr + ':%d'
         self.context = zmq.Context(1)
         kvs_addr = self._connect()
 
         if ip:
-            self.kvs_client = AnnaClient(kvs_addr, ip)
+            self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
         else:
-            self.kvs_client = AnnaClient(kvs_addr)
+            self.kvs_client = AnnaClient(kvs_addr, offset=tid)
 
         self.func_create_sock = self.context.socket(zmq.REQ)
         self.func_create_sock.connect(self.service_addr % FUNC_CREATE_PORT)

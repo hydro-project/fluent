@@ -35,7 +35,7 @@ UTILIZATION_MIN = .10
 LATENCY_RATIO = 1.25
 CALL_COUNT_THRESHOLD = 200
 
-GRACE_PERIOD = 120
+GRACE_PERIOD = 180
 grace_start = 0
 
 EXECUTOR_REPORT_PERIOD = 20
@@ -112,7 +112,7 @@ def run():
                 msg = args[2] + args[1]
                 add_push_socket.send_string(msg)
             elif args[0] == 'remove':
-                msg = args[2] = args[1]
+                msg = args[2] + args[1]
                 remove_push_socket.send_string(msg)
 
         if restart_pull_socket in socks and socks[restart_pull_socket] == \
@@ -208,6 +208,10 @@ def run():
 
             check_function_load(context, function_frequencies, function_runtimes,
                     executor_statuses, latency_history)
+
+            executor_statuses.clear()
+            function_runtimes.clear()
+            function_frequencies.clear()
             start = time.time()
 
 def check_function_load(context, function_frequencies, function_runtimes,
@@ -334,11 +338,11 @@ def check_executor_utilization(client, ctx, executor_statuses,
             grace_start = time.time()
 
         # we only decide to kill nodes if they are underutilized and if there
-        # are at last two executors in the system -- we never scale down past
+        # are at least 5 executors in the system -- we never scale down past
         # that
-        num_nodes = len(executor_statuses) / NUM_EXEC_THREADS
+        num_nodes = len(util.get_pod_ips(client, 'role=function'))
 
-        if avg_utilization < UTILIZATION_MIN and num_nodes > 2:
+        if avg_utilization < UTILIZATION_MIN and num_nodes > 5:
             ip = random.choice(list(executor_statuses.values())).ip
             logging.info(('Average utilization is %.4f, and there are %d '
                     + 'executors. Removing IP %s.') % (avg_utilization,
@@ -347,7 +351,9 @@ def check_executor_utilization(client, ctx, executor_statuses,
             for tid in range(NUM_EXEC_THREADS):
                 sckt = ctx.socket(zmq.PUSH)
                 sckt.connect(util._get_executor_depart_address(ip, tid))
-                del executor_statuses[(ip, tid)]
+
+                if (ip, tid) in executor_statuses:
+                    del executor_statuses[(ip, tid)]
 
                 # this message does not matter
                 sckt.send(b'')
@@ -452,9 +458,9 @@ def check_unused_nodes(client, add_push_socket):
 
         logging.info('Found %d unallocated %s nodes.' % (len(unallocated),
             kind))
-        for node_ip in unallocated:
-            # note that the last argument is a list of lists
-            msg = kind + ':1'
+
+        if len(unallocated) > 0:
+            msg = kind + ':' + str(len(unallocated))
             add_push_socket.send_string(msg)
 
 if __name__ == '__main__':

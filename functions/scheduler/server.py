@@ -161,14 +161,16 @@ def scheduler(ip, mgmt_ip, route_addr):
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking
             if not status.running:
-                old_status = thread_statuses[key]
+                if key in thread_statuses:
+                    old_status = thread_statuses[key]
+                    del thread_statuses[key]
 
-                executors.remove(key)
-                departed_executors.add(status.ip)
-                del thread_statuses[key]
+                    for fname in old_status.functions:
+                        func_locations[fname].remove((old_status.ip,
+                            old_status.tid))
 
-                for fname in old_status.functions:
-                    func_locations[fname].remove(old_status.ip, old_status.tid)
+                executors.discard(key)
+                departed_executors.add((status.ip, status.tid))
 
                 continue
 
@@ -205,7 +207,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             for dname in ks.keys:
                 if dname not in dags:
                     dag = Dag()
-                    dag.ParseFromString(kvs.get(dname).value)
+                    dag.ParseFromString(kvs.get(dname).reveal()[1])
 
                     dags[dname] = dag
 
@@ -221,7 +223,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             for sched_ip in schedulers:
                 if sched_ip != ip:
-                    pusher_cache.get(utils._get_scheduler_update_address(sched_ip))
+                    sckt = pusher_cache.get(utils._get_scheduler_update_address(sched_ip))
                     sckt.send(msg)
 
             stats = ExecutorStatistics()
@@ -247,7 +249,8 @@ def _update_cluster_state(requestor_cache, mgmt_ip, departed_executors,
     # remove any function executor nodes that might still be running
     # but that we know are departed
     for departed in departed_executors:
-        executors.remove(departed)
+        if departed in executors:
+            executors.remove(departed)
 
     utils._update_key_maps(key_cache_map, key_ip_map, executors, kvs)
 

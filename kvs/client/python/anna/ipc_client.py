@@ -52,6 +52,9 @@ class IpcAnnaClient:
             val = LWWValue()
             val.ParseFromString(tp.payload)
 
+            if b'ERROR' in val.value:
+                return None
+
             return LWWPairLattice(val.timestamp, val.value)
         elif tp.lattice_type == SET:
             res = set()

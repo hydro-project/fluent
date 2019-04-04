@@ -12,8 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
-
 from anna.lattices import *
 from include.kvs_pb2 import *
 from include.shared import *
@@ -49,7 +47,6 @@ def _put_func_list(client, funclist):
 
     l = LWWPairLattice(generate_timestamp(0), default_ser.dump(funclist))
     res = client.put(FUNCOBJ, l)
-    logging.info('Putting %s: %s' % (FUNCOBJ, str(res)))
 
 
 def _get_cache_ip_key(ip):
