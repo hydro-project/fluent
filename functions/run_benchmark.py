@@ -5,6 +5,7 @@ import scipy.stats
 import sys
 
 from benchmarks import composition
+from benchmarks import locality
 import client as flclient
 
 ### SETUP ###
@@ -27,6 +28,8 @@ bname = sys.argv[1]
 
 if bname == 'composition':
     total, scheduler, kvs, retries = composition.run(flconn, kvs, num_requests)
+if bname == 'locality':
+    total, scheduler, kvs, retries = locality.run(flconn, kvs, num_requests)
 else:
     print('Unknown benchmark type: %s!' % (bname))
 

@@ -25,13 +25,10 @@ from . import utils
 from include import server_utils as sutils
 from include.shared import *
 
-logging.basicConfig(filename='log_executor.txt', level=logging.INFO)
-
 REPORT_THRESH = 20
-global_util = 0.0
 
 def executor(ip, mgmt_ip, schedulers, thread_id):
-    global_util = 0
+    logging.basicConfig(filename='log_executor.txt', level=logging.INFO, format='%(asctime)s %(message)s')
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()
@@ -142,7 +139,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             if not status.running or (fname not in status.functions and \
                     fname in queue and \
                     schedule.id not in queue[fname].keys()) or \
-                    schedule.locations[fname].split(':')[0] != ip:
+                    schedule.locations[fname].split(':')[0] != ip or \
+                    fname not in pinned_functions:
                 sutils.error.error = INVALID_TARGET
                 dag_queue_socket.send(sutils.error.SerializeToString())
                 continue
@@ -168,7 +166,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             if trigger.id not in received_triggers:
                 received_triggers[trigger.id] = {}
-
 
             received_triggers[trigger.id][trigger.source] = trigger
             if len(received_triggers[trigger.id]) == \

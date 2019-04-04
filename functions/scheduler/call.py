@@ -115,15 +115,21 @@ def _pick_node(executors, key_ip_map, refs):
     # relevant arguments they have cached. For the time begin, we will
     # just pick the machine that has the most number of keys cached.
     arg_map = {}
+
+    executor_ips = [e[0] for e in executors]
+
     for ref in refs:
         if ref.key in key_ip_map:
             ips = key_ip_map[ref.key]
 
             for ip in ips:
-                if ip not in arg_map:
-                    arg_map[ip] = 0
+                # only choose this cached node if its a valid executor for our
+                # purposes
+                if ip in executor_ips:
+                    if ip not in arg_map:
+                        arg_map[ip] = 0
 
-                arg_map[ip] += 1
+                    arg_map[ip] += 1
 
     max_ip = None
     max_count = 0
@@ -132,9 +138,11 @@ def _pick_node(executors, key_ip_map, refs):
             max_count = arg_map[ip]
             max_ip = ip
 
-    # pick a random thrad on that IP address
+    # pick a random thead from our potential executors that is on that IP
+    # address
     if max_ip:
-        max_ip = (max_ip, random.choice(list(range(utils.NUM_EXEC_THREADS))))
+        candidates = list(filter(lambda e: e[0] == max_ip, executors))
+        max_ip = random.choice(candidates)
 
     # This only happens if max_ip is never set, and that means that
     # there were no machines with any of the keys cached. In this case,

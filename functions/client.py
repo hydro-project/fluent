@@ -114,9 +114,9 @@ class FluentConnection():
         flist = self._get_func_list()
         for fname in functions:
             if fname not in flist.names:
-                print('Function %s not registered. Please register before'
-                        + 'including it in a DAG.')
-                return
+                print(('Function %s not registered. Please register before'
+                        + 'including it in a DAG.') % (fname))
+                return False, None
 
         dag = Dag()
         dag.name = name
