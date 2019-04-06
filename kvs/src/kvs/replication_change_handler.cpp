@@ -45,7 +45,6 @@ void replication_change_handler(Address public_ip, Address private_ip,
 
   for (const ReplicationFactor& key_rep : rep_change.key_reps()) {
     Key key = key_rep.key();
-
     // if this thread was responsible for the key before the change
     if (metadata_map.find(key) != metadata_map.end()) {
       ServerThreadList orig_threads = kHashRingUtil->get_responsible_threads(
@@ -63,6 +62,9 @@ void replication_change_handler(Address public_ip, Address private_ip,
             decrement = true;
           }
 
+          std::cout << "Key " << key << ", tier " << global.tier_id() << " global "
+            << metadata_map[key].global_replication_[global.tier_id()] << "->"
+            << global.tier_id() << std::endl;
           metadata_map[key].global_replication_[global.tier_id()] =
               global.replication_factor();
         }
@@ -73,6 +75,9 @@ void replication_change_handler(Address public_ip, Address private_ip,
             decrement = true;
           }
 
+          std::cout << "Key " << key << ", tier " << local.tier_id() << " local "
+            << metadata_map[key].local_replication_[local.tier_id()] << "->"
+            << local.tier_id() << std::endl;
           metadata_map[key].local_replication_[local.tier_id()] =
               local.replication_factor();
         }
@@ -83,13 +88,16 @@ void replication_change_handler(Address public_ip, Address private_ip,
             kAllTierIds, succeed, seed);
 
         if (succeed) {
+          std::cout << thread_id << ": " << "Found the new threads" << std::endl;
           if (std::find(threads.begin(), threads.end(), wt) ==
               threads.end()) {  // this thread is no longer
                                 // responsible for this key
             remove_set.insert(key);
+            std::cout << thread_id << ": " << "No longer responsible" << std::endl;
 
             // add all the new threads that this key should be sent to
             for (const ServerThread& thread : threads) {
+              std::cout << thread_id << "adding " << thread.gossip_connect_address() << std::endl;
               addr_keyset_map[thread.gossip_connect_address()].insert(key);
             }
           }
@@ -98,6 +106,7 @@ void replication_change_handler(Address public_ip, Address private_ip,
           // has been reduced; if that's not the case, and I am the "first"
           // thread responsible for this key, then I gossip it to the new
           // threads that are responsible for it
+          std::cout << thread_id << ": " << "Checking whether to gossip data" << std::endl;
           if (!decrement && orig_threads.begin()->id() == wt.id()) {
             std::unordered_set<ServerThread, ThreadHash> new_threads;
 
@@ -109,6 +118,7 @@ void replication_change_handler(Address public_ip, Address private_ip,
             }
 
             for (const ServerThread& thread : new_threads) {
+              std::cout << thread_id << "adding " << thread.gossip_connect_address() << std::endl;
               addr_keyset_map[thread.gossip_connect_address()].insert(key);
             }
           }
@@ -120,6 +130,7 @@ void replication_change_handler(Address public_ip, Address private_ip,
         log->error(
             "Missing key replication factor in rep factor change routine.");
 
+        std::cout << thread_id << ": " << "In the first else! This is bad!" << std::endl;
         // just update the replication factor
         for (const auto& global : key_rep.global()) {
           metadata_map[key].global_replication_[global.tier_id()] =
@@ -132,6 +143,7 @@ void replication_change_handler(Address public_ip, Address private_ip,
         }
       }
     } else {
+      std::cout << thread_id << ": " << "In the second else! This is bad!" << std::endl;
       // just update the replication factor
       for (const auto& global : key_rep.global()) {
         metadata_map[key].global_replication_[global.tier_id()] =
@@ -145,12 +157,18 @@ void replication_change_handler(Address public_ip, Address private_ip,
     }
   }
 
+  std::cout << thread_id << ": " << "There are " << addr_keyset_map.size() << " things to gossip" << std::endl;
   send_gossip(addr_keyset_map, pushers, serializers, metadata_map);
 
   // remove keys
   for (const string& key : remove_set) {
+    std::cout << thread_id << ": " << "Removing key " << key << std::endl;
+    if (metadata_map.find(key) == metadata_map.end()) {
+      std::cout << "ERROR DID NOT HAVE METADATA FOR " << key << std::endl;
+    }
     serializers[metadata_map[key].type_]->remove(key);
     metadata_map.erase(key);
     local_changeset.erase(key);
   }
+  std::cout << "Successfully removed keys" << std::endl;
 }

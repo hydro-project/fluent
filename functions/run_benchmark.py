@@ -8,7 +8,7 @@ from benchmarks import locality
 from benchmarks import utils
 import client as flclient
 
-# logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 ### SETUP ###
 if len(sys.argv) < 4:
@@ -31,7 +31,9 @@ bname = sys.argv[1]
 if bname == 'composition':
     total, scheduler, kvs, retries = composition.run(flconn, kvs, num_requests)
 if bname == 'locality':
-    total, scheduler, kvs, retries = locality.run(flconn, kvs, num_requests)
+    locality.run(flconn, kvs, num_requests, True)
+    total, scheduler, kvs, retries = locality.run(flconn, kvs, num_requests,
+            False)
 else:
     print('Unknown benchmark type: %s!' % (bname))
 

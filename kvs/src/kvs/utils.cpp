@@ -26,7 +26,12 @@ void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
     gossip_map[address].set_type(type);
 
     for (const auto& key : key_pair.second) {
-      auto res = process_get(key, serializers[metadata_map[key].type_]);
+      std::pair<string, unsigned> res;
+      if(is_metadat(key)){
+        res = process_get(key, LWW);
+      } else {
+        res = process_get(key, serializers[metadata_map[key].type_]);
+      }
 
       if (res.second == 0) {
         prepare_put_tuple(gossip_map[address], key, metadata_map[key].type_,

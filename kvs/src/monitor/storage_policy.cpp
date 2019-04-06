@@ -34,15 +34,15 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
     }
   }
 
-  if (adding_ebs_node == 0 && ss.required_ebs_node > ebs_node_number) {
-    auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                            std::chrono::system_clock::now() - grace_start)
-                            .count();
-    if (time_elapsed > kGracePeriod) {
-      add_node(log, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
-               management_ip);
-    }
-  }
+  // if (adding_ebs_node == 0 && ss.required_ebs_node > ebs_node_number) {
+  //   auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+  //                           std::chrono::system_clock::now() - grace_start)
+  //                           .count();
+  //   if (time_elapsed > kGracePeriod) {
+  //     add_node(log, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
+  //              management_ip);
+  //   }
+  // }
 
   if (ss.avg_ebs_consumption_percentage < kMinEbsNodeConsumption &&
       !removing_ebs_node &&

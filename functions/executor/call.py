@@ -15,7 +15,6 @@
 import logging
 import sys
 import time
-import uuid
 import zmq
 
 from anna.lattices import *
@@ -30,38 +29,28 @@ def exec_function(exec_socket, kvs, status):
     call.ParseFromString(exec_socket.recv())
     logging.info('Received call for ' + call.name)
 
-    if not status.running:
-        sutils.error.error = INVALID_TARGET
-        exec_socket.send(sutils.SerializeToString())
-        return
-
-    obj_id = str(uuid.uuid4())
-    if not call.HasField('resp_id'):
-        call.resp_id = obj_id
-    else:
-        obj_id = call.resp_id
-
-    reqid = call.request_id
     fargs = _process_args(call.args)
 
     f = utils._retrieve_function(call.name, kvs)
     if not f:
-        logging.info('Functions %s not found! Returning an error.' %
+        logging.info('Functions %s not found! Putting an error.' %
                 (call.name))
         sutils.error.error = FUNC_NOT_FOUND
-        exec_socket.send(sutils.error.SerializeToString())
-        return
+        result = serialize_val(('ERROR', sutils.error.SerializeToString()))
+    else:
+        try:
+            result = _exec_func(kvs, f, fargs)
+            result = serialize_val(result)
+        except Error as e:
+            logging.info('Unexpected error %s while executing function.' %
+                    (str(e)))
+            sutils.error.error = EXEC_ERROR
+            result = serialize_val('ERROR' + str(e),
+                    sutils.SerializeToString())
 
-    resp = GenericResponse()
-    resp.success = True
-    resp.response_id = obj_id
-
-    exec_socket.send(resp.SerializeToString())
-    result = _exec_func(kvs, f, fargs)
-    result = serialize_val(result)
-
+    logging.info('Putting result at %s.' % (call.resp_id))
     result_lattice = LWWPairLattice(generate_timestamp(0), result)
-    kvs.put(obj_id, result_lattice)
+    kvs.put(call.resp_id, result_lattice)
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
@@ -110,7 +99,6 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
         kvs.put(schedule.id, l)
 
 
-
 def _process_args(arg_list):
     return list(map(lambda v: get_serializer(v.type).load(v.body), arg_list))
 
@@ -127,6 +115,7 @@ def _exec_func(kvs, func, args):
 
     # execute the function
     return  func(*func_args)
+
 
 def _resolve_ref(ref, kvs):
     ref_data = kvs.get(ref.key, ref.obj_type)

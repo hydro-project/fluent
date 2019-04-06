@@ -19,8 +19,8 @@ KeyMetadata create_new_replication_vector(unsigned gm, unsigned ge, unsigned lm,
                                           unsigned le) {
   KeyMetadata metadata;
   metadata.global_replication_[kMemoryTierId] = gm;
-  metadata.global_replication_[kMemoryTierId] = ge;
-  metadata.local_replication_[kEbsTierId] = lm;
+  metadata.global_replication_[kEbsTierId] = ge;
+  metadata.local_replication_[kMemoryTierId] = lm;
   metadata.local_replication_[kEbsTierId] = le;
 
   return metadata;
@@ -70,6 +70,11 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
     Key key = request_pair.first;
     KeyMetadata new_metadata = request_pair.second;
     orig_metadata_map_info[key] = metadata_map[key];
+
+    // don't send an update if we're not changing the metadata
+    if (new_metadata == metadata_map[key]) {
+      continue;
+    }
 
     // update the metadata map
     metadata_map[key].global_replication_ = new_metadata.global_replication_;

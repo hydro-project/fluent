@@ -66,7 +66,7 @@ def _get_exec_address(ip, tid):
 
 
 def _get_queue_address(ip, tid):
-    return 'tcp://' + ip + ':' + str(DAG_QUEUE_PORT + tid)
+    return 'tcp://' + ip + ':' + str(DAG_QUEUE_PORT + int(tid))
 
 
 def _get_scheduler_list_address(mgmt_ip):
@@ -126,3 +126,13 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
 
             key_ip_map[key].append(ip)
 
+def _find_dag_source(dag):
+    sinks = set()
+    for conn in dag.connections:
+        sinks.add(conn.sink)
+
+    funcs = set(dag.functions)
+    for sink in sinks:
+        funcs.remove(sink)
+
+    return funcs

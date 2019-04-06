@@ -17,38 +17,48 @@ def benchmark(flconn, tid):
 
     benchmark_start_socket = ctx.socket(zmq.PULL)
     benchmark_start_socket.bind('tcp://*:' + str(BENCHMARK_START_PORT + tid))
-
     kvs = flconn.kvs_client
 
     while True:
         msg = benchmark_start_socket.recv_string()
         splits = msg.split(':')
 
-        bname = splits[0]
-        num_requests = int(splits[1])
-        if len(splits) > 2:
-            create = bool(splits[2])
+        resp_addr = splits[0]
+        bname = splits[1]
+        num_requests = int(splits[2])
+        if len(splits) > 3:
+            create = bool(splits[3])
         else:
             create = False
-        run_bench(bname, num_requests, flconn, kvs, create)
 
+        sckt = ctx.socket(zmq.PUSH)
+        sckt.connect('tcp://' + resp_addr + ':3000')
+        run_bench(bname, num_requests, flconn, kvs, sckt, create)
 
-def run_bench(bname, num_requests, flconn, kvs, create=False):
+def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
     logging.info('Running benchmark %s, %d requests.' % (bname, num_requests))
+
     if bname == 'composition':
-        total, scheduler, kvs, retries = composition.run(flconn, kvs, num_requests)
+        total, scheduler, kvs, retries = composition.run(flconn, kvs,
+                num_requests, sckt)
     elif bname == 'locality':
         total, scheduler, kvs, retries = locality.run(flconn, kvs,
-                num_requests, create)
+                num_requests, create, sckt)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
+        sckt.send(b'END')
         return
 
     # some benchmark modes return no results
     if not total:
+        sckt.send(b'END')
+        logging.info('*** Benchmark %s finished. It returned no results. ***' %
+                (bname))
         return
+    else:
+        sckt.send(b'END')
+        logging.info('*** Benchmark %s finished. ***' % (bname))
 
-    logging.info('*** BENCHMARK %s FINISHED ***' % (bname))
     logging.info('Total computation time: %.4f' % (sum(total)))
     utils.print_latency_stats(total, 'E2E', True)
     utils.print_latency_stats(scheduler, 'SCHEDULER', True)

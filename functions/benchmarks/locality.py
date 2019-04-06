@@ -14,37 +14,45 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
-def run(flconn, kvs, num_requests, create):
+def run(flconn, kvs, num_requests, create, sckt):
     dag_name = 'locality'
 
     if create:
         ### DEFINE AND REGISTER FUNCTIONS ###
-        def all_mean(arr):
-            return arr.mean(axis=0).mean()
+        def dot(v1, v2):
+            import numpy as np
+            return np.dot(v1, v2)
 
-        cloud_mean = flconn.register(all_mean, 'mean')
+        cloud_dot = flconn.register(dot, 'dot')
 
-        if cloud_mean:
-            logging.info('Successfully registered the mean function.')
+        if cloud_dot:
+            logging.info('Successfully registered the dot function.')
         else:
             sys.exit(1)
 
         ### TEST REGISTERED FUNCTIONS ###
-        inp = np.zeros((2048, 2048))
-        val = LWWPairLattice(0, serialize_val(inp))
-        key = str(uuid.uuid4())
-        kvs.put(key, val)
+        inp1 = np.zeros(1024 * 1024)
+        v1 = LWWPairLattice(0, serialize_val(inp1))
+        k1 = str(uuid.uuid4())
+        kvs.put(k1, v1)
 
-        ref = FluentReference(key, True, LWW)
-        mean_test = cloud_mean(ref).get()
-        if mean_test != 0.0:
-            logging.error('Unexpected result from mean(array): %s' % (str(incr_test)))
+        inp2 = np.zeros(1024 * 1024)
+        v2 = LWWPairLattice(0, serialize_val(inp2))
+        k2 = str(uuid.uuid4())
+        kvs.put(k2, v2)
+
+        r1 = FluentReference(k1, True, LWW)
+        r2 = FluentReference(k2, True, LWW)
+        dot_test = cloud_dot(r1, r2).get()
+        if dot_test != 0.0:
+            logging.error('Unexpected result from dot(v1, v2): %s' % (str(dot_test)))
+            sys.exit(1)
 
         logging.info('Successfully tested function!')
 
         ### CREATE DAG ###
 
-        functions = ['mean']
+        functions = ['dot']
         connections = []
         success, error = flconn.register_dag(dag_name, functions, connections)
 
@@ -54,11 +62,11 @@ def run(flconn, kvs, num_requests, create):
 
         ### GENERATE_DATA ###
 
-        NUM_OBJECTS = 100
+        NUM_OBJECTS = 200
         oids = []
 
         for _ in range(NUM_OBJECTS):
-            array = np.random.rand(2048, 2048)
+            array = np.random.rand(1024 * 1024)
             oid = str(uuid.uuid4())
             val = LWWPairLattice(0, serialize_val(array))
 
@@ -92,8 +100,10 @@ def run(flconn, kvs, num_requests, create):
         for _ in range(num_requests):
             start = time.time()
             oid = random.choice(oids)
-            ref = FluentReference(oid, True, LWW)
-            arg_map = { 'mean' : [ref] }
+            r1 = FluentReference(oid, True, LWW)
+            oid = random.choice(oids)
+            r2 = FluentReference(oid, True, LWW)
+            arg_map = { 'dot' : [r1, r2] }
 
             rid = flconn.call_dag(dag_name, arg_map)
             end = time.time()
@@ -120,6 +130,7 @@ def run(flconn, kvs, num_requests, create):
 
             log_end = time.time()
             if (log_end - log_start) > 5:
+                sckt.send(cp.dumps(epoch_total))
                 utils.print_latency_stats(epoch_total, 'EPOCH %d E2E' %
                         (log_epoch), True)
                 utils.print_latency_stats(epoch_scheduler, 'EPOCH %d SCHEDULER' %

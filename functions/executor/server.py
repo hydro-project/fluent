@@ -33,16 +33,18 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     ctx = zmq.Context(1)
     poller = zmq.Poller()
 
-    pin_socket = ctx.socket(zmq.REP)
+    pin_socket = ctx.socket(zmq.PULL)
     pin_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.PIN_PORT + thread_id))
 
-    unpin_socket = ctx.socket(zmq.REP)
-    unpin_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.UNPIN_PORT + thread_id))
+    unpin_socket = ctx.socket(zmq.PULL)
+    unpin_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.UNPIN_PORT +
+        thread_id))
 
-    exec_socket = ctx.socket(zmq.REP)
-    exec_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.FUNC_EXEC_PORT + thread_id))
+    exec_socket = ctx.socket(zmq.PULL)
+    exec_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.FUNC_EXEC_PORT +
+        thread_id))
 
-    dag_queue_socket = ctx.socket(zmq.REP)
+    dag_queue_socket = ctx.socket(zmq.PULL)
     dag_queue_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_QUEUE_PORT
         + thread_id))
 
@@ -51,8 +53,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         + thread_id))
 
     self_depart_socket = ctx.socket(zmq.PULL)
-    self_depart_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.SELF_DEPART_PORT +
-        thread_id))
+    self_depart_socket.bind(sutils.BIND_ADDR_TEMPLATE %
+            (sutils.SELF_DEPART_PORT + thread_id))
 
     pusher_cache = SocketCache(ctx, zmq.PUSH)
 
@@ -88,6 +90,12 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # we receive them
     received_triggers = {}
 
+    # track when we received a function request, so we can report e2e latency
+    receive_times = {}
+
+    # track how many functions we're executing
+    exec_counts = {}
+
     # metadata to track thread utilization
     report_start = time.time()
     event_occupancy = { 'pin': 0.0, 'unpin': 0.0, 'func_exec': 0.0,
@@ -99,7 +107,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
-            pin(pin_socket, client, status, pinned_functions, runtimes)
+            pin(pin_socket, client, status, pinned_functions, runtimes,
+                    exec_counts)
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -108,7 +117,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
             work_start = time.time()
-            unpin(unpin_socket, status, pinned_functions, runtimes)
+            unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts)
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -130,26 +139,33 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             schedule.ParseFromString(dag_queue_socket.recv())
             fname = schedule.target_function
 
-            logging.info('Received a schedule for DAG %s, function %s.' %
-                    (schedule.dag.name, fname))
-
-            # if we are trying to kill this node or unpin this function, we
-            # don't accept requests anymore for DAG schedules; this also checks
-            # to make sure it's the right IP for the target
-            if not status.running or (fname not in status.functions and \
-                    fname in queue and \
-                    schedule.id not in queue[fname].keys()) or \
-                    schedule.locations[fname].split(':')[0] != ip or \
-                    fname not in pinned_functions:
-                sutils.error.error = INVALID_TARGET
-                dag_queue_socket.send(sutils.error.SerializeToString())
-                continue
+            logging.info('Received a schedule for DAG %s (%s), function %s.' %
+                    (schedule.dag.name, schedule.id, fname))
 
             if fname not in queue:
                 queue[fname] = {}
 
             queue[fname][schedule.id] = schedule
-            dag_queue_socket.send(sutils.ok_resp)
+
+            if (schedule.id, fname) not in receive_times:
+                receive_times[(schedule.id, fname)] = time.time()
+
+            # in case we receive the trigger before we receive the schedule, we
+            # can trigger from this operation as well
+            trkey = (schedule.id, fname)
+            if trkey in received_triggers and \
+                    len(received_triggers[trkey]) == \
+                            len(schedule.triggers):
+                exec_dag_function(pusher_cache, client,
+                    received_triggers[trkey], pinned_functions[fname],
+                    schedule)
+                del received_triggers[trkey]
+                del queue[fname][schedule.id]
+
+                fend = time.time()
+                fstart = receive_times[(schedule.id, fname)]
+                runtimes[fname] += fend - fstart
+                exec_counts[fname] += 1
 
             elapsed = time.time() - work_start
             event_occupancy['dag_queue'] += elapsed
@@ -161,24 +177,35 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             trigger.ParseFromString(dag_exec_socket.recv())
 
             fname = trigger.target_function
+            logging.info('Received a trigger for schedule %s, function %s.' %
+                    (trigger.id, fname))
 
-            schedule = queue[fname][trigger.id]
-
+            key = (trigger.id, fname)
             if trigger.id not in received_triggers:
-                received_triggers[trigger.id] = {}
+                received_triggers[key] = {}
 
-            received_triggers[trigger.id][trigger.source] = trigger
-            if len(received_triggers[trigger.id]) == \
+            if (trigger.id, fname) not in receive_times:
+                receive_times[(trigger.id, fname)] = time.time()
+
+            received_triggers[key][trigger.source] = trigger
+            if fname in queue and trigger.id in queue[fname] and \
+                    len(received_triggers[key]) == \
                     len(schedule.triggers):
+                schedule = queue[fname][trigger.id]
                 exec_dag_function(pusher_cache, client,
-                        received_triggers[trigger.id],
+                        received_triggers[key],
                         pinned_functions[fname], schedule)
-                del received_triggers[trigger.id]
+                del received_triggers[key]
+                del queue[fname][trigger.id]
+
+                fend = time.time()
+                fstart = receive_times[(trigger.id, fname)]
+                runtimes[fname] += fend - fstart
+                exec_counts[fname] += 1
 
             elapsed = time.time() - work_start
             event_occupancy['dag_exec'] += elapsed
             total_occupancy += elapsed
-            runtimes[fname] += elapsed
 
         if self_depart_socket in socks and socks[self_depart_socket] == \
                 zmq.POLLIN:
@@ -203,25 +230,27 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             sckt = pusher_cache.get(utils._get_util_report_address(mgmt_ip))
             sckt.send(status.SerializeToString())
 
-            logging.info('Total thread occupancy: %.4f%%' % (utilization))
+            logging.info('Total thread occupancy: %.6f%%' % (utilization))
 
             for event in event_occupancy:
                 occ = event_occupancy[event]
-                logging.info('Event %s occupancy: %.4f%%' % (event, occ))
+                logging.info('Event %s occupancy: %.6f%%' % (event, occ))
                 event_occupancy[event] = 0.0
 
             stats = ExecutorStatistics()
             for fname in runtimes:
-                fstats = stats.statistics.add()
-                fstats.fname = fname
-                fstats.runtime = runtimes[fname]
+                if exec_counts[fname] > 0:
+                    fstats = stats.statistics.add()
+                    fstats.fname = fname
+                    fstats.runtime = runtimes[fname]
+                    fstats.call_count = exec_counts[fname]
 
                 runtimes[fname] = 0.0
+                exec_counts[fname] = 0
 
             sckt = pusher_cache.get(sutils._get_statistics_report_address \
                     (mgmt_ip))
             sckt.send(stats.SerializeToString())
-
 
             report_start = time.time()
             total_occupancy = 0.0
@@ -232,6 +261,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 if len(queue[fname]) == 0 and fname not in status.functions:
                     del queue[fname]
                     del pinned_functions[fname]
+                    del runtimes[fname]
+                    del exec_counts[fname]
 
             # if we are departing and have cleared our queues, let the
             # management server know, and exit the process
