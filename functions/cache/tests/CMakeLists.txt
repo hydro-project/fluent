@@ -14,4 +14,17 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.6 FATAL_ERROR)
 
-# TODO: add tests
+SET(CAUSAL_SRC_DIR ${CMAKE_SOURCE_DIR}/functions/cache/src)
+
+FILE(GLOB CAUSAL_SOURCES "${CAUSAL_SRC_DIR}/*handler.cpp" "${CAUSAL_SRC_DIR}/*handlers.cpp" "${CAUSAL_SRC_DIR}/*utils.cpp")
+FILE(GLOB MOCK_SOURCES "${CMAKE_SOURCE_DIR}/kvs/tests/mock/*.cpp")
+
+ADD_EXECUTABLE(run_causal_cache_tests
+         run_causal_cache_tests.cpp
+         ${MOCK_SOURCES}
+         ${CAUSAL_SOURCES})
+
+TARGET_LINK_LIBRARIES(run_causal_cache_tests ${FUNC_DEPENDENCIES} gtest gmock pthread zmq)
+ADD_DEPENDENCIES(run_causal_cache_tests gtest)
+
+ADD_TEST(NAME CausalTests COMMAND run_causal_cache_tests)
