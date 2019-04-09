@@ -17,25 +17,25 @@
 
 #include "core_lattices.hpp"
 
-using VC = MapLattice<string, MaxLattice<unsigned>>;
+using VectorClock = MapLattice<string, MaxLattice<unsigned>>;
 
 template <typename T>
 struct VectorClockValuePair {
-  VC vector_clock;
+  VectorClock vector_clock;
   T value;
 
   VectorClockValuePair<T>() {
-    vector_clock = VC();
+    vector_clock = VectorClock();
     value = T();
   }
 
   // need this because of static cast
   VectorClockValuePair<T>(unsigned) {
-    vector_clock = VC();
+    vector_clock = VectorClock();
     value = T();
   }
 
-  VectorClockValuePair<T>(VC vc, T v) {
+  VectorClockValuePair<T>(VectorClock vc, T v) {
     vector_clock = vc;
     value = v;
   }
@@ -50,7 +50,7 @@ template <typename T>
 class CausalPairLattice : public Lattice<VectorClockValuePair<T>> {
  protected:
   void do_merge(const VectorClockValuePair<T> &p) {
-    VC prev = this->element.vector_clock;
+    VectorClock prev = this->element.vector_clock;
     this->element.vector_clock.merge(p.vector_clock);
 
     if (this->element.vector_clock == p.vector_clock) {

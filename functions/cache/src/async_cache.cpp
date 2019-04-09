@@ -76,8 +76,14 @@ void send_get_response(const set<Key>& read_set, const Address& response_addr,
     KeyTuple* tp = response.add_tuples();
     tp->set_key(key);
     tp->set_lattice_type(key_type_map.at(key));
-    tp->set_payload(get_serialized_value_from_cache(
-        key, key_type_map.at(key), local_lww_cache, local_set_cache, log));
+    // check if key exists
+    if (local_lww_cache.find(key) == local_lww_cache.end() && local_set_cache.find(key) == local_set_cache.end()) {
+      tp->set_error(1);
+    } else {
+      tp->set_error(0);
+      tp->set_payload(get_serialized_value_from_cache(
+          key, key_type_map.at(key), local_lww_cache, local_set_cache, log));
+    }
   }
   std::string resp_string;
   response.SerializeToString(&resp_string);
@@ -308,9 +314,12 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       } else {
         if (response.type() == RequestType::GET) {
           // update cache first
-          update_cache(key, response.tuples(0).lattice_type(),
-                       response.tuples(0).payload(), local_lww_cache,
-                       local_set_cache, log);
+          if (response.tuples(0).error() != 1) {
+            // if key exists
+            update_cache(key, response.tuples(0).lattice_type(),
+                         response.tuples(0).payload(), local_lww_cache,
+                         local_set_cache, log);
+          }
           // notify clients
           if (key_requestor_map.find(key) != key_requestor_map.end()) {
             for (const Address& addr : key_requestor_map[key]) {

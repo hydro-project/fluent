@@ -30,10 +30,10 @@ ADD_EXECUTABLE(flfunc-async-cache ${FUNC_ASYNC_CACHE_SOURCE})
 TARGET_LINK_LIBRARIES(flfunc-async-cache ${FUNC_DEPENDENCIES})
 ADD_DEPENDENCIES(flfunc-async-cache flzmq zeromq zeromqcpp)
 
-SET(FUNC_LOCAL_STORE_SOURCE 
-	local_store.cpp
+SET(FUNC_CAUSAL_CACHE_SOURCE 
+	causal_cache.cpp
   )
 
-ADD_EXECUTABLE(flfunc-local-store ${FUNC_LOCAL_STORE_SOURCE})
-TARGET_LINK_LIBRARIES(flfunc-local-store ${FUNC_DEPENDENCIES})
-ADD_DEPENDENCIES(flfunc-local-store flzmq zeromq zeromqcpp)
+ADD_EXECUTABLE(flfunc-causal-cache ${FUNC_CAUSAL_CACHE_SOURCE})
+TARGET_LINK_LIBRARIES(flfunc-causal-cache ${FUNC_DEPENDENCIES})
+ADD_DEPENDENCIES(flfunc-causal-cache flzmq zeromq zeromqcpp)
