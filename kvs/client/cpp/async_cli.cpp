@@ -44,9 +44,10 @@ void handle_request(KvsAsyncClient& client, string input) {
       std::cout << "Error: request response ID mismatch" << std::endl;
     }
 
-    assert (responses[0].tuples(0).lattice_type() == LatticeType::LWW);
+    assert(responses[0].tuples(0).lattice_type() == LatticeType::LWW);
 
-    LWWPairLattice<string> lww_lattice = deserialize_lww(responses[0].tuples(0).payload());
+    LWWPairLattice<string> lww_lattice =
+        deserialize_lww(responses[0].tuples(0).payload());
     std::cout << lww_lattice.reveal().value << std::endl;
   } else if (v[0] == "GET_CAUSAL") {
     // currently this mode is only for testing purpose
@@ -65,18 +66,23 @@ void handle_request(KvsAsyncClient& client, string input) {
       std::cout << "Error: request response ID mismatch" << std::endl;
     }
 
-    assert (responses[0].tuples(0).lattice_type() == LatticeType::CROSSCAUSAL);
+    assert(responses[0].tuples(0).lattice_type() == LatticeType::CROSSCAUSAL);
 
-    CrossCausalLattice<SetLattice<string>> ccl = CrossCausalLattice<SetLattice<string>>(to_cross_causal_payload(deserialize_cross_causal(responses[0].tuples(0).payload())));
+    CrossCausalLattice<SetLattice<string>> ccl =
+        CrossCausalLattice<SetLattice<string>>(to_cross_causal_payload(
+            deserialize_cross_causal(responses[0].tuples(0).payload())));
 
     for (const auto& pair : ccl.reveal().vector_clock.reveal()) {
-      std::cout << "{" << pair.first << " : " << std::to_string(pair.second.reveal()) << "}" << std::endl;
+      std::cout << "{" << pair.first << " : "
+                << std::to_string(pair.second.reveal()) << "}" << std::endl;
     }
 
     for (const auto& dep_key_vc_pair : ccl.reveal().dependency.reveal()) {
       std::cout << dep_key_vc_pair.first << " : ";
       for (const auto& vc_pair : dep_key_vc_pair.second.reveal()) {
-        std::cout << "{" << vc_pair.first << " : " << std::to_string(vc_pair.second.reveal()) << "}" << std::endl;
+        std::cout << "{" << vc_pair.first << " : "
+                  << std::to_string(vc_pair.second.reveal()) << "}"
+                  << std::endl;
       }
     }
 
@@ -111,14 +117,16 @@ void handle_request(KvsAsyncClient& client, string input) {
     ccp.vector_clock.insert("test", 1);
 
     // construct one test dependency
-    ccp.dependency.insert("dep1", VectorClock(map<string, MaxLattice<unsigned>>({{"test1", 1}})));
+    ccp.dependency.insert(
+        "dep1", VectorClock(map<string, MaxLattice<unsigned>>({{"test1", 1}})));
 
     // populate the value
     ccp.value.insert(v[2]);
 
     CrossCausalLattice<SetLattice<string>> ccl(ccp);
 
-    string req_id = client.put_async(key, serialize(ccl), LatticeType::CROSSCAUSAL);
+    string req_id =
+        client.put_async(key, serialize(ccl), LatticeType::CROSSCAUSAL);
 
     vector<KeyResponse> responses = client.receive_async(kZmqUtil);
     while (responses.size() == 0) {
