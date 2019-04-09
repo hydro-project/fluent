@@ -27,6 +27,11 @@ enum LatticeType {
   CROSSCAUSAL = 4;
 }
 
+enum ResponseErrorType {
+  TIMEOUT = 0;
+  LATTICE = 1;
+}
+
 message LWWValue {
   required uint64 timestamp = 1;
   required bytes value = 2;
@@ -73,7 +78,7 @@ message KeyResponse {
   required RequestType type = 1;
   repeated KeyTuple tuples = 2;
   optional string response_id = 3;
-  optional string error_msg = 4;
+  optional uint32 error = 4;
 }
 
 message KeyAddressRequest {

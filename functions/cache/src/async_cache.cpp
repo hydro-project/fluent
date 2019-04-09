@@ -95,7 +95,7 @@ void send_error_response(RequestType type, const Address& response_addr,
                          SocketCache& pushers) {
   KeyResponse response;
   response.set_type(type);
-  response.set_error_msg("LATTICE_ERROR");
+  response.set_error(ResponseErrorType::LATTICE);
   std::string resp_string;
   response.SerializeToString(&resp_string);
   kZmqUtil->send_string(resp_string, &pushers[response_addr]);
@@ -295,7 +295,8 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       // TODO: assert that key_type_map[key] and
       // response.tuples(0).lattice_type() are the same first, check if
       // the request failed
-      if (response.has_error_msg() && response.error_msg() == "NULL_ERROR") {
+      if (response.has_error() &&
+          response.error() == ResponseErrorType::TIMEOUT) {
         if (response.type() == RequestType::GET) {
           client.get_async(key);
         } else {
@@ -316,7 +317,7 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
         if (response.type() == RequestType::GET) {
           // update cache first
           if (response.tuples(0).error() != 1) {
-            // if key exists
+            // key exists
             update_cache(key, response.tuples(0).lattice_type(),
                          response.tuples(0).payload(), local_lww_cache,
                          local_set_cache, log);

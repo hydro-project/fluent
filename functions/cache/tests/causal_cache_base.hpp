@@ -12,8 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#include "kvs/tests/mock/mock_utils.hpp"
 #include "causal_cache_utils.hpp"
+#include "kvs/tests/mock/mock_utils.hpp"
 
 MockZmqUtil mock_zmq_util;
 ZmqUtilInterface* kZmqUtil = &mock_zmq_util;
@@ -22,7 +22,6 @@ logger log_ = spdlog::basic_logger_mt("mock_log", "mock_log.txt", true);
 
 class CausalCacheTest : public ::testing::Test {
  protected:
-
   CausalCacheTest() {}
 
   virtual ~CausalCacheTest() {}

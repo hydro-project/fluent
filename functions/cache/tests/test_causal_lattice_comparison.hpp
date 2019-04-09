@@ -45,12 +45,14 @@ TEST_F(CausalCacheTest, CausalLatticeComparison) {
   CrossCausalPayload<SetLattice<string>> ccp1;
   ccp1.vector_clock.insert("c1", 1);
   ccp1.vector_clock.insert("c2", 0);
-  std::shared_ptr<CrossCausalLattice<SetLattice<string>>> ccl1= std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp1);
+  std::shared_ptr<CrossCausalLattice<SetLattice<string>>> ccl1 =
+      std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp1);
 
   CrossCausalPayload<SetLattice<string>> ccp2;
   ccp2.vector_clock.insert("c1", 0);
   ccp2.vector_clock.insert("c2", 1);
-  std::shared_ptr<CrossCausalLattice<SetLattice<string>>> ccl2= std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp2);
+  std::shared_ptr<CrossCausalLattice<SetLattice<string>>> ccl2 =
+      std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp2);
 
   unsigned result = causal_comparison(ccl1, ccl2);
   EXPECT_EQ(result, kCausalConcurrent);
@@ -60,13 +62,15 @@ TEST_F(CausalCacheTest, CausalMerge) {
   CrossCausalPayload<SetLattice<string>> ccp1;
   ccp1.vector_clock.insert("c1", 1);
   ccp1.vector_clock.insert("c2", 0);
-  std::shared_ptr<CrossCausalLattice<SetLattice<string>>> ccl1= std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp1);
+  std::shared_ptr<CrossCausalLattice<SetLattice<string>>> ccl1 =
+      std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp1);
   EXPECT_EQ(ccl1.use_count(), 1);
 
   CrossCausalPayload<SetLattice<string>> ccp2;
   ccp2.vector_clock.insert("c1", 0);
   ccp2.vector_clock.insert("c2", 1);
-  std::shared_ptr<CrossCausalLattice<SetLattice<string>>> ccl2= std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp2);
+  std::shared_ptr<CrossCausalLattice<SetLattice<string>>> ccl2 =
+      std::make_shared<CrossCausalLattice<SetLattice<string>>>(ccp2);
   EXPECT_EQ(ccl2.use_count(), 1);
 
   auto ccl3 = causal_merge(ccl1, ccl2);

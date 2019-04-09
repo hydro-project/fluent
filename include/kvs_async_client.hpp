@@ -51,9 +51,6 @@ class KvsAsyncClient {
     // initialize logger
     log_->flush_on(spdlog::level::info);
 
-    // set class variables
-    bad_response_.set_response_id("NULL_ERROR");
-
     std::hash<string> hasher;
     seed_ = time(NULL);
     seed_ += hasher(ip);
@@ -466,15 +463,11 @@ class KvsAsyncClient {
            std::to_string(rid_++);
   }
 
-  bool is_error_response(const KeyResponse& response) {
-    return response.response_id() == bad_response_.response_id();
-  }
-
   KeyResponse generate_bad_response(const KeyRequest& req) {
     KeyResponse resp;
     resp.set_type(req.type());
     resp.set_response_id(req.request_id());
-    resp.set_error_msg("NULL_ERROR");
+    resp.set_error(ResponseErrorType::TIMEOUT);
     KeyTuple* tp = resp.add_tuples();
     tp->set_key(req.tuples(0).key());
     if (req.type() == RequestType::PUT) {
@@ -514,9 +507,6 @@ class KvsAsyncClient {
 
   // class logger
   logger log_;
-
-  // create a default response for a local error (ie, timeout or trial limit)
-  KeyResponse bad_response_;
 
   // GC timeout
   unsigned timeout_;
