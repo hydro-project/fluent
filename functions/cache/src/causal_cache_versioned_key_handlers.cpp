@@ -80,7 +80,16 @@ void versioned_key_response_handler(
                pending_cross_request_read_set[addr].serialized_local_payload_) {
             CausalTuple* tp = response.add_tuples();
             tp->set_key(std::move(pair.first));
-            tp->set_payload(std::move(pair.second));
+
+            if (pending_cross_request_read_set[addr].dne_set_.find(
+                    pair.first) !=
+                pending_cross_request_read_set[addr].dne_set_.end()) {
+              // key dne
+              tp->set_error(1);
+            } else {
+              tp->set_error(0);
+              tp->set_payload(std::move(pair.second));
+            }
           }
 
           for (const auto& pair : pending_cross_request_read_set[addr]

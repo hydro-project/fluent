@@ -30,7 +30,7 @@ void kvs_response_handler(
     map<string, Address>& request_id_to_address_map) {
   Key key = response.tuples(0).key();
   // first, check if the request failed
-  if (response.response_id() == "NULL_ERROR") {
+  if (response.has_error() && response.error() == ResponseErrorType::TIMEOUT) {
     if (response.type() == RequestType::GET) {
       client.get_async(key);
     } else {

@@ -200,6 +200,11 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
   map<Address, VersionedKeyRequest> addr_request_map;
 
   for (const Key& key : metadata.read_set_) {
+    if (metadata.dne_set_.find(key) != metadata.dne_set_.end()) {
+      // the key dne
+      metadata.serialized_local_payload_[key] = "";
+      continue;
+    }
     if (causal_cut_store.find(key) == causal_cut_store.end()) {
       // no key in local causal cache, find a remote and fire request
       remote_request = true;
@@ -261,7 +266,15 @@ void respond_to_client(
   for (const Key& key : pending_cross_request_read_set[addr].read_set_) {
     CausalTuple* tp = response.add_tuples();
     tp->set_key(key);
-    tp->set_payload(serialize(*(causal_cut_store.at(key))));
+
+    if (pending_cross_request_read_set[addr].dne_set_.find(key) !=
+        pending_cross_request_read_set[addr].dne_set_.end()) {
+      // key dne
+      tp->set_error(1);
+    } else {
+      tp->set_error(0);
+      tp->set_payload(serialize(*(causal_cut_store.at(key))));
+    }
   }
 
   response.set_versioned_key_query_addr(
@@ -292,27 +305,37 @@ void merge_into_causal_cut(
     map<Address, PendingClientMetadata>& pending_cross_request_read_set,
     SocketCache& pushers, const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map) {
+  bool key_dne = false;
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
-    if (causal_cut_store.find(pair.first) == causal_cut_store.end()) {
-      // key doesn't exist in causal cut store
-      causal_cut_store[pair.first] = pair.second;
-    } else {
-      // we compare two lattices
-      unsigned comp_result =
-          causal_comparison(causal_cut_store[pair.first], pair.second);
-      if (comp_result == kCausalLess) {
+    if (vector_clock_comparison(
+            VectorClock(), pair.second->reveal().vector_clock) == kCausalLess) {
+      // only merge when the key exists
+      if (causal_cut_store.find(pair.first) == causal_cut_store.end()) {
+        // key doesn't exist in causal cut store
         causal_cut_store[pair.first] = pair.second;
-      } else if (comp_result == kCausalConcurrent) {
-        causal_cut_store[pair.first] =
-            causal_merge(causal_cut_store[pair.first], pair.second);
+      } else {
+        // we compare two lattices
+        unsigned comp_result =
+            causal_comparison(causal_cut_store[pair.first], pair.second);
+        if (comp_result == kCausalLess) {
+          causal_cut_store[pair.first] = pair.second;
+        } else if (comp_result == kCausalConcurrent) {
+          causal_cut_store[pair.first] =
+              causal_merge(causal_cut_store[pair.first], pair.second);
+        }
       }
+    } else {
+      key_dne = true;
     }
   }
   // notify clients
   for (const auto& addr : in_preparation[key].first) {
     if (pending_cross_request_read_set.find(addr) !=
         pending_cross_request_read_set.end()) {
+      if (key_dne) {
+        pending_cross_request_read_set[addr].dne_set_.insert(key);
+      }
       pending_cross_request_read_set[addr].to_cover_set_.erase(key);
       if (pending_cross_request_read_set[addr].to_cover_set_.size() == 0) {
         // all keys are covered, safe to read

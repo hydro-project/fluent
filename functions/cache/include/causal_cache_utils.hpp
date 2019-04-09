@@ -54,6 +54,7 @@ struct PendingClientMetadata {
   map<Address, map<Key, VectorClock>> prior_causal_chains_;
   set<Key> future_read_set_;
   set<Key> remote_read_set_;
+  set<Key> dne_set_;
   map<Key, string> serialized_local_payload_;
   map<Key, string> serialized_remote_payload_;
 };
