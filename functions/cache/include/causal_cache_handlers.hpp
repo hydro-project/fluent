@@ -15,6 +15,8 @@
 #ifndef FUNCTIONS_CACHE_INCLUDE_CAUSAL_CACHE_HANDLERS_HPP_
 #define FUNCTIONS_CACHE_INCLUDE_CAUSAL_CACHE_HANDLERS_HPP_
 
+#include "causal_cache_utils.hpp"
+
 void get_request_handler(
     const string& serialized, set<Key>& key_set, StoreType& unmerged_store,
     InPreparationType& in_preparation, StoreType& causal_cut_store,
