@@ -86,13 +86,17 @@ class CausalCacheThread {
 
   unsigned tid() const { return tid_; }
 
-  Address causal_cache_get_bind_address() const { return "ipc:///requests/get"; }
+  Address causal_cache_get_bind_address() const {
+    return "ipc:///requests/get";
+  }
 
   Address causal_cache_get_connect_address() const {
     return "ipc:///requests/get";
   }
 
-  Address causal_cache_put_bind_address() const { return "ipc:///requests/put"; }
+  Address causal_cache_put_bind_address() const {
+    return "ipc:///requests/put";
+  }
 
   Address causal_cache_put_connect_address() const {
     return "ipc:///requests/put";
@@ -120,7 +124,8 @@ class CausalCacheThread {
   }
 
   Address causal_cache_versioned_key_request_connect_address() const {
-    return ip_base_ + std::to_string(tid_ + kCausalCacheVersionedKeyRequestPort);
+    return ip_base_ +
+           std::to_string(tid_ + kCausalCacheVersionedKeyRequestPort);
   }
 
   Address causal_cache_versioned_key_response_bind_address() const {
@@ -129,7 +134,8 @@ class CausalCacheThread {
   }
 
   Address causal_cache_versioned_key_response_connect_address() const {
-    return ip_base_ + std::to_string(tid_ + kCausalCacheVersionedKeyResponsePort);
+    return ip_base_ +
+           std::to_string(tid_ + kCausalCacheVersionedKeyResponsePort);
   }
 };
 

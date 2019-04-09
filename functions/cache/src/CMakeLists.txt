@@ -32,6 +32,12 @@ ADD_DEPENDENCIES(flfunc-async-cache flzmq zeromq zeromqcpp)
 
 SET(FUNC_CAUSAL_CACHE_SOURCE 
 	causal_cache.cpp
+	causal_cache_utils.cpp
+	causal_cache_get_request_handler.cpp
+	causal_cache_put_request_handler.cpp
+	causal_cache_versioned_key_handlers.cpp
+	causal_cache_kvs_response_handler.cpp
+	causal_cache_periodic_migration_handler.cpp
   )
 
 ADD_EXECUTABLE(flfunc-causal-cache ${FUNC_CAUSAL_CACHE_SOURCE})

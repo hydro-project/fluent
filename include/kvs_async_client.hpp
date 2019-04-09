@@ -81,8 +81,7 @@ class KvsAsyncClient {
    */
   string put_async(const Key& key, const string& payload,
                    LatticeType lattice_type) {
-    log_->error(
-        "put async...");
+    log_->error("put async...");
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
@@ -98,8 +97,7 @@ class KvsAsyncClient {
    */
   string get_async(const Key& key) {
     // we issue GET only when it is not in the pending map
-    log_->error(
-        "get async...");
+    log_->error("get async...");
     if (pending_get_response_map_.find(key) ==
         pending_get_response_map_.end()) {
       KeyRequest request;

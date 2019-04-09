@@ -77,7 +77,8 @@ void send_get_response(const set<Key>& read_set, const Address& response_addr,
     tp->set_key(key);
     tp->set_lattice_type(key_type_map.at(key));
     // check if key exists
-    if (local_lww_cache.find(key) == local_lww_cache.end() && local_set_cache.find(key) == local_set_cache.end()) {
+    if (local_lww_cache.find(key) == local_lww_cache.end() &&
+        local_set_cache.find(key) == local_set_cache.end()) {
       tp->set_error(1);
     } else {
       tp->set_error(0);
