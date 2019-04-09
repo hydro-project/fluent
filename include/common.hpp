@@ -241,7 +241,7 @@ inline CrossCausalPayload<SetLattice<string>> to_cross_causal_payload(
     p.vector_clock.insert(pair.first, pair.second);
   }
   for (const auto& dep : ccv.deps()) {
-    VC vc;
+    VectorClock vc;
     for (const auto& pair : dep.vector_clock()) {
       vc.insert(pair.first, pair.second);
     }

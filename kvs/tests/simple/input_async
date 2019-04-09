@@ -1,0 +1,8 @@
+PUT a 1
+GET a
+PUT b 2
+GET b
+PUT a 10 
+GET a
+PUT_CAUSAL c hello
+GET_CAUSAL c
