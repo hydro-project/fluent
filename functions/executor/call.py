@@ -57,7 +57,7 @@ def exec_function(exec_socket, kvs, status):
     resp.response_id = obj_id
 
     exec_socket.send(resp.SerializeToString())
-    result = _exec_func(kvs, f, fargs)
+    result = _exec_func_normal(kvs, f, fargs)
     result = serialize_val(result)
 
     result_lattice = LWWPairLattice(generate_timestamp(0), result)
