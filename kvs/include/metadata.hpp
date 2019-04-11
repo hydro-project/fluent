@@ -97,7 +97,14 @@ inline bool is_metadata(Key key) {
 // NOTE: This needs to be here because it needs the definition of TierMetadata
 extern map<TierId, TierMetadata> kTierMetadata;
 
-enum MetadataType { replication, server_stats, key_access, key_size, key_access_hot, key_access_cold };
+enum MetadataType {
+  replication,
+  server_stats,
+  key_access,
+  key_size,
+  key_access_hot,
+  key_access_cold
+};
 
 inline Key get_metadata_key(const ServerThread& st, unsigned tier_id,
                             unsigned thread_num, MetadataType type) {

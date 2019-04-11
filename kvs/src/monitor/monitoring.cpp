@@ -184,8 +184,8 @@ int main(int argc, char *argv[]) {
       membership_handler(log, serialized, global_hash_rings, adding_memory_node,
                          adding_ebs_node, grace_start, routing_ips,
                          memory_storage, ebs_storage, memory_occupancy,
-                         ebs_occupancy, key_access_frequency, hot_key_access_frequency,
-                         cold_key_access_frequency);
+                         ebs_occupancy, key_access_frequency,
+                         hot_key_access_frequency, cold_key_access_frequency);
     }
 
     // handle a depart done notification
@@ -236,18 +236,17 @@ int main(int argc, char *argv[]) {
       // collect internal statistics
       collect_internal_stats(
           global_hash_rings, local_hash_rings, pushers, mt, response_puller,
-          log, rid, key_access_frequency, hot_key_access_frequency, cold_key_access_frequency,
-          key_size, memory_storage, ebs_storage,
+          log, rid, key_access_frequency, hot_key_access_frequency,
+          cold_key_access_frequency, key_size, memory_storage, ebs_storage,
           memory_occupancy, ebs_occupancy, memory_accesses, ebs_accesses);
 
       // compute summary statistics
-      compute_summary_stats(key_access_frequency, hot_key_access_frequency, cold_key_access_frequency,
-                            memory_storage, ebs_storage,
-                            memory_occupancy, ebs_occupancy, memory_accesses,
-                            ebs_accesses, key_access_summary, 
-                            hot_key_access_summary, cold_key_access_summary,
-                            ss, log,
-                            server_monitoring_epoch);
+      compute_summary_stats(key_access_frequency, hot_key_access_frequency,
+                            cold_key_access_frequency, memory_storage,
+                            ebs_storage, memory_occupancy, ebs_occupancy,
+                            memory_accesses, ebs_accesses, key_access_summary,
+                            hot_key_access_summary, cold_key_access_summary, ss,
+                            log, server_monitoring_epoch);
 
       // collect external statistics
       collect_external_stats(user_latency, user_throughput, ss, log);
@@ -255,8 +254,9 @@ int main(int argc, char *argv[]) {
       // initialize replication factor for new keys
       for (const auto &key_access_pair : hot_key_access_summary) {
         Key key = key_access_pair.first;
-        if (!is_metadata(key) && metadata_map.find(key) == metadata_map.end()) {
-          init_replication(metadata_map, key);
+        if (!is_metadata(key) &&
+            key_replication_map.find(key) == key_replication_map.end()) {
+          init_replication(key_replication_map, key);
         }
       }
       for (const auto &key_access_pair : cold_key_access_summary) {
@@ -276,8 +276,8 @@ int main(int argc, char *argv[]) {
       movement_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
                       memory_node_number, ebs_node_number, adding_memory_node,
                       adding_ebs_node, management_ip, key_replication_map,
-                      key_access_summary, hot_key_access_summary, cold_key_access_summary,
-                      key_size, mt, pushers,
+                      key_access_summary, hot_key_access_summary,
+                      cold_key_access_summary, key_size, mt, pushers,
                       response_puller, routing_ips, rid);
 
       slo_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,

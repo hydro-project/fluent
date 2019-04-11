@@ -24,7 +24,6 @@ void user_request_handler(
     map<Key, KeyReplication>& key_replication_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers,
     AdaptiveThresholdHeavyHitters* sketch) {
-  
   KeyRequest request;
   request.ParseFromString(serialized);
 

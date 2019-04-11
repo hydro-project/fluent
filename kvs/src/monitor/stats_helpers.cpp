@@ -112,8 +112,9 @@ void collect_internal_stats(
 
             for (const auto& key_count : access.keys()) {
               Key key = key_count.key();
-              hot_key_access_frequency[key][ip_pair + ":" + std::to_string(tid)] =
-                  key_count.access_count();
+              hot_key_access_frequency[key]
+                                      [ip_pair + ":" + std::to_string(tid)] =
+                                          key_count.access_count();
             }
           } else if (metadata_type == "cold_access") {
             // deserialized the value
@@ -122,8 +123,9 @@ void collect_internal_stats(
 
             for (const auto& key_count : access.keys()) {
               Key key = key_count.key();
-              cold_key_access_frequency[key][ip_pair + ":" + std::to_string(tid)] =
-                  key_count.access_count();
+              cold_key_access_frequency[key]
+                                       [ip_pair + ":" + std::to_string(tid)] =
+                                           key_count.access_count();
             }
           } else if (metadata_type == "size") {
             // deserialized the size
@@ -151,7 +153,7 @@ void collect_internal_stats(
 void compute_summary_stats(
     map<Key, map<Address, unsigned>>& key_access_frequency,
     map<Key, map<Address, unsigned>>& hot_key_access_frequency,
-    map<Key, map<Address, unsigned>>& cold_key_access_frequency,    
+    map<Key, map<Address, unsigned>>& cold_key_access_frequency,
     StorageStats& memory_storage, StorageStats& ebs_storage,
     OccupancyStats& memory_occupancy, OccupancyStats& ebs_occupancy,
     AccessStats& memory_accesses, AccessStats& ebs_accesses,
@@ -189,7 +191,8 @@ void compute_summary_stats(
   ss.hot_key_access_mean = mean;
   ss.hot_key_access_std = sqrt((double)ms / cnt);
 
-  log->info("Hot Access: mean={}, std={}", ss.hot_key_access_mean, ss.hot_key_access_std);
+  log->info("Hot Access: mean={}, std={}", ss.hot_key_access_mean,
+            ss.hot_key_access_std);
 
   cnt = 0;
   mean = 0;
@@ -204,7 +207,8 @@ void compute_summary_stats(
     }
 
     cold_key_access_summary[key] = access_count;
-    std::cout << "Cold Key: " << key << ", Count: " << access_count << std::endl;
+    std::cout << "Cold Key: " << key << ", Count: " << access_count
+              << std::endl;
 
     if (access_count > 0) {
       cnt += 1;
@@ -220,7 +224,8 @@ void compute_summary_stats(
   ss.cold_key_access_mean = mean;
   ss.cold_key_access_std = sqrt((double)ms / cnt);
 
-  log->info("Cold Access: mean={}, std={}", ss.cold_key_access_mean, ss.cold_key_access_std);
+  log->info("Cold Access: mean={}, std={}", ss.cold_key_access_mean,
+            ss.cold_key_access_std);
 
   // compute tier access summary
   for (const auto& accesses : memory_accesses) {

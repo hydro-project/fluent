@@ -540,8 +540,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       }
 
       // report hot key access stats
-      key =
-          get_metadata_key(wt, kSelfTierId, wt.tid(), MetadataType::key_access_hot);
+      key = get_metadata_key(wt, kSelfTierId, wt.tid(),
+                             MetadataType::key_access_hot);
       string serialized_access;
       access.SerializeToString(&serialized_access);
 
@@ -576,9 +576,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         tp->set_access_count(count);
       }
 
-      // report cold key access stats
-      key =
-          get_metadata_key(wt, kSelfTierId, wt.tid(), MetadataType::key_access_cold);
+      // report hot key access stats
+      key = get_metadata_key(wt, kSelfTierId, wt.tid(),
+                             MetadataType::key_access_cold);
       string cold_serialized_access;
       cold_access.SerializeToString(&cold_serialized_access);
 
