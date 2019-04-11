@@ -57,6 +57,13 @@ struct PendingClientMetadata {
   set<Key> dne_set_;
   map<Key, string> serialized_local_payload_;
   map<Key, string> serialized_remote_payload_;
+  bool operator==(const PendingClientMetadata& input) const {
+    if (client_id_ == input.client_id_) {
+      return true;
+    } else {
+      return false;
+    }
+  }
 };
 
 struct VectorClockHash {
@@ -112,7 +119,7 @@ void recursive_dependency_check(
     const StoreType& unmerged_store, map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    KvsAsyncClient& client);
+    KvsAsyncClientInterface* client);
 
 // check if the given vector clock is dominated by any vector clock in the
 // causal chain if so, return the address of the remote cache, else return empty
@@ -165,7 +172,7 @@ void process_response(
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    SocketCache& pushers, KvsAsyncClient& client, logger log,
+    SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map);
 

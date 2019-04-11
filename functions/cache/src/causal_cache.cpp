@@ -20,13 +20,13 @@
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
-void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
+void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   string log_file = "causal_cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "causal_cache_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
   log->flush_on(spdlog::level::info);
 
-  zmq::context_t* context = client.get_context();
+  zmq::context_t* context = client->get_context();
 
   SocketCache pushers(context, ZMQ_PUSH);
 
@@ -162,7 +162,7 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           pushers, kZmqUtil);
     }
 
-    vector<KeyResponse> responses = client.receive_async(kZmqUtil);
+    vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
       kvs_response_handler(response, unmerged_store, in_preparation,
                            causal_cut_store, version_store, single_callback_map,
@@ -194,7 +194,7 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       LWWPairLattice<string> val(TimestampValuePair<string>(
           generate_timestamp(thread_id), serialized));
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
-      client.put_async(key, serialize(val), LatticeType::LWW);
+      client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
     }
 
@@ -246,7 +246,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  KvsAsyncClient client(threads, ip, 0, 10000);
+  KvsAsyncClient cl(threads, ip, 0, 10000);
+  KvsAsyncClientInterface* client = &cl;
 
   run(client, ip, 0);
 }

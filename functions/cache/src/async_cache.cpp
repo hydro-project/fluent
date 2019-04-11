@@ -101,14 +101,15 @@ void send_error_response(RequestType type, const Address& response_addr,
   kZmqUtil->send_string(resp_string, &pushers[response_addr]);
 }
 
-void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
+void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   string log_file = "cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "cache_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
   log->flush_on(spdlog::level::info);
 
-  zmq::context_t context(1);
-  SocketCache pushers(&context, ZMQ_PUSH);
+  zmq::context_t* context = client->get_context();
+
+  SocketCache pushers(context, ZMQ_PUSH);
 
   map<Key, LWWPairLattice<string>> local_lww_cache;
   map<Key, SetLattice<string>> local_set_cache;
@@ -126,13 +127,13 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
   // TODO: can we find a way to make the thread classes uniform across
   // languages? or unify the python and cpp implementations; actually, mostly
   // just the user thread stuff, I think.
-  zmq::socket_t get_puller(context, ZMQ_PULL);
+  zmq::socket_t get_puller(*context, ZMQ_PULL);
   get_puller.bind(ct.cache_get_bind_address());
 
-  zmq::socket_t put_puller(context, ZMQ_PULL);
+  zmq::socket_t put_puller(*context, ZMQ_PULL);
   put_puller.bind(ct.cache_put_bind_address());
 
-  zmq::socket_t update_puller(context, ZMQ_PULL);
+  zmq::socket_t update_puller(*context, ZMQ_PULL);
   update_puller.bind(ct.cache_update_bind_address());
 
   vector<zmq::pollitem_t> pollitems = {
@@ -184,7 +185,7 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
               to_cover.insert(key);
               key_requestor_map[key].insert(request.response_address());
               key_type_map[key] = LatticeType::LWW;
-              client.get_async(key);
+              client->get_async(key);
             }
             break;
           }
@@ -194,7 +195,7 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
               to_cover.insert(key);
               key_requestor_map[key].insert(request.response_address());
               key_type_map[key] = LatticeType::SET;
-              client.get_async(key);
+              client->get_async(key);
             }
             break;
           }
@@ -243,7 +244,7 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
           update_cache(key, tuple.lattice_type(), tuple.payload(),
                        local_lww_cache, local_set_cache, log);
           string req_id =
-              client.put_async(key, tuple.payload(), tuple.lattice_type());
+              client->put_async(key, tuple.payload(), tuple.lattice_type());
           request_address_map[req_id] = request.response_address();
         }
       }
@@ -289,7 +290,7 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       }
     }
 
-    vector<KeyResponse> responses = client.receive_async(kZmqUtil);
+    vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
       Key key = response.tuples(0).key();
       // TODO: assert that key_type_map[key] and
@@ -298,14 +299,14 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       if (response.has_error() &&
           response.error() == ResponseErrorType::TIMEOUT) {
         if (response.type() == RequestType::GET) {
-          client.get_async(key);
+          client->get_async(key);
         } else {
           if (request_address_map.find(response.response_id()) !=
               request_address_map.end()) {
             // we only retry for client-issued requests, not for the periodic
             // stat report
             string new_req_id =
-                client.put_async(key, response.tuples(0).payload(),
+                client->put_async(key, response.tuples(0).payload(),
                                  response.tuples(0).lattice_type());
             request_address_map[new_req_id] =
                 request_address_map[response.response_id()];
@@ -376,7 +377,7 @@ void run(KvsAsyncClient& client, Address ip, unsigned thread_id) {
       LWWPairLattice<string> val(TimestampValuePair<string>(
           generate_timestamp(thread_id), serialized));
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
-      client.put_async(key, serialize(val), LatticeType::LWW);
+      client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
     }
 
@@ -414,7 +415,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  KvsAsyncClient client(threads, ip, 0, 10000);
+  KvsAsyncClient cl(threads, ip, 0, 10000);
+  KvsAsyncClientInterface* client = &cl;
 
   run(client, ip, 0);
 }

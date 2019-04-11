@@ -24,16 +24,16 @@ unsigned kRoutingThreadCount;
 ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
-void handle_request(KvsAsyncClient& client, string input) {
+void handle_request(KvsAsyncClientInterface* client, string input) {
   vector<string> v;
   split(input, ' ', v);
 
   if (v[0] == "GET") {
-    string req_id = client.get_async(v[1]);
+    string req_id = client->get_async(v[1]);
 
-    vector<KeyResponse> responses = client.receive_async(kZmqUtil);
+    vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     while (responses.size() == 0) {
-      responses = client.receive_async(kZmqUtil);
+      responses = client->receive_async(kZmqUtil);
     }
 
     if (responses.size() > 1) {
@@ -51,11 +51,11 @@ void handle_request(KvsAsyncClient& client, string input) {
     std::cout << lww_lattice.reveal().value << std::endl;
   } else if (v[0] == "GET_CAUSAL") {
     // currently this mode is only for testing purpose
-    string req_id = client.get_async(v[1]);
+    string req_id = client->get_async(v[1]);
 
-    vector<KeyResponse> responses = client.receive_async(kZmqUtil);
+    vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     while (responses.size() == 0) {
-      responses = client.receive_async(kZmqUtil);
+      responses = client->receive_async(kZmqUtil);
     }
 
     if (responses.size() > 1) {
@@ -92,11 +92,11 @@ void handle_request(KvsAsyncClient& client, string input) {
     LWWPairLattice<string> val(
         TimestampValuePair<string>(generate_timestamp(0), v[2]));
 
-    string req_id = client.put_async(key, serialize(val), LatticeType::LWW);
+    string req_id = client->put_async(key, serialize(val), LatticeType::LWW);
 
-    vector<KeyResponse> responses = client.receive_async(kZmqUtil);
+    vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     while (responses.size() == 0) {
-      responses = client.receive_async(kZmqUtil);
+      responses = client->receive_async(kZmqUtil);
     }
 
     if (responses.size() > 1) {
@@ -126,11 +126,11 @@ void handle_request(KvsAsyncClient& client, string input) {
     CrossCausalLattice<SetLattice<string>> ccl(ccp);
 
     string req_id =
-        client.put_async(key, serialize(ccl), LatticeType::CROSSCAUSAL);
+        client->put_async(key, serialize(ccl), LatticeType::CROSSCAUSAL);
 
-    vector<KeyResponse> responses = client.receive_async(kZmqUtil);
+    vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     while (responses.size() == 0) {
-      responses = client.receive_async(kZmqUtil);
+      responses = client->receive_async(kZmqUtil);
     }
 
     if (responses.size() > 1) {
@@ -148,7 +148,7 @@ void handle_request(KvsAsyncClient& client, string input) {
   }
 }
 
-void run(KvsAsyncClient& client) {
+void run(KvsAsyncClientInterface* client) {
   string input;
   while (true) {
     std::cout << "kvs> ";
@@ -158,7 +158,7 @@ void run(KvsAsyncClient& client) {
   }
 }
 
-void run(KvsAsyncClient& client, string filename) {
+void run(KvsAsyncClientInterface* client, string filename) {
   string input;
   std::ifstream infile(filename);
 
@@ -200,7 +200,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  KvsAsyncClient client(threads, ip, 0, 10000);
+  KvsAsyncClient cl(threads, ip, 0, 10000);
+  KvsAsyncClientInterface* client = &cl;
 
   if (argc == 2) {
     run(client);
