@@ -18,7 +18,8 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                          Address private_ip, logger log, string& serialized,
                          map<TierId, GlobalHashRing>& global_hash_rings,
                          map<TierId, LocalHashRing>& local_hash_rings,
-                         map<Key, KeyMetadata>& metadata_map,
+                         map<Key, KeyProperty>& stored_key_map,
+                         map<Key, KeyReplication>& key_replication_map,
                          vector<Address>& routing_ips,
                          vector<Address>& monitoring_ips, ServerThread& wt,
                          SocketCache& pushers, SerializerMap& serializers) {
@@ -64,12 +65,12 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
   AddressKeysetMap addr_keyset_map;
   bool succeed;
 
-  for (const auto& key_pair : metadata_map) {
+  for (const auto& key_pair : stored_key_map) {
     Key key = key_pair.first;
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.replication_response_connect_address(), key, is_metadata(key),
-        global_hash_rings, local_hash_rings, metadata_map, pushers, kAllTierIds,
-        succeed, seed);
+        global_hash_rings, local_hash_rings, key_replication_map, pushers,
+        kAllTierIds, succeed, seed);
 
     if (succeed) {
       // since we already removed this node from the hash ring, no need to
@@ -82,7 +83,7 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
     }
   }
 
-  send_gossip(addr_keyset_map, pushers, serializers, metadata_map);
+  send_gossip(addr_keyset_map, pushers, serializers, stored_key_map);
   kZmqUtil->send_string(
       public_ip + "_" + private_ip + "_" + std::to_string(kSelfTierId),
       &pushers[serialized]);

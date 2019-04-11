@@ -118,19 +118,19 @@ void collect_external_stats(map<string, double>& user_latency,
                             map<string, double>& user_throughput,
                             SummaryStats& ss, logger log);
 
-KeyMetadata create_new_replication_vector(unsigned gm, unsigned ge, unsigned lm,
-                                          unsigned le);
+KeyReplication create_new_replication_vector(unsigned gm, unsigned ge,
+                                             unsigned lm, unsigned le);
 
 void prepare_replication_factor_update(
     const Key& key,
     map<Address, ReplicationFactorUpdate>& replication_factor_map,
-    Address server_address, map<Key, KeyMetadata>& metadata_map);
+    Address server_address, map<Key, KeyReplication>& key_replication_map);
 
-void change_replication_factor(map<Key, KeyMetadata>& requests,
+void change_replication_factor(map<Key, KeyReplication>& requests,
                                map<TierId, GlobalHashRing>& global_hash_rings,
                                map<TierId, LocalHashRing>& local_hash_rings,
                                vector<Address>& routing_ips,
-                               map<Key, KeyMetadata>& metadata_map,
+                               map<Key, KeyReplication>& key_replication_map,
                                SocketCache& pushers, MonitoringThread& mt,
                                zmq::socket_t& response_puller, logger log,
                                unsigned& rid);

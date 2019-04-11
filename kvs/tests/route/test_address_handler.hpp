@@ -28,7 +28,8 @@ TEST_F(RoutingHandlerTest, Address) {
   req.SerializeToString(&serialized);
 
   address_handler(log_, serialized, pushers, rt, global_hash_rings,
-                  local_hash_rings, metadata_map, pending_requests, seed);
+                  local_hash_rings, key_replication_map, pending_requests,
+                  seed);
 
   vector<string> messages = get_zmq_messages();
 

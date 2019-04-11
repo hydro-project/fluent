@@ -18,7 +18,7 @@ void replication_response_handler(
     logger log, string& serialized, SocketCache& pushers, RoutingThread& rt,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
-    map<Key, KeyMetadata>& metadata_map,
+    map<Key, KeyReplication>& key_replication_map,
     map<Key, vector<pair<Address, string>>>& pending_requests, unsigned& seed) {
   KeyResponse response;
   response.ParseFromString(serialized);
@@ -37,18 +37,18 @@ void replication_response_handler(
     rep_data.ParseFromString(lww_value.value());
 
     for (const auto& global : rep_data.global()) {
-      metadata_map[key].global_replication_[global.tier_id()] =
+      key_replication_map[key].global_replication_[global.tier_id()] =
           global.replication_factor();
     }
 
     for (const auto& local : rep_data.local()) {
-      metadata_map[key].local_replication_[local.tier_id()] =
+      key_replication_map[key].local_replication_[local.tier_id()] =
           local.replication_factor();
     }
   } else if (error == 1) {
     // error 1 means that the receiving thread was responsible for the metadata
     // but didn't have any values stored -- we use the default rep factor
-    init_replication(metadata_map, key);
+    init_replication(key_replication_map, key);
   } else if (error == 2) {
     // error 2 means that the node that received the rep factor request was not
     // responsible for that metadata
@@ -72,8 +72,8 @@ void replication_response_handler(
     while (threads.size() == 0 && tier_id < kMaxTier) {
       threads = kHashRingUtil->get_responsible_threads(
           rt.replication_response_connect_address(), key, false,
-          global_hash_rings, local_hash_rings, metadata_map, pushers, {tier_id},
-          succeed, seed);
+          global_hash_rings, local_hash_rings, key_replication_map, pushers,
+          {tier_id}, succeed, seed);
 
       if (!succeed) {
         log->error("Missing replication factor for key {}.", key);
