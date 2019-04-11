@@ -97,6 +97,16 @@ class IpcAnnaClient:
                         res.add(v)
 
                     kv_pairs[tp.key] = SetLattice(res)
+
+
+                elif tp.lattice_type == ORDERED_SET:
+                    res = ListBasedOrderedSet()
+                    val = SetValue()
+                    val.ParseFromString(tp.payload)
+                    for v in val.values:
+                        res.insert(v)
+                    kv_pairs[tp.key] = OrderedSetLattice(res)
+
                 else:
                     raise ValueError('Invalid Lattice type: ' +
                                      str(tp.lattice_type))
@@ -146,6 +156,7 @@ class IpcAnnaClient:
                 resp[key] = None
 
             return resp
+
         else:
             kv_pairs = {}
             resp = CausalResponse()
@@ -189,6 +200,13 @@ class IpcAnnaClient:
             ser.values.extend(list(value.reveal()))
 
             tp.payload = ser.SerializeToString()
+
+        elif type(value) == OrderedSetLattice:
+            tp.lattice_type == ORDERED_SET
+            ser = SetValue()
+            ser.values.extend(value.reveal().lst)
+            tp.payload = ser.SerializeToString()
+
         else:
             raise ValueError('Invalid PUT type: ' + str(type(value)))
 

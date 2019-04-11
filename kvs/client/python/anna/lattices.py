@@ -150,7 +150,9 @@ class ListBasedOrderedSet:
     # Inserts a value, maintaining sorted order.
     def insert(self, value):
         # Microoptimization for the common case.
-        if value > self.lst[-1]:
+        if len(self.lst) == 0:
+            self.lst.append(value)
+        elif value > self.lst[-1]:
             self.lst.append(value)
         else:
             idx, present = self._index_of(value)
