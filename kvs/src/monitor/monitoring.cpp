@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
   }
 
   // keep track of the keys' replication info
-  map<Key, KeyMetadata> metadata_map;
+  map<Key, KeyReplication> key_replication_map;
 
   unsigned memory_node_number;
   unsigned ebs_node_number;
@@ -238,8 +238,9 @@ int main(int argc, char *argv[]) {
       // initialize replication factor for new keys
       for (const auto &key_access_pair : key_access_summary) {
         Key key = key_access_pair.first;
-        if (!is_metadata(key) && metadata_map.find(key) == metadata_map.end()) {
-          init_replication(metadata_map, key);
+        if (!is_metadata(key) &&
+            key_replication_map.find(key) == key_replication_map.end()) {
+          init_replication(key_replication_map, key);
         }
       }
 
@@ -251,13 +252,13 @@ int main(int argc, char *argv[]) {
 
       movement_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
                       memory_node_number, ebs_node_number, adding_memory_node,
-                      adding_ebs_node, management_ip, metadata_map,
+                      adding_ebs_node, management_ip, key_replication_map,
                       key_access_summary, key_size, mt, pushers,
                       response_puller, routing_ips, rid);
 
       slo_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
                  memory_node_number, adding_memory_node, removing_memory_node,
-                 management_ip, metadata_map, key_access_summary, mt,
+                 management_ip, key_replication_map, key_access_summary, mt,
                  departing_node_map, pushers, response_puller, routing_ips, rid,
                  latency_miss_ratio_map);
 

@@ -18,7 +18,8 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        Address private_ip, logger log, string& serialized,
                        map<TierId, GlobalHashRing>& global_hash_rings,
                        map<TierId, LocalHashRing>& local_hash_rings,
-                       map<Key, KeyMetadata>& metadata_map,
+                       map<Key, KeyProperty>& stored_key_map,
+                       map<Key, KeyReplication>& key_replication_map,
                        set<Key>& join_remove_set, SocketCache& pushers,
                        ServerThread& wt, AddressKeysetMap& join_gossip_map,
                        int self_join_count) {
@@ -80,11 +81,11 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
     if (tier == kSelfTierId) {
       bool succeed;
 
-      for (const auto& key_pair : metadata_map) {
+      for (const auto& key_pair : stored_key_map) {
         Key key = key_pair.first;
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
             wt.replication_response_connect_address(), key, is_metadata(key),
-            global_hash_rings, local_hash_rings, metadata_map, pushers,
+            global_hash_rings, local_hash_rings, key_replication_map, pushers,
             kSelfTierIdVector, succeed, seed);
 
         if (succeed) {

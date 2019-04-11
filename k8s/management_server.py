@@ -350,9 +350,9 @@ def check_executor_utilization(client, ctx, executor_statuses,
         # we only decide to kill nodes if they are underutilized and if there
         # are at least 5 executors in the system -- we never scale down past
         # that
-        num_nodes = len(util.get_pod_ips(client, 'role=function'))
+        num_nodes = len(executor_statuses) / NUM_EXEC_THREADS
 
-        if avg_utilization < UTILIZATION_MIN and num_nodes > 10:
+        if avg_utilization < UTILIZATION_MIN and num_nodes > 15:
             ip = random.choice(list(executor_statuses.values())).ip
             logging.info(('Average utilization is %.4f, and there are %d '
                     + 'executors. Removing IP %s.') % (avg_utilization,

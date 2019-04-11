@@ -29,7 +29,7 @@ class RoutingHandlerTest : public ::testing::Test {
   unsigned thread_id = 0;
   map<TierId, GlobalHashRing> global_hash_rings;
   map<TierId, LocalHashRing> local_hash_rings;
-  map<Key, KeyMetadata> metadata_map;
+  map<Key, KeyReplication> key_replication_map;
   map<Key, vector<pair<Address, string>>> pending_requests;
   zmq::context_t context;
   SocketCache pushers = SocketCache(&context, ZMQ_PUSH);
@@ -56,15 +56,15 @@ class RoutingHandlerTest : public ::testing::Test {
 
   vector<string> get_zmq_messages() { return mock_zmq_util.sent_messages; }
 
-  void warmup_metadata_map_to_defaults(vector<string> keys) {
+  void warmup_key_replication_map_to_defaults(vector<string> keys) {
     for (string key : keys) {
-      metadata_map[key].global_replication_[kMemoryTierId] =
+      key_replication_map[key].global_replication_[kMemoryTierId] =
           kDefaultGlobalMemoryReplication;
-      metadata_map[key].global_replication_[kEbsTierId] =
+      key_replication_map[key].global_replication_[kEbsTierId] =
           kDefaultGlobalEbsReplication;
-      metadata_map[key].local_replication_[kMemoryTierId] =
+      key_replication_map[key].local_replication_[kMemoryTierId] =
           kDefaultLocalReplication;
-      metadata_map[key].local_replication_[kEbsTierId] =
+      key_replication_map[key].local_replication_[kEbsTierId] =
           kDefaultLocalReplication;
     }
   }

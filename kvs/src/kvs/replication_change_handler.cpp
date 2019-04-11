@@ -19,7 +19,8 @@ void replication_change_handler(Address public_ip, Address private_ip,
                                 string& serialized,
                                 map<TierId, GlobalHashRing>& global_hash_rings,
                                 map<TierId, LocalHashRing>& local_hash_rings,
-                                map<Key, KeyMetadata>& metadata_map,
+                                map<Key, KeyProperty>& stored_key_map,
+                                map<Key, KeyReplication>& key_replication_map,
                                 set<Key>& local_changeset, ServerThread& wt,
                                 SerializerMap& serializers,
                                 SocketCache& pushers) {
@@ -45,11 +46,11 @@ void replication_change_handler(Address public_ip, Address private_ip,
 
   for (const ReplicationFactor& key_rep : rep_change.key_reps()) {
     Key key = key_rep.key();
-    // if this thread was responsible for the key before the change
-    if (metadata_map.find(key) != metadata_map.end()) {
+    // if this thread has the key stored before the change
+    if (stored_key_map.find(key) != stored_key_map.end()) {
       ServerThreadList orig_threads = kHashRingUtil->get_responsible_threads(
           wt.replication_response_connect_address(), key, is_metadata(key),
-          global_hash_rings, local_hash_rings, metadata_map, pushers,
+          global_hash_rings, local_hash_rings, key_replication_map, pushers,
           kAllTierIds, succeed, seed);
 
       if (succeed) {
@@ -58,33 +59,33 @@ void replication_change_handler(Address public_ip, Address private_ip,
 
         for (const auto& global : key_rep.global()) {
           if (global.replication_factor() <
-              metadata_map[key].global_replication_[global.tier_id()]) {
+              key_replication_map[key].global_replication_[global.tier_id()]) {
             decrement = true;
           }
 
           std::cout << "Key " << key << ", tier " << global.tier_id() << " global "
-            << metadata_map[key].global_replication_[global.tier_id()] << "->"
+            << key_replication_map[key].global_replication_[global.tier_id()] << "->"
             << global.tier_id() << std::endl;
-          metadata_map[key].global_replication_[global.tier_id()] =
+          key_replication_map[key].global_replication_[global.tier_id()] =
               global.replication_factor();
         }
 
         for (const auto& local : key_rep.local()) {
           if (local.replication_factor() <
-              metadata_map[key].local_replication_[local.tier_id()]) {
+              key_replication_map[key].local_replication_[local.tier_id()]) {
             decrement = true;
           }
 
           std::cout << "Key " << key << ", tier " << local.tier_id() << " local "
-            << metadata_map[key].local_replication_[local.tier_id()] << "->"
+            << key_replication_map[key].local_replication_[local.tier_id()] << "->"
             << local.tier_id() << std::endl;
-          metadata_map[key].local_replication_[local.tier_id()] =
+          key_replication_map[key].local_replication_[local.tier_id()] =
               local.replication_factor();
         }
 
         ServerThreadList threads = kHashRingUtil->get_responsible_threads(
             wt.replication_response_connect_address(), key, is_metadata(key),
-            global_hash_rings, local_hash_rings, metadata_map, pushers,
+            global_hash_rings, local_hash_rings, key_replication_map, pushers,
             kAllTierIds, succeed, seed);
 
         if (succeed) {
@@ -133,12 +134,12 @@ void replication_change_handler(Address public_ip, Address private_ip,
         std::cout << thread_id << ": " << "In the first else! This is bad!" << std::endl;
         // just update the replication factor
         for (const auto& global : key_rep.global()) {
-          metadata_map[key].global_replication_[global.tier_id()] =
+          key_replication_map[key].global_replication_[global.tier_id()] =
               global.replication_factor();
         }
 
         for (const auto& local : key_rep.local()) {
-          metadata_map[key].local_replication_[local.tier_id()] =
+          key_replication_map[key].local_replication_[local.tier_id()] =
               local.replication_factor();
         }
       }
@@ -146,28 +147,24 @@ void replication_change_handler(Address public_ip, Address private_ip,
       std::cout << thread_id << ": " << "In the second else! This is bad!" << std::endl;
       // just update the replication factor
       for (const auto& global : key_rep.global()) {
-        metadata_map[key].global_replication_[global.tier_id()] =
+        key_replication_map[key].global_replication_[global.tier_id()] =
             global.replication_factor();
       }
 
       for (const auto& local : key_rep.local()) {
-        metadata_map[key].local_replication_[local.tier_id()] =
+        key_replication_map[key].local_replication_[local.tier_id()] =
             local.replication_factor();
       }
     }
   }
 
   std::cout << thread_id << ": " << "There are " << addr_keyset_map.size() << " things to gossip" << std::endl;
-  send_gossip(addr_keyset_map, pushers, serializers, metadata_map);
+  send_gossip(addr_keyset_map, pushers, serializers, stored_key_map);
 
   // remove keys
   for (const string& key : remove_set) {
-    std::cout << thread_id << ": " << "Removing key " << key << std::endl;
-    if (metadata_map.find(key) == metadata_map.end()) {
-      std::cout << "ERROR DID NOT HAVE METADATA FOR " << key << std::endl;
-    }
-    serializers[metadata_map[key].type_]->remove(key);
-    metadata_map.erase(key);
+    serializers[stored_key_map[key].type_]->remove(key);
+    stored_key_map.erase(key);
     local_changeset.erase(key);
   }
   std::cout << "Successfully removed keys" << std::endl;

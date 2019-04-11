@@ -25,7 +25,8 @@ void node_join_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                        Address private_ip, logger log, string& serialized,
                        map<TierId, GlobalHashRing>& global_hash_rings,
                        map<TierId, LocalHashRing>& local_hash_rings,
-                       map<Key, KeyMetadata>& metadata_map,
+                       map<Key, KeyProperty>& stored_key_map,
+                       map<Key, KeyReplication>& key_replication_map,
                        set<Key>& join_remove_set, SocketCache& pushers,
                        ServerThread& wt, AddressKeysetMap& join_gossip_map,
                        int self_join_count);
@@ -39,7 +40,8 @@ void self_depart_handler(unsigned thread_id, unsigned& seed, Address public_ip,
                          Address private_ip, logger log, string& serialized,
                          map<TierId, GlobalHashRing>& global_hash_rings,
                          map<TierId, LocalHashRing>& local_hash_rings,
-                         map<Key, KeyMetadata>& metadata_map,
+                         map<Key, KeyProperty>& stored_key_map,
+                         map<Key, KeyReplication>& key_replication_map,
                          vector<Address>& routing_ips,
                          vector<Address>& monitoring_ips, ServerThread& wt,
                          SocketCache& pushers, SerializerMap& serializers);
@@ -50,16 +52,18 @@ void user_request_handler(
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, vector<PendingRequest>>& pending_requests,
     map<Key, std::multiset<TimePoint>>& key_access_tracker,
-    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
+    map<Key, KeyProperty>& stored_key_map,
+    map<Key, KeyReplication>& key_replication_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
 
 void gossip_handler(unsigned& seed, string& serialized,
                     map<TierId, GlobalHashRing>& global_hash_rings,
                     map<TierId, LocalHashRing>& local_hash_rings,
                     map<Key, vector<PendingGossip>>& pending_gossip,
-                    map<Key, KeyMetadata>& metadata_map, ServerThread& wt,
-                    SerializerMap& serializers, SocketCache& pushers,
-                    logger log);
+                    map<Key, KeyProperty>& stored_key_map,
+                    map<Key, KeyReplication>& key_replication_map,
+                    ServerThread& wt, SerializerMap& serializers,
+                    SocketCache& pushers, logger log);
 
 void replication_response_handler(
     unsigned& seed, unsigned& access_count, logger log, string& serialized,
@@ -68,7 +72,8 @@ void replication_response_handler(
     map<Key, vector<PendingRequest>>& pending_requests,
     map<Key, vector<PendingGossip>>& pending_gossip,
     map<Key, std::multiset<TimePoint>>& key_access_tracker,
-    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
+    map<Key, KeyProperty>& stored_key_map,
+    map<Key, KeyReplication>& key_replication_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers);
 
 void replication_change_handler(Address public_ip, Address private_ip,
@@ -76,7 +81,8 @@ void replication_change_handler(Address public_ip, Address private_ip,
                                 string& serialized,
                                 map<TierId, GlobalHashRing>& global_hash_rings,
                                 map<TierId, LocalHashRing>& local_hash_rings,
-                                map<Key, KeyMetadata>& metadata_map,
+                                map<Key, KeyProperty>& stored_key_map,
+                                map<Key, KeyReplication>& key_replication_map,
                                 set<Key>& local_changeset, ServerThread& wt,
                                 SerializerMap& serializers,
                                 SocketCache& pushers);
@@ -91,15 +97,16 @@ void cache_ip_response_handler(string& serialized,
 
 void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
                  SerializerMap& serializers,
-                 map<Key, KeyMetadata>& metadata_map);
+                 map<Key, KeyProperty>& stored_key_map);
 
 std::pair<string, unsigned> process_get(const Key& key, Serializer* serializer);
 
 void process_put(const Key& key, LatticeType lattice_type,
                  const string& payload, Serializer* serializer,
-                 map<Key, KeyMetadata>& metadata_map);
+                 map<Key, KeyProperty>& stored_key_map);
 
-bool is_primary_replica(const Key& key, map<Key, KeyMetadata>& metadata_map,
+bool is_primary_replica(const Key& key,
+                        map<Key, KeyReplication>& key_replication_map,
                         map<TierId, GlobalHashRing>& global_hash_rings,
                         map<TierId, LocalHashRing>& local_hash_rings,
                         ServerThread& st);

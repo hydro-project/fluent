@@ -6,6 +6,7 @@ import zmq
 
 from . import composition
 from . import locality
+from . import lambda_locality
 from . import utils
 
 BENCHMARK_START_PORT = 3000
@@ -44,6 +45,9 @@ def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
     elif bname == 'locality':
         total, scheduler, kvs, retries = locality.run(flconn, kvs,
                 num_requests, create, sckt)
+    elif bname == 'redis' or bname == 's3':
+        total, scheduler, kvs, retries = lambda_locality.run(bname, kvs,
+                num_requests, sckt)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')
@@ -60,7 +64,10 @@ def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
         logging.info('*** Benchmark %s finished. ***' % (bname))
 
     logging.info('Total computation time: %.4f' % (sum(total)))
-    utils.print_latency_stats(total, 'E2E', True)
-    utils.print_latency_stats(scheduler, 'SCHEDULER', True)
-    utils.print_latency_stats(kvs, 'KVS', True)
+    if len(total) > 0:
+        utils.print_latency_stats(total, 'E2E', True)
+    if len(scheduler) > 0:
+        utils.print_latency_stats(scheduler, 'SCHEDULER', True)
+    if len(kvs) > 0:
+        utils.print_latency_stats(kvs, 'KVS', True)
     logging.info('Number of KVS get retries: %d' % (retries))

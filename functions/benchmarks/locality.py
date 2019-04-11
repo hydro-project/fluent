@@ -2,7 +2,6 @@ import cloudpickle as cp
 import logging
 import numpy as np
 import random
-import scipy.stats
 import sys
 import time
 import uuid
@@ -19,9 +18,14 @@ def run(flconn, kvs, num_requests, create, sckt):
 
     if create:
         ### DEFINE AND REGISTER FUNCTIONS ###
-        def dot(v1, v2):
+        def dot(v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
             import numpy as np
-            return np.dot(v1, v2)
+            d1 = np.dot(v1, v2)
+            d2 = np.dot(v3, v4)
+            d3 = np.dot(v5, v6)
+            d4 = np.dot(v7, v8)
+            d5 = np.dot(v9, v10)
+            return d1 + d2 + d3 + d4 + d5
 
         cloud_dot = flconn.register(dot, 'dot')
 
@@ -31,19 +35,19 @@ def run(flconn, kvs, num_requests, create, sckt):
             sys.exit(1)
 
         ### TEST REGISTERED FUNCTIONS ###
-        inp1 = np.zeros(1024 * 1024)
+        inp1 = np.zeros(1024)
         v1 = LWWPairLattice(0, serialize_val(inp1))
         k1 = str(uuid.uuid4())
         kvs.put(k1, v1)
 
-        inp2 = np.zeros(1024 * 1024)
+        inp2 = np.zeros(1024)
         v2 = LWWPairLattice(0, serialize_val(inp2))
         k2 = str(uuid.uuid4())
         kvs.put(k2, v2)
 
         r1 = FluentReference(k1, True, LWW)
         r2 = FluentReference(k2, True, LWW)
-        dot_test = cloud_dot(r1, r2).get()
+        dot_test = cloud_dot(r1, r2, r1, r2, r1, r2, r1, r2, r1, r2).get()
         if dot_test != 0.0:
             logging.error('Unexpected result from dot(v1, v2): %s' % (str(dot_test)))
             sys.exit(1)
@@ -66,7 +70,7 @@ def run(flconn, kvs, num_requests, create, sckt):
         oids = []
 
         for _ in range(NUM_OBJECTS):
-            array = np.random.rand(1024 * 1024)
+            array = np.random.rand(1024)
             oid = str(uuid.uuid4())
             val = LWWPairLattice(0, serialize_val(array))
 
@@ -99,11 +103,12 @@ def run(flconn, kvs, num_requests, create, sckt):
 
         for _ in range(num_requests):
             start = time.time()
-            oid = random.choice(oids)
-            r1 = FluentReference(oid, True, LWW)
-            oid = random.choice(oids)
-            r2 = FluentReference(oid, True, LWW)
-            arg_map = { 'dot' : [r1, r2] }
+            refs = []
+            for _ in range(10):
+                oid = random.choice(oids)
+                refs.append(FluentReference(oid, True, LWW))
+
+            arg_map = { 'dot' : refs }
 
             rid = flconn.call_dag(dag_name, arg_map)
             end = time.time()

@@ -20,13 +20,14 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                      TimePoint& grace_start, SummaryStats& ss,
                      unsigned& memory_node_number, unsigned& ebs_node_number,
                      unsigned& adding_memory_node, unsigned& adding_ebs_node,
-                     Address management_ip, map<Key, KeyMetadata>& metadata_map,
+                     Address management_ip,
+                     map<Key, KeyReplication>& key_replication_map,
                      map<Key, unsigned>& key_access_summary,
                      map<Key, unsigned>& key_size, MonitoringThread& mt,
                      SocketCache& pushers, zmq::socket_t& response_puller,
                      vector<Address>& routing_ips, unsigned& rid) {
   // promote hot keys to memory tier
-  map<Key, KeyMetadata> requests;
+  map<Key, KeyReplication> requests;
   unsigned total_rep_to_change = 0;
   unsigned long long required_storage = 0;
   unsigned free_storage =
@@ -40,7 +41,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   //   unsigned access_count = key_access_pair.second;
 
   //   if (!is_metadata(key) && access_count > kKeyPromotionThreshold &&
-  //       metadata_map[key].global_replication_[kMemoryTierId] == 0 &&
+  //       key_replication_map[key].global_replication_[kMemoryTierId] == 0 &&
   //       key_size.find(key) != key_size.end()) {
   //     required_storage += key_size[key];
   //     if (required_storage > free_storage) {
@@ -48,16 +49,16 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   //     } else {
   //       total_rep_to_change += 1;
   //       requests[key] = create_new_replication_vector(
-  //           metadata_map[key].global_replication_[kMemoryTierId] + 1,
-  //           metadata_map[key].global_replication_[kEbsTierId] - 1,
-  //           metadata_map[key].local_replication_[kMemoryTierId],
-  //           metadata_map[key].local_replication_[kEbsTierId]);
+  //           key_replication_map[key].global_replication_[kMemoryTierId] + 1,
+  //           key_replication_map[key].global_replication_[kEbsTierId] - 1,
+  //           key_replication_map[key].local_replication_[kMemoryTierId],
+  //           key_replication_map[key].local_replication_[kEbsTierId]);
   //     }
   //   }
   // }
 
   // change_replication_factor(requests, global_hash_rings, local_hash_rings,
-  //                           routing_ips, metadata_map, pushers, mt,
+  //                           routing_ips, key_replication_map, pushers, mt,
   //                           response_puller, log, rid);
   // log->info("Promoting {} keys into memory tier.", total_rep_to_change);
   // auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
@@ -81,7 +82,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   // total_rep_to_change = 0;
   // required_storage = 0;
 
-  // demote cold keys to ebs tier
+  // // demote cold keys to ebs tier
   // free_storage =
   //     (kMaxEbsNodeConsumption * kTierMetadata[kEbsTierId].node_capacity_ *
   //          ebs_node_number -
@@ -93,7 +94,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   //   unsigned access_count = key_access_pair.second;
 
   //   if (!is_metadata(key) && access_count < kKeyDemotionThreshold &&
-  //       metadata_map[key].global_replication_[kMemoryTierId] > 0 &&
+  //       key_replication_map[key].global_replication_[kMemoryTierId] > 0 &&
   //       key_size.find(key) != key_size.end()) {
   //     required_storage += key_size[key];
   //     if (required_storage > free_storage) {
@@ -106,47 +107,47 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   //   }
   // }
 
-  //change_replication_factor(requests, global_hash_rings, local_hash_rings,
-  //                          routing_ips, metadata_map, pushers, mt,
-  //                          response_puller, log, rid);
-  //log->info("Demoting {} keys into EBS tier.", total_rep_to_change);
-  //if (overflow && adding_ebs_node == 0 && time_elapsed > kGracePeriod) {
-  //  unsigned total_ebs_node_needed = ceil(
-  //      (ss.total_ebs_consumption + required_storage) /
-  //      (kMaxEbsNodeConsumption * kTierMetadata[kEbsTierId].node_capacity_));
+  // change_replication_factor(requests, global_hash_rings, local_hash_rings,
+  //                           routing_ips, key_replication_map, pushers, mt,
+  //                           response_puller, log, rid);
+  // log->info("Demoting {} keys into EBS tier.", total_rep_to_change);
+  // if (overflow && adding_ebs_node == 0 && time_elapsed > kGracePeriod) {
+  //   unsigned total_ebs_node_needed = ceil(
+  //       (ss.total_ebs_consumption + required_storage) /
+  //       (kMaxEbsNodeConsumption * kTierMetadata[kEbsTierId].node_capacity_));
 
-  //  if (total_ebs_node_needed > ebs_node_number) {
-  //    unsigned node_to_add = (total_ebs_node_needed - ebs_node_number);
-  //    add_node(log, "ebs", node_to_add, adding_ebs_node, pushers,
-  //             management_ip);
-  //  }
-  //}
+  //   if (total_ebs_node_needed > ebs_node_number) {
+  //     unsigned node_to_add = (total_ebs_node_needed - ebs_node_number);
+  //     add_node(log, "ebs", node_to_add, adding_ebs_node, pushers,
+  //              management_ip);
+  //   }
+  // }
 
-  requests.clear();
-  total_rep_to_change = 0;
+  // requests.clear();
+  // total_rep_to_change = 0;
 
   // reduce the replication factor of some keys that are not so hot anymore
-  KeyMetadata minimum_rep = create_new_replication_vector(1, kMinimumReplicaNumber - 1, 1, 1);
+  KeyReplication minimum_rep = create_new_replication_vector(1, kMinimumReplicaNumber - 1, 1, 1);
   for (const auto& key_access_pair : key_access_summary) {
     Key key = key_access_pair.first;
     unsigned access_count = key_access_pair.second;
 
     if (!is_metadata(key) && access_count <= ss.key_access_mean &&
-        !(metadata_map[key] == minimum_rep)) {
+        !(key_replication_map[key] == minimum_rep)) {
       log->info("Key {} accessed {} times (threshold is {}).", key,
                 access_count, ss.key_access_mean);
       requests[key] =
           create_new_replication_vector(1, kMinimumReplicaNumber - 1, 1, 1);
       log->info("Dereplication for key {}. M: {}->{}. E: {}->{}", key,
-                metadata_map[key].global_replication_[kMemoryTierId],
+                key_replication_map[key].global_replication_[kMemoryTierId],
                 requests[key].global_replication_[kMemoryTierId],
-                metadata_map[key].global_replication_[kEbsTierId],
+                key_replication_map[key].global_replication_[kEbsTierId],
                 requests[key].global_replication_[kEbsTierId]);
     }
   }
 
   change_replication_factor(requests, global_hash_rings, local_hash_rings,
-                            routing_ips, metadata_map, pushers, mt,
+                            routing_ips, key_replication_map, pushers, mt,
                             response_puller, log, rid);
   requests.clear();
 }

@@ -16,7 +16,7 @@
 
 void replication_change_handler(logger log, string& serialized,
                                 SocketCache& pushers,
-                                map<Key, KeyMetadata>& metadata_map,
+                                map<Key, KeyReplication>& key_replication_map,
                                 unsigned thread_id, Address ip) {
   if (thread_id == 0) {
     // tell all worker threads about the replication factor change
@@ -35,12 +35,12 @@ void replication_change_handler(logger log, string& serialized,
     log->info("Received a replication factor change for key {}.", key);
 
     for (const Replication& global : key_rep.global()) {
-      metadata_map[key].global_replication_[global.tier_id()] =
+      key_replication_map[key].global_replication_[global.tier_id()] =
           global.replication_factor();
     }
 
     for (const Replication& local : key_rep.local()) {
-      metadata_map[key].local_replication_[local.tier_id()] =
+      key_replication_map[key].local_replication_[local.tier_id()] =
           local.replication_factor();
     }
   }
