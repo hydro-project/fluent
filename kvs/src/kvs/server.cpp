@@ -187,6 +187,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   Serializer* lww_serializer;
   Serializer* set_serializer;
+  Serializer* ordered_set_serializer;
   Serializer* causal_serializer;
   Serializer* cross_causal_serializer;
 

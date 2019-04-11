@@ -222,7 +222,8 @@ inline SetLattice<string> deserialize_set(const string& serialized) {
   return SetLattice<string>(result);
 }
 
-inline OrderedSetLattice<string> deserialize_ordered_set(const string& serialized) {
+inline OrderedSetLattice<string> deserialize_ordered_set(
+    const string& serialized) {
   SetValue s;
   s.ParseFromString(serialized);
   ordered_set<string> result;

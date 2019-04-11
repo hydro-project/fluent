@@ -35,10 +35,10 @@
 
 typedef KVStore<Key, LWWPairLattice<string>> MemoryLWWKVS;
 typedef KVStore<Key, SetLattice<string>> MemorySetKVS;
+typedef KVStore<Key, OrderedSetLattice<string>> MemoryOrderedSetKVS;
 typedef KVStore<Key, CausalPairLattice<SetLattice<string>>> MemoryCausalKVS;
 typedef KVStore<Key, CrossCausalLattice<SetLattice<string>>>
     MemoryCrossCausalKVS;
-typedef KVStore<Key, OrderedSetLattice<pair<int, string>>> MemoryOrderedSetKVS;
 
 // a map that represents which keys should be sent to which IP-port combinations
 typedef map<Address, set<Key>> AddressKeysetMap;
@@ -112,7 +112,7 @@ class MemoryOrderedSetSerializer : public Serializer {
   }
 
   unsigned put(const Key& key, const string& serialized) {
-    SetLattice<string> sl = deserialize_set(serialized);
+    OrderedSetLattice<string> sl = deserialize_ordered_set(serialized);
     kvs_->put(key, sl);
     return kvs_->size(key);
   }
