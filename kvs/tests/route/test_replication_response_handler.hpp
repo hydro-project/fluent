@@ -18,12 +18,12 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   unsigned seed = 0;
   string key = "key";
   vector<string> keys = {"key"};
-  warmup_metadata_map_to_defaults(keys);
+  warmup_key_replication_map_to_defaults(keys);
 
-  EXPECT_EQ(metadata_map[key].global_replication_[kMemoryTierId], 1);
-  EXPECT_EQ(metadata_map[key].global_replication_[kEbsTierId], 1);
-  EXPECT_EQ(metadata_map[key].local_replication_[kMemoryTierId], 1);
-  EXPECT_EQ(metadata_map[key].local_replication_[kEbsTierId], 1);
+  EXPECT_EQ(key_replication_map[key].global_replication_[kMemoryTierId], 1);
+  EXPECT_EQ(key_replication_map[key].global_replication_[kEbsTierId], 1);
+  EXPECT_EQ(key_replication_map[key].local_replication_[kMemoryTierId], 1);
+  EXPECT_EQ(key_replication_map[key].local_replication_[kEbsTierId], 1);
 
   KeyResponse response;
   KeyTuple* tp = response.add_tuples();
@@ -56,11 +56,11 @@ TEST_F(RoutingHandlerTest, ReplicationResponse) {
   response.SerializeToString(&serialized);
 
   replication_response_handler(log_, serialized, pushers, rt, global_hash_rings,
-                               local_hash_rings, metadata_map, pending_requests,
-                               seed);
+                               local_hash_rings, key_replication_map,
+                               pending_requests, seed);
 
-  EXPECT_EQ(metadata_map[key].global_replication_[kMemoryTierId], 2);
-  EXPECT_EQ(metadata_map[key].global_replication_[kEbsTierId], 2);
-  EXPECT_EQ(metadata_map[key].local_replication_[kMemoryTierId], 3);
-  EXPECT_EQ(metadata_map[key].local_replication_[kEbsTierId], 3);
+  EXPECT_EQ(key_replication_map[key].global_replication_[kMemoryTierId], 2);
+  EXPECT_EQ(key_replication_map[key].global_replication_[kEbsTierId], 2);
+  EXPECT_EQ(key_replication_map[key].local_replication_[kMemoryTierId], 3);
+  EXPECT_EQ(key_replication_map[key].local_replication_[kEbsTierId], 3);
 }

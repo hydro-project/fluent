@@ -29,19 +29,19 @@ void replication_response_handler(
     logger log, string& serialized, SocketCache& pushers, RoutingThread& rt,
     map<TierId, GlobalHashRing>& global_hash_rings,
     map<TierId, LocalHashRing>& local_hash_rings,
-    map<Key, KeyMetadata>& metadata_map,
+    map<Key, KeyReplication>& key_replication_map,
     map<Key, vector<pair<Address, string>>>& pending_requests, unsigned& seed);
 
 void replication_change_handler(logger log, string& serialized,
                                 SocketCache& pushers,
-                                map<Key, KeyMetadata>& metadata_map,
+                                map<Key, KeyReplication>& key_replication_map,
                                 unsigned thread_id, Address ip);
 
 void address_handler(logger log, string& serialized, SocketCache& pushers,
                      RoutingThread& rt,
                      map<TierId, GlobalHashRing>& global_hash_rings,
                      map<TierId, LocalHashRing>& local_hash_rings,
-                     map<Key, KeyMetadata>& metadata_map,
+                     map<Key, KeyReplication>& key_replication_map,
                      map<Key, vector<pair<Address, string>>>& pending_requests,
                      unsigned& seed);
 

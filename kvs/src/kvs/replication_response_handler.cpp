@@ -21,7 +21,8 @@ void replication_response_handler(
     map<Key, vector<PendingRequest>>& pending_requests,
     map<Key, vector<PendingGossip>>& pending_gossip,
     map<Key, std::multiset<TimePoint>>& key_access_tracker,
-    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
+    map<Key, KeyProperty>& stored_key_map,
+    map<Key, KeyReplication>& key_replication_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
   KeyResponse response;
   response.ParseFromString(serialized);
@@ -40,18 +41,18 @@ void replication_response_handler(
     rep_data.ParseFromString(lww_value.value());
 
     for (const auto& global : rep_data.global()) {
-      metadata_map[key].global_replication_[global.tier_id()] =
+      key_replication_map[key].global_replication_[global.tier_id()] =
           global.replication_factor();
     }
 
     for (const auto& local : rep_data.local()) {
-      metadata_map[key].local_replication_[local.tier_id()] =
+      key_replication_map[key].local_replication_[local.tier_id()] =
           local.replication_factor();
     }
   } else if (error == 1) {
     // error 1 means that the receiving thread was responsible for the metadata
     // but didn't have any values stored -- we use the default rep factor
-    init_replication(metadata_map, key);
+    init_replication(key_replication_map, key);
   } else if (error == 2) {
     // error 2 means that the node that received the rep factor request was not
     // responsible for that metadata
@@ -71,7 +72,7 @@ void replication_response_handler(
   if (pending_requests.find(key) != pending_requests.end()) {
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.replication_response_connect_address(), key, is_metadata(key),
-        global_hash_rings, local_hash_rings, metadata_map, pushers,
+        global_hash_rings, local_hash_rings, key_replication_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
@@ -104,17 +105,17 @@ void replication_response_handler(
           if (request.type_ == "PUT") {
             if (request.lattice_type_ == LatticeType::NO) {
               log->error("PUT request missing lattice type.");
-            } else if (metadata_map.find(key) != metadata_map.end() &&
-                       metadata_map[key].type_ != LatticeType::NO &&
-                       metadata_map[key].type_ != request.lattice_type_) {
+            } else if (stored_key_map.find(key) != stored_key_map.end() &&
+                       stored_key_map[key].type_ != LatticeType::NO &&
+                       stored_key_map[key].type_ != request.lattice_type_) {
               log->error(
                   "Lattice type mismatch for key {}: query is {} but we expect "
                   "{}.",
                   key, LatticeType_Name(request.lattice_type_),
-                  LatticeType_Name(metadata_map[key].type_));
+                  LatticeType_Name(stored_key_map[key].type_));
             } else {
               process_put(key, request.lattice_type_, request.payload_,
-                          serializers[request.lattice_type_], metadata_map);
+                          serializers[request.lattice_type_], stored_key_map);
               key_access_tracker[key].insert(now);
 
               access_count += 1;
@@ -134,29 +135,30 @@ void replication_response_handler(
           tp->set_key(key);
 
           if (request.type_ == "GET") {
-            if (metadata_map.find(key) == metadata_map.end() ||
-                metadata_map[key].type_ == LatticeType::NO) {
+            if (stored_key_map.find(key) == stored_key_map.end() ||
+                stored_key_map[key].type_ == LatticeType::NO) {
               tp->set_error(1);
             } else {
-              auto res = process_get(key, serializers[metadata_map[key].type_]);
-              tp->set_lattice_type(metadata_map[key].type_);
+              auto res =
+                  process_get(key, serializers[stored_key_map[key].type_]);
+              tp->set_lattice_type(stored_key_map[key].type_);
               tp->set_payload(res.first);
               tp->set_error(res.second);
             }
           } else {
             if (request.lattice_type_ == LatticeType::NO) {
               log->error("PUT request missing lattice type.");
-            } else if (metadata_map.find(key) != metadata_map.end() &&
-                       metadata_map[key].type_ != LatticeType::NO &&
-                       metadata_map[key].type_ != request.lattice_type_) {
+            } else if (stored_key_map.find(key) != stored_key_map.end() &&
+                       stored_key_map[key].type_ != LatticeType::NO &&
+                       stored_key_map[key].type_ != request.lattice_type_) {
               log->error(
                   "Lattice type mismatch for key {}: {} from query but {} "
                   "expected.",
                   key, LatticeType_Name(request.lattice_type_),
-                  LatticeType_Name(metadata_map[key].type_));
+                  LatticeType_Name(stored_key_map[key].type_));
             } else {
               process_put(key, request.lattice_type_, request.payload_,
-                          serializers[request.lattice_type_], metadata_map);
+                          serializers[request.lattice_type_], stored_key_map);
               tp->set_error(0);
               local_changeset.insert(key);
             }
@@ -180,23 +182,23 @@ void replication_response_handler(
   if (pending_gossip.find(key) != pending_gossip.end()) {
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.replication_response_connect_address(), key, is_metadata(key),
-        global_hash_rings, local_hash_rings, metadata_map, pushers,
+        global_hash_rings, local_hash_rings, key_replication_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) != threads.end()) {
         for (const PendingGossip& gossip : pending_gossip[key]) {
-          if (metadata_map.find(key) != metadata_map.end() &&
-              metadata_map[key].type_ != LatticeType::NO &&
-              metadata_map[key].type_ != gossip.lattice_type_) {
+          if (stored_key_map.find(key) != stored_key_map.end() &&
+              stored_key_map[key].type_ != LatticeType::NO &&
+              stored_key_map[key].type_ != gossip.lattice_type_) {
             log->error(
                 "Lattice type mismatch for key {}: {} from query but {} "
                 "expected.",
                 key, LatticeType_Name(gossip.lattice_type_),
-                LatticeType_Name(metadata_map[key].type_));
+                LatticeType_Name(stored_key_map[key].type_));
           } else {
             process_put(key, gossip.lattice_type_, gossip.payload_,
-                        serializers[gossip.lattice_type_], metadata_map);
+                        serializers[gossip.lattice_type_], stored_key_map);
           }
         }
       } else {

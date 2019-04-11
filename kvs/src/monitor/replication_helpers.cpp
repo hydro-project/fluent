@@ -15,31 +15,31 @@
 #include "monitor/monitoring_utils.hpp"
 #include "requests.hpp"
 
-KeyMetadata create_new_replication_vector(unsigned gm, unsigned ge, unsigned lm,
-                                          unsigned le) {
-  KeyMetadata metadata;
-  metadata.global_replication_[kMemoryTierId] = gm;
-  metadata.global_replication_[kMemoryTierId] = ge;
-  metadata.local_replication_[kEbsTierId] = lm;
-  metadata.local_replication_[kEbsTierId] = le;
+KeyReplication create_new_replication_vector(unsigned gm, unsigned ge,
+                                             unsigned lm, unsigned le) {
+  KeyReplication rep;
+  rep.global_replication_[kMemoryTierId] = gm;
+  rep.global_replication_[kEbsTierId] = ge;
+  rep.local_replication_[kMemoryTierId] = lm;
+  rep.local_replication_[kEbsTierId] = le;
 
-  return metadata;
+  return rep;
 }
 
 void prepare_replication_factor_update(
     const Key& key,
     map<Address, ReplicationFactorUpdate>& replication_factor_map,
-    Address server_address, map<Key, KeyMetadata>& metadata_map) {
+    Address server_address, map<Key, KeyReplication>& key_replication_map) {
   ReplicationFactor* rf = replication_factor_map[server_address].add_key_reps();
   rf->set_key(key);
 
-  for (const auto& pair : metadata_map[key].global_replication_) {
+  for (const auto& pair : key_replication_map[key].global_replication_) {
     Replication* global = rf->add_global();
     global->set_tier_id(pair.first);
     global->set_replication_factor(pair.second);
   }
 
-  for (const auto& pair : metadata_map[key].local_replication_) {
+  for (const auto& pair : key_replication_map[key].local_replication_) {
     Replication* local = rf->add_local();
     local->set_tier_id(pair.first);
     local->set_replication_factor(pair.second);
@@ -48,44 +48,44 @@ void prepare_replication_factor_update(
 
 // assume the caller has the replication factor for the keys and the requests
 // are valid (rep factor <= total number of nodes in a tier)
-void change_replication_factor(map<Key, KeyMetadata>& requests,
+void change_replication_factor(map<Key, KeyReplication>& requests,
                                map<TierId, GlobalHashRing>& global_hash_rings,
                                map<TierId, LocalHashRing>& local_hash_rings,
                                vector<Address>& routing_ips,
-                               map<Key, KeyMetadata>& metadata_map,
+                               map<Key, KeyReplication>& key_replication_map,
                                SocketCache& pushers, MonitoringThread& mt,
                                zmq::socket_t& response_puller, logger log,
                                unsigned& rid) {
   // used to keep track of the original replication factors for the requested
   // keys
-  map<Key, KeyMetadata> orig_metadata_map_info;
+  map<Key, KeyReplication> orig_key_replication_map_info;
 
   // store the new replication factor synchronously in storage servers
   map<Address, KeyRequest> addr_request_map;
 
-  // form the metadata_map request map
+  // form the replication factor update request map
   map<Address, ReplicationFactorUpdate> replication_factor_map;
 
   for (const auto& request_pair : requests) {
     Key key = request_pair.first;
-    KeyMetadata new_metadata = request_pair.second;
-    orig_metadata_map_info[key] = metadata_map[key];
+    KeyReplication new_rep = request_pair.second;
+    orig_key_replication_map_info[key] = key_replication_map[key];
 
     // update the metadata map
-    metadata_map[key].global_replication_ = new_metadata.global_replication_;
-    metadata_map[key].local_replication_ = new_metadata.local_replication_;
+    key_replication_map[key].global_replication_ = new_rep.global_replication_;
+    key_replication_map[key].local_replication_ = new_rep.local_replication_;
 
     // prepare data to be stored in the storage tier
     ReplicationFactor rep_data;
     rep_data.set_key(key);
 
-    for (const auto& pair : metadata_map[key].global_replication_) {
+    for (const auto& pair : key_replication_map[key].global_replication_) {
       Replication* global = rep_data.add_global();
       global->set_tier_id(pair.first);
       global->set_replication_factor(pair.second);
     }
 
-    for (const auto& pair : metadata_map[key].local_replication_) {
+    for (const auto& pair : key_replication_map[key].local_replication_) {
       Replication* local = rep_data.add_local();
       local->set_tier_id(pair.first);
       local->set_replication_factor(pair.second);
@@ -134,30 +134,30 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
 
     if (failed_keys.find(key) == failed_keys.end()) {
       for (const unsigned& tier : kAllTierIds) {
-        unsigned rep =
-            std::max(metadata_map[key].global_replication_[tier],
-                     orig_metadata_map_info[key].global_replication_[tier]);
+        unsigned rep = std::max(
+            key_replication_map[key].global_replication_[tier],
+            orig_key_replication_map_info[key].global_replication_[tier]);
         ServerThreadList threads =
             responsible_global(key, rep, global_hash_rings[tier]);
 
         for (const ServerThread& thread : threads) {
           prepare_replication_factor_update(
               key, replication_factor_map,
-              thread.replication_change_connect_address(), metadata_map);
+              thread.replication_change_connect_address(), key_replication_map);
         }
       }
 
-      // form metadata_map requests for routing nodes
+      // form replication factor update requests for routing nodes
       for (const string& address : routing_ips) {
         prepare_replication_factor_update(
             key, replication_factor_map,
             RoutingThread(address, 0).replication_change_connect_address(),
-            metadata_map);
+            key_replication_map);
       }
     }
   }
 
-  // send metadata_map info update to all relevant nodes
+  // send replication factor update to all relevant nodes
   for (const auto& rep_factor_pair : replication_factor_map) {
     string serialized_msg;
     rep_factor_pair.second.SerializeToString(&serialized_msg);
@@ -166,6 +166,6 @@ void change_replication_factor(map<Key, KeyMetadata>& requests,
 
   // restore rep factor for failed keys
   for (const string& key : failed_keys) {
-    metadata_map[key] = orig_metadata_map_info[key];
+    key_replication_map[key] = orig_key_replication_map_info[key];
   }
 }

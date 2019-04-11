@@ -30,7 +30,8 @@ class ServerHandlerTest : public ::testing::Test {
   unsigned thread_id = 0;
   map<TierId, GlobalHashRing> global_hash_rings;
   map<TierId, LocalHashRing> local_hash_rings;
-  map<Key, KeyMetadata> metadata_map;
+  map<Key, KeyProperty> stored_key_map;
+  map<Key, KeyReplication> key_replication_map;
   ServerThread wt;
   map<Key, vector<PendingRequest>> pending_requests;
   map<Key, vector<PendingGossip>> pending_gossip;
