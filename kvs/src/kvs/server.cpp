@@ -195,6 +195,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     lww_serializer = new MemoryLWWSerializer(lww_kvs);
     MemorySetKVS* set_kvs = new MemorySetKVS();
     set_serializer = new MemorySetSerializer(set_kvs);
+    MemoryOrderedSetKVS* ordered_set_kvs = new MemoryOrderedSetKVS();
+    ordered_set_serializer = new MemoryOrderedSetSerializer(ordered_set_kvs);
     MemoryCausalKVS* causal_kvs = new MemoryCausalKVS();
     causal_serializer = new MemoryCausalSerializer(causal_kvs);
     MemoryCrossCausalKVS* cross_causal_kvs = new MemoryCrossCausalKVS();
@@ -202,6 +204,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   } else if (kSelfTierId == kEbsTierId) {
     lww_serializer = new EBSLWWSerializer(thread_id);
     set_serializer = new EBSSetSerializer(thread_id);
+    ordered_set_serializer = new EBSOrderedSetSerializer(thread_id);
     causal_serializer = new EBSCausalSerializer(thread_id);
     cross_causal_serializer = new EBSCrossCausalSerializer(thread_id);
   } else {

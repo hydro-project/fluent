@@ -133,6 +133,20 @@ inline string serialize(const SetLattice<string>& l) {
   return serialized;
 }
 
+inline string serialize(const OrderedSetLattice<string>& l) {
+  // We will just serialize ordered sets as regular sets for now;
+  // order in serialization helps with performance
+  // but is not necessary for correctness.
+  SetValue set_value;
+  for (const string& val : l.reveal()) {
+    set_value.add_values(val);
+  }
+
+  string serialized;
+  set_value.SerializeToString(&serialized);
+  return serialized;
+}
+
 inline string serialize(const set<string>& set) {
   SetValue set_value;
   for (const string& val : set) {
@@ -206,6 +220,16 @@ inline SetLattice<string> deserialize_set(const string& serialized) {
   }
 
   return SetLattice<string>(result);
+}
+
+inline OrderedSetLattice<string> deserialize_ordered_set(const string& serialized) {
+  SetValue s;
+  s.ParseFromString(serialized);
+  ordered_set<string> result;
+  for (const string& value : s.values()) {
+    result.insert(value);
+  }
+  return OrderedSetLattice<string>(result);
 }
 
 inline CausalValue deserialize_causal(const string& serialized) {
