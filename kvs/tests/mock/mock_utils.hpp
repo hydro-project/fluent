@@ -33,7 +33,7 @@ class MockHashRingUtil : public HashRingUtilInterface {
       Address respond_address, const Key& key, bool metadata,
       map<TierId, GlobalHashRing>& global_hash_rings,
       map<TierId, LocalHashRing>& local_hash_rings,
-      map<Key, KeyMetadata>& metadata_map, SocketCache& pushers,
+      map<Key, KeyReplication>& key_replication_map, SocketCache& pushers,
       const vector<unsigned>& tier_ids, bool& succeed, unsigned& seed);
 };
 

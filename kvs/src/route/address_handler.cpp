@@ -18,7 +18,7 @@ void address_handler(logger log, string& serialized, SocketCache& pushers,
                      RoutingThread& rt,
                      map<TierId, GlobalHashRing>& global_hash_rings,
                      map<TierId, LocalHashRing>& local_hash_rings,
-                     map<Key, KeyMetadata>& metadata_map,
+                     map<Key, KeyReplication>& key_replication_map,
                      map<Key, vector<pair<Address, string>>>& pending_requests,
                      unsigned& seed) {
   KeyAddressRequest addr_request;
@@ -46,7 +46,7 @@ void address_handler(logger log, string& serialized, SocketCache& pushers,
       while (threads.size() == 0 && tier_id < kMaxTier) {
         threads = kHashRingUtil->get_responsible_threads(
             rt.replication_response_connect_address(), key, false,
-            global_hash_rings, local_hash_rings, metadata_map, pushers,
+            global_hash_rings, local_hash_rings, key_replication_map, pushers,
             {tier_id}, succeed, seed);
 
         if (!succeed) {  // this means we don't have the replication factor for

@@ -20,9 +20,13 @@
 const string kMetadataTypeReplication = "replication";
 
 // represents the replication state for each key
-struct KeyMetadata {
+struct KeyReplication {
   map<TierId, unsigned> global_replication_;
   map<TierId, unsigned> local_replication_;
+};
+
+// keep track of the size and lattice type of the key
+struct KeyProperty {
   unsigned size_;
   LatticeType type_;
 };
@@ -126,31 +130,31 @@ inline vector<string> split_metadata_key(Key key) {
   return tokens;
 }
 
-inline void warmup_key_metadata_map_to_defaults(
-    map<Key, KeyMetadata>& key_metadata_map,
+inline void warmup_key_replication_map_to_defaults(
+    map<Key, KeyReplication>& key_replication_map,
     unsigned& kDefaultGlobalMemoryReplication,
     unsigned& kDefaultGlobalEbsReplication,
     unsigned& kDefaultLocalReplication) {
   for (unsigned i = 1; i <= 1000000; i++) {
     // key is 8 bytes
     Key key = string(8 - std::to_string(i).length(), '0') + std::to_string(i);
-    key_metadata_map[key].global_replication_[kMemoryTierId] =
+    key_replication_map[key].global_replication_[kMemoryTierId] =
         kDefaultGlobalMemoryReplication;
-    key_metadata_map[key].global_replication_[kEbsTierId] =
+    key_replication_map[key].global_replication_[kEbsTierId] =
         kDefaultGlobalEbsReplication;
-    key_metadata_map[key].local_replication_[kMemoryTierId] =
+    key_replication_map[key].local_replication_[kMemoryTierId] =
         kDefaultLocalReplication;
-    key_metadata_map[key].local_replication_[kEbsTierId] =
+    key_replication_map[key].local_replication_[kEbsTierId] =
         kDefaultLocalReplication;
   }
 }
 
-inline void init_replication(map<Key, KeyMetadata>& key_metadata_map,
+inline void init_replication(map<Key, KeyReplication>& key_replication_map,
                              const Key& key) {
   for (const unsigned& tier_id : kAllTierIds) {
-    key_metadata_map[key].global_replication_[tier_id] =
+    key_replication_map[key].global_replication_[tier_id] =
         kTierMetadata[tier_id].default_replication_;
-    key_metadata_map[key].local_replication_[tier_id] =
+    key_replication_map[key].local_replication_[tier_id] =
         kDefaultLocalReplication;
   }
 }

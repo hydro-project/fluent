@@ -18,9 +18,10 @@ void gossip_handler(unsigned& seed, string& serialized,
                     map<TierId, GlobalHashRing>& global_hash_rings,
                     map<TierId, LocalHashRing>& local_hash_rings,
                     map<Key, vector<PendingGossip>>& pending_gossip,
-                    map<Key, KeyMetadata>& metadata_map, ServerThread& wt,
-                    SerializerMap& serializers, SocketCache& pushers,
-                    logger log) {
+                    map<Key, KeyProperty>& stored_key_map,
+                    map<Key, KeyReplication>& key_replication_map,
+                    ServerThread& wt, SerializerMap& serializers,
+                    SocketCache& pushers, logger log) {
   KeyRequest gossip;
   gossip.ParseFromString(serialized);
 
@@ -32,21 +33,21 @@ void gossip_handler(unsigned& seed, string& serialized,
     Key key = tuple.key();
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.replication_response_connect_address(), key, is_metadata(key),
-        global_hash_rings, local_hash_rings, metadata_map, pushers,
+        global_hash_rings, local_hash_rings, key_replication_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) !=
           threads.end()) {  // this means this worker thread is one of the
                             // responsible threads
-        if (metadata_map.find(key) != metadata_map.end() &&
-            metadata_map[key].type_ != tuple.lattice_type()) {
+        if (stored_key_map.find(key) != stored_key_map.end() &&
+            stored_key_map[key].type_ != tuple.lattice_type()) {
           log->error("Lattice type mismatch: {} from query but {} expected.",
                      LatticeType_Name(tuple.lattice_type()),
-                     metadata_map[key].type_);
+                     stored_key_map[key].type_);
         } else {
           process_put(tuple.key(), tuple.lattice_type(), tuple.payload(),
-                      serializers[tuple.lattice_type()], metadata_map);
+                      serializers[tuple.lattice_type()], stored_key_map);
         }
       } else {
         if (is_metadata(key)) {  // forward the gossip

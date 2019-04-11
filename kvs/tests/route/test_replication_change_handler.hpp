@@ -17,7 +17,7 @@
 TEST_F(RoutingHandlerTest, ReplicationChange) {
   kRoutingThreadCount = 3;
   vector<string> keys = {"key0, key1, key2"};
-  warmup_metadata_map_to_defaults(keys);
+  warmup_key_replication_map_to_defaults(keys);
 
   ReplicationFactorUpdate update;
   for (string key : keys) {
@@ -40,8 +40,8 @@ TEST_F(RoutingHandlerTest, ReplicationChange) {
   string serialized;
   update.SerializeToString(&serialized);
 
-  replication_change_handler(log_, serialized, pushers, metadata_map, thread_id,
-                             ip);
+  replication_change_handler(log_, serialized, pushers, key_replication_map,
+                             thread_id, ip);
 
   vector<string> messages = get_zmq_messages();
 
@@ -51,9 +51,9 @@ TEST_F(RoutingHandlerTest, ReplicationChange) {
   }
 
   for (string key : keys) {
-    EXPECT_EQ(metadata_map[key].global_replication_[kMemoryTierId], 2);
-    EXPECT_EQ(metadata_map[key].global_replication_[kEbsTierId], 2);
-    EXPECT_EQ(metadata_map[key].local_replication_[kMemoryTierId], 3);
-    EXPECT_EQ(metadata_map[key].local_replication_[kEbsTierId], 3);
+    EXPECT_EQ(key_replication_map[key].global_replication_[kMemoryTierId], 2);
+    EXPECT_EQ(key_replication_map[key].global_replication_[kEbsTierId], 2);
+    EXPECT_EQ(key_replication_map[key].local_replication_[kMemoryTierId], 3);
+    EXPECT_EQ(key_replication_map[key].local_replication_[kEbsTierId], 3);
   }
 }

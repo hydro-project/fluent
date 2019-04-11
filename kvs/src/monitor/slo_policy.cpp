@@ -20,14 +20,14 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 TimePoint& grace_start, SummaryStats& ss,
                 unsigned& memory_node_number, unsigned& adding_memory_node,
                 bool& removing_memory_node, Address management_ip,
-                map<Key, KeyMetadata>& metadata_map,
+                map<Key, KeyReplication>& key_replication_map,
                 map<Key, unsigned>& key_access_summary, MonitoringThread& mt,
                 map<Address, unsigned>& departing_node_map,
                 SocketCache& pushers, zmq::socket_t& response_puller,
                 vector<Address>& routing_ips, unsigned& rid,
                 map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map) {
   // check latency to trigger elasticity or selective replication
-  map<Key, KeyMetadata> requests;
+  map<Key, KeyReplication> requests;
   if (ss.avg_latency > kSloWorst && adding_memory_node == 0) {
     log->info("Observed latency ({}) violates SLO({}).", ss.avg_latency,
               kSloWorst);
@@ -58,16 +58,16 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
           log->info("Key {} accessed {} times (threshold is {}).", key,
                     access_count, ss.key_access_mean + ss.key_access_std);
           unsigned target_rep_factor =
-              metadata_map[key].global_replication_[kMemoryTierId] *
+              key_replication_map[key].global_replication_[kMemoryTierId] *
               latency_miss_ratio_map[key].first;
 
           if (target_rep_factor ==
-              metadata_map[key].global_replication_[kMemoryTierId]) {
+              key_replication_map[key].global_replication_[kMemoryTierId]) {
             target_rep_factor += 1;
           }
 
           unsigned current_mem_rep =
-              metadata_map[key].global_replication_[kMemoryTierId];
+              key_replication_map[key].global_replication_[kMemoryTierId];
           if (target_rep_factor > current_mem_rep &&
               current_mem_rep < memory_node_number) {
             unsigned new_mem_rep =
@@ -76,29 +76,31 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 std::max(kMinimumReplicaNumber - new_mem_rep, (unsigned)0);
             requests[key] = create_new_replication_vector(
                 new_mem_rep, new_ebs_rep,
-                metadata_map[key].local_replication_[kMemoryTierId],
-                metadata_map[key].local_replication_[kEbsTierId]);
-            log->info("Global hot key replication for key {}. M: {}->{}.", key,
-                      metadata_map[key].global_replication_[kMemoryTierId],
-                      requests[key].global_replication_[kMemoryTierId]);
+                key_replication_map[key].local_replication_[kMemoryTierId],
+                key_replication_map[key].local_replication_[kEbsTierId]);
+            log->info(
+                "Global hot key replication for key {}. M: {}->{}.", key,
+                key_replication_map[key].global_replication_[kMemoryTierId],
+                requests[key].global_replication_[kMemoryTierId]);
           } else {
             if (kMemoryThreadCount >
-                metadata_map[key].local_replication_[kMemoryTierId]) {
+                key_replication_map[key].local_replication_[kMemoryTierId]) {
               requests[key] = create_new_replication_vector(
-                  metadata_map[key].global_replication_[kMemoryTierId],
-                  metadata_map[key].global_replication_[kEbsTierId],
+                  key_replication_map[key].global_replication_[kMemoryTierId],
+                  key_replication_map[key].global_replication_[kEbsTierId],
                   kMemoryThreadCount,
-                  metadata_map[key].local_replication_[kEbsTierId]);
-              log->info("Local hot key replication for key {}. T: {}->{}.", key,
-                        metadata_map[key].local_replication_[kMemoryTierId],
-                        requests[key].local_replication_[kMemoryTierId]);
+                  key_replication_map[key].local_replication_[kEbsTierId]);
+              log->info(
+                  "Local hot key replication for key {}. T: {}->{}.", key,
+                  key_replication_map[key].local_replication_[kMemoryTierId],
+                  requests[key].local_replication_[kMemoryTierId]);
             }
           }
         }
       }
 
       change_replication_factor(requests, global_hash_rings, local_hash_rings,
-                                routing_ips, metadata_map, pushers, mt,
+                                routing_ips, key_replication_map, pushers, mt,
                                 response_puller, log, rid);
     }
   } else if (ss.min_memory_occupancy < 0.05 && !removing_memory_node &&
@@ -118,26 +120,26 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
         Key key = key_access_pair.first;
 
         if (!is_metadata(key) &&
-            metadata_map[key].global_replication_[kMemoryTierId] ==
+            key_replication_map[key].global_replication_[kMemoryTierId] ==
                 (global_hash_rings[kMemoryTierId].size() / kVirtualThreadNum)) {
           unsigned new_mem_rep =
-              metadata_map[key].global_replication_[kMemoryTierId] - 1;
+              key_replication_map[key].global_replication_[kMemoryTierId] - 1;
           unsigned new_ebs_rep =
               std::max(kMinimumReplicaNumber - new_mem_rep, (unsigned)0);
           requests[key] = create_new_replication_vector(
               new_mem_rep, new_ebs_rep,
-              metadata_map[key].local_replication_[kMemoryTierId],
-              metadata_map[key].local_replication_[kEbsTierId]);
+              key_replication_map[key].local_replication_[kMemoryTierId],
+              key_replication_map[key].local_replication_[kEbsTierId]);
           log->info("Dereplication for key {}. M: {}->{}. E: {}->{}", key,
-                    metadata_map[key].global_replication_[kMemoryTierId],
+                    key_replication_map[key].global_replication_[kMemoryTierId],
                     requests[key].global_replication_[kMemoryTierId],
-                    metadata_map[key].global_replication_[kEbsTierId],
+                    key_replication_map[key].global_replication_[kEbsTierId],
                     requests[key].global_replication_[kEbsTierId]);
         }
       }
 
       change_replication_factor(requests, global_hash_rings, local_hash_rings,
-                                routing_ips, metadata_map, pushers, mt,
+                                routing_ips, key_replication_map, pushers, mt,
                                 response_puller, log, rid);
 
       ServerThread node = ServerThread(ss.min_occupancy_memory_public_ip,

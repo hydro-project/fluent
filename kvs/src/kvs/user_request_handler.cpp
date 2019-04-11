@@ -20,7 +20,8 @@ void user_request_handler(
     map<TierId, LocalHashRing>& local_hash_rings,
     map<Key, vector<PendingRequest>>& pending_requests,
     map<Key, std::multiset<TimePoint>>& key_access_tracker,
-    map<Key, KeyMetadata>& metadata_map, set<Key>& local_changeset,
+    map<Key, KeyProperty>& stored_key_map,
+    map<Key, KeyReplication>& key_replication_map, set<Key>& local_changeset,
     ServerThread& wt, SerializerMap& serializers, SocketCache& pushers) {
   KeyRequest request;
   request.ParseFromString(serialized);
@@ -45,7 +46,7 @@ void user_request_handler(
 
     ServerThreadList threads = kHashRingUtil->get_responsible_threads(
         wt.replication_response_connect_address(), key, is_metadata(key),
-        global_hash_rings, local_hash_rings, metadata_map, pushers,
+        global_hash_rings, local_hash_rings, key_replication_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
     if (succeed) {
@@ -73,29 +74,29 @@ void user_request_handler(
         KeyTuple* tp = response.add_tuples();
         tp->set_key(key);
         if (request_type == "GET") {
-          if (metadata_map.find(key) == metadata_map.end() ||
-              metadata_map[key].type_ == LatticeType::NO) {
+          if (stored_key_map.find(key) == stored_key_map.end() ||
+              stored_key_map[key].type_ == LatticeType::NO) {
             tp->set_error(1);
           } else {
-            auto res = process_get(key, serializers[metadata_map[key].type_]);
-            tp->set_lattice_type(metadata_map[key].type_);
+            auto res = process_get(key, serializers[stored_key_map[key].type_]);
+            tp->set_lattice_type(stored_key_map[key].type_);
             tp->set_payload(res.first);
             tp->set_error(res.second);
           }
         } else if (request_type == "PUT") {
           if (tuple.lattice_type() == LatticeType::NO) {
             log->error("PUT request missing lattice type.");
-          } else if (metadata_map.find(key) != metadata_map.end() &&
-                     metadata_map[key].type_ != LatticeType::NO &&
-                     metadata_map[key].type_ != tuple.lattice_type()) {
+          } else if (stored_key_map.find(key) != stored_key_map.end() &&
+                     stored_key_map[key].type_ != LatticeType::NO &&
+                     stored_key_map[key].type_ != tuple.lattice_type()) {
             log->error(
                 "Lattice type mismatch for key {}: query is {} but we expect "
                 "{}.",
                 key, LatticeType_Name(tuple.lattice_type()),
-                LatticeType_Name(metadata_map[key].type_));
+                LatticeType_Name(stored_key_map[key].type_));
           } else {
             process_put(key, tuple.lattice_type(), payload,
-                        serializers[tuple.lattice_type()], metadata_map);
+                        serializers[tuple.lattice_type()], stored_key_map);
 
             local_changeset.insert(key);
             tp->set_error(0);

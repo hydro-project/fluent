@@ -42,7 +42,7 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
   // prepare the zmq context
   zmq::context_t context(1);
   SocketCache pushers(&context, ZMQ_PUSH);
-  map<Key, KeyMetadata> metadata_map;
+  map<Key, KeyReplication> key_replication_map;
 
   if (thread_id == 0) {
     // notify monitoring nodes
@@ -120,19 +120,20 @@ void run(unsigned thread_id, Address ip, vector<Address> monitoring_ips) {
       string serialized = kZmqUtil->recv_string(&replication_response_puller);
       replication_response_handler(log, serialized, pushers, rt,
                                    global_hash_rings, local_hash_rings,
-                                   metadata_map, pending_requests, seed);
+                                   key_replication_map, pending_requests, seed);
     }
 
     if (pollitems[3].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&replication_change_puller);
-      replication_change_handler(log, serialized, pushers, metadata_map,
+      replication_change_handler(log, serialized, pushers, key_replication_map,
                                  thread_id, ip);
     }
 
     if (pollitems[4].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&key_address_puller);
       address_handler(log, serialized, pushers, rt, global_hash_rings,
-                      local_hash_rings, metadata_map, pending_requests, seed);
+                      local_hash_rings, key_replication_map, pending_requests,
+                      seed);
     }
   }
 }
