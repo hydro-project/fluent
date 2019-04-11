@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 //  Copyright 2018 U.C. Berkeley RISE Lab
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,20 +14,22 @@
 
 #include <cstdlib>
 #include <thread>
-#include <climits>
-#include <iostream>
-#include <ctime>
-#include <cmath>
-#include <utility>
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <chrono>
+#include <climits>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 #include "heavy_hitters.hpp"
-#include <iomanip>
-#include <chrono>
-#include <stdio.h>
 
 #define alpha 0.2
 

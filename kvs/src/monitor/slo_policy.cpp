@@ -55,8 +55,7 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
         Key key = key_access_pair.first;
         unsigned access_count = key_access_pair.second;
 
-        if (!is_metadata(key) &&
-            access_count > ss.hot_key_access_mean &&
+        if (!is_metadata(key) && access_count > ss.hot_key_access_mean &&
             latency_miss_ratio_map.find(key) != latency_miss_ratio_map.end()) {
           log->info("Key {} accessed {} times (threshold is {}).", key,
                     access_count, ss.hot_key_access_mean);
@@ -123,20 +122,20 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
         Key key = key_access_pair.first;
 
         if (!is_metadata(key) &&
-            metadata_map[key].global_replication_[kMemoryTierId] ==
+            key_replication_map[key].global_replication_[kMemoryTierId] ==
                 (global_hash_rings[kMemoryTierId].size() / kVirtualThreadNum)) {
           unsigned new_mem_rep =
-              metadata_map[key].global_replication_[kMemoryTierId] - 1;
+              key_replication_map[key].global_replication_[kMemoryTierId] - 1;
           unsigned new_ebs_rep =
               std::max(kMinimumReplicaNumber - new_mem_rep, (unsigned)0);
           requests[key] = create_new_replication_vector(
               new_mem_rep, new_ebs_rep,
-              metadata_map[key].local_replication_[kMemoryTierId],
-              metadata_map[key].local_replication_[kEbsTierId]);
+              key_replication_map[key].local_replication_[kMemoryTierId],
+              key_replication_map[key].local_replication_[kEbsTierId]);
           log->info("Dereplication for key {}. M: {}->{}. E: {}->{}", key,
-                    metadata_map[key].global_replication_[kMemoryTierId],
+                    key_replication_map[key].global_replication_[kMemoryTierId],
                     requests[key].global_replication_[kMemoryTierId],
-                    metadata_map[key].global_replication_[kEbsTierId],
+                    key_replication_map[key].global_replication_[kEbsTierId],
                     requests[key].global_replication_[kEbsTierId]);
         }
       }

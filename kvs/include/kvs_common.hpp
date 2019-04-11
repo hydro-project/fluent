@@ -17,7 +17,6 @@
 
 #include "adaptive_heavy_hitters.hpp"
 #include "kvs_types.hpp"
-#include "adaptive_heavy_hitters.hpp"
 
 const unsigned kMetadataReplicationFactor = 1;
 const unsigned kMetadataLocalReplicationFactor = 1;

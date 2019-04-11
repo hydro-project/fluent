@@ -236,8 +236,8 @@ int main(int argc, char *argv[]) {
       // collect internal statistics
       collect_internal_stats(
           global_hash_rings, local_hash_rings, pushers, mt, response_puller,
-          log, rid, key_access_frequency, hot_key_access_frequency, cold_key_access_frequency,
-          key_size, memory_storage, ebs_storage,
+          log, rid, key_access_frequency, hot_key_access_frequency,
+          cold_key_access_frequency, key_size, memory_storage, ebs_storage,
           memory_occupancy, ebs_occupancy, memory_accesses, ebs_accesses);
 
       // compute summary statistics
