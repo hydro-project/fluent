@@ -24,7 +24,7 @@ void get_request_handler(
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    SocketCache& pushers, KvsAsyncClient& client, logger log,
+    SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map) {
   CausalRequest request;
@@ -45,7 +45,7 @@ void get_request_handler(
         covered_locally = false;
         to_cover.insert(key);
         single_callback_map[key].insert(request.response_address());
-        client.get_async(key);
+        client->get_async(key);
       }
     }
     if (!covered_locally) {
@@ -166,7 +166,7 @@ void get_request_handler(
             in_preparation[key].first.insert(request.response_address());
             covered_locally = false;
             to_cover.insert(key);
-            client.get_async(key);
+            client->get_async(key);
           }
         }
       }

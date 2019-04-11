@@ -107,7 +107,7 @@ void recursive_dependency_check(
     const StoreType& unmerged_store, map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    KvsAsyncClient& client) {
+    KvsAsyncClientInterface* client) {
   for (const auto& dep_key : lattice->reveal().dependency.key_set().reveal()) {
     // first, check if the dependency is already satisfied in the causal cut
     if (causal_cut_store.find(dep_key) != causal_cut_store.end() &&
@@ -150,7 +150,7 @@ void recursive_dependency_check(
         to_fetch_map[head_key].insert(dep_key);
         cover_map[dep_key][lattice->reveal().dependency.reveal().at(dep_key)]
             .insert(head_key);
-        client.get_async(dep_key);
+        client->get_async(dep_key);
       }
     }
   }
@@ -369,7 +369,7 @@ void process_response(
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    SocketCache& pushers, KvsAsyncClient& client, logger log,
+    SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map) {
   // first, update unmerged store
@@ -465,7 +465,7 @@ void process_response(
       cover_map.erase(key);
     } else {
       // not fully covered, so we re-issue the read request
-      client.get_async(key);
+      client->get_async(key);
     }
   }
 }

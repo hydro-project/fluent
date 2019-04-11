@@ -18,7 +18,7 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          StoreType& causal_cut_store,
                          VersionStoreType& version_store,
                          map<string, Address>& request_id_to_address_map,
-                         KvsAsyncClient& client) {
+                         KvsAsyncClientInterface* client) {
   CausalRequest request;
   request.ParseFromString(serialized);
 
@@ -50,7 +50,7 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
       version_store[request.id()][key] = lattice;
     }
     // write to KVS
-    string req_id = client.put_async(key, serialize(*unmerged_store[key]),
+    string req_id = client->put_async(key, serialize(*unmerged_store[key]),
                                      LatticeType::CROSSCAUSAL);
     request_id_to_address_map[req_id] = request.response_address();
   }

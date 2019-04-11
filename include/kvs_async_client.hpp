@@ -29,7 +29,15 @@ struct PendingRequest {
   KeyRequest request_;
 };
 
-class KvsAsyncClient {
+class KvsAsyncClientInterface {
+ public:
+  virtual string put_async(const Key& key, const string& payload, LatticeType lattice_type) = 0;
+  virtual string get_async(const Key& key) = 0;
+  virtual vector<KeyResponse> receive_async(ZmqUtilInterface* kZmqUtil) = 0;
+  virtual zmq::context_t* get_context() = 0;
+};
+
+class KvsAsyncClient : public KvsAsyncClientInterface {
  public:
   /**
    * @addrs A vector of routing addresses.

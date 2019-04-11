@@ -24,7 +24,7 @@ void kvs_response_handler(
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    SocketCache& pushers, KvsAsyncClient& client, logger log,
+    SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map,
     map<string, Address>& request_id_to_address_map) {
@@ -32,13 +32,13 @@ void kvs_response_handler(
   // first, check if the request failed
   if (response.has_error() && response.error() == ResponseErrorType::TIMEOUT) {
     if (response.type() == RequestType::GET) {
-      client.get_async(key);
+      client->get_async(key);
     } else {
       if (request_id_to_address_map.find(response.response_id()) !=
           request_id_to_address_map.end()) {
         // we only retry for client-issued requests, not for the periodic
         // stat report
-        string new_req_id = client.put_async(key, response.tuples(0).payload(),
+        string new_req_id = client->put_async(key, response.tuples(0).payload(),
                                              LatticeType::CROSSCAUSAL);
         request_id_to_address_map[new_req_id] =
             request_id_to_address_map[response.response_id()];
