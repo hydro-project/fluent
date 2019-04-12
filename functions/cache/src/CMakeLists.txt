@@ -14,10 +14,32 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.6 FATAL_ERROR)
 
-SET(FUNC_SOURCE 
+SET(FUNC_CACHE_SOURCE 
 	cache.cpp
   )
 
-ADD_EXECUTABLE(flfunc-cache ${FUNC_SOURCE})
+ADD_EXECUTABLE(flfunc-cache ${FUNC_CACHE_SOURCE})
 TARGET_LINK_LIBRARIES(flfunc-cache ${FUNC_DEPENDENCIES})
 ADD_DEPENDENCIES(flfunc-cache flzmq zeromq zeromqcpp)
+
+SET(FUNC_ASYNC_CACHE_SOURCE 
+	async_cache.cpp
+  )
+
+ADD_EXECUTABLE(flfunc-async-cache ${FUNC_ASYNC_CACHE_SOURCE})
+TARGET_LINK_LIBRARIES(flfunc-async-cache ${FUNC_DEPENDENCIES})
+ADD_DEPENDENCIES(flfunc-async-cache flzmq zeromq zeromqcpp)
+
+SET(FUNC_CAUSAL_CACHE_SOURCE 
+	causal_cache.cpp
+	causal_cache_utils.cpp
+	causal_cache_get_request_handler.cpp
+	causal_cache_put_request_handler.cpp
+	causal_cache_versioned_key_handlers.cpp
+	causal_cache_kvs_response_handler.cpp
+	causal_cache_periodic_migration_handler.cpp
+  )
+
+ADD_EXECUTABLE(flfunc-causal-cache ${FUNC_CAUSAL_CACHE_SOURCE})
+TARGET_LINK_LIBRARIES(flfunc-causal-cache ${FUNC_DEPENDENCIES})
+ADD_DEPENDENCIES(flfunc-causal-cache flzmq zeromq zeromqcpp)

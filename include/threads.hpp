@@ -31,6 +31,12 @@ const unsigned kKopsRestartCountPort = 7000;
 // used by the cache system
 const unsigned kCacheUpdatePort = 7150;
 
+// used by the causal cache
+const unsigned kCausalCacheUpdatePort = 7150;
+const unsigned kCausalCacheVersionGCPort = 7200;
+const unsigned kCausalCacheVersionedKeyRequestPort = 7250;
+const unsigned kCausalCacheVersionedKeyResponsePort = 7300;
+
 const string kBindBase = "tcp://*:";
 
 class CacheThread {
@@ -62,6 +68,74 @@ class CacheThread {
 
   Address cache_update_connect_address() const {
     return ip_base_ + std::to_string(tid_ + kCacheUpdatePort);
+  }
+};
+
+class CausalCacheThread {
+  Address ip_;
+  Address ip_base_;
+  unsigned tid_;
+
+ public:
+  CausalCacheThread(Address ip, unsigned tid) :
+      ip_(ip),
+      ip_base_("tcp://" + ip_ + ":"),
+      tid_(tid) {}
+
+  Address ip() const { return ip_; }
+
+  unsigned tid() const { return tid_; }
+
+  Address causal_cache_get_bind_address() const {
+    return "ipc:///requests/get";
+  }
+
+  Address causal_cache_get_connect_address() const {
+    return "ipc:///requests/get";
+  }
+
+  Address causal_cache_put_bind_address() const {
+    return "ipc:///requests/put";
+  }
+
+  Address causal_cache_put_connect_address() const {
+    return "ipc:///requests/put";
+  }
+
+  Address causal_cache_update_bind_address() const {
+    return kBindBase + std::to_string(tid_ + kCausalCacheUpdatePort);
+  }
+
+  Address causal_cache_update_connect_address() const {
+    return ip_base_ + std::to_string(tid_ + kCausalCacheUpdatePort);
+  }
+
+  Address causal_cache_version_gc_bind_address() const {
+    return kBindBase + std::to_string(tid_ + kCausalCacheVersionGCPort);
+  }
+
+  Address causal_cache_version_gc_connect_address() const {
+    return ip_base_ + std::to_string(tid_ + kCausalCacheVersionGCPort);
+  }
+
+  Address causal_cache_versioned_key_request_bind_address() const {
+    return kBindBase +
+           std::to_string(tid_ + kCausalCacheVersionedKeyRequestPort);
+  }
+
+  Address causal_cache_versioned_key_request_connect_address() const {
+    return ip_base_ +
+           std::to_string(tid_ + kCausalCacheVersionedKeyRequestPort);
+  }
+
+  Address causal_cache_versioned_key_response_bind_address() const {
+    return kBindBase +
+           std::to_string(tid_ + kCausalCacheVersionedKeyResponsePort);
+  }
+
+  Address causal_cache_versioned_key_response_connect_address() const {
+    return ip_base_ +
+           std::to_string(tid_ + kCausalCacheVersionedKeyResponsePort);
   }
 };
 
