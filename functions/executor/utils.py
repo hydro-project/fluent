@@ -23,7 +23,7 @@ EXECUTOR_DEPART_PORT = 7005
 
 def _retrieve_function(name, kvs):
     kvs_name = server_utils._get_func_kvs_name(name)
-    latt = kvs.get(kvs_name, LWW)
+    latt = kvs.get(kvs_name)[kvs_name]
 
     if latt:
         return serializer.function_ser.load(latt.reveal()[1])

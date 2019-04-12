@@ -32,6 +32,12 @@ enum ErrorType {
   EXEC_ERROR = 4;
 }
 
+enum ConsistencyType {
+  NORMAL = 0;
+  SINGLE = 1;
+  CROSS = 2;
+}
+
 message Value {
   required bytes body = 1;
   optional SerializerType type = 2;
@@ -86,10 +92,20 @@ message DagSchedule {
   required string id = 1;
   required Dag dag = 3;
   required string target_function = 4;
-  repeated string triggers = 5;
-  map<string, string> locations = 6; // which functions should be executed where
+  required ConsistencyType consistency = 5 [default = NORMAL]; 
+  repeated string triggers = 6;
+  map<string, string> locations = 7; // which functions should be executed where
   // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
-  map<string, ArgList> arguments = 7; 
+  map<string, ArgList> arguments = 8; 
+}
+
+message VersionedKey {
+  required string key = 1;
+  map<string, uint32> vector_clock = 2;
+}
+
+message VersionedKeyList { 
+  repeated VersionedKey versioned_keys = 1;
 }
 
 message DagTrigger {
@@ -97,6 +113,8 @@ message DagTrigger {
   required string target_function = 2; // which function is this trigger for
   required string source = 3;
   optional ArgList arguments = 4;
+  map<string, VersionedKeyList> versioned_key_locations = 5;
+  repeated VersionedKey dependencies = 6;
 }
 
 message ExecutorStatistics {
@@ -118,4 +136,35 @@ message SchedulerStatus {
 
   repeated string dags = 1;
   repeated FunctionLocation func_locations = 2; 
+}
+message CausalTuple {
+  required string key = 1;
+  optional uint32 error = 2;
+  optional bytes payload = 3;
+}
+
+message CausalRequest {
+  required ConsistencyType consistency = 1;
+  required string id = 2;
+  repeated CausalTuple tuples = 3;
+  repeated string future_read_set = 4;
+  map<string, VersionedKeyList> versioned_key_locations = 5;
+  optional string response_address = 6;
+}
+
+message CausalResponse {
+  repeated CausalTuple tuples = 1;
+  optional string versioned_key_query_addr = 2;
+  repeated VersionedKey versioned_keys = 3;
+}
+
+message VersionedKeyRequest {
+  required string id = 1;
+  required string response_address = 2;
+  repeated string keys = 3;
+}
+
+message VersionedKeyResponse {
+  required string id = 1;
+  repeated CausalTuple tuples = 2;
 }

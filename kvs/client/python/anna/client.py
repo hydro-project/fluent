@@ -55,7 +55,6 @@ class AnnaClient():
 
     def get(self, key):
         worker_address = self._get_worker_address(key)
-        print(worker_address)
 
         if not worker_address:
             return None
@@ -74,8 +73,6 @@ class AnnaClient():
 
         if tup.invalidate:
             self._invalidate_cache(tup.key, tup.addresses)
-
-        print(tup.error)
 
         if tup.error == 0:
             return self._deserialize(tup)

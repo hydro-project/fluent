@@ -29,7 +29,8 @@ kvs = flconn.kvs_client
 bname = sys.argv[1]
 
 if bname == 'composition':
-    total, scheduler, kvs, retries = composition.run(flconn, kvs, num_requests)
+    total, scheduler, kvs, retries = composition.run(flconn, kvs, num_requests,
+            None)
 if bname == 'locality':
     locality.run(flconn, kvs, num_requests, True)
     total, scheduler, kvs, retries = locality.run(flconn, kvs, num_requests,

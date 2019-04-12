@@ -35,12 +35,12 @@ def run(flconn, kvs, num_requests, create, sckt):
             sys.exit(1)
 
         ### TEST REGISTERED FUNCTIONS ###
-        inp1 = np.zeros(1024)
+        inp1 = np.zeros(1024*10)
         v1 = LWWPairLattice(0, serialize_val(inp1))
         k1 = str(uuid.uuid4())
         kvs.put(k1, v1)
 
-        inp2 = np.zeros(1024)
+        inp2 = np.zeros(1024*10)
         v2 = LWWPairLattice(0, serialize_val(inp2))
         k2 = str(uuid.uuid4())
         kvs.put(k2, v2)
@@ -70,7 +70,7 @@ def run(flconn, kvs, num_requests, create, sckt):
         oids = []
 
         for _ in range(NUM_OBJECTS):
-            array = np.random.rand(1024)
+            array = np.random.rand(1024*10)
             oid = str(uuid.uuid4())
             val = LWWPairLattice(0, serialize_val(array))
 

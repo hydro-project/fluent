@@ -12,62 +12,157 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-GET_ADDR = "ipc:///requests/get"
-PUT_ADDR = "ipc:///requests/put"
+GET_REQUEST_ADDR = "ipc:///requests/get"
+PUT_REQUEST_ADDR = "ipc:///requests/put"
 
+GET_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/get_%d"
+PUT_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/put_%d"
+
+TIMEOUT = 5000
+
+import logging
+from .functions_pb2 import *
 from .kvs_pb2 import *
 from .lattices import *
 import zmq
 
 class IpcAnnaClient:
-    def __init__(self, offset=0):
+    def __init__(self, thread_id = 0):
         self.context = zmq.Context(1)
 
-        self.get_socket = self.context.socket(zmq.REQ)
-        self.get_socket.connect(GET_ADDR)
+        self.get_response_address = GET_RESPONSE_ADDR_TEMPLATE % thread_id
+        self.put_response_address = PUT_RESPONSE_ADDR_TEMPLATE % thread_id
 
-        self.put_socket = self.context.socket(zmq.REQ)
-        self.put_socket.connect(PUT_ADDR)
+        self.get_request_socket = self.context.socket(zmq.PUSH)
+        self.get_request_socket.connect(GET_REQUEST_ADDR)
 
-    def get(self, key, ltype):
+        self.put_request_socket = self.context.socket(zmq.PUSH)
+        self.put_request_socket.connect(PUT_REQUEST_ADDR)
+
+        self.get_response_socket = self.context.socket(zmq.PULL)
+        self.get_response_socket.bind(self.get_response_address)
+        self.get_response_socket.setsockopt(zmq.RCVTIMEO, TIMEOUT)
+
+        self.put_response_socket = self.context.socket(zmq.PULL)
+        self.put_response_socket.bind(self.put_response_address)
+        self.put_response_socket.setsockopt(zmq.RCVTIMEO, TIMEOUT)
+
+    def get(self, keys):
+        if type(keys) != list:
+            keys = [keys]
+
         request = KeyRequest()
         request.type = GET
 
-        tp = request.tuples.add()
-        tp.lattice_type = ltype
-        tp.key = key
+        for key in keys:
+            tp = request.tuples.add()
+            tp.key = key
 
-        self.get_socket.send(request.SerializeToString())
+        request.response_address = self.get_response_address
+        self.get_request_socket.send(request.SerializeToString())
 
-        resp = KeyResponse()
-        resp.ParseFromString(self.get_socket.recv())
+        try:
+            msg = self.get_response_socket.recv()
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EAGAIN:
+                logging.error("Request for %s timed out!" % (str(keys)))
+                return None
+            else:
+                logging.error("Unexpected ZMQ error: %s." % (str(e)))
+                return None
+        else:
+            kv_pairs = {}
+            resp = KeyResponse()
+            resp.ParseFromString(msg)
 
-        tp = resp.tuples[0]
+            for tp in resp.tuples:
+                if tp.error == 1:
+                    logging.info('Key %s does not exist!' % (key))
+                    return None
 
-        if tp.error == 1:
-            print('Key %s does not exist!' % (key))
+                if tp.lattice_type == LWW:
+                    val = LWWValue()
+                    val.ParseFromString(tp.payload)
+
+                    if b'ERROR' in val.value:
+                        kv_pairs[tp.key] = None
+                    else:
+                        kv_pairs[tp.key] = LWWPairLattice(val.timestamp, val.value)
+                elif tp.lattice_type == SET:
+                    res = set()
+
+                    val = SetValue()
+                    val.ParseFromString(tp.payload)
+
+                    for v in val.values:
+                        res.add(v)
+
+                    kv_pairs[tp.key] = SetLattice(res)
+                else:
+                    raise ValueError('Invalid Lattice type: ' +
+                                     str(tp.lattice_type))
+            return kv_pairs
+
+    def causal_get(self, keys, future_read_set,
+                   versioned_key_locations, consistency, client_id):
+        if type(keys) != list:
+            keys = list(keys)
+
+        request = CausalRequest()
+
+        if consistency == SINGLE:
+            request.consistency = SINGLE
+        elif consistency == CROSS:
+            request.consistency = CROSS
+        else:
+            logging.error("Error: non causal consistency in causal mode!")
             return None
 
-        if tp.lattice_type == LWW:
-            val = LWWValue()
-            val.ParseFromString(tp.payload)
+        request.id = str(client_id)
 
-            if b'ERROR' in val.value:
+        for addr in versioned_key_locations:
+            request.versioned_key_locations[addr].versioned_keys.extend(
+                                versioned_key_locations[addr].versioned_keys)
+
+        for keys in keys:
+            tp = request.tuples.add()
+            tp.key = key
+
+        request.response_address = self.get_response_address
+
+        (request.future_read_set.add(k) for k in future_read_set)
+
+        self.get_request_socket.send(request.SerializeToString())
+
+        try:
+            msg = self.get_response_socket.recv()
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EAGAIN:
+                logging.info("request timed out")
                 return None
-
-            return LWWPairLattice(val.timestamp, val.value)
-        elif tp.lattice_type == SET:
-            res = set()
-
-            val = SetValue()
-            val.ParseFromString(tp.payload)
-
-            for v in val.values:
-                res.add(v)
-
-            return SetLattice(res)
+            else:
+                logging.error("unknown zmq error")
+                return None
         else:
-            raise ValueError('Invalid Lattice type: ' + str(tp.lattice_type))
+            kv_pairs = {}
+            resp = CausalResponse()
+            resp.ParseFromString(msg)
+
+            for tp in resp.tuples:
+                if tp.error == 1:
+                    logging.info('Key %s does not exist!' % (key))
+                    return None
+
+                val = CrossCausalValue()
+                val.ParseFromString(tp.payload)
+
+                # for now, we just take the first value in the setlattice
+                kv_pairs[tp.key] = (val.vector_clock, val.values[0])
+            if len(resp.versioned_keys) != 0:
+                return ((resp.versioned_key_query_addr,
+                        resp.versioned_keys), kv_pairs)
+            else:
+                return (None, kv_pairs)
 
     def put(self, key, value):
         request = KeyRequest()
@@ -94,9 +189,57 @@ class IpcAnnaClient:
         else:
             raise ValueError('Invalid PUT type: ' + str(type(value)))
 
-        self.put_socket.send(request.SerializeToString())
+        request.response_address = self.put_response_address
 
-        resp = KeyResponse()
-        resp.ParseFromString(self.put_socket.recv())
+        self.put_request_socket.send(request.SerializeToString())
 
-        return resp.tuples[0].error == 0
+        try:
+            msg = self.put_response_socket.recv()
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EAGAIN:
+                logging.info("request timed out")
+                return False
+            else:
+                logging.error("unknown zmq error")
+                return False
+        else:
+            resp = KeyResponse()
+            resp.ParseFromString(msg)
+
+            return resp.tuples[0].error == 0
+
+    def causal_put(self, key, vector_clock, dependency, value, client_id):
+        request = CausalRequest()
+        request.consistency = CROSS
+        request.id = client_id
+
+        tp = request.tuples.add()
+        tp.key = key
+
+        cross_causal_value = CrossCausalValue()
+        cross_causal_value.vector_clock = vector_clock
+
+        for key in dependency:
+            dep = cross_causal_value.deps.add()
+            dep.key = key
+            dep.vector_clock = dependency[key]
+
+        cross_causal_value.values.add(value)
+
+        tp.payload = cross_causal_value.SerializeToString()
+
+        request.response_address = self.put_response_address
+
+        self.put_request_socket.send(request.SerializeToString())
+
+        try:
+            msg = self.put_response_socket.recv()
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EAGAIN:
+                logging.info("request timed out")
+                return False
+            else:
+                logging.error("unknown zmq error")
+                return False
+        else:
+            return True

@@ -14,7 +14,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-SCRIPTS=("scripts/check-clang.sh" "kvs/tests/simple/test-simple.sh" "scripts/travis/run-tests.sh")
+SCRIPTS=("scripts/check-clang.sh" "kvs/tests/simple/test-simple.sh" "kvs/tests/simple/test-simple-async.sh" "scripts/travis/run-tests.sh")
 
 ./scripts/build-all.sh -bDebug -t
 EXIT=$?

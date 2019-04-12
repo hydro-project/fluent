@@ -37,6 +37,12 @@ void address_handler(logger log, string& serialized, SocketCache& pushers,
   bool respond = false;
   if (num_servers == 0) {
     addr_response.set_error(1);
+
+    for (const Key& key : addr_request.keys()) {
+      KeyAddressResponse_KeyAddress* tp = addr_response.add_addresses();
+      tp->set_key(key);
+    }
+
     respond = true;
   } else {  // if there are servers, attempt to return the correct threads
     for (const Key& key : addr_request.keys()) {

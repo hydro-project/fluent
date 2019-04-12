@@ -79,6 +79,7 @@ def run(flconn, kvs, num_requests, sckt):
         scheduler_time += [stime]
         kvs_time += [ktime]
 
-    sckt.send(cp.dumps(total_time))
+    if sckt:
+        sckt.send(cp.dumps(total_time))
     return total_time, scheduler_time, kvs_time, retries
 
