@@ -18,6 +18,9 @@ class InstallWrapper(install):
         os.system('cd anna && protoc -I=../../../../include/proto --python_out=. ' +
                 'kvs.proto')
 
+        os.system('cd anna && protoc -I=../../../../include/proto --python_out=. ' +
+                'functions.proto')
+
     def cleanup(self):
         os.system('rm anna/kvs_pb2.py')
 

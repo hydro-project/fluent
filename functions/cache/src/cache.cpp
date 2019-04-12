@@ -26,8 +26,6 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
   log->flush_on(spdlog::level::info);
 
-  unsigned seed = time(NULL);
-
   zmq::context_t context(1);
   SocketCache pushers(&context, ZMQ_PUSH);
 
@@ -69,6 +67,8 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
       request.ParseFromString(serialized);
 
       KeyResponse response;
+
+      response.set_type(request.type());
 
       for (KeyTuple tuple : request.tuples()) {
         KeyTuple* resp = response.add_tuples();
@@ -123,6 +123,8 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
       request.ParseFromString(serialized);
 
       KeyResponse response;
+
+      response.set_type(request.type());
 
       for (KeyTuple tuple : request.tuples()) {
         KeyTuple* resp = response.add_tuples();

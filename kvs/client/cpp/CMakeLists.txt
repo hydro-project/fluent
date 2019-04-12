@@ -25,3 +25,7 @@ SET(LIBRARY_DEPENDENCIES
 ADD_EXECUTABLE(flkvs-cli cli.cpp)
 TARGET_LINK_LIBRARIES(flkvs-cli ${LIBRARY_DEPENDENCIES})
 ADD_DEPENDENCIES(flkvs-cli zeromq zeromqcpp)
+
+ADD_EXECUTABLE(flkvs-async-cli async_cli.cpp)
+TARGET_LINK_LIBRARIES(flkvs-async-cli ${LIBRARY_DEPENDENCIES})
+ADD_DEPENDENCIES(flkvs-async-cli zeromq zeromqcpp)

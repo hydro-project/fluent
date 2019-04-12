@@ -24,6 +24,12 @@ enum LatticeType {
   LWW = 1;
   SET = 2;
   CAUSAL = 3;
+  CROSSCAUSAL = 4;
+}
+
+enum ResponseErrorType {
+  TIMEOUT = 0;
+  LATTICE = 1;
 }
 
 message LWWValue {
@@ -36,8 +42,19 @@ message SetValue {
 }
 
 message CausalValue {
-  map<uint32, uint32> vector_clock = 1;
+  map<string, uint32> vector_clock = 1;
   repeated string values = 2;
+}
+
+message Dependency {
+  required string key = 1;
+  map<string, uint32> vector_clock = 2;
+}
+
+message CrossCausalValue {
+  map<string, uint32> vector_clock = 1;
+  repeated Dependency deps = 2;
+  repeated string values = 3;
 }
 
 message KeyTuple {
@@ -58,8 +75,10 @@ message KeyRequest {
 }
 
 message KeyResponse {
-  repeated KeyTuple tuples = 1;
-  optional string response_id = 2;
+  required RequestType type = 1;
+  repeated KeyTuple tuples = 2;
+  optional string response_id = 3;
+  optional uint32 error = 4;
 }
 
 message KeyAddressRequest {

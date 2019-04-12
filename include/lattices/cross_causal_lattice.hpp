@@ -12,59 +12,72 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#ifndef SRC_INCLUDE_KVS_VECTOR_CLOCK_PAIR_LATTICE_HPP_
-#define SRC_INCLUDE_KVS_VECTOR_CLOCK_PAIR_LATTICE_HPP_
+#ifndef SRC_INCLUDE_KVS_CROSS_CAUSAL_LATTICE_HPP_
+#define SRC_INCLUDE_KVS_CROSS_CAUSAL_LATTICE_HPP_
 
 #include "core_lattices.hpp"
 
 using VectorClock = MapLattice<string, MaxLattice<unsigned>>;
 
 template <typename T>
-struct VectorClockValuePair {
+struct CrossCausalPayload {
   VectorClock vector_clock;
+  MapLattice<Key, VectorClock> dependency;
   T value;
 
-  VectorClockValuePair<T>() {
+  CrossCausalPayload<T>() {
     vector_clock = VectorClock();
+    dependency = MapLattice<Key, VectorClock>();
     value = T();
   }
 
   // need this because of static cast
-  VectorClockValuePair<T>(unsigned) {
+  CrossCausalPayload<T>(unsigned) {
     vector_clock = VectorClock();
+    dependency = MapLattice<Key, VectorClock>();
     value = T();
   }
 
-  VectorClockValuePair<T>(VectorClock vc, T v) {
+  CrossCausalPayload<T>(VectorClock vc, MapLattice<Key, VectorClock> dep, T v) {
     vector_clock = vc;
+    dependency = dep;
     value = v;
   }
 
   unsigned size() {
-    return vector_clock.size().reveal() * 2 * sizeof(unsigned) +
+    unsigned dep_size = 0;
+    for (const auto &pair : dependency.reveal()) {
+      dep_size += pair.first.size();
+      dep_size += pair.second.size().reveal() * 2 * sizeof(unsigned);
+    }
+    return vector_clock.size().reveal() * 2 * sizeof(unsigned) + dep_size +
            value.size().reveal();
   }
 };
 
 template <typename T>
-class CausalPairLattice : public Lattice<VectorClockValuePair<T>> {
+class CrossCausalLattice : public Lattice<CrossCausalPayload<T>> {
  protected:
-  void do_merge(const VectorClockValuePair<T> &p) {
+  void do_merge(const CrossCausalPayload<T> &p) {
     VectorClock prev = this->element.vector_clock;
     this->element.vector_clock.merge(p.vector_clock);
 
     if (this->element.vector_clock == p.vector_clock) {
+      // incoming version is dominating
+      this->element.dependency.assign(p.dependency);
       this->element.value.assign(p.value);
     } else if (!(this->element.vector_clock == prev)) {
+      // versions are concurrent
+      this->element.dependency.merge(p.dependency);
       this->element.value.merge(p.value);
     }
   }
 
  public:
-  CausalPairLattice() : Lattice<VectorClockValuePair<T>>() {}
-  CausalPairLattice(const VectorClockValuePair<T> &p) :
-      Lattice<VectorClockValuePair<T>>(p) {}
+  CrossCausalLattice() : Lattice<CrossCausalPayload<T>>() {}
+  CrossCausalLattice(const CrossCausalPayload<T> &p) :
+      Lattice<CrossCausalPayload<T>>(p) {}
   MaxLattice<unsigned> size() { return {this->element.size()}; }
 };
 
-#endif  // SRC_INCLUDE_KVS_VECTOR_CLOCK_PAIR_LATTICE_HPP_
+#endif  // SRC_INCLUDE_KVS_CROSS_CAUSAL_LATTICE_HPP_

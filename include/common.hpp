@@ -18,6 +18,7 @@
 #include <algorithm>
 
 #include "kvs.pb.h"
+#include "lattices/cross_causal_lattice.hpp"
 #include "lattices/lww_pair_lattice.hpp"
 #include "lattices/vector_clock_pair_lattice.hpp"
 #include "types.hpp"
@@ -160,6 +161,32 @@ inline string serialize(const CausalPairLattice<SetLattice<string>>& l) {
   return serialized;
 }
 
+inline string serialize(const CrossCausalLattice<SetLattice<string>>& l) {
+  CrossCausalValue cross_causal_value;
+  auto ptr = cross_causal_value.mutable_vector_clock();
+  // serialize vector clock
+  for (const auto& pair : l.reveal().vector_clock.reveal()) {
+    (*ptr)[pair.first] = pair.second.reveal();
+  }
+  // serialize dependency
+  for (const auto& pair : l.reveal().dependency.reveal()) {
+    auto dep = cross_causal_value.add_deps();
+    dep->set_key(pair.first);
+    auto vc_ptr = dep->mutable_vector_clock();
+    for (const auto& vc_pair : pair.second.reveal()) {
+      (*vc_ptr)[vc_pair.first] = vc_pair.second.reveal();
+    }
+  }
+  // serialize values
+  for (const string& val : l.reveal().value.reveal()) {
+    cross_causal_value.add_values(val);
+  }
+
+  string serialized;
+  cross_causal_value.SerializeToString(&serialized);
+  return serialized;
+}
+
 inline LWWPairLattice<string> deserialize_lww(const string& serialized) {
   LWWValue lww;
   lww.ParseFromString(serialized);
@@ -186,6 +213,44 @@ inline CausalValue deserialize_causal(const string& serialized) {
   causal.ParseFromString(serialized);
 
   return causal;
+}
+
+inline CrossCausalValue deserialize_cross_causal(const string& serialized) {
+  CrossCausalValue cross_causal;
+  cross_causal.ParseFromString(serialized);
+
+  return cross_causal;
+}
+
+inline VectorClockValuePair<SetLattice<string>> to_vector_clock_value_pair(
+    const CausalValue& cv) {
+  VectorClockValuePair<SetLattice<string>> p;
+  for (const auto& pair : cv.vector_clock()) {
+    p.vector_clock.insert(pair.first, pair.second);
+  }
+  for (auto& val : cv.values()) {
+    p.value.insert(std::move(val));
+  }
+  return p;
+}
+
+inline CrossCausalPayload<SetLattice<string>> to_cross_causal_payload(
+    const CrossCausalValue& ccv) {
+  CrossCausalPayload<SetLattice<string>> p;
+  for (const auto& pair : ccv.vector_clock()) {
+    p.vector_clock.insert(pair.first, pair.second);
+  }
+  for (const auto& dep : ccv.deps()) {
+    VectorClock vc;
+    for (const auto& pair : dep.vector_clock()) {
+      vc.insert(pair.first, pair.second);
+    }
+    p.dependency.insert(dep.key(), vc);
+  }
+  for (auto& val : ccv.values()) {
+    p.value.insert(std::move(val));
+  }
+  return p;
 }
 
 struct lattice_type_hash {
