@@ -429,6 +429,10 @@ void process_response(
   // then, check cover_map to see if this key covers any dependency
   if (cover_map.find(key) != cover_map.end()) {
     std::unordered_map<VectorClock, set<Key>, VectorClockHash> to_remove;
+    // track the head keys whose dependency is NOT satisfied
+    set<Key> dependency_not_satisfied;
+    // track the head keys whose dependency might be satisfied
+    set<Key> dependency_may_be_satisfied;
     // loop through the set to see if anything is covered
     for (const auto& pair : cover_map[key]) {
       if (vector_clock_comparison(unmerged_store.at(key)->reveal().vector_clock,
@@ -441,11 +445,23 @@ void process_response(
             log->error("Missing dependency {} in the to_fetch_map of key {}.",
                        key, head_key);
           }
-          to_fetch_map[head_key].erase(key);
+          dependency_may_be_satisfied.insert(head_key);
           to_remove[pair.first].insert(head_key);
+        }
+      } else {
+        for (const auto& head_key : pair.second) {
+          dependency_not_satisfied.insert(head_key);
         }
       }
     }
+    // only remove from to_fetch_map if the dependency is truly satisfied
+    for (const Key& head_key : dependency_may_be_satisfied) {
+      if (dependency_not_satisfied.find(head_key) ==
+          dependency_not_satisfied.end()) {
+        to_fetch_map[head_key].erase(key);
+      }
+    }
+
     for (const auto& pair : to_remove) {
       cover_map[key].erase(pair.first);
       for (const auto& head_key : pair.second) {
