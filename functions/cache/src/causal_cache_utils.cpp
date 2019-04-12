@@ -257,18 +257,18 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
 }
 
 void respond_to_client(
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     const Address& addr, const StoreType& causal_cut_store,
     const VersionStoreType& version_store, SocketCache& pushers,
     const CausalCacheThread& cct) {
   CausalResponse response;
 
-  for (const Key& key : pending_cross_request_read_set[addr].read_set_) {
+  for (const Key& key : pending_cross_metadata[addr].read_set_) {
     CausalTuple* tp = response.add_tuples();
     tp->set_key(key);
 
-    if (pending_cross_request_read_set[addr].dne_set_.find(key) !=
-        pending_cross_request_read_set[addr].dne_set_.end()) {
+    if (pending_cross_metadata[addr].dne_set_.find(key) !=
+        pending_cross_metadata[addr].dne_set_.end()) {
       // key dne
       tp->set_error(1);
     } else {
@@ -280,10 +280,10 @@ void respond_to_client(
   response.set_versioned_key_query_addr(
       cct.causal_cache_versioned_key_request_connect_address());
 
-  if (version_store.find(pending_cross_request_read_set[addr].client_id_) !=
+  if (version_store.find(pending_cross_metadata[addr].client_id_) !=
       version_store.end()) {
     for (const auto& pair :
-         version_store.at(pending_cross_request_read_set[addr].client_id_)) {
+         version_store.at(pending_cross_metadata[addr].client_id_)) {
       VersionedKey* vk = response.add_versioned_keys();
       vk->set_key(pair.first);
       auto ptr = vk->mutable_vector_clock();
@@ -299,13 +299,13 @@ void respond_to_client(
   response.SerializeToString(&resp_string);
   kZmqUtil->send_string(resp_string, &pushers[addr]);
   // GC
-  pending_cross_request_read_set.erase(addr);
+  pending_cross_metadata.erase(addr);
 }
 
 void merge_into_causal_cut(
     const Key& key, StoreType& causal_cut_store,
     InPreparationType& in_preparation, VersionStoreType& version_store,
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map) {
   bool key_dne = false;
@@ -334,24 +334,22 @@ void merge_into_causal_cut(
   }
   // notify clients
   for (const auto& addr : in_preparation[key].first) {
-    if (pending_cross_request_read_set.find(addr) !=
-        pending_cross_request_read_set.end()) {
+    if (pending_cross_metadata.find(addr) != pending_cross_metadata.end()) {
       if (key_dne) {
-        pending_cross_request_read_set[addr].dne_set_.insert(key);
+        pending_cross_metadata[addr].dne_set_.insert(key);
       }
-      pending_cross_request_read_set[addr].to_cover_set_.erase(key);
-      if (pending_cross_request_read_set[addr].to_cover_set_.size() == 0) {
+      pending_cross_metadata[addr].to_cover_set_.erase(key);
+      if (pending_cross_metadata[addr].to_cover_set_.size() == 0) {
         // all keys are covered, safe to read
         // decide local and remote read set
-        if (!fire_remote_read_requests(pending_cross_request_read_set[addr],
+        if (!fire_remote_read_requests(pending_cross_metadata[addr],
                                        version_store, causal_cut_store, pushers,
                                        cct)) {
           // all local
-          respond_to_client(pending_cross_request_read_set, addr,
-                            causal_cut_store, version_store, pushers, cct);
+          respond_to_client(pending_cross_metadata, addr, causal_cut_store,
+                            version_store, pushers, cct);
         } else {
-          client_id_to_address_map[pending_cross_request_read_set[addr]
-                                       .client_id_]
+          client_id_to_address_map[pending_cross_metadata[addr].client_id_]
               .insert(addr);
         }
       }
@@ -367,8 +365,8 @@ void process_response(
     StoreType& unmerged_store, InPreparationType& in_preparation,
     StoreType& causal_cut_store, VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
-    map<Address, PendingClientMetadata>& pending_single_request_read_set,
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_single_metadata,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -383,13 +381,12 @@ void process_response(
     if (single_callback_map.find(key) != single_callback_map.end()) {
       // notify clients
       for (const auto& addr : single_callback_map[key]) {
-        // pending_single_request_read_set[addr].to_cover_set should have this
+        // pending_single_metadata[addr].to_cover_set should have this
         // key, and we remove it
-        pending_single_request_read_set[addr].to_cover_set_.erase(key);
-        if (pending_single_request_read_set[addr].to_cover_set_.size() == 0) {
+        pending_single_metadata[addr].to_cover_set_.erase(key);
+        if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
           CausalResponse response;
-          for (const Key& key :
-               pending_single_request_read_set[addr].read_set_) {
+          for (const Key& key : pending_single_metadata[addr].read_set_) {
             CausalTuple* tp = response.add_tuples();
             tp->set_key(key);
             tp->set_payload(serialize(*(unmerged_store[key])));
@@ -400,7 +397,7 @@ void process_response(
           response.SerializeToString(&resp_string);
           kZmqUtil->send_string(resp_string, &pushers[addr]);
           // GC
-          pending_single_request_read_set.erase(addr);
+          pending_single_metadata.erase(addr);
         }
       }
       single_callback_map.erase(key);
@@ -424,8 +421,8 @@ void process_response(
     if (to_fetch_map[key].size() == 0) {
       // this key has no dependency
       merge_into_causal_cut(key, causal_cut_store, in_preparation,
-                            version_store, pending_cross_request_read_set,
-                            pushers, cct, client_id_to_address_map);
+                            version_store, pending_cross_metadata, pushers, cct,
+                            client_id_to_address_map);
       to_fetch_map.erase(key);
     }
   }
@@ -458,8 +455,8 @@ void process_response(
         if (to_fetch_map[head_key].size() == 0) {
           // all dependency is met
           merge_into_causal_cut(head_key, causal_cut_store, in_preparation,
-                                version_store, pending_cross_request_read_set,
-                                pushers, cct, client_id_to_address_map);
+                                version_store, pending_cross_metadata, pushers,
+                                cct, client_id_to_address_map);
           to_fetch_map.erase(head_key);
         }
       }

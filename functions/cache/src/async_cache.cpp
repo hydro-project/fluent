@@ -22,11 +22,11 @@ unsigned kCacheReportThreshold = 5;
 
 struct PendingClientMetadata {
   PendingClientMetadata() = default;
-  PendingClientMetadata(set<Key> read_set, set<Key> to_cache_set) :
+  PendingClientMetadata(set<Key> read_set, set<Key> to_retrieve_set) :
       read_set_(std::move(read_set)),
-      to_cache_set_(std::move(to_cache_set)) {}
+      to_retrieve_set_(std::move(to_retrieve_set)) {}
   set<Key> read_set_;
-  set<Key> to_cache_set_;
+  set<Key> to_retrieve_set_;
 };
 
 string get_serialized_value_from_cache(
@@ -72,20 +72,22 @@ void send_get_response(const set<Key>& read_set, const Address& response_addr,
                        SocketCache& pushers, logger log) {
   KeyResponse response;
   response.set_type(RequestType::GET);
+
   for (const Key& key : read_set) {
     KeyTuple* tp = response.add_tuples();
     tp->set_key(key);
-    tp->set_lattice_type(key_type_map.at(key));
-    // check if key exists
-    if (local_lww_cache.find(key) == local_lww_cache.end() &&
-        local_set_cache.find(key) == local_set_cache.end()) {
+    if (key_type_map.find(key) == key_type_map.end()) {
+      // key dne in cache, it actually means that there is a
+      // response from kvs that has error = 1
       tp->set_error(1);
     } else {
       tp->set_error(0);
+      tp->set_lattice_type(key_type_map.at(key));
       tp->set_payload(get_serialized_value_from_cache(
           key, key_type_map.at(key), local_lww_cache, local_set_cache, log));
     }
   }
+
   std::string resp_string;
   response.SerializeToString(&resp_string);
   kZmqUtil->send_string(resp_string, &pushers[response_addr]);
@@ -155,61 +157,27 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       request.ParseFromString(serialized);
 
       bool covered = true;
-      bool error = false;
       set<Key> read_set;
-      set<Key> to_cover;
+      set<Key> to_retrieve;
 
       for (KeyTuple tuple : request.tuples()) {
         Key key = tuple.key();
         read_set.insert(key);
 
-        if (!tuple.has_lattice_type()) {
-          log->error("Cache requires type to retrieve key.");
-          send_error_response(RequestType::GET, request.response_address(),
-                              pushers);
-          error = true;
-          break;
-        } else if ((key_type_map.find(key) != key_type_map.end()) &&
-                   (key_type_map[key] != tuple.lattice_type())) {
-          log->error("lattice type mismatch.");
-          send_error_response(RequestType::GET, request.response_address(),
-                              pushers);
-          error = true;
-          break;
+        if (key_type_map.find(key) == key_type_map.end()) {
+          // this means key dne in cache
+          covered = false;
+          to_retrieve.insert(key);
+          key_requestor_map[key].insert(request.response_address());
+          client->get_async(key);
         }
 
-        switch (tuple.lattice_type()) {
-          case LatticeType::LWW: {
-            if (local_lww_cache.find(key) == local_lww_cache.end()) {
-              covered = false;
-              to_cover.insert(key);
-              key_requestor_map[key].insert(request.response_address());
-              key_type_map[key] = LatticeType::LWW;
-              client->get_async(key);
-            }
-            break;
-          }
-          case LatticeType::SET: {
-            if (local_set_cache.find(key) == local_set_cache.end()) {
-              covered = false;
-              to_cover.insert(key);
-              key_requestor_map[key].insert(request.response_address());
-              key_type_map[key] = LatticeType::SET;
-              client->get_async(key);
-            }
-            break;
-          }
-          default: break;
-        }
-      }
-
-      if (!error) {
         if (covered) {
           send_get_response(read_set, request.response_address(), key_type_map,
                             local_lww_cache, local_set_cache, pushers, log);
         } else {
           pending_request_read_set[request.response_address()] =
-              PendingClientMetadata(read_set, to_cover);
+              PendingClientMetadata(read_set, to_retrieve);
         }
       }
     }
@@ -223,10 +191,11 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       bool error = false;
 
       for (KeyTuple tuple : request.tuples()) {
+        // this loop checks if any key has invalid lattice type
         Key key = tuple.key();
 
         if (!tuple.has_lattice_type()) {
-          log->error("Cache requires type to retrieve key.");
+          log->error("Cache requires type to put key.");
           send_error_response(RequestType::PUT, request.response_address(),
                               pushers);
           error = true;
@@ -239,8 +208,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           error = true;
           break;
         }
+      }
 
-        if (!error) {
+      if (!error) {
+        for (KeyTuple tuple : request.tuples()) {
+          Key key = tuple.key();
+
+          // first update key type map
+          key_type_map[key] = tuple.lattice_type();
           update_cache(key, tuple.lattice_type(), tuple.payload(),
                        local_lww_cache, local_set_cache, log);
           string req_id =
@@ -318,7 +293,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         if (response.type() == RequestType::GET) {
           // update cache first
           if (response.tuples(0).error() != 1) {
-            // key exists
+            // we actually got a non null key
+            key_type_map[key] = response.tuples(0).lattice_type();
             update_cache(key, response.tuples(0).lattice_type(),
                          response.tuples(0).payload(), local_lww_cache,
                          local_set_cache, log);
@@ -326,8 +302,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           // notify clients
           if (key_requestor_map.find(key) != key_requestor_map.end()) {
             for (const Address& addr : key_requestor_map[key]) {
-              pending_request_read_set[addr].to_cache_set_.erase(key);
-              if (pending_request_read_set[addr].to_cache_set_.size() == 0) {
+              pending_request_read_set[addr].to_retrieve_set_.erase(key);
+              if (pending_request_read_set[addr].to_retrieve_set_.size() == 0) {
                 // all keys covered
                 send_get_response(pending_request_read_set[addr].read_set_,
                                   addr, key_type_map, local_lww_cache,

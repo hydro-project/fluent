@@ -44,8 +44,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
   map<Key, set<Address>> single_callback_map;
 
-  map<Address, PendingClientMetadata> pending_single_request_read_set;
-  map<Address, PendingClientMetadata> pending_cross_request_read_set;
+  map<Address, PendingClientMetadata> pending_single_metadata;
+  map<Address, PendingClientMetadata> pending_cross_metadata;
 
   // mapping from client id to a set of response address of GET request
   map<string, set<Address>> client_id_to_address_map;
@@ -99,11 +99,11 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // handle a GET request
     if (pollitems[0].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&get_puller);
-      get_request_handler(
-          serialized, key_set, unmerged_store, in_preparation, causal_cut_store,
-          version_store, single_callback_map, pending_single_request_read_set,
-          pending_cross_request_read_set, to_fetch_map, cover_map, pushers,
-          client, log, cct, client_id_to_address_map);
+      get_request_handler(serialized, key_set, unmerged_store, in_preparation,
+                          causal_cut_store, version_store, single_callback_map,
+                          pending_single_metadata, pending_cross_metadata,
+                          to_fetch_map, cover_map, pushers, client, log, cct,
+                          client_id_to_address_map);
     }
 
     // handle a PUT request
@@ -131,11 +131,11 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>(
             to_cross_causal_payload(deserialize_cross_causal(tuple.payload())));
 
-        process_response(
-            key, lattice, unmerged_store, in_preparation, causal_cut_store,
-            version_store, single_callback_map, pending_single_request_read_set,
-            pending_cross_request_read_set, to_fetch_map, cover_map, pushers,
-            client, log, cct, client_id_to_address_map);
+        process_response(key, lattice, unmerged_store, in_preparation,
+                         causal_cut_store, version_store, single_callback_map,
+                         pending_single_metadata, pending_cross_metadata,
+                         to_fetch_map, cover_map, pushers, client, log, cct,
+                         client_id_to_address_map);
       }
     }
 
@@ -157,18 +157,16 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     if (pollitems[5].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
       versioned_key_response_handler(
-          serialized, causal_cut_store, version_store,
-          pending_cross_request_read_set, client_id_to_address_map, cct,
-          pushers, kZmqUtil);
+          serialized, causal_cut_store, version_store, pending_cross_metadata,
+          client_id_to_address_map, cct, pushers, kZmqUtil);
     }
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
       kvs_response_handler(response, unmerged_store, in_preparation,
                            causal_cut_store, version_store, single_callback_map,
-                           pending_single_request_read_set,
-                           pending_cross_request_read_set, to_fetch_map,
-                           cover_map, pushers, client, log, cct,
+                           pending_single_metadata, pending_cross_metadata,
+                           to_fetch_map, cover_map, pushers, client, log, cct,
                            client_id_to_address_map, request_id_to_address_map);
     }
 
@@ -207,8 +205,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     if (duration >= kMigrateThreshold) {
       periodic_migration_handler(
           unmerged_store, in_preparation, causal_cut_store, version_store,
-          pending_cross_request_read_set, to_fetch_map, cover_map, pushers,
-          client, cct, client_id_to_address_map);
+          pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct,
+          client_id_to_address_map);
       migrate_start = std::chrono::system_clock::now();
     }
 

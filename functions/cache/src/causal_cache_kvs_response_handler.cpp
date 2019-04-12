@@ -19,8 +19,8 @@ void kvs_response_handler(
     InPreparationType& in_preparation, StoreType& causal_cut_store,
     VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
-    map<Address, PendingClientMetadata>& pending_single_request_read_set,
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_single_metadata,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -57,9 +57,9 @@ void kvs_response_handler(
       }
       process_response(key, lattice, unmerged_store, in_preparation,
                        causal_cut_store, version_store, single_callback_map,
-                       pending_single_request_read_set,
-                       pending_cross_request_read_set, to_fetch_map, cover_map,
-                       pushers, client, log, cct, client_id_to_address_map);
+                       pending_single_metadata, pending_cross_metadata,
+                       to_fetch_map, cover_map, pushers, client, log, cct,
+                       client_id_to_address_map);
     } else {
       if (request_id_to_address_map.find(response.response_id()) ==
           request_id_to_address_map.end()) {

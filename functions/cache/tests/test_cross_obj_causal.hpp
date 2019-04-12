@@ -48,9 +48,9 @@ TEST_F(CausalCacheTest, CrossFullyCovered) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   CausalResponse response;
   response.ParseFromString(mock_zmq_util.sent_messages[0]);
@@ -99,9 +99,9 @@ TEST_F(CausalCacheTest, CrossCoveredInUnmerged) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   CausalResponse response;
   response.ParseFromString(mock_zmq_util.sent_messages[0]);
@@ -152,9 +152,9 @@ TEST_F(CausalCacheTest, CrossCoveredInPreparation) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   CausalResponse response;
   response.ParseFromString(mock_zmq_util.sent_messages[0]);
@@ -191,9 +191,9 @@ TEST_F(CausalCacheTest, CrossNotCovered) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   map<Key, set<Key>> expected_to_fetch_map = {{"a", {}}};
 
@@ -212,11 +212,11 @@ TEST_F(CausalCacheTest, CrossNotCovered) {
   map<Key, VectorClock> dep;
   ktp->set_payload(serialize(*construct_causal_lattice(vc, dep, value)));
 
-  kvs_response_handler(
-      response, unmerged_store, in_preparation, causal_cut_store, version_store,
-      single_callback_map, pending_single_request_read_set,
-      pending_cross_request_read_set, to_fetch_map, cover_map, pushers, client,
-      log_, cct, client_id_to_address_map, request_id_to_address_map);
+  kvs_response_handler(response, unmerged_store, in_preparation,
+                       causal_cut_store, version_store, single_callback_map,
+                       pending_single_metadata, pending_cross_metadata,
+                       to_fetch_map, cover_map, pushers, client, log_, cct,
+                       client_id_to_address_map, request_id_to_address_map);
 
   EXPECT_EQ(to_fetch_map.size(), 0);
 
@@ -261,9 +261,9 @@ TEST_F(CausalCacheTest, CrossDepNotCovered) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   map<Key, set<Key>> expected_to_fetch_map = {{"a", {"b"}}};
 
@@ -282,11 +282,11 @@ TEST_F(CausalCacheTest, CrossDepNotCovered) {
   dep.clear();
   ktp->set_payload(serialize(*construct_causal_lattice(vc, dep, value)));
 
-  kvs_response_handler(
-      response, unmerged_store, in_preparation, causal_cut_store, version_store,
-      single_callback_map, pending_single_request_read_set,
-      pending_cross_request_read_set, to_fetch_map, cover_map, pushers, client,
-      log_, cct, client_id_to_address_map, request_id_to_address_map);
+  kvs_response_handler(response, unmerged_store, in_preparation,
+                       causal_cut_store, version_store, single_callback_map,
+                       pending_single_metadata, pending_cross_metadata,
+                       to_fetch_map, cover_map, pushers, client, log_, cct,
+                       client_id_to_address_map, request_id_to_address_map);
 
   EXPECT_THAT(to_fetch_map,
               testing::UnorderedElementsAreArray(expected_to_fetch_map));
@@ -305,11 +305,11 @@ TEST_F(CausalCacheTest, CrossDepNotCovered) {
   dep["c"] = construct_vector_clock({{"c1", 1}, {"c2", 1}});
   ktp->set_payload(serialize(*construct_causal_lattice(vc, dep, value)));
 
-  kvs_response_handler(
-      response, unmerged_store, in_preparation, causal_cut_store, version_store,
-      single_callback_map, pending_single_request_read_set,
-      pending_cross_request_read_set, to_fetch_map, cover_map, pushers, client,
-      log_, cct, client_id_to_address_map, request_id_to_address_map);
+  kvs_response_handler(response, unmerged_store, in_preparation,
+                       causal_cut_store, version_store, single_callback_map,
+                       pending_single_metadata, pending_cross_metadata,
+                       to_fetch_map, cover_map, pushers, client, log_, cct,
+                       client_id_to_address_map, request_id_to_address_map);
 
   expected_to_fetch_map = {{"a", {"c"}}};
 
@@ -329,11 +329,11 @@ TEST_F(CausalCacheTest, CrossDepNotCovered) {
   dep.clear();
   ktp->set_payload(serialize(*construct_causal_lattice(vc, dep, value)));
 
-  kvs_response_handler(
-      response, unmerged_store, in_preparation, causal_cut_store, version_store,
-      single_callback_map, pending_single_request_read_set,
-      pending_cross_request_read_set, to_fetch_map, cover_map, pushers, client,
-      log_, cct, client_id_to_address_map, request_id_to_address_map);
+  kvs_response_handler(response, unmerged_store, in_preparation,
+                       causal_cut_store, version_store, single_callback_map,
+                       pending_single_metadata, pending_cross_metadata,
+                       to_fetch_map, cover_map, pushers, client, log_, cct,
+                       client_id_to_address_map, request_id_to_address_map);
 
   EXPECT_EQ(to_fetch_map.size(), 0);
 
@@ -380,9 +380,9 @@ TEST_F(CausalCacheTest, CrossQuerySameKey) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   EXPECT_EQ(mock_cl.keys_get_.size(), 1);
   EXPECT_EQ(*(mock_cl.keys_get_.begin()), "b");
@@ -401,20 +401,19 @@ TEST_F(CausalCacheTest, CrossQuerySameKey) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   EXPECT_EQ(mock_cl.keys_get_.size(), 1);
   EXPECT_EQ(*(mock_cl.keys_get_.begin()), "b");
 
-  map<Address, PendingClientMetadata> expected_pending_cross_request_read_set =
-      {{dummy_address + "1", PendingClientMetadata("test1", {"a"}, {"a"})},
-       {dummy_address + "2", PendingClientMetadata("test2", {"a"}, {"a"})}};
+  map<Address, PendingClientMetadata> expected_pending_cross_metadata = {
+      {dummy_address + "1", PendingClientMetadata("test1", {"a"}, {"a"})},
+      {dummy_address + "2", PendingClientMetadata("test2", {"a"}, {"a"})}};
 
-  EXPECT_THAT(pending_cross_request_read_set,
-              testing::UnorderedElementsAreArray(
-                  expected_pending_cross_request_read_set));
+  EXPECT_THAT(pending_cross_metadata, testing::UnorderedElementsAreArray(
+                                          expected_pending_cross_metadata));
   EXPECT_THAT(in_preparation["a"].first,
               testing::UnorderedElementsAreArray(
                   {dummy_address + "1", dummy_address + "2"}));
@@ -429,11 +428,11 @@ TEST_F(CausalCacheTest, CrossQuerySameKey) {
   dep.clear();
   ktp->set_payload(serialize(*construct_causal_lattice(vc, dep, value)));
 
-  kvs_response_handler(
-      response, unmerged_store, in_preparation, causal_cut_store, version_store,
-      single_callback_map, pending_single_request_read_set,
-      pending_cross_request_read_set, to_fetch_map, cover_map, pushers, client,
-      log_, cct, client_id_to_address_map, request_id_to_address_map);
+  kvs_response_handler(response, unmerged_store, in_preparation,
+                       causal_cut_store, version_store, single_callback_map,
+                       pending_single_metadata, pending_cross_metadata,
+                       to_fetch_map, cover_map, pushers, client, log_, cct,
+                       client_id_to_address_map, request_id_to_address_map);
 
   EXPECT_EQ(mock_zmq_util.sent_messages.size(), 2);
 }

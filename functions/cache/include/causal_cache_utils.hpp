@@ -171,7 +171,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
 
 // respond to client with keys all from the local causal cache
 void respond_to_client(
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     const Address& addr, const StoreType& causal_cut_store,
     const VersionStoreType& version_store, SocketCache& pushers,
     const CausalCacheThread& cct);
@@ -181,7 +181,7 @@ void respond_to_client(
 void merge_into_causal_cut(
     const Key& key, StoreType& causal_cut_store,
     InPreparationType& in_preparation, VersionStoreType& version_store,
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map);
 
@@ -192,8 +192,8 @@ void process_response(
     StoreType& unmerged_store, InPreparationType& in_preparation,
     StoreType& causal_cut_store, VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
-    map<Address, PendingClientMetadata>& pending_single_request_read_set,
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_single_metadata,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,

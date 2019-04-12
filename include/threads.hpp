@@ -35,7 +35,7 @@ const unsigned kCacheUpdatePort = 7150;
 const unsigned kCausalCacheUpdatePort = 7150;
 const unsigned kCausalCacheVersionGCPort = 7200;
 const unsigned kCausalCacheVersionedKeyRequestPort = 7250;
-const unsigned kCausalCacheVersionedKeyResponsePort = 7250;
+const unsigned kCausalCacheVersionedKeyResponsePort = 7300;
 
 const string kBindBase = "tcp://*:";
 

@@ -49,7 +49,7 @@ void versioned_key_request_handler(const string& serialized,
 void versioned_key_response_handler(
     const string& serialized, StoreType& causal_cut_store,
     VersionStoreType& version_store,
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     map<string, set<Address>>& client_id_to_address_map,
     const CausalCacheThread& cct, SocketCache& pushers,
     ZmqUtilInterface* kZmqUtil) {
@@ -59,31 +59,27 @@ void versioned_key_response_handler(
   if (client_id_to_address_map.find(response.id()) !=
       client_id_to_address_map.end()) {
     for (const Address& addr : client_id_to_address_map[response.id()]) {
-      if (pending_cross_request_read_set.find(addr) !=
-          pending_cross_request_read_set.end()) {
+      if (pending_cross_metadata.find(addr) != pending_cross_metadata.end()) {
         for (const CausalTuple& tp : response.tuples()) {
-          if (pending_cross_request_read_set[addr].remote_read_set_.find(
-                  tp.key()) !=
-              pending_cross_request_read_set[addr].remote_read_set_.end()) {
-            pending_cross_request_read_set[addr]
-                .serialized_remote_payload_[tp.key()] = tp.payload();
-            pending_cross_request_read_set[addr].remote_read_set_.erase(
-                tp.key());
+          if (pending_cross_metadata[addr].remote_read_set_.find(tp.key()) !=
+              pending_cross_metadata[addr].remote_read_set_.end()) {
+            pending_cross_metadata[addr].serialized_remote_payload_[tp.key()] =
+                tp.payload();
+            pending_cross_metadata[addr].remote_read_set_.erase(tp.key());
           }
         }
 
-        if (pending_cross_request_read_set[addr].remote_read_set_.size() == 0) {
+        if (pending_cross_metadata[addr].remote_read_set_.size() == 0) {
           // all remote read finished
           CausalResponse response;
 
           for (const auto& pair :
-               pending_cross_request_read_set[addr].serialized_local_payload_) {
+               pending_cross_metadata[addr].serialized_local_payload_) {
             CausalTuple* tp = response.add_tuples();
             tp->set_key(std::move(pair.first));
 
-            if (pending_cross_request_read_set[addr].dne_set_.find(
-                    pair.first) !=
-                pending_cross_request_read_set[addr].dne_set_.end()) {
+            if (pending_cross_metadata[addr].dne_set_.find(pair.first) !=
+                pending_cross_metadata[addr].dne_set_.end()) {
               // key dne
               tp->set_error(1);
             } else {
@@ -92,8 +88,8 @@ void versioned_key_response_handler(
             }
           }
 
-          for (const auto& pair : pending_cross_request_read_set[addr]
-                                      .serialized_remote_payload_) {
+          for (const auto& pair :
+               pending_cross_metadata[addr].serialized_remote_payload_) {
             CausalTuple* tp = response.add_tuples();
             tp->set_key(std::move(pair.first));
             tp->set_payload(std::move(pair.second));
@@ -103,7 +99,7 @@ void versioned_key_response_handler(
               cct.causal_cache_versioned_key_request_connect_address());
 
           for (const auto& pair :
-               version_store[pending_cross_request_read_set[addr].client_id_]) {
+               version_store[pending_cross_metadata[addr].client_id_]) {
             VersionedKey* vk = response.add_versioned_keys();
             vk->set_key(pair.first);
             auto ptr = vk->mutable_vector_clock();
@@ -119,7 +115,7 @@ void versioned_key_response_handler(
           response.SerializeToString(&resp_string);
           kZmqUtil->send_string(resp_string, &pushers[addr]);
           // GC
-          pending_cross_request_read_set.erase(addr);
+          pending_cross_metadata.erase(addr);
 
           // GC
           set<string> to_remove_id;

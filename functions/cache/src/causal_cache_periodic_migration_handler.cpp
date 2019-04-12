@@ -17,7 +17,7 @@
 void periodic_migration_handler(
     const StoreType& unmerged_store, InPreparationType& in_preparation,
     StoreType& causal_cut_store, VersionStoreType& version_store,
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -38,8 +38,8 @@ void periodic_migration_handler(
       if (to_fetch_map[pair.first].size() == 0) {
         // all dependency met
         merge_into_causal_cut(pair.first, causal_cut_store, in_preparation,
-                              version_store, pending_cross_request_read_set,
-                              pushers, cct, client_id_to_address_map);
+                              version_store, pending_cross_metadata, pushers,
+                              cct, client_id_to_address_map);
         to_fetch_map.erase(pair.first);
       }
     }

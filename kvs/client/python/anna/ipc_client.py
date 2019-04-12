@@ -20,57 +20,58 @@ PUT_RESPONSE_ADDR_TEMPLATE = "ipc:///responses_%d/put"
 
 TIMEOUT = 5000
 
+import logging
 from .functions_pb2 import *
 from .kvs_pb2 import *
 from .lattices import *
 import zmq
 
 class IpcAnnaClient:
-    def __init__(self, thread_id = 0, offset=0):
+    def __init__(self, thread_id = 0):
         self.context = zmq.Context(1)
 
-        self.get_push_socket = self.context.socket(zmq.PUSH)
-        self.get_push_socket.connect(GET_REQUEST_ADDR)
+        self.get_response_address = GET_RESPONSE_ADDR_TEMPLATE % thread_id
+        self.put_response_address = PUT_RESPONSE_ADDR_TEMPLATE % thread_id
 
-        self.put_push_socket = self.context.socket(zmq.PUSH)
-        self.put_push_socket.connect(PUT_REQUEST_ADDR)
+        self.get_request_socket = self.context.socket(zmq.PUSH)
+        self.get_request_socket.connect(GET_REQUEST_ADDR)
 
-        self.get_pull_socket = self.context.socket(zmq.PULL)
-        self.get_pull_socket.bind(GET_RESPONSE_ADDR_TEMPLATE % thread_id)
-        self.get_pull_socket.RCVTIMEO = TIMEOUT
+        self.put_request_socket = self.context.socket(zmq.PUSH)
+        self.put_request_socket.connect(PUT_REQUEST_ADDR)
 
-        self.put_pull_socket = self.context.socket(zmq.PULL)
-        self.put_pull_socket.bind(PUT_RESPONSE_ADDR_TEMPLATE % thread_id)
-        self.put_pull_socket.RCVTIMEO = TIMEOUT
+        self.get_response_socket = self.context.socket(zmq.PULL)
+        self.get_response_socket.bind(get_response_address)
+        self.get_response_socket.RCVTIMEO = TIMEOUT
+
+        self.put_response_socket = self.context.socket(zmq.PULL)
+        self.put_response_socket.bind(put_response_address)
+        self.put_response_socket.RCVTIMEO = TIMEOUT
 
     def get(self, refs):
         request = KeyRequest()
         request.type = GET
-
-        deserialize = {}
 
         for ref in refs:
             tp = request.tuples.add()
             tp.key = ref.key
             tp.lattice_type = ref.obj_type
 
-            deserialize[ref.key] = ref.deserialize
-
             if ref.obj_type == CROSSCAUSAL:
-                print("Error: found cross causal lattice type in non causal mode!")
+                logging.error("Error: found cross causal"
+                    " lattice type in non causal mode!")
 
-        request.response_address = GET_RESPONSE_ADDR_TEMPLATE % thread_id
+        request.response_address = get_response_address
 
-        self.get_push_socket.send(request.SerializeToString())
+        self.get_request_socket.send(request.SerializeToString())
 
         try:
-            msg = self.get_pull_socket.recv()
+            msg = self.get_response_socket.recv()
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
-                print("request timed out")
+                logging.info("request timed out")
                 return None
             else:
-                print("unknown zmq error")
+                logging.error("unknown zmq error")
                 return None
         else:
             kv_pairs = {}
@@ -79,17 +80,14 @@ class IpcAnnaClient:
 
             for tp in resp.tuples:
                 if tp.error == 1:
-                    print('Key %s does not exist!' % (key))
+                    logging.info('Key %s does not exist!' % (key))
                     return None
 
                 if tp.lattice_type == LWW:
                     val = LWWValue()
                     val.ParseFromString(tp.payload)
 
-                    if deserialize[tp.key]:
-                        kv_pairs[tp.key] = deserialize_val(val.value)
-                    else:
-                        kv_pairs[tp.key] = val.value
+                    kv_pairs[tp.key] = val.value
                 elif tp.lattice_type == SET:
                     res = set()
 
@@ -101,55 +99,50 @@ class IpcAnnaClient:
 
                     # for set lattice, just pick the first one to return for now
                     # we are not using it anyway..
-                    if deserialize[tp.key]:
-                        kv_pairs[tp.key] = deserialize_val(res[0])
-                    else:
-                        kv_pairs[tp.key] = res[0]
+                    kv_pairs[tp.key] = res[0]
                 else:
-                    raise ValueError('Invalid Lattice type: ' + str(tp.lattice_type))
+                    raise ValueError('Invalid Lattice type: ' +
+                                     str(tp.lattice_type))
             return kv_pairs
 
-    def causal_get(self, refs, future_read_set, address_to_versioned_key_list_map, consistency, client_id):
+    def causal_get(self, refs, future_read_set, 
+                   versioned_key_locations, consistency, client_id):
         request = CausalRequest()
 
-        if consistency == SINGLE_OBJ_CAUSAL:
+        if consistency == SINGLE:
             request.consistency = SINGLE
-        elif consistency == CROSS_OBJ_CAUSAL:
+        elif consistency == CROSS:
             request.consistency = CROSS
         else:
-            print("Error: non causal consistency in causal mode!")
+            logging.error("Error: non causal consistency in causal mode!")
             return None
 
         request.id = str(client_id)
 
-        request.address_to_versioned_key_list_map = address_to_versioned_key_list_map
-
-        deserialize = {}
+        request.versioned_key_locations = versioned_key_locations
 
         for ref in refs:
             tp = request.tuples.add()
             tp.key = ref.key
 
-            deserialize[ref.key] = ref.deserialize
-
             if not (ref.obj_type == CAUSAL or ref.obj_type == CROSSCAUSAL):
-                print("Error: found other lattice type in causal mode!")
+                logging.error("Error: found other lattice type in causal mode!")
                 return None
 
-        request.response_address = GET_RESPONSE_ADDR_TEMPLATE % thread_id
+        request.response_address = get_response_address
 
         (request.future_read_set.add(k) for k in future_read_set)
 
-        self.get_push_socket.send(request.SerializeToString())
+        self.get_request_socket.send(request.SerializeToString())
 
         try:
-            msg = self.get_pull_socket.recv()
+            msg = self.get_response_socket.recv()
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
-                print("request timed out")
+                logging.info("request timed out")
                 return None
             else:
-                print("unknown zmq error")
+                logging.error("unknown zmq error")
                 return None
         else:
             kv_pairs = {}
@@ -158,19 +151,17 @@ class IpcAnnaClient:
 
             for tp in resp.tuples:
                 if tp.error == 1:
-                    print('Key %s does not exist!' % (key))
+                    logging.info('Key %s does not exist!' % (key))
                     return None
 
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)
 
                 # for now, we just take the first value in the setlattice
-                if deserialize[tp.key]:
-                    kv_pairs[tp.key] = (val.vector_clock, deserialize_val(val.values[0]))
-                else:
-                    kv_pairs[tp.key] = (val.vector_clock, val.values[0])
+                kv_pairs[tp.key] = (val.vector_clock, val.values[0])
             if len(resp.versioned_keys) != 0:
-                return ((resp.versioned_key_query_addr, resp.versioned_keys), kv_pairs)
+                return ((resp.versioned_key_query_addr, 
+                        resp.versioned_keys), kv_pairs)
             else:
                 return (None, kv_pairs)
 
@@ -199,18 +190,18 @@ class IpcAnnaClient:
         else:
             raise ValueError('Invalid PUT type: ' + str(type(value)))
 
-        request.response_address = PUT_RESPONSE_ADDR_TEMPLATE % thread_id
+        request.response_address = put_response_address
 
-        self.put_push_socket.send(request.SerializeToString())
+        self.put_request_socket.send(request.SerializeToString())
 
         try:
-            msg = self.put_pull_socket.recv()
+            msg = self.put_response_socket.recv()
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
-                print("request timed out")
+                logging.info("request timed out")
                 return False
             else:
-                print("unknown zmq error")
+                logging.error("unknown zmq error")
                 return False
         else:
             resp = KeyResponse()
@@ -236,20 +227,20 @@ class IpcAnnaClient:
 
         cross_causal_value.values.add(value)
 
-        tp.payload = SerializeToString(cross_causal_value)
+        tp.payload = cross_causal_value.SerializeToString()
 
-        request.response_address = PUT_RESPONSE_ADDR_TEMPLATE % thread_id
+        request.response_address = put_response_address
 
-        self.put_push_socket.send(request.SerializeToString())
+        self.put_request_socket.send(request.SerializeToString())
 
         try:
-            msg = self.put_pull_socket.recv()
+            msg = self.put_response_socket.recv()
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
-                print("request timed out")
+                logging.info("request timed out")
                 return False
             else:
-                print("unknown zmq error")
+                logging.error("unknown zmq error")
                 return False
         else:
             return True

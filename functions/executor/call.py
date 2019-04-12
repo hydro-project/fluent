@@ -66,9 +66,11 @@ def exec_function(exec_socket, kvs, status):
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
     if (schedule.consistency == NORMAL):
-        _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule)
+        _exec_dag_function_normal(pusher_cache, kvs, 
+                                  triggers, function, schedule)
     else:
-        _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule)
+        _exec_dag_function_causal(pusher_cache, kvs, 
+                                  triggers, function, schedule)
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
     fname = schedule.target_function
@@ -113,8 +115,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
 
 def _exec_func_normal(kvs, func, args):
     func_args = ()
-
     to_resolve = []
+    deserialize = {}
 
     # resolve any references to KVS objects
     key_index_map = {}
@@ -122,13 +124,17 @@ def _exec_func_normal(kvs, func, args):
         if isinstance(arg, FluentReference):
             to_resolve.append(arg)
             key_index_map[arg.key] = i
+            deserialize[arg.key] = arg.deserialize
         func_args += (arg,)
 
     if len(to_resolve) > 0: 
         kv_pairs = _resolve_ref_normal(to_resolve, kvs)
 
         for key in kv_pairs:
-            func_args[key_index_map[key]] = kv_pairs[key]
+            if deserialize[key]:
+                func_args[key_index_map[key]] = deserialize_val(kv_pairs[key])
+            else:
+                func_args[key_index_map[key]] = kv_pairs[key]
 
     # execute the function
     return  func(*func_args)
@@ -146,36 +152,40 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
-    address_to_versioned_key_list_map = {}
-    dependency = {}
+    versioned_key_locations = {}
+    dependencies = {}
 
     for trname in schedule.triggers:
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
         # combine address_versioned_key_list pairs
-        for addr in trigger.address_to_versioned_key_list_map:
-            address_to_versioned_key_list_map[addr] = list(trigger.address_to_versioned_key_list_map[addr].versioned_keys)
-        # combine dependency from previous func
-        for dep in trigger.dependency:
-            if dep.key in dependency:
-                dependency[dep.key] = _merge_vector_clock(dependency[dep.key], dep.vector_clock)
+        for addr in trigger.versioned_key_locations:
+            versioned_key_locations[addr] = \
+            list(trigger.versioned_key_locations[addr].versioned_keys)
+        # combine dependencies from previous func
+        for dep in trigger.dependencies:
+            if dep.key in dependencies:
+                dependencies[dep.key] = \
+                _merge_vector_clock(dependencies[dep.key], dep.vector_clock)
             else:
-                dependency[dep.key] = dep.vector_clock
+                dependencies[dep.key] = dep.vector_clock
 
-    logging.info('Executing function %s for DAG %s (ID %d) in causal consistency.' %
-            (schedule.dag.name, fname, trigger.id))
+    logging.info('Executing function %s for DAG %s (ID %d) in '
+        'causal consistency.' % (schedule.dag.name, fname, trigger.id))
 
     fargs = _process_args(fargs)
 
     kv_pairs = {}
 
-    result = _exec_func_causal(kvs, function, fargs, kv_pairs, schedule, address_to_versioned_key_list_map)
+    result = _exec_func_causal(kvs, function, fargs, kv_pairs, 
+                               schedule, versioned_key_locations)
 
     for key in kv_pairs:
-        if key in dependency:
-            dependency[key] = _merge_vector_clock(dependency[key], kv_pairs[key][0])
+        if key in dependencies:
+            dependencies[key] = _merge_vector_clock(dependencies[key], 
+                                                    kv_pairs[key][0])
         else:
-            dependency[key] = kv_pairs[key][0]
+            dependencies[key] = kv_pairs[key][0]
 
     is_sink = True
     for conn in schedule.dag.connections:
@@ -193,12 +203,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             al.args.extend(list(map(lambda v: serialize_val(v, None, False),
                 result)))
 
-            new_trigger.address_to_versioned_key_list_map = address_to_versioned_key_list_map
+            new_trigger.versioned_key_locations = versioned_key_locations
 
-            for key in dependency:
-                dep = new_trigger.dependency.add()
+            for key in dependencies:
+                dep = new_trigger.dependencies.add()
                 dep.key = key
-                dep.vector_clock = dependency[key]
+                dep.vector_clock = dependencies[key]
 
             dest_ip = schedule.locations[conn.sink]
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
@@ -209,26 +219,30 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                 (schedule.dag.name, trigger.id, schedule.response_id))
 
         vector_clock = {}
-        if schedule.response_id in dependency:
-            if schedule.id in dependency[schedule.response_id]:
-                dependency[schedule.response_id][schedule.id] += 1
+        if schedule.response_id in dependencies:
+            if schedule.id in dependencies[schedule.response_id]:
+                dependencies[schedule.response_id][schedule.id] += 1
             else:
-                dependency[schedule.response_id][schedule.id] = 1
-            vector_clock = dependency[schedule.response_id][schedule.id]
-            del dependency[schedule.response_id]
+                dependencies[schedule.response_id][schedule.id] = 1
+            vector_clock = dependencies[schedule.response_id][schedule.id]
+            del dependencies[schedule.response_id]
         else:
             vector_clock = {schedule.id : 1}
 
-        succeed = kvs.causal_put(schedule.response_id, vector_clock, dependency, serialize_val(result), schedule.id)
+        succeed = kvs.causal_put(schedule.response_id, 
+                                 vector_clock, dependencies, 
+                                 serialize_val(result), schedule.id)
         while not succeed:
-            kvs.causal_put(schedule.response_id, vector_clock, dependency, serialize_val(result), schedule.id)
+            kvs.causal_put(schedule.response_id, vector_clock, 
+                           dependencies, serialize_val(result), schedule.id)
 
 
 
-def _exec_func_causal(kvs, func, args, kv_pairs, schedule, address_to_versioned_key_list_map):
+def _exec_func_causal(kvs, func, args, kv_pairs, 
+                      schedule, versioned_key_locations):
     func_args = ()
-
     to_resolve = []
+    deserialize = {}
 
     # resolve any references to KVS objects
     key_index_map = {}
@@ -236,27 +250,36 @@ def _exec_func_causal(kvs, func, args, kv_pairs, schedule, address_to_versioned_
         if isinstance(arg, FluentReference):
             to_resolve.append(arg)
             key_index_map[arg.key] = i
+            deserialize[arg.key] = arg.deserialize
         func_args += (arg,)
 
     if len(to_resolve) > 0: 
-        _resolve_ref_causal(to_resolve, kvs, kv_pairs, schedule, address_to_versioned_key_list_map)
+        _resolve_ref_causal(to_resolve, kvs, kv_pairs, 
+                            schedule, versioned_key_locations)
 
         for key in kv_pairs:
-            func_args[key_index_map[key]] = kv_pairs[key][1]
+            if deserialize[key]:
+                func_args[key_index_map[key]] = \
+                                deserialize_val(kv_pairs[key][1])
+            else:
+                func_args[key_index_map[key]] = kv_pairs[key][1]
 
     # execute the function
     return  func(*func_args)
 
 
-def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, address_to_versioned_key_list_map):
+def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
     future_read_set = _compute_children_read_set(schedule)
-    result = kvs.causal_get(refs, future_read_set, schedule.consistency, schedule.id)
+    result = kvs.causal_get(refs, future_read_set, 
+                            schedule.consistency, schedule.id)
 
     while not result:
-        result = kvs.causal_get(refs, future_read_set, address_to_versioned_key_list_map, schedule.consistency, schedule.id)
+        result = kvs.causal_get(refs, future_read_set, 
+                                versioned_key_locations, 
+                                schedule.consistency, schedule.id)
 
     if result[0] is not None:
-        address_to_versioned_key_list_map[result[0][0]] = list(result[0][1])
+        versioned_key_locations[result[0][0]] = list(result[0][1])
 
     kv_pairs = result[1]
 

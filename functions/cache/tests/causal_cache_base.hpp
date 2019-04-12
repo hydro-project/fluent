@@ -44,8 +44,8 @@ class CausalCacheTest : public ::testing::Test {
 
   map<Key, set<Address>> single_callback_map;
 
-  map<Address, PendingClientMetadata> pending_single_request_read_set;
-  map<Address, PendingClientMetadata> pending_cross_request_read_set;
+  map<Address, PendingClientMetadata> pending_single_metadata;
+  map<Address, PendingClientMetadata> pending_cross_metadata;
 
   // mapping from client id to a set of response address of GET request
   map<string, set<Address>> client_id_to_address_map;

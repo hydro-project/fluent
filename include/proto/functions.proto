@@ -113,8 +113,8 @@ message DagTrigger {
   required string target_function = 2; // which function is this trigger for
   required string source = 3;
   optional ArgList arguments = 4;
-  map<string, VersionedKeyList> address_to_versioned_key_list_map = 5;
-  repeated VersionedKey dependency = 6;
+  map<string, VersionedKeyList> versioned_key_locations = 5;
+  repeated VersionedKey dependencies = 6;
 }
 
 message ExecutorStatistics {
@@ -138,7 +138,7 @@ message CausalRequest {
   required string id = 2;
   repeated CausalTuple tuples = 3;
   repeated string future_read_set = 4;
-  map<string, VersionedKeyList> address_to_versioned_key_list_map = 5;
+  map<string, VersionedKeyList> versioned_key_locations = 5;
   optional string response_address = 6;
 }
 

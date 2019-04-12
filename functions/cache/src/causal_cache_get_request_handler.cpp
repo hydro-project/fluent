@@ -19,8 +19,8 @@ void get_request_handler(
     InPreparationType& in_preparation, StoreType& causal_cut_store,
     VersionStoreType& version_store,
     map<Key, set<Address>>& single_callback_map,
-    map<Address, PendingClientMetadata>& pending_single_request_read_set,
-    map<Address, PendingClientMetadata>& pending_cross_request_read_set,
+    map<Address, PendingClientMetadata>& pending_single_metadata,
+    map<Address, PendingClientMetadata>& pending_cross_metadata,
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
@@ -49,7 +49,7 @@ void get_request_handler(
       }
     }
     if (!covered_locally) {
-      pending_single_request_read_set[request.response_address()] =
+      pending_single_metadata[request.response_address()] =
           PendingClientMetadata(request.id(), read_set, to_cover);
     } else {
       CausalResponse response;
@@ -69,7 +69,7 @@ void get_request_handler(
     map<Key, std::unordered_set<VectorClock, VectorClockHash>> causal_frontier;
 
     for (const auto& addr_versioned_key_list_pair :
-         request.address_to_versioned_key_list_map()) {
+         request.versioned_key_locations()) {
       for (const auto& versioned_key :
            addr_versioned_key_list_pair.second.versioned_keys()) {
         // first, convert protobuf type to VectorClock
@@ -84,7 +84,7 @@ void get_request_handler(
     // now we have the causal frontier
     // we can populate prior causal chain
     for (const auto& addr_versioned_key_list_pair :
-         request.address_to_versioned_key_list_map()) {
+         request.versioned_key_locations()) {
       for (const auto& versioned_key :
            addr_versioned_key_list_pair.second.versioned_keys()) {
         // first, convert protobuf type to VectorClock
@@ -95,19 +95,19 @@ void get_request_handler(
 
         if (causal_frontier[versioned_key.key()].find(vc) !=
             causal_frontier[versioned_key.key()].end()) {
-          pending_cross_request_read_set[request.response_address()]
+          pending_cross_metadata[request.response_address()]
               .prior_causal_chains_[addr_versioned_key_list_pair.first]
                                    [versioned_key.key()] = vc;
         }
       }
     }
     // set the client id field of PendingClientMetadata
-    pending_cross_request_read_set[request.response_address()].client_id_ =
+    pending_cross_metadata[request.response_address()].client_id_ =
         request.id();
 
     // set the future read set field
     for (const Key& key : request.future_read_set()) {
-      pending_cross_request_read_set[request.response_address()]
+      pending_cross_metadata[request.response_address()]
           .future_read_set_.insert(key);
     }
 
@@ -136,9 +136,8 @@ void get_request_handler(
             if (to_fetch_map[key].size() == 0) {
               // all dependency met
               merge_into_causal_cut(key, causal_cut_store, in_preparation,
-                                    version_store,
-                                    pending_cross_request_read_set, pushers,
-                                    cct, client_id_to_address_map);
+                                    version_store, pending_cross_metadata,
+                                    pushers, cct, client_id_to_address_map);
               to_fetch_map.erase(key);
             } else {
               in_preparation[key].first.insert(request.response_address());
@@ -153,9 +152,8 @@ void get_request_handler(
             if (to_fetch_map[key].size() == 0) {
               // all dependency met
               merge_into_causal_cut(key, causal_cut_store, in_preparation,
-                                    version_store,
-                                    pending_cross_request_read_set, pushers,
-                                    cct, client_id_to_address_map);
+                                    version_store, pending_cross_metadata,
+                                    pushers, cct, client_id_to_address_map);
               to_fetch_map.erase(key);
             } else {
               in_preparation[key].first.insert(request.response_address());
@@ -172,21 +170,18 @@ void get_request_handler(
       }
     }
     if (!covered_locally) {
-      pending_cross_request_read_set[request.response_address()].read_set_ =
-          read_set;
-      pending_cross_request_read_set[request.response_address()].to_cover_set_ =
+      pending_cross_metadata[request.response_address()].read_set_ = read_set;
+      pending_cross_metadata[request.response_address()].to_cover_set_ =
           to_cover;
     } else {
-      pending_cross_request_read_set[request.response_address()].read_set_ =
-          read_set;
+      pending_cross_metadata[request.response_address()].read_set_ = read_set;
       // decide local and remote read set
       if (!fire_remote_read_requests(
-              pending_cross_request_read_set[request.response_address()],
-              version_store, causal_cut_store, pushers, cct)) {
+              pending_cross_metadata[request.response_address()], version_store,
+              causal_cut_store, pushers, cct)) {
         // all local
-        respond_to_client(pending_cross_request_read_set,
-                          request.response_address(), causal_cut_store,
-                          version_store, pushers, cct);
+        respond_to_client(pending_cross_metadata, request.response_address(),
+                          causal_cut_store, version_store, pushers, cct);
       } else {
         client_id_to_address_map[request.id()].insert(
             request.response_address());

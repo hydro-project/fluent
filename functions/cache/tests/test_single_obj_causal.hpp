@@ -68,9 +68,9 @@ TEST_F(CausalCacheTest, SingleFullyCovered) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   CausalResponse response;
   response.ParseFromString(mock_zmq_util.sent_messages[0]);
@@ -111,19 +111,18 @@ TEST_F(CausalCacheTest, SinglePartiallyCovered) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   map<Key, set<Address>> expected_single_callback_map = {
       {"b", {dummy_address}}};
 
-  map<Address, PendingClientMetadata> expected_pending_single_request_read_set =
-      {{dummy_address, PendingClientMetadata("test", {"a", "b"}, {"b"})}};
+  map<Address, PendingClientMetadata> expected_pending_single_metadata = {
+      {dummy_address, PendingClientMetadata("test", {"a", "b"}, {"b"})}};
 
-  EXPECT_THAT(pending_single_request_read_set,
-              testing::UnorderedElementsAreArray(
-                  expected_pending_single_request_read_set));
+  EXPECT_THAT(pending_single_metadata, testing::UnorderedElementsAreArray(
+                                           expected_pending_single_metadata));
   EXPECT_THAT(single_callback_map,
               testing::UnorderedElementsAreArray(expected_single_callback_map));
   EXPECT_EQ(mock_cl.keys_get_.size(), 1);
@@ -156,19 +155,18 @@ TEST_F(CausalCacheTest, SingleEndToEnd) {
 
   get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                       causal_cut_store, version_store, single_callback_map,
-                      pending_single_request_read_set,
-                      pending_cross_request_read_set, to_fetch_map, cover_map,
-                      pushers, client, log_, cct, client_id_to_address_map);
+                      pending_single_metadata, pending_cross_metadata,
+                      to_fetch_map, cover_map, pushers, client, log_, cct,
+                      client_id_to_address_map);
 
   map<Key, set<Address>> expected_single_callback_map = {
       {"b", {dummy_address}}};
 
-  map<Address, PendingClientMetadata> expected_pending_single_request_read_set =
-      {{dummy_address, PendingClientMetadata("test", {"a", "b"}, {"b"})}};
+  map<Address, PendingClientMetadata> expected_pending_single_metadata = {
+      {dummy_address, PendingClientMetadata("test", {"a", "b"}, {"b"})}};
 
-  EXPECT_THAT(pending_single_request_read_set,
-              testing::UnorderedElementsAreArray(
-                  expected_pending_single_request_read_set));
+  EXPECT_THAT(pending_single_metadata, testing::UnorderedElementsAreArray(
+                                           expected_pending_single_metadata));
   EXPECT_THAT(single_callback_map,
               testing::UnorderedElementsAreArray(expected_single_callback_map));
   EXPECT_EQ(mock_cl.keys_get_.size(), 1);
@@ -184,11 +182,11 @@ TEST_F(CausalCacheTest, SingleEndToEnd) {
   dep.clear();
   ktp->set_payload(serialize(*construct_causal_lattice(vc, dep, value)));
 
-  kvs_response_handler(
-      response, unmerged_store, in_preparation, causal_cut_store, version_store,
-      single_callback_map, pending_single_request_read_set,
-      pending_cross_request_read_set, to_fetch_map, cover_map, pushers, client,
-      log_, cct, client_id_to_address_map, request_id_to_address_map);
+  kvs_response_handler(response, unmerged_store, in_preparation,
+                       causal_cut_store, version_store, single_callback_map,
+                       pending_single_metadata, pending_cross_metadata,
+                       to_fetch_map, cover_map, pushers, client, log_, cct,
+                       client_id_to_address_map, request_id_to_address_map);
 
   CausalResponse causal_response;
   causal_response.ParseFromString(mock_zmq_util.sent_messages[0]);
@@ -204,12 +202,11 @@ TEST_F(CausalCacheTest, SingleEndToEnd) {
   EXPECT_THAT(keys, testing::UnorderedElementsAreArray({"a", "b"}));
   EXPECT_THAT(values, testing::UnorderedElementsAreArray({value, value}));
 
-  expected_pending_single_request_read_set.clear();
+  expected_pending_single_metadata.clear();
   expected_single_callback_map.clear();
 
-  EXPECT_THAT(pending_single_request_read_set,
-              testing::UnorderedElementsAreArray(
-                  expected_pending_single_request_read_set));
+  EXPECT_THAT(pending_single_metadata, testing::UnorderedElementsAreArray(
+                                           expected_pending_single_metadata));
   EXPECT_THAT(single_callback_map,
               testing::UnorderedElementsAreArray(expected_single_callback_map));
 }
