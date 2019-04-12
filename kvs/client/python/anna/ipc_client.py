@@ -40,11 +40,11 @@ class IpcAnnaClient:
         self.put_request_socket.connect(PUT_REQUEST_ADDR)
 
         self.get_response_socket = self.context.socket(zmq.PULL)
-        self.get_response_socket.bind(get_response_address)
+        self.get_response_socket.bind(self.get_response_address)
         self.get_response_socket.RCVTIMEO = TIMEOUT
 
         self.put_response_socket = self.context.socket(zmq.PULL)
-        self.put_response_socket.bind(put_response_address)
+        self.put_response_socket.bind(self.put_response_address)
         self.put_response_socket.RCVTIMEO = TIMEOUT
 
     def get(self, refs):
@@ -60,7 +60,7 @@ class IpcAnnaClient:
                 logging.error("Error: found cross causal"
                     " lattice type in non causal mode!")
 
-        request.response_address = get_response_address
+        request.response_address = self.get_response_address
 
         self.get_request_socket.send(request.SerializeToString())
 
@@ -87,7 +87,7 @@ class IpcAnnaClient:
                     val = LWWValue()
                     val.ParseFromString(tp.payload)
 
-                    kv_pairs[tp.key] = val.value
+                    kv_pairs[tp.key] = LWWPairLattice(val.timestamp, val.value)
                 elif tp.lattice_type == SET:
                     res = set()
 
@@ -97,9 +97,7 @@ class IpcAnnaClient:
                     for v in val.values:
                         res.add(v)
 
-                    # for set lattice, just pick the first one to return for now
-                    # we are not using it anyway..
-                    kv_pairs[tp.key] = res[0]
+                    kv_pairs[tp.key] = SetLattice(res)
                 else:
                     raise ValueError('Invalid Lattice type: ' +
                                      str(tp.lattice_type))
@@ -119,7 +117,9 @@ class IpcAnnaClient:
 
         request.id = str(client_id)
 
-        request.versioned_key_locations = versioned_key_locations
+        for addr in versioned_key_locations:
+            request.versioned_key_locations[addr].versioned_keys.extend(
+                                versioned_key_locations[addr].versioned_keys)
 
         for ref in refs:
             tp = request.tuples.add()
@@ -129,7 +129,7 @@ class IpcAnnaClient:
                 logging.error("Error: found other lattice type in causal mode!")
                 return None
 
-        request.response_address = get_response_address
+        request.response_address = self.get_response_address
 
         (request.future_read_set.add(k) for k in future_read_set)
 
@@ -190,7 +190,7 @@ class IpcAnnaClient:
         else:
             raise ValueError('Invalid PUT type: ' + str(type(value)))
 
-        request.response_address = put_response_address
+        request.response_address = self.put_response_address
 
         self.put_request_socket.send(request.SerializeToString())
 
@@ -229,7 +229,7 @@ class IpcAnnaClient:
 
         tp.payload = cross_causal_value.SerializeToString()
 
-        request.response_address = put_response_address
+        request.response_address = self.put_response_address
 
         self.put_request_socket.send(request.SerializeToString())
 

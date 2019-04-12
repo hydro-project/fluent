@@ -131,8 +131,9 @@ def _exec_func_normal(kvs, func, args):
         kv_pairs = _resolve_ref_normal(to_resolve, kvs)
 
         for key in kv_pairs:
-            if deserialize[key]:
-                func_args[key_index_map[key]] = deserialize_val(kv_pairs[key])
+            if isinstance(kv_pairs[key], LWWPairLattice) and deserialize[key]:
+                func_args[key_index_map[key]] = deserialize_val(
+                                                    kv_pairs[key].reveal()[1])
             else:
                 func_args[key_index_map[key]] = kv_pairs[key]
 
@@ -152,16 +153,19 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
-    versioned_key_locations = {}
+    versioned_key_locations = None
     dependencies = {}
 
     for trname in schedule.triggers:
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
-        # combine address_versioned_key_list pairs
-        for addr in trigger.versioned_key_locations:
-            versioned_key_locations[addr] = \
-            list(trigger.versioned_key_locations[addr].versioned_keys)
+        # combine versioned_key_locations
+        if versioned_key_locations is None:
+            versioned_key_locations = trigger.versioned_key_locations
+        else:
+            for addr in trigger.versioned_key_locations:
+                versioned_key_locations[addr].versioned_keys.extend(
+                        trigger.versioned_key_locations[addr].versioned_keys)
         # combine dependencies from previous func
         for dep in trigger.dependencies:
             if dep.key in dependencies:
@@ -170,7 +174,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             else:
                 dependencies[dep.key] = dep.vector_clock
 
-    logging.info('Executing function %s for DAG %s (ID %d) in '
+    logging.info('Executing function %s for DAG %s (ID %d) in ' +
         'causal consistency.' % (schedule.dag.name, fname, trigger.id))
 
     fargs = _process_args(fargs)
@@ -271,6 +275,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
     future_read_set = _compute_children_read_set(schedule)
     result = kvs.causal_get(refs, future_read_set, 
+                            versioned_key_locations,
                             schedule.consistency, schedule.id)
 
     while not result:
