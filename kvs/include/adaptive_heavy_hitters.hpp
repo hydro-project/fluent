@@ -12,23 +12,13 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-#include <cstdlib>
-#include <thread>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <chrono>
 #include <climits>
-#include <cmath>
-#include <cstdlib>
-#include <ctime>
 #include <iomanip>
-#include <iostream>
 #include <thread>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 #include "heavy_hitters.hpp"
 
 #define alpha 0.2
