@@ -139,8 +139,8 @@ void replication_response_handler(
           tp->set_key(key);
 
           if (request.type_ == RequestType::GET) {
-            if (metadata_map.find(key) == metadata_map.end() ||
-                metadata_map[key].type_ == LatticeType::NO) {
+            if (stored_key_map.find(key) == stored_key_map.end() ||
+                stored_key_map[key].type_ == LatticeType::NO) {
               tp->set_error(1);
             } else {
               auto res =

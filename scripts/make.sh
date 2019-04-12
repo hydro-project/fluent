@@ -15,4 +15,4 @@
 #  limitations under the License.
 
 find . -name "*.gcda" -print0 | xargs -0 rm
-make -C build
+make -C build -j4

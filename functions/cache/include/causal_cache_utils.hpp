@@ -48,6 +48,23 @@ struct PendingClientMetadata {
       read_set_(std::move(read_set)),
       to_cover_set_(std::move(to_cover_set)) {}
 
+  PendingClientMetadata(string client_id, set<Key> read_set,
+                        set<Key> to_cover_set,
+                        map<Address, map<Key, VectorClock>> prior_causal_chains,
+                        set<Key> future_read_set, set<Key> remote_read_set,
+                        set<Key> dne_set,
+                        map<Key, string> serialized_local_payload,
+                        map<Key, string> serialized_remote_payload) :
+      client_id_(std::move(client_id)),
+      read_set_(std::move(read_set)),
+      to_cover_set_(std::move(to_cover_set)),
+      prior_causal_chains_(std::move(prior_causal_chains)),
+      future_read_set_(std::move(future_read_set)),
+      remote_read_set_(std::move(remote_read_set)),
+      dne_set_(std::move(dne_set)),
+      serialized_local_payload_(std::move(serialized_local_payload)),
+      serialized_remote_payload_(std::move(serialized_remote_payload)) {}
+
   string client_id_;
   set<Key> read_set_;
   set<Key> to_cover_set_;
@@ -57,8 +74,16 @@ struct PendingClientMetadata {
   set<Key> dne_set_;
   map<Key, string> serialized_local_payload_;
   map<Key, string> serialized_remote_payload_;
+
   bool operator==(const PendingClientMetadata& input) const {
-    if (client_id_ == input.client_id_) {
+    if (client_id_ == input.client_id_ && read_set_ == input.read_set_ &&
+        to_cover_set_ == input.to_cover_set_ &&
+        prior_causal_chains_ == input.prior_causal_chains_ &&
+        future_read_set_ == input.future_read_set_ &&
+        remote_read_set_ == input.remote_read_set_ &&
+        dne_set_ == input.dne_set_ &&
+        serialized_local_payload_ == input.serialized_local_payload_ &&
+        serialized_remote_payload_ == input.serialized_remote_payload_) {
       return true;
     } else {
       return false;

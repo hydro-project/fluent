@@ -20,6 +20,7 @@
 
 #include "causal_cache_base.hpp"
 #include "test_causal_lattice_comparison.hpp"
+#include "test_cross_obj_causal.hpp"
 #include "test_single_obj_causal.hpp"
 
 int main(int argc, char* argv[]) {

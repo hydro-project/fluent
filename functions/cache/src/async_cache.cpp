@@ -307,7 +307,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             // stat report
             string new_req_id =
                 client->put_async(key, response.tuples(0).payload(),
-                                 response.tuples(0).lattice_type());
+                                  response.tuples(0).lattice_type());
             request_address_map[new_req_id] =
                 request_address_map[response.response_id()];
             // GC the original request_id address pair

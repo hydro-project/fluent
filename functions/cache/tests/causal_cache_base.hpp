@@ -81,7 +81,10 @@ class CausalCacheTest : public ::testing::Test {
     return result;
   }
 
-  std::shared_ptr<CrossCausalLattice<SetLattice<string>>> construct_causal_lattice(const VectorClock& vc, const map<Key, VectorClock>& dep, const string& val) {
+  std::shared_ptr<CrossCausalLattice<SetLattice<string>>>
+  construct_causal_lattice(const VectorClock& vc,
+                           const map<Key, VectorClock>& dep,
+                           const string& val) {
     CrossCausalPayload<SetLattice<string>> ccp;
     ccp.vector_clock = vc;
     for (const auto& pair : dep) {

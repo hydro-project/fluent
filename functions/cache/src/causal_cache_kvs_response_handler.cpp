@@ -39,7 +39,7 @@ void kvs_response_handler(
         // we only retry for client-issued requests, not for the periodic
         // stat report
         string new_req_id = client->put_async(key, response.tuples(0).payload(),
-                                             LatticeType::CROSSCAUSAL);
+                                              LatticeType::CROSSCAUSAL);
         request_id_to_address_map[new_req_id] =
             request_id_to_address_map[response.response_id()];
         // GC the original request_id address pair

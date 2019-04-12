@@ -32,9 +32,7 @@ class KvsMockClient : public KvsAsyncClientInterface {
    * @tid My client's thread ID
    * @timeout Length of request timeouts in ms
    */
-  KvsMockClient() {
-    rid_ = 0;
-  }
+  KvsMockClient() { rid_ = 0; }
 
   ~KvsMockClient() {}
 
@@ -59,9 +57,7 @@ class KvsMockClient : public KvsAsyncClientInterface {
     return responses_;
   }
 
-  zmq::context_t* get_context() {
-    return nullptr;
-  }
+  zmq::context_t* get_context() { return nullptr; }
 
   void clear() {
     keys_put_.clear();

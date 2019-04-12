@@ -108,7 +108,8 @@ void recursive_dependency_check(
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
     KvsAsyncClientInterface* client) {
-  for (const auto& dep_key : lattice->reveal().dependency.key_set().reveal()) {
+  for (const auto& pair : lattice->reveal().dependency.reveal()) {
+    Key dep_key = pair.first;
     // first, check if the dependency is already satisfied in the causal cut
     if (causal_cut_store.find(dep_key) != causal_cut_store.end() &&
         vector_clock_comparison(
@@ -181,9 +182,9 @@ void save_versions(const string& id, const Key& key,
     if (future_read_set.find(key) != future_read_set.end()) {
       version_store[id][key] = causal_cut_store.at(key);
     }
-    for (const auto& dep_key :
-         causal_cut_store.at(key)->reveal().dependency.key_set().reveal()) {
-      save_versions(id, dep_key, version_store, causal_cut_store,
+    for (const auto& pair :
+         causal_cut_store.at(key)->reveal().dependency.reveal()) {
+      save_versions(id, pair.first, version_store, causal_cut_store,
                     future_read_set, observed_keys);
     }
   }
@@ -252,7 +253,6 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
     pair.second.SerializeToString(&req_string);
     kZmqUtil->send_string(req_string, &pushers[pair.first]);
   }
-
   return remote_request;
 }
 
@@ -280,14 +280,17 @@ void respond_to_client(
   response.set_versioned_key_query_addr(
       cct.causal_cache_versioned_key_request_connect_address());
 
-  for (const auto& pair :
-       version_store.at(pending_cross_request_read_set[addr].client_id_)) {
-    VersionedKey* vk = response.add_versioned_keys();
-    vk->set_key(pair.first);
-    auto ptr = vk->mutable_vector_clock();
-    for (const auto& client_version_pair :
-         pair.second->reveal().vector_clock.reveal()) {
-      (*ptr)[client_version_pair.first] = client_version_pair.second.reveal();
+  if (version_store.find(pending_cross_request_read_set[addr].client_id_) !=
+      version_store.end()) {
+    for (const auto& pair :
+         version_store.at(pending_cross_request_read_set[addr].client_id_)) {
+      VersionedKey* vk = response.add_versioned_keys();
+      vk->set_key(pair.first);
+      auto ptr = vk->mutable_vector_clock();
+      for (const auto& client_version_pair :
+           pair.second->reveal().vector_clock.reveal()) {
+        (*ptr)[client_version_pair.first] = client_version_pair.second.reveal();
+      }
     }
   }
 

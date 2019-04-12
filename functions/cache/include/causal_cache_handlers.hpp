@@ -72,7 +72,8 @@ void periodic_migration_handler(
     map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    SocketCache& pushers, KvsAsyncClientInterface* client, const CausalCacheThread& cct,
+    SocketCache& pushers, KvsAsyncClientInterface* client,
+    const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map);
 
 #endif  // FUNCTIONS_CACHE_INCLUDE_CAUSAL_CACHE_HANDLERS_HPP_
