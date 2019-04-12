@@ -175,7 +175,6 @@ void compute_summary_stats(
     }
 
     hot_key_access_summary[key] = access_count;
-    std::cout << "Hot Key: " << key << ", Count: " << access_count << std::endl;
 
     if (access_count > 0) {
       cnt += 1;
@@ -207,8 +206,6 @@ void compute_summary_stats(
     }
 
     cold_key_access_summary[key] = access_count;
-    std::cout << "Cold Key: " << key << ", Count: " << access_count
-              << std::endl;
 
     if (access_count > 0) {
       cnt += 1;
