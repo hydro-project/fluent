@@ -29,7 +29,7 @@ void handle_request(KvsAsyncClientInterface* client, string input) {
   split(input, ' ', v);
 
   if (v[0] == "GET") {
-    string req_id = client->get_async(v[1]);
+    client->get_async(v[1]);
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     while (responses.size() == 0) {
@@ -38,10 +38,6 @@ void handle_request(KvsAsyncClientInterface* client, string input) {
 
     if (responses.size() > 1) {
       std::cout << "Error: received more than one response" << std::endl;
-    }
-
-    if (responses[0].response_id() != req_id) {
-      std::cout << "Error: request response ID mismatch" << std::endl;
     }
 
     assert(responses[0].tuples(0).lattice_type() == LatticeType::LWW);
@@ -51,7 +47,7 @@ void handle_request(KvsAsyncClientInterface* client, string input) {
     std::cout << lww_lattice.reveal().value << std::endl;
   } else if (v[0] == "GET_CAUSAL") {
     // currently this mode is only for testing purpose
-    string req_id = client->get_async(v[1]);
+    client->get_async(v[1]);
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     while (responses.size() == 0) {
@@ -60,10 +56,6 @@ void handle_request(KvsAsyncClientInterface* client, string input) {
 
     if (responses.size() > 1) {
       std::cout << "Error: received more than one response" << std::endl;
-    }
-
-    if (responses[0].response_id() != req_id) {
-      std::cout << "Error: request response ID mismatch" << std::endl;
     }
 
     assert(responses[0].tuples(0).lattice_type() == LatticeType::CROSSCAUSAL);
