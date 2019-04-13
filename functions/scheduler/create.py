@@ -41,7 +41,7 @@ def create_func(func_create_socket, kvs):
 
 
 def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
-        func_locations, call_frequency, num_replicas=45):
+        func_locations, call_frequency, num_replicas=15):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -51,12 +51,12 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
     payload = LWWPairLattice(generate_timestamp(0), serialized)
     kvs.put(dag.name, payload)
 
-    candidates = set(executors)
-    for _ in range(num_replicas):
-        if len(candidates) == 0:
-            break
+    for fname in dag.functions:
+        candidates = set(executors)
+        for _ in range(num_replicas):
+            if len(candidates) == 0:
+                break
 
-        for fname in dag.functions:
             node, tid = random.sample(candidates, 1)[0]
 
             # this is currently a fire-and-forget operation -- we can see if we

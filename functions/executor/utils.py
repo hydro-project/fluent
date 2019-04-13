@@ -12,6 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
+
 from include.functions_pb2 import *
 from include.kvs_pb2 import *
 from include import server_utils, serializer
@@ -24,6 +26,9 @@ EXECUTOR_DEPART_PORT = 7005
 def _retrieve_function(name, kvs):
     kvs_name = server_utils._get_func_kvs_name(name)
     latt = kvs.get(kvs_name)[kvs_name]
+    logging.info(str(latt))
+    if latt:
+        logging.info(latt.reveal()[1])
 
     if latt:
         return serializer.function_ser.load(latt.reveal()[1])

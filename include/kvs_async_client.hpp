@@ -33,7 +33,7 @@ class KvsAsyncClientInterface {
  public:
   virtual string put_async(const Key& key, const string& payload,
                            LatticeType lattice_type) = 0;
-  virtual string get_async(const Key& key) = 0;
+  virtual void get_async(const Key& key) = 0;
   virtual vector<KeyResponse> receive_async(ZmqUtilInterface* kZmqUtil) = 0;
   virtual zmq::context_t* get_context() = 0;
 };
@@ -100,7 +100,7 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
   /**
    * Issue an async GET request to the KVS.
    */
-  string get_async(const Key& key) {
+  void get_async(const Key& key) {
     // we issue GET only when it is not in the pending map
     if (pending_get_response_map_.find(key) ==
         pending_get_response_map_.end()) {
@@ -110,8 +110,6 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
 
       try_request(request);
     }
-
-    return pending_get_response_map_[key].request_.request_id();
   }
 
   vector<KeyResponse> receive_async(ZmqUtilInterface* kZmqUtil) {
@@ -158,7 +156,6 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
       if (response.type() == RequestType::GET) {
         if (pending_get_response_map_.find(key) !=
             pending_get_response_map_.end()) {
-          
           if (check_tuple(response.tuples(0))) {
             // error no == 2, so re-issue request
             pending_get_response_map_[key].tp_ =
@@ -221,7 +218,6 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
       if (std::chrono::duration_cast<std::chrono::milliseconds>(
               std::chrono::system_clock::now() - pair.second.tp_)
               .count() > timeout_) {
-
         // query to server timed out
         result.push_back(generate_bad_response(pair.second.request_));
         to_remove.insert(pair.first);
@@ -493,12 +489,12 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
 
     KeyTuple* tp = resp.add_tuples();
     tp->set_key(req.tuples(0).key());
-    
+
     if (req.type() == RequestType::PUT) {
       tp->set_lattice_type(req.tuples(0).lattice_type());
       tp->set_payload(req.tuples(0).payload());
     }
-    
+
     return resp;
   }
 

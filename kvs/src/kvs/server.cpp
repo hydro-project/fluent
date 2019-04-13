@@ -394,7 +394,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     if (pollitems[7].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
 
-
       string serialized = kZmqUtil->recv_string(&cache_ip_response_puller);
       cache_ip_response_handler(serialized, cache_ip_to_keys, key_to_cache_ips);
 

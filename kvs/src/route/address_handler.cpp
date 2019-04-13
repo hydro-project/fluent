@@ -33,7 +33,6 @@ void address_handler(logger log, string& serialized, SocketCache& pushers,
     num_servers += pair.second.size();
   }
 
-
   bool respond = false;
   if (num_servers == 0) {
     addr_response.set_error(1);

@@ -48,10 +48,7 @@ class KvsMockClient : public KvsAsyncClientInterface {
   /**
    * Issue an async GET request to the KVS.
    */
-  string get_async(const Key& key) {
-    keys_get_.push_back(key);
-    return get_request_id();
-  }
+  void get_async(const Key& key) { keys_get_.push_back(key); }
 
   vector<KeyResponse> receive_async(ZmqUtilInterface* kZmqUtil) {
     return responses_;

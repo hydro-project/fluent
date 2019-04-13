@@ -36,7 +36,7 @@ def exec_function(exec_socket, kvs, status):
 
     f = utils._retrieve_function(call.name, kvs)
     if not f:
-        logging.info('Functions %s not found! Putting an error.' %
+        logging.info('Function %s not found! Putting an error.' %
                 (call.name))
         sutils.error.error = FUNC_NOT_FOUND
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
@@ -48,11 +48,8 @@ def exec_function(exec_socket, kvs, status):
             logging.info('Unexpected error %s while executing function.' %
                     (str(e)))
             sutils.error.error = EXEC_ERROR
-            result = serialize_val('ERROR' + str(e),
-                    sutils.SerializeToString())
-            return
-
-    logging.info('Putting result at %s.' % (call.resp_id))
+            result = serialize_val(('ERROR: ' + str(e),
+                    sutils.error.SerializeToString()))
 
     result_lattice = LWWPairLattice(generate_timestamp(0), result)
     kvs.put(call.resp_id, result_lattice)
@@ -111,7 +108,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
 
 def _exec_func_normal(kvs, func, args):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
-    refs = _resolve_ref_normal(refs, kvs)
+    if refs:
+        refs = _resolve_ref_normal(refs, kvs)
 
     func_args = ()
     for arg in args:
@@ -130,6 +128,10 @@ def _resolve_ref_normal(refs, kvs):
     # when chaining function executions, we must wait
     while not kv_pairs:
         kv_pairs = kvs.get(keys)
+
+    for ref in refs:
+        if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
+            kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])
 
     return kv_pairs
 

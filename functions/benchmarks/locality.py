@@ -35,19 +35,16 @@ def run(flconn, kvs, num_requests, create, sckt):
             sys.exit(1)
 
         ### TEST REGISTERED FUNCTIONS ###
-        inp1 = np.zeros(1024*10)
-        v1 = LWWPairLattice(0, serialize_val(inp1))
-        k1 = str(uuid.uuid4())
-        kvs.put(k1, v1)
+        refs = ()
+        for _ in range(10):
+            inp = np.zeros(1024*10)
+            v = LWWPairLattice(0, serialize_val(inp))
+            k = str(uuid.uuid4())
+            kvs.put(k, v)
 
-        inp2 = np.zeros(1024*10)
-        v2 = LWWPairLattice(0, serialize_val(inp2))
-        k2 = str(uuid.uuid4())
-        kvs.put(k2, v2)
+            refs += (FluentReference(k, True, LWW),)
 
-        r1 = FluentReference(k1, True, LWW)
-        r2 = FluentReference(k2, True, LWW)
-        dot_test = cloud_dot(r1, r2, r1, r2, r1, r2, r1, r2, r1, r2).get()
+        dot_test = cloud_dot(*refs).get()
         if dot_test != 0.0:
             logging.error('Unexpected result from dot(v1, v2): %s' % (str(dot_test)))
             sys.exit(1)
@@ -135,7 +132,8 @@ def run(flconn, kvs, num_requests, create, sckt):
 
             log_end = time.time()
             if (log_end - log_start) > 5:
-                sckt.send(cp.dumps(epoch_total))
+                if sckt:
+                    sckt.send(cp.dumps(epoch_total))
                 utils.print_latency_stats(epoch_total, 'EPOCH %d E2E' %
                         (log_epoch), True)
                 utils.print_latency_stats(epoch_scheduler, 'EPOCH %d SCHEDULER' %

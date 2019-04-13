@@ -32,9 +32,9 @@ if bname == 'composition':
     total, scheduler, kvs, retries = composition.run(flconn, kvs, num_requests,
             None)
 if bname == 'locality':
-    locality.run(flconn, kvs, num_requests, True)
+    locality.run(flconn, kvs, num_requests, True, None)
     total, scheduler, kvs, retries = locality.run(flconn, kvs, num_requests,
-            False)
+            False, None)
 else:
     print('Unknown benchmark type: %s!' % (bname))
 

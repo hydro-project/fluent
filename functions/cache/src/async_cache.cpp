@@ -152,7 +152,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle a GET request
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      std::cout << "Received a get request!" << std::endl;
       string serialized = kZmqUtil->recv_string(&get_puller);
       KeyRequest request;
       request.ParseFromString(serialized);
@@ -164,34 +163,27 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       for (KeyTuple tuple : request.tuples()) {
         Key key = tuple.key();
         read_set.insert(key);
-        std::cout << "Processing key " << key << std::endl;
 
         if (key_type_map.find(key) == key_type_map.end()) {
           // this means key dne in cache
           covered = false;
           to_retrieve.insert(key);
           key_requestor_map[key].insert(request.response_address());
-          std::cout << "Key not found. Issuing a request for it." << std::endl;
           client->get_async(key);
-          std::cout << "Issuing a GET succeeded." << std::endl;
         }
+      }
 
-        if (covered) {
-          std::cout << "All keys found -- sending a response." << std::endl;
-          send_get_response(read_set, request.response_address(), key_type_map,
-                            local_lww_cache, local_set_cache, pushers, log);
-        } else {
-          std::cout << "inserting into the pending read set" << std::endl;
-          pending_request_read_set[request.response_address()] =
-              PendingClientMetadata(read_set, to_retrieve);
-          std::cout << "successfully inserted into the pending read set" << std::endl;
-        }
+      if (covered) {
+        send_get_response(read_set, request.response_address(), key_type_map,
+                          local_lww_cache, local_set_cache, pushers, log);
+      } else {
+        pending_request_read_set[request.response_address()] =
+            PendingClientMetadata(read_set, to_retrieve);
       }
     }
 
     // handle a PUT request
     if (pollitems[1].revents & ZMQ_POLLIN) {
-      std::cout << "Received a put request!" << std::endl;
       string serialized = kZmqUtil->recv_string(&put_puller);
       KeyRequest request;
       request.ParseFromString(serialized);
@@ -210,7 +202,10 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           break;
         } else if ((key_type_map.find(key) != key_type_map.end()) &&
                    (key_type_map[key] != tuple.lattice_type())) {
-          log->error("Key {}: Lattice type for PUT does not match stored lattice type.", key);
+          log->error(
+              "Key {}: Lattice type for PUT does not match stored lattice "
+              "type.",
+              key);
           send_error_response(RequestType::PUT, request.response_address(),
                               pushers);
           error = true;
@@ -226,7 +221,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           key_type_map[key] = tuple.lattice_type();
           update_cache(key, tuple.lattice_type(), tuple.payload(),
                        local_lww_cache, local_set_cache, log);
-          std::cout << "Issuing a PUT request for " << key << std::endl;
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
           request_address_map[req_id] = request.response_address();
@@ -236,14 +230,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle updates received from the KVS
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      std::cout << "Received a KVS update" << std::endl;
       string serialized = kZmqUtil->recv_string(&update_puller);
       KeyRequest updates;
       updates.ParseFromString(serialized);
 
       for (const KeyTuple& tuple : updates.tuples()) {
         Key key = tuple.key();
-        std::cout << "Received a cache update for key " << key << std::endl;
 
         // if we are no longer caching this key, then we simply ignore updates
         // for it because we received the update based on outdated information
@@ -259,8 +251,10 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           // globally. I think we should just drop our local copy for the time
           // being, but open to other ideas.
 
-          log->error("Key {}: Stored lattice type did not match type received "
-              "in KVS update.", key);
+          log->error(
+              "Key {}: Stored lattice type did not match type received "
+              "in KVS update.",
+              key);
 
           switch (key_type_map[key]) {
             case LatticeType::LWW: local_lww_cache.erase(key); break;
@@ -279,14 +273,10 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
-      std::cout << "Received " << responses.size() << " responses from the client" << std::endl;
       Key key = response.tuples(0).key();
-      std::cout << response.DebugString() << std::endl;
-      std::cout << "It was for key " << key << std::endl;
 
-      if (response.has_error() && response.error() ==
-          ResponseErrorType::TIMEOUT) {
-        std::cout << "Its error was " << response.error() << std::endl;
+      if (response.has_error() &&
+          response.error() == ResponseErrorType::TIMEOUT) {
         if (response.type() == RequestType::GET) {
           client->get_async(key);
         } else {
@@ -305,7 +295,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         }
       } else {
         if (response.type() == RequestType::GET) {
-          std::cout << "It was a get response" << std::endl;
           // update cache first
           if (response.tuples(0).error() != 1) {
             // we actually got a non null key
@@ -322,7 +311,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
               if (pending_request_read_set[addr].to_retrieve_set_.size() == 0) {
                 // all keys covered
-                std::cout << "Attempting to send a response to " << addr << std::endl;
                 send_get_response(pending_request_read_set[addr].read_set_,
                                   addr, key_type_map, local_lww_cache,
                                   local_set_cache, pushers, log);
@@ -340,7 +328,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             string resp_string;
             response.SerializeToString(&resp_string);
 
-            kZmqUtil->send_string(resp_string,
+            kZmqUtil->send_string(
+                resp_string,
                 &pushers[request_address_map[response.response_id()]]);
             request_address_map.erase(response.response_id());
           }

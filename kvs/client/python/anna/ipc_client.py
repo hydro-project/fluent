@@ -18,8 +18,6 @@ PUT_REQUEST_ADDR = "ipc:///requests/put"
 GET_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/get_%d"
 PUT_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/put_%d"
 
-TIMEOUT = 5000
-
 import logging
 from .functions_pb2 import *
 from .kvs_pb2 import *
@@ -40,12 +38,12 @@ class IpcAnnaClient:
         self.put_request_socket.connect(PUT_REQUEST_ADDR)
 
         self.get_response_socket = self.context.socket(zmq.PULL)
+        self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.get_response_socket.bind(self.get_response_address)
-        self.get_response_socket.setsockopt(zmq.RCVTIMEO, TIMEOUT)
 
         self.put_response_socket = self.context.socket(zmq.PULL)
+        self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.put_response_socket.bind(self.put_response_address)
-        self.put_response_socket.setsockopt(zmq.RCVTIMEO, TIMEOUT)
 
     def get(self, keys):
         if type(keys) != list:
@@ -66,10 +64,14 @@ class IpcAnnaClient:
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
                 logging.error("Request for %s timed out!" % (str(keys)))
-                return None
             else:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
-                return None
+
+            resp = {}
+            for key in keys:
+                resp[key] = None
+
+            return resp
         else:
             kv_pairs = {}
             resp = KeyResponse()
@@ -78,7 +80,7 @@ class IpcAnnaClient:
             for tp in resp.tuples:
                 if tp.error == 1:
                     logging.info('Key %s does not exist!' % (key))
-                    return None
+                    kv_pairs[tp.key] = None
 
                 if tp.lattice_type == LWW:
                     val = LWWValue()
@@ -138,11 +140,15 @@ class IpcAnnaClient:
             msg = self.get_response_socket.recv()
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
-                logging.info("request timed out")
-                return None
+                logging.error("Request for %s timed out!" % (str(keys)))
             else:
-                logging.error("unknown zmq error")
-                return None
+                logging.error("Unexpected ZMQ error: %s." % (str(e)))
+
+            resp = {}
+            for key in keys:
+                resp[key] = None
+
+            return resp
         else:
             kv_pairs = {}
             resp = CausalResponse()
@@ -197,11 +203,11 @@ class IpcAnnaClient:
             msg = self.put_response_socket.recv()
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
-                logging.info("request timed out")
-                return False
+                logging.error("Request for %s timed out!" % (str(key)))
             else:
-                logging.error("unknown zmq error")
-                return False
+                logging.error("Unexpected ZMQ error: %s." % (str(e)))
+
+            return False
         else:
             resp = KeyResponse()
             resp.ParseFromString(msg)
@@ -236,10 +242,10 @@ class IpcAnnaClient:
             msg = self.put_response_socket.recv()
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
-                logging.info("request timed out")
-                return False
+                logging.error("Request for %s timed out!" % (str(key)))
             else:
-                logging.error("unknown zmq error")
-                return False
+                logging.error("Unexpected ZMQ error: %s." % (str(e)))
+
+            return False
         else:
             return True

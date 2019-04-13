@@ -53,6 +53,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
     schedule = DagSchedule()
     schedule.id = str(uuid.uuid4())
     schedule.dag.CopyFrom(dag)
+    schedule.consistency = NORMAL
 
     logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 

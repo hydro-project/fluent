@@ -29,7 +29,6 @@ def run(name, kvs, num_requests, sckt):
         body = { 'args': args }
         res = lambd.invoke(FunctionName=name, Payload=json.dumps(body))
         res = json.loads(res['Payload'].read())
-        print(res)
         kvs, comp = res
         end = time.time()
 
