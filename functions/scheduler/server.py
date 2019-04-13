@@ -88,9 +88,9 @@ def scheduler(ip, mgmt_ip, route_addr):
     executors, schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
             departed_executors, key_cache_map, key_ip_map, kvs)
 
+
     # track how often each DAG function is called
     call_frequency = {}
-
 
     start = time.time()
 
@@ -99,16 +99,16 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if connect_socket in socks and socks[connect_socket] == zmq.POLLIN:
             msg = connect_socket.recv_string()
-            connect_socket.send_string(routing_addr)
+            connect_socket.send_string(route_addr)
 
         if func_create_socket in socks and socks[func_create_socket] == zmq.POLLIN:
             create_func(func_create_socket, kvs)
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
-            call_function(func_call_socket, requestor_cache, executors, key_ip_map)
+            call_function(func_call_socket, pusher_cache, executors, key_ip_map)
 
         if dag_create_socket in socks and socks[dag_create_socket] == zmq.POLLIN:
-            create_dag(dag_create_socket, requestor_cache, kvs, executors,
+            create_dag(dag_create_socket, pusher_cache, kvs, executors,
                     dags, func_locations, call_frequency)
 
         if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
@@ -120,19 +120,8 @@ def scheduler(ip, mgmt_ip, route_addr):
             for fname in dag[0].functions:
                 call_frequency[fname] += 1
 
-            accepted, error, rid = call_dag(call, requestor_cache,
-                    pusher_cache, dags, func_locations, key_ip_map)
-
-            while not accepted:
-                # the assumption here is that the request was not accepted
-                # because the cluster was out of date -- so we update cluster
-                # state before proceeding
-                executors, schedulers = _update_cluster_state(requestor_cache,
-                        mgmt_ip, departed_executors, key_cache_map, key_ip_map,
-                        kvs)
-
-                accepted, error, rid = call_dag(call, requestor_cache,
-                        pusher_cache, dags, func_locations, key_ip_map)
+            rid = call_dag(call, pusher_cache, dags,
+                    func_locations, key_ip_map)
 
             resp = GenericResponse()
             resp.success = True
@@ -161,23 +150,23 @@ def scheduler(ip, mgmt_ip, route_addr):
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking
             if not status.running:
-                old_status = thread_statuses[key]
+                if key in thread_statuses:
+                    old_status = thread_statuses[key]
+                    del thread_statuses[key]
 
-                executors.remove(key)
-                departed_executors.add(status.ip)
-                del thread_statuses[key]
+                    for fname in old_status.functions:
+                        func_locations[fname].discard((old_status.ip,
+                            old_status.tid))
 
-                for fname in old_status.functions:
-                    func_locations[fname].remove(old_status.ip, old_status.tid)
+                executors.discard(key)
+                departed_executors.add((status.ip, status.tid))
 
                 continue
 
-            if key not in thread_statuses:
-                thread_statuses[key] = status
+            if key not in executors:
+                executors.add(key)
 
-                if key not in executors:
-                    executors.add(key)
-            elif thread_statuses[key] != status:
+            if key in thread_statuses and thread_statuses[key] != status:
                 # remove all the old function locations, and all the new ones
                 # -- there will probably be a large overlap, but this shouldn't
                 # be much different than calculating two different set
@@ -186,42 +175,66 @@ def scheduler(ip, mgmt_ip, route_addr):
                     if func in func_locations:
                         func_locations[func].discard(key)
 
-                for func in status.functions:
-                    if func not in func_locations:
-                        func_locations[func] = set()
+            thread_statuses[key] = status
+            for func in status.functions:
+                if func not in func_locations:
+                    func_locations[func] = set()
 
-                    func_locations[func].add(key)
-
-                thread_statuses[key] = status
+                func_locations[func].add(key)
 
         if sched_update_socket in socks and socks[sched_update_socket] == \
                 zmq.POLLIN:
             logging.info('Received update from another scheduler.')
-            ks = KeySet()
-            ks.ParseFromString(sched_update_socket.recv())
+            status = SchedulerStatus()
+            status.ParseFromString(sched_update_socket.recv())
 
             # retrieve any DAG that some other scheduler knows about that we do
             # not yet know about
-            for dname in ks.keys:
+            for dname in status.dags:
                 if dname not in dags:
                     dag = Dag()
-                    dag.ParseFromString(kvs.get(dname).value)
+                    dag.ParseFromString(kvs.get(dname).reveal()[1])
 
-                    dags[dname] = dag
+                    dags[dag.name] = (dag, utils._find_dag_source(dag))
+
+                    for fname in dag.functions:
+                        if fname not in call_frequency:
+                            call_frequency[fname] = 0
+
+                        if fname not in func_locations:
+                            func_locations[fname] = set()
+
+            for floc in status.func_locations:
+                key = (floc.ip, floc.tid)
+                fname = floc.name
+
+                if fname not in func_locations:
+                    func_locations[fname] = set()
+
+                func_locations[fname].add(key)
+
 
         end = time.time()
         if end - start > THRESHOLD:
             executors, schedulers = _update_cluster_state(requestor_cache,
                     mgmt_ip, departed_executors, key_cache_map, key_ip_map, kvs)
 
-            dag_names = KeySet()
+            status = SchedulerStatus()
             for name in dags.keys():
-                dag_names.keys.append(name)
-            msg = dag_names.SerializeToString()
+                status.dags.append(name)
+
+            for fname in func_locations:
+                for loc in func_locations[fname]:
+                    floc = status.func_locations.add()
+                    floc.name = fname
+                    floc.ip = loc[0]
+                    floc.tid = loc[1]
+
+            msg = status.SerializeToString()
 
             for sched_ip in schedulers:
                 if sched_ip != ip:
-                    pusher_cache.get(utils._get_scheduler_update_address(sched_ip))
+                    sckt = pusher_cache.get(utils._get_scheduler_update_address(sched_ip))
                     sckt.send(msg)
 
             stats = ExecutorStatistics()
@@ -229,6 +242,8 @@ def scheduler(ip, mgmt_ip, route_addr):
                 fstats = stats.statistics.add()
                 fstats.fname = fname
                 fstats.call_count = call_frequency[fname]
+                logging.info('Reporting %d calls for function %s.' %
+                        (call_frequency[fname], fname))
 
                 call_frequency[fname] = 0
 
@@ -247,7 +262,8 @@ def _update_cluster_state(requestor_cache, mgmt_ip, departed_executors,
     # remove any function executor nodes that might still be running
     # but that we know are departed
     for departed in departed_executors:
-        executors.remove(departed)
+        if departed in executors:
+            executors.remove(departed)
 
     utils._update_key_maps(key_cache_map, key_ip_map, executors, kvs)
 

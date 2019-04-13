@@ -24,6 +24,7 @@ USER root
 
 # check out to the appropriate branch and build the C++ project
 WORKDIR /fluent
+RUN git remote remove origin && git remote add origin https://github.com/$repo_org/fluent
 RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
 RUN bash scripts/build-all.sh -j4 -bRelease
 WORKDIR /

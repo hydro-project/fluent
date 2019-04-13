@@ -12,12 +12,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from executor.server import *
 import logging
 import os
-from scheduler.server import *
 import time
 import zmq
+
+from benchmarks.server import *
+from executor.server import *
+import client as flclient
+from scheduler.server import *
 
 REPORT_THRESH = 30
 global_util = 0.0
@@ -30,6 +33,12 @@ def run():
     if sys_func == 'scheduler':
         route_addr = os.environ['ROUTE_ADDR']
         scheduler(ip, mgmt_ip, route_addr)
+    if sys_func == 'benchmark':
+        function_addr = os.environ['FUNCTION_ADDR']
+        thread_id = int(os.environ['THREAD_ID'])
+
+        flconn = flclient.FluentConnection(function_addr, ip, thread_id)
+        benchmark(flconn, thread_id)
     else:
         schedulers = os.environ['SCHED_IPS'].split(' ')
         thread_id = int(os.environ['THREAD_ID'])

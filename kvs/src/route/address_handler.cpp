@@ -34,7 +34,6 @@ void address_handler(logger log, string& serialized, SocketCache& pushers,
   }
 
   bool respond = false;
-
   if (num_servers == 0) {
     addr_response.set_error(1);
 

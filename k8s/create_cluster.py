@@ -85,15 +85,10 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
     add_nodes(client, cfile, ['routing'], [route_count], mon_ips)
     route_ips = get_pod_ips(client, 'role=routing')
 
-    print('Creating %d memory, %d ebs, and %d benchmark node(s)...' %
-            (mem_count, ebs_count, bench_count))
-    add_nodes(client, cfile, ['memory', 'ebs', 'benchmark'],
-            [mem_count, ebs_count, bench_count], mon_ips, route_ips)
-
-    print('Finished creating all pods...')
-    os.system('touch setup_complete')
-    copy_file_to_pod(client, 'setup_complete', kops_podname, '/fluent', kcname)
-    os.system('rm setup_complete')
+    print('Creating %d memory, %d ebs node(s)...' %
+            (mem_count, ebs_count))
+    add_nodes(client, cfile, ['memory', 'ebs'],
+            [mem_count, ebs_count], mon_ips, route_ips)
 
     print('Creating routing service...')
     service_spec = load_yaml('yaml/services/routing.yml')
@@ -103,12 +98,12 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
     routing_svc = service_spec['metadata']['name']
     routing_svc_addr = get_service_address(client, routing_svc)
 
-    print('Adding scheduler nodes...')
+    print('Adding %d scheduler nodes...' % (sched_count))
     add_nodes(client, cfile, ['scheduler'], [sched_count], mon_ips,
             route_addr=routing_svc_addr)
     sched_ips = get_pod_ips(client, 'role=scheduler')
 
-    print('Adding function serving nodes...')
+    print('Adding %d function serving nodes...' % (func_count))
     add_nodes(client, cfile, ['function'], [func_count], mon_ips,
             route_addr=routing_svc_addr, scheduler_ips=sched_ips)
 
@@ -119,6 +114,15 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
 
     function_svc = service_spec['metadata']['name']
     function_svc_addr = get_service_address(client, function_svc)
+
+    print('Adding %d benchmark nodes...' % (bench_count))
+    add_nodes(client, cfile, ['benchmark'], [bench_count], mon_ips,
+        route_addr=routing_svc_addr, function_addr=function_svc_addr)
+
+    print('Finished creating all pods...')
+    os.system('touch setup_complete')
+    copy_file_to_pod(client, 'setup_complete', kops_podname, '/fluent', kcname)
+    os.system('rm setup_complete')
 
     sg_name = 'nodes.' + cluster_name
     sg = ec2_client.describe_security_groups(Filters=[{'Name': 'group-name',

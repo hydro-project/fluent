@@ -31,6 +31,34 @@ struct KeyProperty {
   LatticeType type_;
 };
 
+inline bool operator==(const KeyReplication& lhs, const KeyReplication& rhs) {
+  for (const auto& pair : lhs.global_replication_) {
+    TierId id = pair.first;
+
+    if (rhs.global_replication_.find(id) == rhs.global_replication_.end()) {
+      return false;
+    }
+
+    if (pair.second != rhs.global_replication_.at(id)) {
+      return false;
+    }
+  }
+
+  for (const auto& pair : lhs.local_replication_) {
+    TierId id = pair.first;
+
+    if (rhs.local_replication_.find(id) == rhs.local_replication_.end()) {
+      return false;
+    }
+
+    if (pair.second != rhs.local_replication_.at(id)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // per-tier metadata
 struct TierMetadata {
   TierMetadata() :

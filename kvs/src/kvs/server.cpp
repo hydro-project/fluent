@@ -274,7 +274,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   auto report_end = std::chrono::system_clock::now();
 
   unsigned long long working_time = 0;
-  unsigned long long working_time_map[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  unsigned long long working_time_map[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
   unsigned epoch = 0;
 
   // enter event loop
@@ -336,13 +336,10 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
                               std::chrono::system_clock::now() - work_start)
                               .count();
 
-      log->info("Handling a user request took {} seconds.",
-                std::to_string((double)time_elapsed / (double)1000000));
       working_time += time_elapsed;
       working_time_map[3] += time_elapsed;
     }
 
-    // receive gossip
     if (pollitems[4].revents & ZMQ_POLLIN) {
       auto work_start = std::chrono::system_clock::now();
 
@@ -427,17 +424,21 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
           if (succeed) {
             for (const ServerThread& thread : threads) {
-              addr_keyset_map[thread.gossip_connect_address()].insert(key);
+              if (!(thread == wt)) {
+                addr_keyset_map[thread.gossip_connect_address()].insert(key);
+              }
             }
           } else {
             log->error("Missing key replication factor in gossip routine.");
           }
 
           // Get the caches that we need to gossip to.
-          set<Address>& cache_ips = key_to_cache_ips[key];
-          for (const Address& cache_ip : cache_ips) {
-            CacheThread ct(cache_ip, 0);
-            addr_keyset_map[ct.cache_update_connect_address()].insert(key);
+          if (key_to_cache_ips.find(key) != key_to_cache_ips.end()) {
+            set<Address>& cache_ips = key_to_cache_ips[key];
+            for (const Address& cache_ip : cache_ips) {
+              CacheThread ct(cache_ip, 0);
+              addr_keyset_map[ct.cache_update_connect_address()].insert(key);
+            }
           }
         }
 
@@ -451,7 +452,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
                               .count();
 
       working_time += time_elapsed;
-      working_time_map[7] += time_elapsed;
+      working_time_map[8] += time_elapsed;
     }
 
     // Collect and store internal statistics,
@@ -565,7 +566,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
         kZmqUtil->send_string(serialized, &pushers[target_address]);
       }
 
-      // report key size stats
       KeySizeData primary_key_size;
       for (const auto& key_pair : stored_key_map) {
         if (is_primary_replica(key_pair.first, key_replication_map,

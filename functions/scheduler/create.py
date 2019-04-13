@@ -40,8 +40,8 @@ def create_func(func_create_socket, kvs):
     func_create_socket.send(sutils.ok_resp)
 
 
-def create_dag(dag_create_socket, requestor_cache, kvs, executors, dags,
-        func_locations, call_frequency):
+def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
+        func_locations, call_frequency, num_replicas=15):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -52,37 +52,27 @@ def create_dag(dag_create_socket, requestor_cache, kvs, executors, dags,
     kvs.put(dag.name, payload)
 
     for fname in dag.functions:
-        node, tid = random.sample(executors, 1)[0]
+        candidates = set(executors)
+        for _ in range(num_replicas):
+            if len(candidates) == 0:
+                break
 
-        sckt = requestor_cache.get(utils._get_pin_address(node, tid))
-        sckt.send_string(fname)
+            node, tid = random.sample(candidates, 1)[0]
 
-        resp = GenericResponse()
-        resp.ParseFromString(sckt.recv())
+            # this is currently a fire-and-forget operation -- we can see if we
+            # want to make stronger guarantees in the future
+            sckt = pusher_cache.get(utils._get_pin_address(node, tid))
+            sckt.send_string(fname)
 
-        # figure out how to deal with the error -- we don't really want
-        # to deal with error checking in detail rn?
-        if not resp.success:
-            dag_create_utils.send(resp.SerializeToString())
+            if fname not in call_frequency:
+                call_frequency[fname] = 0
 
-        if fname not in call_frequency:
-            call_frequency[fname] = 0
+            if fname not in func_locations:
+                func_locations[fname] = set()
 
-        if fname not in func_locations:
-            func_locations[fname] = set()
+            func_locations[fname].add((node, tid))
+            candidates.remove((node, tid))
 
-        func_locations[fname].add((node, tid))
-
-    dags[dag.name] = (dag, _find_dag_source(dag))
+    dags[dag.name] = (dag, utils._find_dag_source(dag))
     dag_create_socket.send(sutils.ok_resp)
 
-def _find_dag_source(dag):
-    sinks = set()
-    for conn in dag.connections:
-        sinks.add(conn.sink)
-
-    funcs = set(dag.functions)
-    for sink in sinks:
-        funcs.remove(sink)
-
-    return funcs

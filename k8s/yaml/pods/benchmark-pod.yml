@@ -19,16 +19,52 @@ metadata:
   labels: 
     role: benchmark
 spec:
+  restartPolicy: Never
   containers:
-  - name: benchmark-container
-    image: fluentproject/annakvs
+  - name: benchmark-1
+    image: fluentproject/executor
     env: 
-    - name: SERVER_TYPE
-      value: b
-    - name: ROUTING_IPS
-      value: ROUTING_IPS_DUMMY
-    - name: MON_IPS
-      value: MON_IPS_DUMMY
+    - name: SYSTEM_FUNC
+      value: benchmark
+    - name: FUNCTION_ADDR
+      value: FUNCTION_ADDR_DUMMY
+    - name: THREAD_ID
+      value: "0"
+    - name: MGMT_IP
+      value: ""
+  - name: benchmark-2
+    image: fluentproject/executor
+    env: 
+    - name: SYSTEM_FUNC
+      value: benchmark
+    - name: FUNCTION_ADDR
+      value: FUNCTION_ADDR_DUMMY
+    - name: THREAD_ID
+      value: "1"
+    - name: MGMT_IP
+      value: ""
+  - name: benchmark-3
+    image: fluentproject/executor
+    env: 
+    - name: SYSTEM_FUNC
+      value: benchmark
+    - name: FUNCTION_ADDR
+      value: FUNCTION_ADDR_DUMMY
+    - name: THREAD_ID
+      value: "2"
+    - name: MGMT_IP
+      value: ""
+  - name: benchmark-4
+    image: fluentproject/executor
+    env: 
+    - name: SYSTEM_FUNC
+      value: benchmark
+    - name: FUNCTION_ADDR
+      value: FUNCTION_ADDR_DUMMY
+    - name: THREAD_ID
+      value: "3"
+    - name: MGMT_IP
+      value: ""
   nodeSelector:
     role: benchmark
     podid: benchmark-NUM_DUMMY

@@ -20,11 +20,15 @@ import zmq
 from include.functions_pb2 import *
 from include.serializer import *
 from include import server_utils as sutils
+from include.shared import *
 from . import utils
 
-def call_function(func_call_socket, requestor_cache, executors, key_ip_map):
+def call_function(func_call_socket, pusher_cache, executors, key_ip_map):
     call = FunctionCall()
     call.ParseFromString(func_call_socket.recv())
+
+    if not call.HasField('resp_id'):
+        call.resp_id = str(uuid.uuid4())
 
     logging.info('Calling function %s.' % (call.name))
 
@@ -33,51 +37,42 @@ def call_function(func_call_socket, requestor_cache, executors, key_ip_map):
             call.args)))
 
     ip, tid = _pick_node(executors, key_ip_map, refs)
-    sckt = requestor_cache.get(utils._get_exec_address(ip, tid))
+    sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
 
-    # we currently don't do any checking here because either the function is
-    # not found (so there's nothing for the scheduler to do) or the request was
-    # accepted... we could make this async in the future, or there could be
-    # other error checks one might want to do.
-    func_call_socket.send(sckt.recv())
+    r = GenericResponse()
+    r.success = True
+    r.response_id = call.resp_id
+
+    func_call_socket.send(r.SerializeToString())
 
 
-def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,
-        key_ip_map):
-    logging.info('Calling DAG %s.' % (call.name))
-
+def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
     dag, sources = dags[call.name]
-    chosen_locations = {}
-    for f in dag.functions:
-        locations = func_locations[f]
-        args = call.function_args[f].args
+
+    schedule = DagSchedule()
+    schedule.id = str(uuid.uuid4())
+    schedule.dag.CopyFrom(dag)
+    schedule.consistency = NORMAL
+
+    logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
+
+    for fname in dag.functions:
+        locations = func_locations[fname]
+        args = call.function_args[fname].args
 
         refs = list(filter(lambda arg: type(arg) == FluentReference,
             map(lambda arg: get_serializer(arg.type).load(arg.body),
                 args)))
         loc = _pick_node(locations, key_ip_map, refs)
-        chosen_locations[f] = (loc[0], loc[1])
+        schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
-    schedule = DagSchedule()
-    schedule.id = generate_timestamp(0)
-    schedule.dag.CopyFrom(dag)
-
-    # copy over arguments into the dag schedule
-    for fname in call.function_args:
+        # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
-        arg_list.args.extend(call.function_args[fname].args)
+        arg_list.args.extend(args)
 
-    resp_id = str(uuid.uuid4())
-    schedule.response_id = resp_id
-
-    for func in chosen_locations:
-        loc = chosen_locations[func]
-        schedule.locations[func] = loc[0] + ':' + str(loc[1])
-
-
-    for func in chosen_locations:
-        loc = chosen_locations[func]
+    for func in schedule.locations:
+        loc = schedule.locations[func].split(':')
         ip = utils._get_queue_address(loc[0], loc[1])
         schedule.target_function = func
 
@@ -88,15 +83,8 @@ def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,
         schedule.ClearField('triggers')
         schedule.triggers.extend(triggers)
 
-        sckt = requestor_cache.get(ip)
+        sckt = pusher_cache.get(ip)
         sckt.send(schedule.SerializeToString())
-
-        response = GenericResponse()
-        response.ParseFromString(sckt.recv())
-
-        if not response.success:
-            logging.info('Schedule operation for %s at %s failed.' % (func, ip))
-            return response.success, response.error, None
 
     for source in sources:
         trigger = DagTrigger()
@@ -108,7 +96,7 @@ def call_dag(call, requestor_cache, pusher_cache, dags, func_locations,
         sckt = pusher_cache.get(ip)
         sckt.send(trigger.SerializeToString())
 
-    return True, None, resp_id
+    return schedule.id
 
 
 def _pick_node(executors, key_ip_map, refs):
@@ -116,15 +104,21 @@ def _pick_node(executors, key_ip_map, refs):
     # relevant arguments they have cached. For the time begin, we will
     # just pick the machine that has the most number of keys cached.
     arg_map = {}
+
+    executor_ips = [e[0] for e in executors]
+
     for ref in refs:
         if ref.key in key_ip_map:
             ips = key_ip_map[ref.key]
 
             for ip in ips:
-                if ip not in arg_map:
-                    arg_map[ip] = 0
+                # only choose this cached node if its a valid executor for our
+                # purposes
+                if ip in executor_ips:
+                    if ip not in arg_map:
+                        arg_map[ip] = 0
 
-                arg_map[ip] += 1
+                    arg_map[ip] += 1
 
     max_ip = None
     max_count = 0
@@ -133,15 +127,17 @@ def _pick_node(executors, key_ip_map, refs):
             max_count = arg_map[ip]
             max_ip = ip
 
-    # pick a random thrad on that IP address
+    # pick a random thead from our potential executors that is on that IP
+    # address; we also route some requests to a random valid node
     if max_ip:
-        max_ip = (max_ip, random.choice(list(range(utils.NUM_EXEC_THREADS))))
+        candidates = list(filter(lambda e: e[0] == max_ip, executors))
+        max_ip = random.choice(candidates)
 
     # This only happens if max_ip is never set, and that means that
     # there were no machines with any of the keys cached. In this case,
     # we pick a random IP that was in the set of IPs that was running
     # most recently.
-    if not max_ip:
+    if not max_ip or random.random() < 0.20:
         max_ip = random.sample(executors, 1)[0]
 
     return max_ip

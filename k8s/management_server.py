@@ -35,7 +35,7 @@ UTILIZATION_MIN = .10
 LATENCY_RATIO = 1.25
 CALL_COUNT_THRESHOLD = 200
 
-GRACE_PERIOD = 120
+GRACE_PERIOD = 180
 grace_start = 0
 
 EXECUTOR_REPORT_PERIOD = 20
@@ -109,10 +109,11 @@ def run():
             args = msg.split(':')
 
             if args[0] == 'add':
-                msg = args[2] + args[1]
+                logging.info('Received message: %s.' % (msg))
+                msg = args[2] + ':' + args[1]
                 add_push_socket.send_string(msg)
             elif args[0] == 'remove':
-                msg = args[2] = args[1]
+                msg = args[2] + ':' + args[1]
                 remove_push_socket.send_string(msg)
 
         if restart_pull_socket in socks and socks[restart_pull_socket] == \
@@ -190,10 +191,16 @@ def run():
 
                 if fname not in function_frequencies:
                     function_frequencies[fname] = 0
-                    function_runtimes[fname] = 0.0
 
-                function_frequencies[fname] += fstats.call_count
-                function_runtimes[fname] += fstats.runtime
+                if fname not in function_runtimes:
+                    function_runtimes[fname] = (0.0, 0)
+
+                if fstats.HasField('runtime'):
+                    old_latency = function_runtimes[fname]
+                    function_runtimes[fname] = (old_latency[0] + fstats.runtime,
+                            old_latency[1] + fstats.call_count)
+                else:
+                    function_frequencies[fname] += fstats.call_count
 
         end = time.time()
         if end - start > REPORT_PERIOD:
@@ -208,6 +215,9 @@ def run():
 
             check_function_load(context, function_frequencies, function_runtimes,
                     executor_statuses, latency_history)
+
+            function_runtimes.clear()
+            function_frequencies.clear()
             start = time.time()
 
 def check_function_load(context, function_frequencies, function_runtimes,
@@ -230,20 +240,22 @@ def check_function_load(context, function_frequencies, function_runtimes,
         runtime = function_runtimes[fname]
         call_count = function_frequencies[fname]
 
-        if call_count == 0 or runtime == 0:
+        if call_count == 0 or runtime[0] == 0:
             continue
 
-        avg_latency = runtime / call_count
-        logging.info('Function %s: %d calls, %.4f average latency.' % (fname,
-            call_count, avg_latency))
+        avg_latency = runtime[0] / runtime[1]
 
         num_replicas = len(func_locations[fname])
-        thruput = num_replicas * EXECUTOR_REPORT_PERIOD * (1 / avg_latency)
+        thruput = float(num_replicas * EXECUTOR_REPORT_PERIOD) * (1 / avg_latency)
 
-        if call_count > thruput:
+        logging.info(('Function %s: %d calls, %.4f average latency, %.2f' +
+                ' thruput, %d replicas.') % (fname, call_count, avg_latency,
+                    thruput, num_replicas))
+
+        if call_count > thruput * .8:
             logging.info(('Function %s: %d calls in recent period exceeds'
                 + ' threshold. Adding replicas.') % (fname, call_count))
-            increase = math.ceil(call_count / thruput) -  num_replicas
+            increase = math.ceil(call_count / thruput) -  num_replicas + 1
             replicate_function(fname, context, increase, func_locations,
                     executors)
         elif fname in latency_history:
@@ -256,17 +268,27 @@ def check_function_load(context, function_frequencies, function_runtimes,
                 logging.info(('Function %s: recent latency average (%.4f) is ' +
                         '%.2f times the historical average. Adding replicas.')
                         % (fname, avg_latency, ratio))
-                num_replicas = math.ceil(ratio) - len(func_locations[fname])
+                num_replicas = math.ceil(ratio) - len(func_locations[fname]) + 1
                 replicate_function(fname, context, num_replicas, func_locations,
                         executors)
+            else:
+                for status in executor_statuses.values():
+                    if status.utilization > .9:
+                        logging.info(('Node %s:%d has over 90%% utilization.'
+                            + ' Replicating its functions.') % (status.ip,
+                                status.tid))
+                        for fname in status.functions:
+                            replicate_function(fname, context, 2,
+                                    func_locations, executors)
 
             # update these variables based on history, so we can insert them
             # into the history tracker
-            runtime += historical * count
-            call_count += count
-            avg_latency = runtime / call_count
+            rt = runtime[0] + historical * count
+            hist_count = runtime[1] + count
+            avg_latency = rt / hist_count
+            runtime = (rt, hist_count)
 
-        latency_history[fname] = (avg_latency, call_count)
+        latency_history[fname] = (avg_latency, runtime[1])
         function_frequencies[fname] = 0
         function_runtimes[fname] = 0.0
 
@@ -283,17 +305,9 @@ def replicate_function(fname, context, num_replicas, func_locations, executors):
 
         ip, tid = random.sample(candiate_nodes, 1)[0]
 
-        sckt = context.socket(zmq.REQ)
+        sckt = context.socket(zmq.PUSH)
         sckt.connect(util._get_executor_pin_address(ip, tid))
         sckt.send_string(fname)
-
-        response = GenericResponse()
-        response.ParseFromString(sckt.recv())
-
-        if not response.success:
-            # TODO: figure out what to do with the error here -- just try
-            # again?
-            return
 
         func_locations[fname].add((ip, tid))
 
@@ -334,11 +348,11 @@ def check_executor_utilization(client, ctx, executor_statuses,
             grace_start = time.time()
 
         # we only decide to kill nodes if they are underutilized and if there
-        # are at last two executors in the system -- we never scale down past
+        # are at least 5 executors in the system -- we never scale down past
         # that
         num_nodes = len(executor_statuses) / NUM_EXEC_THREADS
 
-        if avg_utilization < UTILIZATION_MIN and num_nodes > 2:
+        if avg_utilization < UTILIZATION_MIN and num_nodes > 15:
             ip = random.choice(list(executor_statuses.values())).ip
             logging.info(('Average utilization is %.4f, and there are %d '
                     + 'executors. Removing IP %s.') % (avg_utilization,
@@ -347,7 +361,9 @@ def check_executor_utilization(client, ctx, executor_statuses,
             for tid in range(NUM_EXEC_THREADS):
                 sckt = ctx.socket(zmq.PUSH)
                 sckt.connect(util._get_executor_depart_address(ip, tid))
-                del executor_statuses[(ip, tid)]
+
+                if (ip, tid) in executor_statuses:
+                    del executor_statuses[(ip, tid)]
 
                 # this message does not matter
                 sckt.send(b'')
@@ -452,9 +468,9 @@ def check_unused_nodes(client, add_push_socket):
 
         logging.info('Found %d unallocated %s nodes.' % (len(unallocated),
             kind))
-        for node_ip in unallocated:
-            # note that the last argument is a list of lists
-            msg = kind + ':1'
+
+        if len(unallocated) > 0:
+            msg = kind + ':' + str(len(unallocated))
             add_push_socket.send_string(msg)
 
 if __name__ == '__main__':

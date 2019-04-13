@@ -35,7 +35,7 @@ git remote add origin https://github.com/$REPO_ORG/fluent
 git fetch -p origin
 git checkout -b brnch origin/$REPO_BRANCH
 
-cd build && make -j2 && cd ..
+cd build && make -j4 && cd ..
 
 while [[ ! -f "conf/kvs-config.yml" ]]; do
   continue
@@ -46,4 +46,4 @@ echo -e "user:" >> conf/kvs-config.yml
 echo -e "    ip: $IP" >> conf/kvs-config.yml
 echo -e "    routing-elb: $ROUTE_ADDR" >> conf/kvs-config.yml
 
-./build/functions/cache/src/flfunc-cache
+./build/functions/cache/src/flfunc-async-cache
