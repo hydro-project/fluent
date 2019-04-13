@@ -14,9 +14,10 @@
 
 import cloudpickle as cp
 import codecs
-from .functions_pb2 import *
 from io import BytesIO
 import numpy as np
+
+from .functions_pb2 import *
 from . import shared
 
 SER_FORMAT = 'raw_unicode_escape'
@@ -107,7 +108,7 @@ def serialize_val(val, valobj=None, serialize=True):
 
     if isinstance(val, shared.FluentFuture):
         valobj.body = default_ser.dump(shared.FluentReference(val.obj_id,
-            True))
+            True, LWW))
     elif isinstance(val, np.ndarray):
         valobj.body = numpy_ser.dump(val)
         valobj.type = NUMPY
