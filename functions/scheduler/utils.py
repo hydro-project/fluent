@@ -46,7 +46,7 @@ def _put_func_list(client, funclist):
     funclist = list(set(funclist))
 
     l = LWWPairLattice(generate_timestamp(0), default_ser.dump(funclist))
-    res = client.put(FUNCOBJ, l)
+    client.put(FUNCOBJ, l)
 
 
 def _get_cache_ip_key(ip):

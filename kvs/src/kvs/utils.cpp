@@ -30,8 +30,6 @@ void send_gossip(AddressKeysetMap& addr_keyset_map, SocketCache& pushers,
       if (stored_key_map.find(key) == stored_key_map.end()) {
         // we don't have this key stored, so skip
         continue;
-      } else if (is_metadata(key)) {
-        type = LWW;
       } else {
         type = stored_key_map[key].type_;
       }

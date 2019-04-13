@@ -70,7 +70,7 @@ message KeyTuple {
 message KeyRequest {
   required RequestType type = 1;
   repeated KeyTuple tuples = 2;
-  required string response_address = 3;
+  optional string response_address = 3;
   optional string request_id = 4;
 }
 

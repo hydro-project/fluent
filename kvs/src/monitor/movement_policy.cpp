@@ -36,95 +36,95 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
        ss.total_memory_consumption);
   bool overflow = false;
 
-  // for (const auto& key_access_pair : key_access_summary) {
-  //   Key key = key_access_pair.first;
-  //   unsigned access_count = key_access_pair.second;
+  for (const auto& key_access_pair : key_access_summary) {
+    Key key = key_access_pair.first;
+    unsigned access_count = key_access_pair.second;
 
-  //   if (!is_metadata(key) && access_count > kKeyPromotionThreshold &&
-  //       key_replication_map[key].global_replication_[kMemoryTierId] == 0 &&
-  //       key_size.find(key) != key_size.end()) {
-  //     required_storage += key_size[key];
-  //     if (required_storage > free_storage) {
-  //       overflow = true;
-  //     } else {
-  //       total_rep_to_change += 1;
-  //       requests[key] = create_new_replication_vector(
-  //           key_replication_map[key].global_replication_[kMemoryTierId] + 1,
-  //           key_replication_map[key].global_replication_[kEbsTierId] - 1,
-  //           key_replication_map[key].local_replication_[kMemoryTierId],
-  //           key_replication_map[key].local_replication_[kEbsTierId]);
-  //     }
-  //   }
-  // }
+    if (!is_metadata(key) && access_count > kKeyPromotionThreshold &&
+        key_replication_map[key].global_replication_[kMemoryTierId] == 0 &&
+        key_size.find(key) != key_size.end()) {
+      required_storage += key_size[key];
+      if (required_storage > free_storage) {
+        overflow = true;
+      } else {
+        total_rep_to_change += 1;
+        requests[key] = create_new_replication_vector(
+            key_replication_map[key].global_replication_[kMemoryTierId] + 1,
+            key_replication_map[key].global_replication_[kEbsTierId] - 1,
+            key_replication_map[key].local_replication_[kMemoryTierId],
+            key_replication_map[key].local_replication_[kEbsTierId]);
+      }
+    }
+  }
 
-  // change_replication_factor(requests, global_hash_rings, local_hash_rings,
-  //                           routing_ips, key_replication_map, pushers, mt,
-  //                           response_puller, log, rid);
-  // log->info("Promoting {} keys into memory tier.", total_rep_to_change);
-  // auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-  //                         std::chrono::system_clock::now() - grace_start)
-  //                         .count();
+  change_replication_factor(requests, global_hash_rings, local_hash_rings,
+                            routing_ips, key_replication_map, pushers, mt,
+                            response_puller, log, rid);
+  log->info("Promoting {} keys into memory tier.", total_rep_to_change);
+  auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                          std::chrono::system_clock::now() - grace_start)
+                          .count();
 
-  // if (overflow && adding_memory_node == 0 && time_elapsed > kGracePeriod) {
-  //   unsigned total_memory_node_needed =
-  //       ceil((ss.total_memory_consumption + required_storage) /
-  //            (kMaxMemoryNodeConsumption *
-  //             kTierMetadata[kMemoryTierId].node_capacity_));
+  if (overflow && adding_memory_node == 0 && time_elapsed > kGracePeriod) {
+    unsigned total_memory_node_needed =
+        ceil((ss.total_memory_consumption + required_storage) /
+             (kMaxMemoryNodeConsumption *
+              kTierMetadata[kMemoryTierId].node_capacity_));
 
-  //   if (total_memory_node_needed > memory_node_number) {
-  //     unsigned node_to_add = (total_memory_node_needed - memory_node_number);
-  //     add_node(log, "memory", node_to_add, adding_memory_node, pushers,
-  //              management_ip);
-  //   }
-  // }
+    if (total_memory_node_needed > memory_node_number) {
+      unsigned node_to_add = (total_memory_node_needed - memory_node_number);
+      add_node(log, "memory", node_to_add, adding_memory_node, pushers,
+               management_ip);
+    }
+  }
 
-  // requests.clear();
-  // total_rep_to_change = 0;
-  // required_storage = 0;
+  requests.clear();
+  total_rep_to_change = 0;
+  required_storage = 0;
 
-  // // demote cold keys to ebs tier
-  // free_storage =
-  //     (kMaxEbsNodeConsumption * kTierMetadata[kEbsTierId].node_capacity_ *
-  //          ebs_node_number -
-  //      ss.total_ebs_consumption);
-  // overflow = false;
+  // demote cold keys to ebs tier
+  free_storage =
+      (kMaxEbsNodeConsumption * kTierMetadata[kEbsTierId].node_capacity_ *
+           ebs_node_number -
+       ss.total_ebs_consumption);
+  overflow = false;
 
-  // for (const auto& key_access_pair : key_access_summary) {
-  //   Key key = key_access_pair.first;
-  //   unsigned access_count = key_access_pair.second;
+  for (const auto& key_access_pair : key_access_summary) {
+    Key key = key_access_pair.first;
+    unsigned access_count = key_access_pair.second;
 
-  //   if (!is_metadata(key) && access_count < kKeyDemotionThreshold &&
-  //       key_replication_map[key].global_replication_[kMemoryTierId] > 0 &&
-  //       key_size.find(key) != key_size.end()) {
-  //     required_storage += key_size[key];
-  //     if (required_storage > free_storage) {
-  //       overflow = true;
-  //     } else {
-  //       total_rep_to_change += 1;
-  //       requests[key] =
-  //           create_new_replication_vector(0, kMinimumReplicaNumber, 1, 1);
-  //     }
-  //   }
-  // }
+    if (!is_metadata(key) && access_count < kKeyDemotionThreshold &&
+        key_replication_map[key].global_replication_[kMemoryTierId] > 0 &&
+        key_size.find(key) != key_size.end()) {
+      required_storage += key_size[key];
+      if (required_storage > free_storage) {
+        overflow = true;
+      } else {
+        total_rep_to_change += 1;
+        requests[key] =
+            create_new_replication_vector(0, kMinimumReplicaNumber, 1, 1);
+      }
+    }
+  }
 
-  // change_replication_factor(requests, global_hash_rings, local_hash_rings,
-  //                           routing_ips, key_replication_map, pushers, mt,
-  //                           response_puller, log, rid);
-  // log->info("Demoting {} keys into EBS tier.", total_rep_to_change);
-  // if (overflow && adding_ebs_node == 0 && time_elapsed > kGracePeriod) {
-  //   unsigned total_ebs_node_needed = ceil(
-  //       (ss.total_ebs_consumption + required_storage) /
-  //       (kMaxEbsNodeConsumption * kTierMetadata[kEbsTierId].node_capacity_));
+  change_replication_factor(requests, global_hash_rings, local_hash_rings,
+                            routing_ips, key_replication_map, pushers, mt,
+                            response_puller, log, rid);
+  log->info("Demoting {} keys into EBS tier.", total_rep_to_change);
+  if (overflow && adding_ebs_node == 0 && time_elapsed > kGracePeriod) {
+    unsigned total_ebs_node_needed = ceil(
+        (ss.total_ebs_consumption + required_storage) /
+        (kMaxEbsNodeConsumption * kTierMetadata[kEbsTierId].node_capacity_));
 
-  //   if (total_ebs_node_needed > ebs_node_number) {
-  //     unsigned node_to_add = (total_ebs_node_needed - ebs_node_number);
-  //     add_node(log, "ebs", node_to_add, adding_ebs_node, pushers,
-  //              management_ip);
-  //   }
-  // }
+    if (total_ebs_node_needed > ebs_node_number) {
+      unsigned node_to_add = (total_ebs_node_needed - ebs_node_number);
+      add_node(log, "ebs", node_to_add, adding_ebs_node, pushers,
+               management_ip);
+    }
+  }
 
-  // requests.clear();
-  // total_rep_to_change = 0;
+  requests.clear();
+  total_rep_to_change = 0;
 
   // reduce the replication factor of some keys that are not so hot anymore
   KeyReplication minimum_rep =

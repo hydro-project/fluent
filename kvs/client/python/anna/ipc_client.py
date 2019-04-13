@@ -86,10 +86,7 @@ class IpcAnnaClient:
                     val = LWWValue()
                     val.ParseFromString(tp.payload)
 
-                    if b'ERROR' in val.value:
-                        kv_pairs[tp.key] = None
-                    else:
-                        kv_pairs[tp.key] = LWWPairLattice(val.timestamp, val.value)
+                    kv_pairs[tp.key] = LWWPairLattice(val.timestamp, val.value)
                 elif tp.lattice_type == SET:
                     res = set()
 

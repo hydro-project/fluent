@@ -90,13 +90,13 @@ message ThreadStatus {
 
 message DagSchedule {
   required string id = 1;
-  required Dag dag = 3;
-  required string target_function = 4;
-  required ConsistencyType consistency = 5 [default = NORMAL]; 
-  repeated string triggers = 6;
-  map<string, string> locations = 7; // which functions should be executed where
+  required Dag dag = 2;
+  required string target_function = 3;
+  required ConsistencyType consistency = 4 [default = NORMAL]; 
+  repeated string triggers = 5;
+  map<string, string> locations = 6; // which functions should be executed where
   // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
-  map<string, ArgList> arguments = 8; 
+  map<string, ArgList> arguments = 7; 
 }
 
 message VersionedKey {
