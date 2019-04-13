@@ -33,7 +33,7 @@ class KvsAsyncClientInterface {
  public:
   virtual string put_async(const Key& key, const string& payload,
                            LatticeType lattice_type) = 0;
-  virtual string get_async(const Key& key) = 0;
+  virtual void get_async(const Key& key) = 0;
   virtual vector<KeyResponse> receive_async(ZmqUtilInterface* kZmqUtil) = 0;
   virtual zmq::context_t* get_context() = 0;
 };
@@ -101,7 +101,7 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
   /**
    * Issue an async GET request to the KVS.
    */
-  string get_async(const Key& key) {
+  void get_async(const Key& key) {
     // we issue GET only when it is not in the pending map
     log_->error("get async...");
     if (pending_get_response_map_.find(key) ==
@@ -112,7 +112,6 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
 
       try_request(request);
     }
-    return pending_get_response_map_[key].request_.request_id();
   }
 
   vector<KeyResponse> receive_async(ZmqUtilInterface* kZmqUtil) {
