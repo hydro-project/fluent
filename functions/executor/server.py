@@ -188,20 +188,19 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 receive_times[(trigger.id, fname)] = time.time()
 
             received_triggers[key][trigger.source] = trigger
-            if fname in queue and trigger.id in queue[fname] and \
-                    len(received_triggers[key]) == \
-                    len(schedule.triggers):
+            if fname in queue and trigger.id in queue[fname]:
                 schedule = queue[fname][trigger.id]
-                exec_dag_function(pusher_cache, client,
-                        received_triggers[key],
-                        pinned_functions[fname], schedule)
-                del received_triggers[key]
-                del queue[fname][trigger.id]
+                if len(received_triggers[key]) == len(schedule.triggers):
+                    exec_dag_function(pusher_cache, client,
+                            received_triggers[key],
+                            pinned_functions[fname], schedule)
+                    del received_triggers[key]
+                    del queue[fname][trigger.id]
 
-                fend = time.time()
-                fstart = receive_times[(trigger.id, fname)]
-                runtimes[fname] += fend - fstart
-                exec_counts[fname] += 1
+                    fend = time.time()
+                    fstart = receive_times[(trigger.id, fname)]
+                    runtimes[fname] += fend - fstart
+                    exec_counts[fname] += 1
 
             elapsed = time.time() - work_start
             event_occupancy['dag_exec'] += elapsed
