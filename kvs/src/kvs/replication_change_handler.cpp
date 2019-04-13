@@ -46,7 +46,6 @@ void replication_change_handler(Address public_ip, Address private_ip,
 
   for (const ReplicationFactor& key_rep : rep_change.key_reps()) {
     Key key = key_rep.key();
-
     // if this thread has the key stored before the change
     if (stored_key_map.find(key) != stored_key_map.end()) {
       ServerThreadList orig_threads = kHashRingUtil->get_responsible_threads(

@@ -87,7 +87,6 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
    */
   string put_async(const Key& key, const string& payload,
                    LatticeType lattice_type) {
-    log_->error("put async...");
     KeyRequest request;
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
@@ -103,7 +102,6 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
    */
   void get_async(const Key& key) {
     // we issue GET only when it is not in the pending map
-    log_->error("get async...");
     if (pending_get_response_map_.find(key) ==
         pending_get_response_map_.end()) {
       KeyRequest request;
@@ -116,40 +114,45 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
 
   vector<KeyResponse> receive_async(ZmqUtilInterface* kZmqUtil) {
     vector<KeyResponse> result;
-
     kZmqUtil->poll(0, &pollitems_);
+
     // handle a key address response
     if (pollitems_[0].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&key_address_puller_);
       KeyAddressResponse response;
       response.ParseFromString(serialized);
       Key key = response.addresses(0).key();
+
       if (pending_request_map_.find(key) != pending_request_map_.end()) {
         if (response.error() == 1) {
           log_->error(
               "No servers have joined the cluster yet. Retrying request.");
           pending_request_map_[key].first = std::chrono::system_clock::now();
+
           query_routing_async(key);
         } else {
           // populate cache
           for (const Address& ip : response.addresses(0).ips()) {
             key_address_cache_[key].insert(ip);
           }
+
           // handle stuff in pending request map
           for (auto& req : pending_request_map_[key].second) {
             try_request(req);
           }
+
           // GC the pending request map
           pending_request_map_.erase(key);
         }
       }
     }
-    // handle a response
+
     if (pollitems_[1].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&response_puller_);
       KeyResponse response;
       response.ParseFromString(serialized);
       Key key = response.tuples(0).key();
+
       if (response.type() == RequestType::GET) {
         if (pending_get_response_map_.find(key) !=
             pending_get_response_map_.end()) {
@@ -157,11 +160,11 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
             // error no == 2, so re-issue request
             pending_get_response_map_[key].tp_ =
                 std::chrono::system_clock::now();
+
             try_request(pending_get_response_map_[key].request_);
           } else {
             // error no == 0 or 1
             result.push_back(response);
-            // GC
             pending_get_response_map_.erase(key);
           }
         }
@@ -174,13 +177,14 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
             // error no == 2, so re-issue request
             pending_put_response_map_[key][response.response_id()].tp_ =
                 std::chrono::system_clock::now();
+
             try_request(pending_put_response_map_[key][response.response_id()]
                             .request_);
           } else {
             // error no == 0
             result.push_back(response);
-            // GC
             pending_put_response_map_[key].erase(response.response_id());
+
             if (pending_put_response_map_[key].size() == 0) {
               pending_put_response_map_.erase(key);
             }
@@ -199,9 +203,11 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
         for (const auto& req : pair.second.second) {
           result.push_back(generate_bad_response(req));
         }
+
         to_remove.insert(pair.first);
       }
     }
+
     for (const Key& key : to_remove) {
       pending_request_map_.erase(key);
     }
@@ -218,6 +224,7 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
         invalidate_cache_for_worker(pair.second.worker_addr_);
       }
     }
+
     for (const Key& key : to_remove) {
       pending_get_response_map_.erase(key);
     }
@@ -238,6 +245,7 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
         }
       }
     }
+
     for (const auto& key_set_pair : to_remove_put) {
       for (const auto& id : key_set_pair.second) {
         pending_put_response_map_[key_set_pair.first].erase(id);
@@ -302,6 +310,7 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
         pending_get_response_map_[key].tp_ = std::chrono::system_clock::now();
         pending_get_response_map_[key].request_ = request;
       }
+
       pending_get_response_map_[key].worker_addr_ = worker;
     } else {
       if (pending_put_response_map_[key].find(request.request_id()) ==
@@ -473,15 +482,19 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
 
   KeyResponse generate_bad_response(const KeyRequest& req) {
     KeyResponse resp;
+
     resp.set_type(req.type());
     resp.set_response_id(req.request_id());
     resp.set_error(ResponseErrorType::TIMEOUT);
+
     KeyTuple* tp = resp.add_tuples();
     tp->set_key(req.tuples(0).key());
+
     if (req.type() == RequestType::PUT) {
       tp->set_lattice_type(req.tuples(0).lattice_type());
       tp->set_payload(req.tuples(0).payload());
     }
+
     return resp;
   }
 

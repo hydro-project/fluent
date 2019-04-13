@@ -10,7 +10,8 @@ def recv_response(req_ids, rcv_sock, resp_class):
 
     while len(responses) < len(req_ids):
         resp_obj = resp_class()
-        resp_obj.ParseFromString(rcv_sock.recv())
+        resp = rcv_sock.recv()
+        resp_obj.ParseFromString(resp)
 
         while resp_obj.response_id not in req_ids:
             resp_obj.Clear()

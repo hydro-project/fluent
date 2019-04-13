@@ -127,11 +127,14 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   total_rep_to_change = 0;
 
   // reduce the replication factor of some keys that are not so hot anymore
+  KeyReplication minimum_rep =
+      create_new_replication_vector(1, kMinimumReplicaNumber - 1, 1, 1);
   for (const auto& key_access_pair : key_access_summary) {
     Key key = key_access_pair.first;
     unsigned access_count = key_access_pair.second;
 
-    if (!is_metadata(key) && access_count <= ss.key_access_mean) {
+    if (!is_metadata(key) && access_count <= ss.key_access_mean &&
+        !(key_replication_map[key] == minimum_rep)) {
       log->info("Key {} accessed {} times (threshold is {}).", key,
                 access_count, ss.key_access_mean);
       requests[key] =

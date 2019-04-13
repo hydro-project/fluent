@@ -71,6 +71,11 @@ void change_replication_factor(map<Key, KeyReplication>& requests,
     KeyReplication new_rep = request_pair.second;
     orig_key_replication_map_info[key] = key_replication_map[key];
 
+    // don't send an update if we're not changing the metadata
+    if (new_rep == key_replication_map[key]) {
+      continue;
+    }
+
     // update the metadata map
     key_replication_map[key].global_replication_ = new_rep.global_replication_;
     key_replication_map[key].local_replication_ = new_rep.local_replication_;

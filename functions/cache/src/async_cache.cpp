@@ -171,14 +171,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           key_requestor_map[key].insert(request.response_address());
           client->get_async(key);
         }
+      }
 
-        if (covered) {
-          send_get_response(read_set, request.response_address(), key_type_map,
-                            local_lww_cache, local_set_cache, pushers, log);
-        } else {
-          pending_request_read_set[request.response_address()] =
-              PendingClientMetadata(read_set, to_retrieve);
-        }
+      if (covered) {
+        send_get_response(read_set, request.response_address(), key_type_map,
+                          local_lww_cache, local_set_cache, pushers, log);
+      } else {
+        pending_request_read_set[request.response_address()] =
+            PendingClientMetadata(read_set, to_retrieve);
       }
     }
 
@@ -195,14 +195,17 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         Key key = tuple.key();
 
         if (!tuple.has_lattice_type()) {
-          log->error("Cache requires type to put key.");
+          log->error("The cache requires the lattice type to PUT key.");
           send_error_response(RequestType::PUT, request.response_address(),
                               pushers);
           error = true;
           break;
         } else if ((key_type_map.find(key) != key_type_map.end()) &&
                    (key_type_map[key] != tuple.lattice_type())) {
-          log->error("lattice type mismatch.");
+          log->error(
+              "Key {}: Lattice type for PUT does not match stored lattice "
+              "type.",
+              key);
           send_error_response(RequestType::PUT, request.response_address(),
                               pushers);
           error = true;
@@ -248,7 +251,10 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           // globally. I think we should just drop our local copy for the time
           // being, but open to other ideas.
 
-          log->error("lattice type mismatch during key update from KVS.");
+          log->error(
+              "Key {}: Stored lattice type did not match type received "
+              "in KVS update.",
+              key);
 
           switch (key_type_map[key]) {
             case LatticeType::LWW: local_lww_cache.erase(key); break;
@@ -268,9 +274,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
       Key key = response.tuples(0).key();
-      // TODO: assert that key_type_map[key] and
-      // response.tuples(0).lattice_type() are the same first, check if
-      // the request failed
+
       if (response.has_error() &&
           response.error() == ResponseErrorType::TIMEOUT) {
         if (response.type() == RequestType::GET) {
@@ -283,9 +287,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             string new_req_id =
                 client->put_async(key, response.tuples(0).payload(),
                                   response.tuples(0).lattice_type());
+
             request_address_map[new_req_id] =
                 request_address_map[response.response_id()];
-            // GC the original request_id address pair
             request_address_map.erase(response.response_id());
           }
         }
@@ -299,10 +303,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                          response.tuples(0).payload(), local_lww_cache,
                          local_set_cache, log);
           }
+
           // notify clients
           if (key_requestor_map.find(key) != key_requestor_map.end()) {
             for (const Address& addr : key_requestor_map[key]) {
               pending_request_read_set[addr].to_retrieve_set_.erase(key);
+
               if (pending_request_read_set[addr].to_retrieve_set_.size() == 0) {
                 // all keys covered
                 send_get_response(pending_request_read_set[addr].read_set_,
@@ -311,17 +317,17 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                 pending_request_read_set.erase(addr);
               }
             }
+
             key_requestor_map.erase(key);
           }
         } else {
-          // forward the PUT response to client
-          if (request_address_map.find(response.response_id()) ==
+          // we only send a response if we have a response address -- e.g., we
+          // don't have one for updating our own cached key set
+          if (request_address_map.find(response.response_id()) !=
               request_address_map.end()) {
-            log->error(
-                "Missing request id - address entry for this PUT response");
-          } else {
             string resp_string;
             response.SerializeToString(&resp_string);
+
             kZmqUtil->send_string(
                 resp_string,
                 &pushers[request_address_map[response.response_id()]]);

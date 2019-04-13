@@ -22,7 +22,7 @@ from util import *
 ec2_client = boto3.client('ec2', 'us-east-1')
 
 def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
-        route_addr=None, scheduler_ips=[]):
+        route_addr=None, scheduler_ips=[], function_addr=None):
     if node_ips:
         assert len(kinds) == len(counts) == len(node_ips), ('Must have same ' +
                 'number of kinds and counts and node_ips.')
@@ -95,6 +95,7 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
                 replace_yaml_val(env, 'ROUTING_IPS', route_str)
                 replace_yaml_val(env, 'SCHED_IPS', sched_str)
                 replace_yaml_val(env, 'ROUTE_ADDR', route_addr)
+                replace_yaml_val(env, 'FUNCTION_ADDR', function_addr)
                 replace_yaml_val(env, 'MON_IPS', mon_str)
                 replace_yaml_val(env, 'MGMT_IP', kops_ip)
                 replace_yaml_val(env, 'SEED_IP', seed_ip)

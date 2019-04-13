@@ -23,15 +23,15 @@ from include.shared import *
 from include.serializer import *
 
 class FluentConnection():
-    def __init__(self, func_addr, ip=None):
+    def __init__(self, func_addr, ip=None, tid=0):
         self.service_addr = 'tcp://'+  func_addr + ':%d'
         self.context = zmq.Context(1)
         kvs_addr = self._connect()
 
         if ip:
-            self.kvs_client = AnnaClient(kvs_addr, ip)
+            self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
         else:
-            self.kvs_client = AnnaClient(kvs_addr)
+            self.kvs_client = AnnaClient(kvs_addr, offset=tid)
 
         self.func_create_sock = self.context.socket(zmq.REQ)
         self.func_create_sock.connect(self.service_addr % FUNC_CREATE_PORT)
@@ -86,35 +86,40 @@ class FluentConnection():
             argobj = call.args.add()
             serialize_val(arg, argobj)
 
-        self.call_sock.send(call.SerializeToString())
+        self.func_call_sock.send(call.SerializeToString())
+
+        r = GenericResponse()
+        r.ParseFromString(self.func_call_sock.recv())
 
         self.rid += 1
-        return self.call_sock.recv_string()
+        return r.response_id
 
     def register(self, function, name):
         func = Function()
         func.name = name
         func.body = function_ser.dump(function)
 
-        self.create_sock.send(func.SerializeToString())
+        self.func_create_sock.send(func.SerializeToString())
 
-        resp = self.create_sock.recv_string()
+        resp = GenericResponse()
+        resp.ParseFromString(self.func_create_sock.recv())
 
-        if 'Success' in resp:
+        if resp.success:
             return FluentFunction(name, self, self.kvs_client)
         else:
             print('Unexpected error while registering function: \n\t%s.'
                     % (resp))
 
-    def register_dag(self, functions, connections):
+    def register_dag(self, name, functions, connections):
         flist = self._get_func_list()
         for fname in functions:
-            if fname not in flist:
-                print('Function %s not registered. Please register before'
-                        + 'including it in a DAG.')
-                return
+            if fname not in flist.names:
+                print(('Function %s not registered. Please register before'
+                        + 'including it in a DAG.') % (fname))
+                return False, None
 
         dag = Dag()
+        dag.name = name
         dag.functions.extend(functions)
         for pair in connections:
             conn = dag.connections.add()
@@ -126,14 +131,11 @@ class FluentConnection():
         r = GenericResponse()
         r.ParseFromString(self.dag_create_sock.recv())
 
-        if r.success:
-            print('Success!')
-        else:
-            print('DAG creation failed: %d' % (r.error))
+        return r.success, r.error
 
     def call_dag(self, dname, arg_map):
         dc = DagCall()
-        dc.name = name
+        dc.name = dname
 
         for fname in arg_map:
             args = [serialize_val(arg, serialize=False) for arg in

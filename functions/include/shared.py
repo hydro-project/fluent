@@ -12,8 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .functions_pb2 import *
 import time
+
+from .functions_pb2 import *
+from . import serializer
 
 CONNECT_PORT = 5000
 FUNC_CREATE_PORT = 5001
@@ -42,10 +44,7 @@ class FluentFuture():
         while not obj:
             obj = self.kvs_client.get(self.obj_id)
 
-        retval = Value()
-        retval.ParseFromString(obj)
-
-        return get_serializer(retval.type).load(retval.body)
+        return serializer.deserialize_val(obj.reveal()[1])
 
 class FluentFunction():
     def __init__(self, name, conn, kvs_client):
