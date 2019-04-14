@@ -52,7 +52,6 @@ class AnnaClient():
         self.key_address_puller.bind(self.ut.get_key_address_bind_addr())
 
         self.rid = 0
-        logging.basicConfig(filename='log_anna_client.txt', level=logging.INFO)
 
 
     def get(self, key):

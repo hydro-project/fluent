@@ -36,6 +36,7 @@ def create_func(func_create_socket, kvs):
 
     body = LWWPairLattice(generate_timestamp(0), func.body)
     kvs.put(name, body)
+    logging.info('put func to kvs finished')
 
     funcs = utils._get_func_list(kvs, '', fullname=True)
     funcs.append(name)
