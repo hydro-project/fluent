@@ -62,8 +62,10 @@ void kvs_response_handler(
                        client_id_to_address_map);
     } else {
       if (request_id_to_address_map.find(response.response_id()) ==
-          request_id_to_address_map.end() && response.tuples(0).lattice_type() != LatticeType::LWW) {
-        log->error("Missing request id - address entry for PUT response with key {}", response.tuples(0).key());
+          request_id_to_address_map.end()) {
+        if (response.tuples(0).lattice_type() != LatticeType::LWW) {
+          log->error("Missing request id - address entry for PUT response with non LWW key {}", response.tuples(0).key());
+        }
       } else {
         CausalResponse resp;
         CausalTuple* tp = resp.add_tuples();
