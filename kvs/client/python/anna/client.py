@@ -52,12 +52,13 @@ class AnnaClient():
         self.key_address_puller.bind(self.ut.get_key_address_bind_addr())
 
         self.rid = 0
+        logging.basicConfig(filename='log_anna_client.txt', level=logging.INFO)
 
 
     def get(self, key):
-        logging.info("getting worker addr for get request")
+        logging.info("getting worker addr")
         worker_address = self._get_worker_address(key)
-        logging.info("got worker addr for get request")
+        logging.info("got worker addr")
 
         if not worker_address:
             return None
@@ -155,9 +156,7 @@ class AnnaClient():
 
 
     def put(self, key, value):
-        logging.info("getting worker addr for put request")
         worker_address = self._get_worker_address(key)
-        logging.info("got worker addr for put request")
 
         if not worker_address:
             return False
