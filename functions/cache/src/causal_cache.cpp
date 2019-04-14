@@ -26,6 +26,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
   log->flush_on(spdlog::level::info);
 
+  log->info("starting causal cache");
+
   zmq::context_t* context = client->get_context();
 
   SocketCache pushers(context, ZMQ_PUSH);
@@ -219,13 +221,6 @@ int main(int argc, char* argv[]) {
     std::cerr << "Usage: " << argv[0] << "" << std::endl;
     return 1;
   }
-
-  string log_file = "log_cache.txt";
-  string log_name = "cache_log";
-  auto log = spdlog::basic_logger_mt(log_name, log_file, true);
-  log->flush_on(spdlog::level::info);
-
-  log->info("starting causal cache");
 
   // read the YAML conf
   YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
