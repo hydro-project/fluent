@@ -107,6 +107,8 @@ def _update_key_maps(key_ip_map, executors, kvs):
 
     key_ip_map.clear()
     for ip in exec_ips:
+        logging.info('getting cached key for ip %s.' %
+                    (ip))
         key = _get_cache_ip_key(ip)
 
         # this is of type LWWPairLattice, which has a KeySet protobuf packed
