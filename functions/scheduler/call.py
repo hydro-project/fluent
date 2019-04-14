@@ -62,9 +62,19 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     schedule = DagSchedule()
     schedule.id = str(uuid.uuid4())
     schedule.dag.CopyFrom(dag)
-    schedule.consistency = NORMAL
+    schedule.consistency = call.consistency
+
     if call.HasField('response_address'):
         schedule.response_address = call.response_address
+
+    if call.HasField('output_key'):
+        schedule.output_key = call.output_key
+
+    if call.HasField('client_id'):
+        schedule.client_id = call.client_id
+
+
+    logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 
     for fname in dag.functions:
         locations = func_locations[fname]
@@ -105,7 +115,10 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         sckt = pusher_cache.get(ip)
         sckt.send(trigger.SerializeToString())
 
-    return schedule.id
+    if schedule.HasField('output_key'):
+        return schedule.output_key
+    else:
+        return schedule.id
 
 
 def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):

@@ -37,18 +37,6 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
         unmerged_store[key] = causal_merge(unmerged_store[key], lattice);
       }
     }
-    // if cross causal, also update causal cut
-    if (request.consistency() == ConsistencyType::CROSS) {
-      // we compare two lattices
-      unsigned comp_result = causal_comparison(causal_cut_store[key], lattice);
-      if (comp_result == kCausalLess) {
-        causal_cut_store[key] = lattice;
-      } else if (comp_result == kCausalConcurrent) {
-        causal_cut_store[key] = causal_merge(causal_cut_store[key], lattice);
-      }
-      // keep this version
-      version_store[request.id()][key] = lattice;
-    }
     // write to KVS
     string req_id = client->put_async(key, serialize(*unmerged_store[key]),
                                       LatticeType::CROSSCAUSAL);

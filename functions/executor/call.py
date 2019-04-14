@@ -173,7 +173,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                 versioned_key_locations[addr].versioned_keys.extend(
                         trigger.versioned_key_locations[addr].versioned_keys)
         # combine dependencies from previous func
-        for dep in trigger.dependencies:
+        for dep in trigger.dependencies.versioned_keys:
             if dep.key in dependencies:
                 dependencies[dep.key] = _merge_vector_clock(
                       dependencies[dep.key], dep.vector_clock)
@@ -209,10 +209,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             al.args.extend(list(map(lambda v: serialize_val(v, None, False),
                                     result)))
 
-            new_trigger.versioned_key_locations = versioned_key_locations
+            for addr in versioned_key_locations:
+                new_trigger.versioned_key_locations[addr].versioned_keys.extend(
+                                    versioned_key_locations[addr].versioned_keys)
 
             for key in dependencies:
-                dep = new_trigger.dependencies.add()
+                dep = new_trigger.dependencies.versioned_keys.add()
                 dep.key = key
                 dep.vector_clock = dependencies[key]
 
@@ -221,24 +223,32 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
+        logging.info('DAG %s (ID %d) completed in causal mode; result at %s.' %
+                (schedule.dag.name, trigger.id, schedule.output_key))
+
         vector_clock = {}
-        if schedule.response_id in dependencies:
-            if schedule.id in dependencies[schedule.response_id]:
-                dependencies[schedule.response_id][schedule.id] += 1
+        if schedule.output_key in dependencies:
+            if schedule.client_id in dependencies[schedule.output_key]:
+                dependencies[schedule.output_key][schedule.client_id] += 1
             else:
-                dependencies[schedule.response_id][schedule.id] = 1
-            vector_clock = dependencies[schedule.response_id][schedule.id]
-            del dependencies[schedule.response_id]
+                dependencies[schedule.output_key][schedule.client_id] = 1
+            vector_clock = dependencies[schedule.output_key][schedule.client_id]
+            del dependencies[schedule.output_key]
         else:
-            vector_clock = {schedule.id: 1}
+            vector_clock = {schedule.client_id : 1}
 
-        succeed = kvs.causal_put(schedule.response_id,
+        succeed = kvs.causal_put(schedule.output_key,
                                  vector_clock, dependencies,
-                                 serialize_val(result), schedule.id)
+                                 serialize_val(result), schedule.client_id)
         while not succeed:
-            kvs.causal_put(schedule.response_id, vector_clock,
-                           dependencies, serialize_val(result), schedule.id)
+            kvs.causal_put(schedule.output_key, vector_clock,
+                           dependencies, serialize_val(result), schedule.client_id)
 
+        # issue requests to GC the version store
+        for cache_addr in versioned_key_locations:
+            gc_addr = cache_addr[:-4] + str(int(cache_addr[-4:]) - 50)
+            sckt = pusher_cache.get(gc_addr)
+            sckt.send(schedule.client_id)
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
                       schedule, versioned_key_locations):
@@ -276,15 +286,15 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule,
     keys = [ref.key for ref in refs]
     result = kvs.causal_get(keys, future_read_set,
                             versioned_key_locations,
-                            schedule.consistency, schedule.id)
+                            schedule.consistency, schedule.client_id)
 
     while not result:
         result = kvs.causal_get(refs, future_read_set,
                                 versioned_key_locations,
-                                schedule.consistency, schedule.id)
+                                schedule.consistency, schedule.client_id)
 
     if result[0] is not None:
-        versioned_key_locations[result[0][0]] = list(result[0][1])
+        versioned_key_locations[result[0][0]].versioned_keys.extend(result[0][1])
 
     kv_pairs = result[1]
 
