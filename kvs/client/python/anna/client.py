@@ -55,9 +55,9 @@ class AnnaClient():
 
 
     def get(self, key):
-        logging.info("getting worker addr")
+        logging.info("getting worker addr for get request")
         worker_address = self._get_worker_address(key)
-        logging.info("got worker addr")
+        logging.info("got worker addr for get request")
 
         if not worker_address:
             return None
@@ -155,7 +155,9 @@ class AnnaClient():
 
 
     def put(self, key, value):
+        logging.info("getting worker addr for put request")
         worker_address = self._get_worker_address(key)
+        logging.info("got worker addr for put request")
 
         if not worker_address:
             return False
