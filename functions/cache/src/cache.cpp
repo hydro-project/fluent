@@ -31,6 +31,7 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
 
   map<Key, LWWPairLattice<string>> local_lww_cache;
   map<Key, SetLattice<string>> local_set_cache;
+  map<Key, OrderedSetLattice<string>> local_ordered_set_cache;
 
   map<Key, LatticeType> key_type_map;
 
@@ -104,6 +105,17 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
             resp->set_lattice_type(LatticeType::SET);
             break;
           }
+          case LatticeType::ORDERED_SET: {
+            if (local_ordered_set_cache.find(key) ==
+                local_ordered_set_cache.end()) {
+              OrderedSetLattice<string> resp = client.get_ordered_set(key);
+              local_ordered_set_cache[key] = resp;
+              key_type_map[key] = LatticeType::ORDERED_SET;
+            }
+            resp->set_payload(serialize(local_ordered_set_cache[key]));
+            resp->set_lattice_type(LatticeType::ORDERED_SET);
+            break;
+          }
           default: {
             resp->set_error(3);
             break;
@@ -161,6 +173,17 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
             resp->set_error(0);
             break;
           }
+          case LatticeType::ORDERED_SET: {
+            OrderedSetLattice<string> new_val =
+                deserialize_ordered_set(tuple.payload());
+            if (local_ordered_set_cache.find(key) !=
+                local_ordered_set_cache.end()) {
+              new_val.merge(local_ordered_set_cache[key]);
+            }
+            local_ordered_set_cache[key] = new_val;
+            resp->set_error(0);
+            break;
+          }
           default: resp->set_error(2); break;
         }
       }
@@ -177,6 +200,9 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
         switch (type) {
           case LatticeType::LWW: client.put(key, local_lww_cache[key]); break;
           case LatticeType::SET: client.put(key, local_set_cache[key]); break;
+          case LatticeType::ORDERED_SET:
+            client.put(key, local_ordered_set_cache[key]);
+            break;
           default:  // this should never happen
             break;
         }
@@ -209,6 +235,9 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
           switch (key_type_map[key]) {
             case LatticeType::LWW: local_lww_cache.erase(key); break;
             case LatticeType::SET: local_set_cache.erase(key); break;
+            case LatticeType::ORDERED_SET:
+              local_ordered_set_cache.erase(key);
+              break;
             default:  // this can never happen
               break;
           }
@@ -234,6 +263,15 @@ void run(KvsClient& client, Address ip, unsigned thread_id) {
             }
 
             local_set_cache[key] = new_val;
+          }
+          case LatticeType::ORDERED_SET: {
+            OrderedSetLattice<string> new_val =
+                deserialize_ordered_set(tuple.payload());
+            if (local_ordered_set_cache.find(key) !=
+                local_ordered_set_cache.end()) {
+              new_val.merge(local_ordered_set_cache[key]);
+            }
+            local_ordered_set_cache[key] = new_val;
           }
           default:  // this should never happen!
             break;
