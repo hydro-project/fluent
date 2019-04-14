@@ -24,9 +24,11 @@ from include.serializer import *
 
 class FluentConnection():
     def __init__(self, func_addr, ip=None, tid=0):
+        print(func_addr)
         self.service_addr = 'tcp://'+  func_addr + ':%d'
         self.context = zmq.Context(1)
         kvs_addr = self._connect()
+        print("connected")
 
         if ip:
             self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
@@ -51,6 +53,7 @@ class FluentConnection():
         self.rid = 0
 
     def _connect(self):
+        print("connecting")
         sckt = self.context.socket(zmq.REQ)
         sckt.connect(self.service_addr % CONNECT_PORT)
         sckt.send_string('')
