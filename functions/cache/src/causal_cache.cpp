@@ -220,6 +220,13 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  string log_file = "log_cache.txt";
+  string log_name = "cache_log";
+  auto log = spdlog::basic_logger_mt(log_name, log_file, true);
+  log->flush_on(spdlog::level::info);
+
+  log->info("starting causal cache");
+
   // read the YAML conf
   YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
   unsigned kRoutingThreadCount = conf["threads"]["routing"].as<unsigned>();
