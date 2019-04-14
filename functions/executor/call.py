@@ -104,7 +104,10 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
         logging.info('DAG %s (ID %s) completed; result at %s.' %
                 (schedule.dag.name, trigger.id, schedule.id))
         l = LWWPairLattice(generate_timestamp(0), serialize_val(result))
-        kvs.put(schedule.id, l)
+        if schedule.HasField('output_key'):
+            kvs.put(schedule.output_key, l)
+        else:
+            kvs.put(schedule.id, l)
 
 def _exec_func_normal(kvs, func, args):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
