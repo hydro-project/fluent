@@ -111,6 +111,9 @@ def _update_key_maps(key_ip_map, executors, kvs):
                     (ip))
         key = _get_cache_ip_key(ip)
 
+        logging.info('metadata key is %s.' %
+                    (key))
+
         # this is of type LWWPairLattice, which has a KeySet protobuf packed
         # into it; we want the keys in that KeySet protobuf
         lattice = kvs.get(key)

@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
 import os
 import random
 import socket
@@ -51,10 +52,13 @@ class AnnaClient():
         self.key_address_puller.bind(self.ut.get_key_address_bind_addr())
 
         self.rid = 0
+        logging.basicConfig(filename='log_anna_client.txt', level=logging.INFO)
 
 
     def get(self, key):
+        logging.info("getting worker addr")
         worker_address = self._get_worker_address(key)
+        logging.info("got worker addr")
 
         if not worker_address:
             return None

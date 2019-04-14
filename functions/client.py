@@ -55,6 +55,7 @@ class FluentConnection():
         self.rid = 0
 
     def _connect(self):
+        print("connecting")
         sckt = self.context.socket(zmq.REQ)
         sckt.connect(self.service_addr % CONNECT_PORT)
         sckt.send_string('')
