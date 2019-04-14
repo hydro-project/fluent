@@ -101,12 +101,14 @@ def _get_ip_set(request_ip, socket_cache, exec_threads=True):
         return set(ips.keys)
 
 
-def _update_key_maps(kc_map, key_ip_map, executors, kvs):
+def _update_key_maps(kc_map, key_ip_map, executors, kvs, logging):
     exec_ips = set(map(lambda e: e[0], executors))
     for ip in set(kc_map.keys()).difference(exec_ips): del kc_map[ip]
 
     key_ip_map.clear()
     for ip in exec_ips:
+        logging.info('getting cached key for ip %s.' %
+                    (ip))
         key = _get_cache_ip_key(ip)
 
         # this is of type LWWPairLattice, which has a KeySet protobuf packed

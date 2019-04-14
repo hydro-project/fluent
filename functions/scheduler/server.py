@@ -266,7 +266,7 @@ def _update_cluster_state(requestor_cache, mgmt_ip, departed_executors,
             executors.remove(departed)
 
     logging.info('updating key maps')
-    utils._update_key_maps(key_cache_map, key_ip_map, executors, kvs)
+    utils._update_key_maps(key_cache_map, key_ip_map, executors, kvs, logging)
     logging.info('updated key maps')
 
     schedulers = utils._get_ip_set(utils._get_scheduler_list_address(mgmt_ip),
