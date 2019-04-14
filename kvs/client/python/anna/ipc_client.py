@@ -129,7 +129,7 @@ class IpcAnnaClient:
 
         request.response_address = self.get_response_address
 
-        (request.future_read_set.add(k) for k in future_read_set)
+        (request.future_read_set.extend(k) for k in future_read_set)
 
         self.get_request_socket.send(request.SerializeToString())
 
@@ -220,14 +220,14 @@ class IpcAnnaClient:
         tp.key = key
 
         cross_causal_value = CrossCausalValue()
-        cross_causal_value.vector_clock = vector_clock
+        cross_causal_value.vector_clock.update(vector_clock)
 
         for key in dependency:
             dep = cross_causal_value.deps.add()
             dep.key = key
-            dep.vector_clock = dependency[key]
+            dep.vector_clock.update(dependency[key])
 
-        cross_causal_value.values.add(value)
+        cross_causal_value.values.extend(value)
 
         tp.payload = cross_causal_value.SerializeToString()
 

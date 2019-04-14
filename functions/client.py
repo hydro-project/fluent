@@ -133,9 +133,16 @@ class FluentConnection():
 
         return r.success, r.error
 
-    def call_dag(self, dname, arg_map):
+    def call_dag(self, dname, arg_map, consistency=NORMAL, output_key=None, client_id=None):
         dc = DagCall()
         dc.name = dname
+        dc.consistency = consistency
+
+        if output_key:
+            dc.output_key = output_key
+
+        if client_id:
+            dc.client_id = client_id
 
         for fname in arg_map:
             args = [serialize_val(arg, serialize=False) for arg in
