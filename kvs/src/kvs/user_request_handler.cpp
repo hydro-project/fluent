@@ -102,6 +102,7 @@ void user_request_handler(
 
             local_changeset.insert(key);
             tp->set_error(0);
+            tp->set_lattice_type(tuple.lattice_type());
           }
         } else {
           log->error("Unknown request type {} in user request handler.",

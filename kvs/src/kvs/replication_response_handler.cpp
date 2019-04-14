@@ -164,6 +164,7 @@ void replication_response_handler(
               process_put(key, request.lattice_type_, request.payload_,
                           serializers[request.lattice_type_], stored_key_map);
               tp->set_error(0);
+              tp->set_lattice_type(request.lattice_type_);
               local_changeset.insert(key);
             }
           }
