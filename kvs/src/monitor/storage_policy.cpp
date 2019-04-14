@@ -24,7 +24,7 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                     map<Address, unsigned>& departing_node_map,
                     SocketCache& pushers) {
   // check storage consumption and trigger elasticity if necessary
-  if (adding_memory_node == 0 && ss.required_memory_node > memory_node_number) {
+/*  if (adding_memory_node == 0 && ss.required_memory_node > memory_node_number) {
     auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                             std::chrono::system_clock::now() - grace_start)
                             .count();
@@ -60,5 +60,5 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
       remove_node(log, node, "ebs", removing_ebs_node, pushers,
                   departing_node_map, mt);
     }
-  }
+  }*/
 }
