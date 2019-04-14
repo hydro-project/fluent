@@ -23,10 +23,10 @@ def print_latency_stats(data, ident, log=False):
     p01 = np.percentile(npdata, 1)
     mn = np.min(npdata)
 
-    output = ('%s LATENCY:\n\tmean: %.6f, median: %.6f\n\t95%% confidence: ' +\
+    output = ('%s LATENCY:\n\tsample size: %d\n\tmean: %.6f, median: %.6f\n\t95%% confidence: ' +\
             '(%.6f, %.6f)\n\tmin/max: (%.6f, %.6f)\n\tp25/p75: (%.6f, %.6f) ' + \
             '\n\tp5/p95: (%.6f, %.6f)\n\tp1/p99: (%.6f, %.6f)') % \
-            (ident, interval[0], median, interval[1], interval[2], mn, mx, p25,
+            (ident, len(data), interval[0], median, interval[1], interval[2], mn, mx, p25,
                     p75, p05, p95, p01, p99)
 
     if log:

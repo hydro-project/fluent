@@ -13,19 +13,17 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
+sys_random = random.SystemRandom()
+
 def run(flconn, kvs, num_requests, create, sckt):
     dag_name = 'locality'
 
     if create:
         ### DEFINE AND REGISTER FUNCTIONS ###
-        def dot(v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
+        def dot(v1, v2):
             import numpy as np
             d1 = np.dot(v1, v2)
-            d2 = np.dot(v3, v4)
-            d3 = np.dot(v5, v6)
-            d4 = np.dot(v7, v8)
-            d5 = np.dot(v9, v10)
-            return d1 + d2 + d3 + d4 + d5
+            return d1
 
         cloud_dot = flconn.register(dot, 'dot')
 
@@ -36,8 +34,8 @@ def run(flconn, kvs, num_requests, create, sckt):
 
         ### TEST REGISTERED FUNCTIONS ###
         refs = ()
-        for _ in range(10):
-            inp = np.zeros(1024*10)
+        for _ in range(2):
+            inp = np.zeros(100*1024)
             v = LWWPairLattice(0, serialize_val(inp))
             k = str(uuid.uuid4())
             kvs.put(k, v)
@@ -47,6 +45,7 @@ def run(flconn, kvs, num_requests, create, sckt):
         dot_test = cloud_dot(*refs).get()
         if dot_test != 0.0:
             logging.error('Unexpected result from dot(v1, v2): %s' % (str(dot_test)))
+            print('Unexpected result from dot(v1, v2): %s' % (str(dot_test)))
             sys.exit(1)
 
         logging.info('Successfully tested function!')
@@ -63,11 +62,11 @@ def run(flconn, kvs, num_requests, create, sckt):
 
         ### GENERATE_DATA ###
 
-        NUM_OBJECTS = 200
+        NUM_OBJECTS = 500
         oids = []
 
         for _ in range(NUM_OBJECTS):
-            array = np.random.rand(1024*10)
+            array = np.random.rand(100*1024)
             oid = str(uuid.uuid4())
             val = LWWPairLattice(0, serialize_val(array))
 
@@ -101,8 +100,8 @@ def run(flconn, kvs, num_requests, create, sckt):
         for _ in range(num_requests):
             start = time.time()
             refs = []
-            for _ in range(10):
-                oid = random.choice(oids)
+            for _ in range(2):
+                oid = sys_random.choice(oids)
                 refs.append(FluentReference(oid, True, LWW))
 
             arg_map = { 'dot' : refs }
@@ -114,8 +113,10 @@ def run(flconn, kvs, num_requests, create, sckt):
 
             start = time.time()
             res = kvs.get(rid)
+            key_rts = 0
             while not res:
                 retries += 1
+                key_rts += 1
                 res = kvs.get(rid)
             res = deserialize_val(res.reveal()[1])
             end = time.time()
@@ -126,12 +127,16 @@ def run(flconn, kvs, num_requests, create, sckt):
             scheduler_time += [stime]
             kvs_time += [ktime]
 
+            if ktime > 1:
+                logging.info('Retrieving key %s took %.2f seconds with %d retries!'
+                        % (rid, ktime, key_rts))
+
             epoch_total += [stime + ktime]
             epoch_scheduler += [stime]
             epoch_kvs += [ktime]
 
             log_end = time.time()
-            if (log_end - log_start) > 5:
+            if (log_end - log_start) > 10:
                 if sckt:
                     sckt.send(cp.dumps(epoch_total))
                 utils.print_latency_stats(epoch_total, 'EPOCH %d E2E' %

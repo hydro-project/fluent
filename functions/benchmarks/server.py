@@ -46,8 +46,9 @@ def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
         total, scheduler, kvs, retries = locality.run(flconn, kvs,
                 num_requests, create, sckt)
     elif bname == 'redis' or bname == 's3':
+        redis_addr = 'flshardtest.kxmfgs.clustercfg.use1.cache.amazonaws.com'
         total, scheduler, kvs, retries = lambda_locality.run(bname, kvs,
-                num_requests, sckt)
+                num_requests, sckt, redis_addr)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')

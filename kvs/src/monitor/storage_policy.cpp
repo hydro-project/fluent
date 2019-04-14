@@ -34,31 +34,31 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
     }
   }
 
-  if (adding_ebs_node == 0 && ss.required_ebs_node > ebs_node_number) {
-    auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                            std::chrono::system_clock::now() - grace_start)
-                            .count();
-    if (time_elapsed > kGracePeriod) {
-      add_node(log, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
-               management_ip);
-    }
-  }
+  // if (adding_ebs_node == 0 && ss.required_ebs_node > ebs_node_number) {
+  //   auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+  //                           std::chrono::system_clock::now() - grace_start)
+  //                           .count();
+  //   if (time_elapsed > kGracePeriod) {
+  //     add_node(log, "ebs", kNodeAdditionBatchSize, adding_ebs_node, pushers,
+  //              management_ip);
+  //   }
+  // }
 
-  if (ss.avg_ebs_consumption_percentage < kMinEbsNodeConsumption &&
-      !removing_ebs_node &&
-      ebs_node_number >
-          std::max(ss.required_ebs_node, (unsigned)kMinEbsTierSize)) {
-    auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                            std::chrono::system_clock::now() - grace_start)
-                            .count();
+  // if (ss.avg_ebs_consumption_percentage < kMinEbsNodeConsumption &&
+  //     !removing_ebs_node &&
+  //     ebs_node_number >
+  //         std::max(ss.required_ebs_node, (unsigned)kMinEbsTierSize)) {
+  //   auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+  //                           std::chrono::system_clock::now() - grace_start)
+  //                           .count();
 
-    if (time_elapsed > kGracePeriod) {
-      // pick a random ebs node and send remove node command
-      auto node = next(global_hash_rings[kEbsTierId].begin(),
-                       rand() % global_hash_rings[kEbsTierId].size())
-                      ->second;
-      remove_node(log, node, "ebs", removing_ebs_node, pushers,
-                  departing_node_map, mt);
-    }
-  }
+  //   if (time_elapsed > kGracePeriod) {
+  //     // pick a random ebs node and send remove node command
+  //     auto node = next(global_hash_rings[kEbsTierId].begin(),
+  //                      rand() % global_hash_rings[kEbsTierId].size())
+  //                     ->second;
+  //     remove_node(log, node, "ebs", removing_ebs_node, pushers,
+  //                 departing_node_map, mt);
+  //   }
+  // }
 }

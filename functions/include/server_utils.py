@@ -27,6 +27,7 @@ SELF_DEPART_PORT = 4050
 
 STATUS_PORT = 5006
 SCHED_UPDATE_PORT = 5007
+BACKOFF_PORT = 5008
 
 STATISTICS_REPORT_PORT = 7006
 
@@ -51,6 +52,9 @@ def _get_dag_trigger_address(ip_tid):
 
 def _get_statistics_report_address(mgmt_ip):
     return 'tcp://' + mgmt_ip + ':' + str(STATISTICS_REPORT_PORT)
+
+def _get_backoff_addresss(ip):
+    return 'tcp://' + ip + ':' + str(BACKOFF_PORT)
 
 def _get_dag_predecessors(dag, fname):
     result = []

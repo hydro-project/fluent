@@ -27,7 +27,7 @@ from kvs_pb2 import *
 from metadata_pb2 import *
 import util
 
-REPORT_PERIOD = 15
+REPORT_PERIOD = 5
 UTILIZATION_MAX = .30
 PINNED_COUNT_MAX = 15
 UTILIZATION_MIN = .10
@@ -341,8 +341,8 @@ def check_executor_utilization(client, ctx, executor_statuses,
             logging.info(('Average utilization is %.4f. Adding %d nodes to '
                  + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
 
-            msg = 'function:' + str(EXECUTOR_INCREASE)
-            add_push_socket.send_string(msg)
+            # msg = 'function:' + str(EXECUTOR_INCREASE)
+            # add_push_socket.send_string(msg)
 
             # start the grace period after adding nodes
             grace_start = time.time()

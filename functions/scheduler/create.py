@@ -23,6 +23,8 @@ import include.server_utils as sutils
 from include.shared import *
 from . import utils
 
+sys_random = random.SystemRandom()
+
 def create_func(func_create_socket, kvs):
     func = Function()
     func.ParseFromString(func_create_socket.recv())
@@ -41,7 +43,7 @@ def create_func(func_create_socket, kvs):
 
 
 def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
-        func_locations, call_frequency, num_replicas=15):
+        func_locations, call_frequency, num_replicas=45):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -57,7 +59,7 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
             if len(candidates) == 0:
                 break
 
-            node, tid = random.sample(candidates, 1)[0]
+            node, tid = sys_random.sample(candidates, 1)[0]
 
             # this is currently a fire-and-forget operation -- we can see if we
             # want to make stronger guarantees in the future

@@ -25,7 +25,7 @@ from . import utils
 from include import server_utils as sutils
 from include.shared import *
 
-REPORT_THRESH = 20
+REPORT_THRESH = 5
 
 def executor(ip, mgmt_ip, schedulers, thread_id):
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO, format='%(asctime)s %(message)s')
@@ -226,14 +226,20 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             utilization = total_occupancy / (report_end - report_start)
             status.utilization = utilization
 
+            if utilization > 0.5:
+                msg = ip + ':' + str(thread_id)
+                for scheduler in schedulers:
+                    sckt = pusher_cache.get(sutils._get_backoff_addresss(scheduler))
+                    sckt.send_string(msg)
+
             sckt = pusher_cache.get(utils._get_util_report_address(mgmt_ip))
             sckt.send(status.SerializeToString())
 
-            logging.info('Total thread occupancy: %.6f%%' % (utilization))
+            logging.info('Total thread occupancy: %.6f' % (utilization))
 
             for event in event_occupancy:
-                occ = event_occupancy[event]
-                logging.info('Event %s occupancy: %.6f%%' % (event, occ))
+                occ = event_occupancy[event] / (report_end - report_start)
+                logging.info('Event %s occupancy: %.6f' % (event, occ))
                 event_occupancy[event] = 0.0
 
             stats = ExecutorStatistics()

@@ -42,7 +42,7 @@ def exec_function(exec_socket, kvs, status):
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-            result = _exec_func_normal(kvs, f, fargs)
+            _, _, result = _exec_func_normal(kvs, f, fargs)
             result = serialize_val(result)
         except Exception as e:
             logging.info('Unexpected error %s while executing function.' %
@@ -76,7 +76,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
 
     fargs = _process_args(fargs)
 
-    result = _exec_func_normal(kvs, function, fargs)
+    ktime, ctime, result = _exec_func_normal(kvs, function, fargs)
 
     is_sink = True
     for conn in schedule.dag.connections:
@@ -98,8 +98,10 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
-    logging.info('Finished executing function %s for DAG %s (ID %s): started at %.6f.' %
+    logging.info('Finished executing function %s for DAG %s (ID %s): ended at %.6f.' %
             (schedule.dag.name, fname, trigger.id, time.time()))
+    logging.info('KVS get time for DAG %s was %.6f, compute time was %.6f.' %
+            (schedule.id, ktime, ctime))
     if is_sink:
         logging.info('DAG %s (ID %s) completed; result at %s.' %
                 (schedule.dag.name, trigger.id, schedule.id))
@@ -108,8 +110,11 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
 
 def _exec_func_normal(kvs, func, args):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
+    start = time.time()
     if refs:
         refs = _resolve_ref_normal(refs, kvs)
+    end = time.time()
+    ktime = end - start
 
     func_args = ()
     for arg in args:
@@ -119,7 +124,11 @@ def _exec_func_normal(kvs, func, args):
             func_args += (arg,)
 
     # execute the function
-    return  func(*func_args)
+    start = time.time()
+    res = func(*func_args)
+    end = time.time()
+    ctime = end - start
+    return ktime, ctime, res
 
 def _resolve_ref_normal(refs, kvs):
     keys = [ref.key for ref in refs]
