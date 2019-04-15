@@ -66,7 +66,7 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
         kvs.causal_put(call.resp_id, {}, {}, result, '0')
 
 def _exec_single_func_causal(kvs, func, args):
-    func_args = ()
+    func_args = []
     to_resolve = []
     deserialize = {}
 
@@ -105,7 +105,7 @@ def _exec_single_func_causal(kvs, func, args):
             print(func_args[key_index_map[key]])
 
     # execute the function
-    return  func(*func_args)
+    return  func(*tuple(func_args))
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
@@ -309,7 +309,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
                       schedule, versioned_key_locations):
-    func_args = ()
+    func_args = []
     to_resolve = []
     deserialize = {}
 
@@ -334,7 +334,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 func_args[key_index_map[key]] = kv_pairs[key][1]
 
     # execute the function
-    return func(*func_args)
+    return  func(*tuple(func_args))
 
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule,
