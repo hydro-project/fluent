@@ -343,6 +343,7 @@ void merge_into_causal_cut(
       }
       pending_cross_metadata[addr].to_cover_set_.erase(key);
       if (pending_cross_metadata[addr].to_cover_set_.size() == 0) {
+        std::cerr << "client addr to notify is " << addr << "\n";
         // all keys are covered, safe to read
         // decide local and remote read set
         if (!fire_remote_read_requests(pending_cross_metadata[addr],
