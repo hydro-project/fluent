@@ -133,6 +133,8 @@ class IpcAnnaClient:
 
         self.get_request_socket.send(request.SerializeToString())
 
+        print("sent GET request for key %s", keys[0])
+
         try:
             msg = self.get_response_socket.recv()
         except zmq.ZMQError as e:
@@ -147,6 +149,7 @@ class IpcAnnaClient:
 
             return resp
         else:
+            print("received GET response")
             kv_pairs = {}
             resp = CausalResponse()
             resp.ParseFromString(msg)
