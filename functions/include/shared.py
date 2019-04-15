@@ -15,6 +15,7 @@
 import time
 
 from .functions_pb2 import *
+from .kvs_pb2 import *
 from . import serializer
 
 CONNECT_PORT = 5000
