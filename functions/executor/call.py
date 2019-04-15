@@ -197,7 +197,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                 versioned_key_locations[addr].versioned_keys.extend(
                         trigger.versioned_key_locations[addr].versioned_keys)
         # combine dependencies from previous func
-        for dep in trigger.dependencies.versioned_keys:
+        for dep in trigger.dependencies:
             if dep.key in dependencies:
                 dependencies[dep.key] = \
                 _merge_vector_clock(dependencies[dep.key], dep.vector_clock)
@@ -242,7 +242,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                                     versioned_key_locations[addr].versioned_keys)
 
             for key in dependencies:
-                dep = new_trigger.dependencies.versioned_keys.add()
+                dep = new_trigger.dependencies.add()
                 dep.key = key
                 dep.vector_clock = dependencies[key]
 
