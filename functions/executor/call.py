@@ -63,7 +63,7 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
     if consistency == NORMAL:
         kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
     else:
-        kvs.causal_put(call.resp_id, {}, {}, result, 0)
+        kvs.causal_put(call.resp_id, {}, {}, result, '0')
 
 def _exec_single_func_causal(kvs, func, args):
     func_args = ()
