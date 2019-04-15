@@ -197,6 +197,10 @@ class AnnaClient():
                 result.add(k)
 
             return SetLattice(result)
+        elif tup.lattice_type == CROSSCAUSAL:
+            res = CrossCausalValue()
+            res.ParseFromString(tup.payload)
+            return res
 
     def _serialize(self, val):
         if isinstance(val, LWWPairLattice):
@@ -208,8 +212,9 @@ class AnnaClient():
             s = SetValue()
             for o in val.reveal():
                 s.values.append(o)
-
             return s.SerializeToString(), SET
+        elif isinstance(val, CrossCausalValue):
+            return val.SerializeToString(), CROSSCAUSAL
 
     def _prepare_data_request(self, key):
         req = KeyRequest()

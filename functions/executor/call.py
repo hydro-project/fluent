@@ -30,7 +30,7 @@ def _process_args(arg_list):
     return [get_serializer(arg.type).load(arg.body) for arg in arg_list]
 
 
-def exec_function(exec_socket, kvs, status, ip, tid):
+def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
     user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
@@ -38,7 +38,7 @@ def exec_function(exec_socket, kvs, status, ip, tid):
 
     fargs = _process_args(call.args)
 
-    f = utils._retrieve_function(call.name, kvs)
+    f = utils._retrieve_function(call.name, kvs, consistency)
     if not f:
         logging.info('Function %s not found! Putting an error.' %
                      (call.name))
@@ -46,7 +46,10 @@ def exec_function(exec_socket, kvs, status, ip, tid):
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-            result = _exec_func_normal(kvs, f, fargs, user_lib)
+            if consistency == NORMAL:
+                result = _exec_func_normal(kvs, f, fargs, user_lib)
+            else:
+                result = _exec_single_func_causal(kvs, f, fargs)
             result = serialize_val(result)
         except Exception as e:
             logging.exception('Unexpected error %s while executing function.' %
@@ -56,7 +59,48 @@ def exec_function(exec_socket, kvs, status, ip, tid):
                                    sutils.error.SerializeToString()))
 
     user_lib.close()
-    kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
+
+    if consistency == NORMAL:
+        kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
+    else:
+        kvs.causal_put(call.resp_id, {}, {}, result, 0)
+
+def _exec_single_func_causal(kvs, func, args):
+    func_args = ()
+    to_resolve = []
+    deserialize = {}
+
+    # resolve any references to KVS objects
+    key_index_map = {}
+    for i, arg in enumerate(args):
+        if isinstance(arg, FluentReference):
+            to_resolve.append(arg)
+            key_index_map[arg.key] = i
+            deserialize[arg.key] = arg.deserialize
+        func_args += (arg,)
+
+    if len(to_resolve) > 0:
+        keys = [ref.key for ref in to_resolve]
+        result = kvs.causal_get(keys, set(),
+                                {},
+                                SINGLE, 0)
+
+        while not result:
+            result = kvs.causal_get(keys, set(),
+                                {},
+                                SINGLE, 0)
+
+        kv_pairs = result[1]
+
+        for key in kv_pairs:
+            if deserialize[key]:
+                func_args[key_index_map[key]] = \
+                                deserialize_val(kv_pairs[key][1])
+            else:
+                func_args[key_index_map[key]] = kv_pairs[key][1]
+
+    # execute the function
+    return  func(*func_args)
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
@@ -297,7 +341,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule,
                             schedule.consistency, schedule.client_id)
 
     while not result:
-        result = kvs.causal_get(refs, future_read_set,
+        result = kvs.causal_get(keys, future_read_set,
                                 versioned_key_locations,
                                 schedule.consistency, schedule.client_id)
 

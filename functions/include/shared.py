@@ -46,7 +46,10 @@ class FluentFuture():
         while not obj:
             obj = self.kvs_client.get(self.obj_id)
 
-        return serializer.deserialize_val(obj.reveal()[1])
+        if isinstance(obj, LWWPairLattice):
+            return serializer.deserialize_val(obj.reveal()[1])
+        elif isinstance(obj, CrossCausalValue):
+            return serializer.deserialize_val(obj.values[0])
 
 
 class FluentFunction():
