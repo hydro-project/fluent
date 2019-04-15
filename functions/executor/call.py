@@ -43,6 +43,7 @@ def exec_function(exec_socket, kvs, status):
     else:
         try:
             result = _exec_single_func_causal(kvs, f, fargs)
+            print("func execution result is ", result)
             result = serialize_val(result)
         except Exception as e:
             logging.info('Unexpected error %s while executing function.' %
