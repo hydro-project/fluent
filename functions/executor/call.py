@@ -359,7 +359,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule,
     if result[0] is not None:
         versioned_key_locations[result[0][0]].versioned_keys.extend(result[0][1])
 
-    kv_pairs = result[1]
+    kv_pairs.update(result[1])
 
 
 def _compute_children_read_set(schedule):
