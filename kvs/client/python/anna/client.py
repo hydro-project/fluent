@@ -168,12 +168,6 @@ class AnnaClient():
         req, tup = self._prepare_data_request(key)
         req.type = PUT
 
-        if (type(value) is CrossCausalValue):
-            print("sane")
-        else:
-            print(type(value))
-            print("insane")
-
         tup.payload, tup.lattice_type = self._serialize(value)
 
         send_request(req, send_sock)
@@ -225,7 +219,7 @@ class AnnaClient():
             for o in val:
                 s.values.append(o)
             return s.SerializeToString(), SET
-        elif type(val.__name__) == 'CrossCausalValue':
+        elif type(val).__name__ == 'CrossCausalValue':
             print("causal")
             return val.SerializeToString(), CROSSCAUSAL
         else:
