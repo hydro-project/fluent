@@ -58,6 +58,8 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     schedule.id = str(uuid.uuid4())
     schedule.dag.CopyFrom(dag)
     schedule.consistency = NORMAL
+    if call.HasField('response_address'):
+        schedule.response_address = call.response_address
 
     logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 
@@ -74,8 +76,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
-
-    # logging.info('Sending %s to %s!' % (schedule.id, schedule.locations['dot']))
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
@@ -120,7 +120,7 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     keys = list(running_counts.keys())
     sys_random.shuffle(keys)
     for key in keys:
-        if len(running_counts[key]) > 50 and len(executors) > 1:
+        if len(running_counts[key]) > 1000 and len(executors) > 1:
             executors.discard(key)
 
     executor_ips = [e[0] for e in executors]

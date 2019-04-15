@@ -56,7 +56,7 @@ def exec_function(exec_socket, kvs, status):
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
-    if (schedule.consistency == NORMAL):
+    if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
                                   triggers, function, schedule)
     else:
@@ -100,13 +100,16 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
 
     logging.info('Finished executing function %s for DAG %s (ID %s): ended at %.6f.' %
             (schedule.dag.name, fname, trigger.id, time.time()))
-    logging.info('KVS get time for DAG %s was %.6f, compute time was %.6f.' %
-            (schedule.id, ktime, ctime))
     if is_sink:
         logging.info('DAG %s (ID %s) completed; result at %s.' %
                 (schedule.dag.name, trigger.id, schedule.id))
-        l = LWWPairLattice(generate_timestamp(0), serialize_val(result))
-        kvs.put(schedule.id, l)
+        result = serialize_val(result)
+        if schedule.HasField('response_address'):
+            sckt = pusher_cache.get(schedule.response_address)
+            sckt.send(result)
+        else:
+            l = LWWPairLattice(generate_timestamp(0), result)
+            kvs.put(schedule.id, l)
 
 def _exec_func_normal(kvs, func, args):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
@@ -135,7 +138,8 @@ def _resolve_ref_normal(refs, kvs):
     kv_pairs = kvs.get(keys)
 
     # when chaining function executions, we must wait
-    while not kv_pairs:
+    num_nulls = len(list(filter(lambda a: not a, kv_pairs.values())))
+    while num_nulls > 0:
         kv_pairs = kvs.get(keys)
 
     for ref in refs:

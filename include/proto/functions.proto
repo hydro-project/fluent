@@ -72,6 +72,7 @@ message ArgList {
 message DagCall {
   required string name = 1;
   map<string, ArgList> function_args = 2;
+  optional string response_address = 3;
 }
 
 message GenericResponse {
@@ -97,6 +98,7 @@ message DagSchedule {
   map<string, string> locations = 6; // which functions should be executed where
   // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
   map<string, ArgList> arguments = 7; 
+  optional string response_address = 8;
 }
 
 message VersionedKey {

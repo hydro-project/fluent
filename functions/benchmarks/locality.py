@@ -14,16 +14,28 @@ from include.shared import *
 from . import utils
 
 sys_random = random.SystemRandom()
+OSIZE = 100000
 
 def run(flconn, kvs, num_requests, create, sckt):
     dag_name = 'locality'
 
     if create:
         ### DEFINE AND REGISTER FUNCTIONS ###
-        def dot(v1, v2):
+        def dot(v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
             import numpy as np
-            d1 = np.dot(v1, v2)
-            return d1
+            s1 = np.add(v1, v2)
+            s2 = np.add(v3, v4)
+            s3 = np.add(v5, v6)
+            s4 = np.add(v7, v8)
+            s5 = np.add(v9, v10)
+
+            s1 = np.add(s1, s2)
+            s2 = np.add(s3, s4)
+
+            s1 = np.add(s1, s2)
+            s1 = np.add(s1, s5)
+
+            return np.average(s1)
 
         cloud_dot = flconn.register(dot, 'dot')
 
@@ -34,8 +46,8 @@ def run(flconn, kvs, num_requests, create, sckt):
 
         ### TEST REGISTERED FUNCTIONS ###
         refs = ()
-        for _ in range(2):
-            inp = np.zeros(100*1024)
+        for _ in range(10):
+            inp = np.zeros(OSIZE)
             v = LWWPairLattice(0, serialize_val(inp))
             k = str(uuid.uuid4())
             kvs.put(k, v)
@@ -62,11 +74,11 @@ def run(flconn, kvs, num_requests, create, sckt):
 
         ### GENERATE_DATA ###
 
-        NUM_OBJECTS = 500
+        NUM_OBJECTS = 0
         oids = []
 
         for _ in range(NUM_OBJECTS):
-            array = np.random.rand(100*1024)
+            array = np.random.rand(OSIZE)
             oid = str(uuid.uuid4())
             val = LWWPairLattice(0, serialize_val(array))
 
@@ -81,8 +93,8 @@ def run(flconn, kvs, num_requests, create, sckt):
         return [], [], [], []
     else:
         ### RUN DAG ###
-        l = kvs.get('LOCALITY_OIDS')
-        oids = cp.loads(l.reveal()[1])
+        # l = kvs.get('LOCALITY_OIDS')
+        # oids = cp.loads(l.reveal()[1])
 
         total_time = []
         scheduler_time = []
@@ -97,43 +109,53 @@ def run(flconn, kvs, num_requests, create, sckt):
         epoch_scheduler = []
         epoch_kvs = []
 
+        seen_oids = set()
         for _ in range(num_requests):
-            start = time.time()
             refs = []
-            for _ in range(2):
-                oid = sys_random.choice(oids)
+            for _ in range(10):
+                arr = np.random.rand(OSIZE)
+                oid = str(uuid.uuid4())
+                val = LWWPairLattice(0, serialize_val(arr))
+                kvs.put(oid, val)
+                if oid in seen_oids:
+                    logging.info('Seen oid %s before!' % (oid))
+                seen_oids.add(oid)
+
                 refs.append(FluentReference(oid, True, LWW))
 
+            time.sleep(.01)
+            start = time.time()
             arg_map = { 'dot' : refs }
 
-            rid = flconn.call_dag(dag_name, arg_map)
+            resp = flconn.call_dag(dag_name, arg_map, True)
             end = time.time()
 
             stime = end - start
+            ktime = 0
 
-            start = time.time()
-            res = kvs.get(rid)
-            key_rts = 0
-            while not res:
-                retries += 1
-                key_rts += 1
-                res = kvs.get(rid)
-            res = deserialize_val(res.reveal()[1])
-            end = time.time()
+            # start = time.time()
+            # res = kvs.get(rid)
+            # key_rts = 0
+            # while not res:
+            #     retries += 1
+            #     key_rts += 1
+            #     res = kvs.get(rid)
+            # res = deserialize_val(res.reveal()[1])
+            # end = time.time()
 
-            ktime = end - start
+            # ktime = end - start
 
-            total_time += [stime + ktime]
-            scheduler_time += [stime]
-            kvs_time += [ktime]
+            # total_time += [stime + ktime]
+            # scheduler_time += [stime]
+            # kvs_time += [ktime]
 
             if ktime > 1:
                 logging.info('Retrieving key %s took %.2f seconds with %d retries!'
                         % (rid, ktime, key_rts))
 
             epoch_total += [stime + ktime]
-            epoch_scheduler += [stime]
-            epoch_kvs += [ktime]
+            # epoch_scheduler += [stime]
+            # epoch_kvs += [ktime]
 
             log_end = time.time()
             if (log_end - log_start) > 10:
@@ -141,10 +163,10 @@ def run(flconn, kvs, num_requests, create, sckt):
                     sckt.send(cp.dumps(epoch_total))
                 utils.print_latency_stats(epoch_total, 'EPOCH %d E2E' %
                         (log_epoch), True)
-                utils.print_latency_stats(epoch_scheduler, 'EPOCH %d SCHEDULER' %
-                        (log_epoch), True)
-                utils.print_latency_stats(epoch_kvs, 'EPOCH %d KVS' %
-                        (log_epoch), True)
+                # utils.print_latency_stats(epoch_scheduler, 'EPOCH %d SCHEDULER' %
+                #         (log_epoch), True)
+                # utils.print_latency_stats(epoch_kvs, 'EPOCH %d KVS' %
+                #         (log_epoch), True)
 
                 epoch_total.clear()
                 epoch_scheduler.clear()

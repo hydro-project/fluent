@@ -39,6 +39,7 @@ else:
             sckt.send_string(msg)
             sent_msgs += 1
 
+epoch_total = []
 total = []
 end_recv = 0
 
@@ -51,13 +52,17 @@ while end_recv < sent_msgs:
         end_recv += 1
     else:
         new_tot = cp.loads(msg)
+        epoch_total += new_tot
         total += new_tot
         epoch_recv += 1
 
         if epoch_recv == sent_msgs:
             logging.info('\n\n*** EPOCH %d ***' % (epoch))
-            utils.print_latency_stats(total, 'E2E', True)
+            utils.print_latency_stats(epoch_total, 'E2E', True)
 
             epoch_recv = 0
-            total.clear()
+            epoch_total.clear()
             epoch += 1
+
+logging.info('*** END ***')
+utils.print_latency_stats(total, 'E2E', True)
