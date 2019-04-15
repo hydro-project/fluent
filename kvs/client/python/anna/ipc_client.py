@@ -133,25 +133,24 @@ class IpcAnnaClient:
 
         self.get_request_socket.send(request.SerializeToString())
 
-        print("sent GET request for key %s", keys[0])
+        logging.info('sent GET request for key %s' % (keys[0]))
 
         try:
             msg = self.get_response_socket.recv()
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
-                print("timeout")
                 logging.error("Request for %s timed out!" % (str(keys)))
             else:
-                print("other error")
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
             return None
         else:
-            print("received GET response")
+            logging.info("received GET response")
             kv_pairs = {}
             resp = CausalResponse()
             resp.ParseFromString(msg)
 
             for tp in resp.tuples:
+                logging.info('response key is %s' % tp.key)
                 if tp.error == 1:
                     logging.info('Key %s does not exist!' % (key))
                     return None

@@ -80,13 +80,15 @@ def _exec_single_func_causal(kvs, func, args):
 
         kv_pairs = result[1]
 
+        logging.info('key value pair size is %d' % len(kv_pairs))
+
         for key in kv_pairs:
             if deserialize[key]:
-                print("deserializing key ", key)
+                logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
-                print("no deserialization for key ", key)
+                logging.info('no deserialization for key %s' % key)
                 func_args[key_index_map[key]] = kv_pairs[key][1]
             print(func_args[key_index_map[key]])
 
