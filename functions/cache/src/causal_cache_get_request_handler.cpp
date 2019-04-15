@@ -114,6 +114,7 @@ void get_request_handler(
     }
 
     for (CausalTuple tuple : request.tuples()) {
+      std::cerr << "requested key is " << tuple.key() << "\n";
       Key key = tuple.key();
       read_set.insert(key);
       key_set.insert(key);
