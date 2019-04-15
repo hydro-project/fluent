@@ -218,11 +218,11 @@ class AnnaClient():
             for o in val:
                 s.values.append(o)
             return s.SerializeToString(), SET
-        elif isinstance(val, CrossCausalValue):
+        elif type(val) is CrossCausalValue:
             print("causal")
             return val.SerializeToString(), CROSSCAUSAL
         else:
-            print("bad")
+            print("very bad")
             print(type(val))
             return 123, 456
 
