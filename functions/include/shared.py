@@ -14,6 +14,7 @@
 
 import time
 
+from anna.lattices import *
 from .functions_pb2 import *
 from .kvs_pb2 import *
 from . import serializer
@@ -47,7 +48,7 @@ class FluentFuture():
         while not obj:
             obj = self.kvs_client.get(self.obj_id)
 
-        if isinstance(obj, LWWPairLattice):
+        if type(obj).__name__ == 'LWWPairLattice':
             return serializer.deserialize_val(obj.reveal()[1])
         elif type(obj).__name__ == 'CrossCausalValue':
             return serializer.deserialize_val(obj.values[0])
