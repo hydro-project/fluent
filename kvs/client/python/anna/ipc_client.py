@@ -133,7 +133,8 @@ class IpcAnnaClient:
 
         self.get_request_socket.send(request.SerializeToString())
 
-        logging.info('sent GET request for key %s' % (keys[0]))
+        for key in keys:
+            logging.info('sent GET request for key %s' % (key))
 
         try:
             msg = self.get_response_socket.recv()
