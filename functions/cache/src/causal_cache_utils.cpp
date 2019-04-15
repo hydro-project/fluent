@@ -349,6 +349,7 @@ void merge_into_causal_cut(
                                        version_store, causal_cut_store, pushers,
                                        cct)) {
           // all local
+          std::cerr << "all local read\n";
           respond_to_client(pending_cross_metadata, addr, causal_cut_store,
                             version_store, pushers, cct);
         } else {
