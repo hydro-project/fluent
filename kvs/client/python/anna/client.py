@@ -165,6 +165,13 @@ class AnnaClient():
 
         req, tup = self._prepare_data_request(key)
         req.type = PUT
+
+        if (type(value) is CrossCausalValue):
+            print("sane")
+        else:
+            print(type(value))
+            print("insane")
+        
         tup.payload, tup.lattice_type = self._serialize(value)
 
         send_request(req, send_sock)
