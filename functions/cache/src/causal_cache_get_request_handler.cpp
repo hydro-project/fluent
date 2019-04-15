@@ -36,6 +36,7 @@ void get_request_handler(
 
   // check if the keys are covered locally
   if (request.consistency() == ConsistencyType::SINGLE) {
+    std::cerr << "single obj causal mode\n";
     for (CausalTuple tuple : request.tuples()) {
       Key key = tuple.key();
       read_set.insert(key);
@@ -65,6 +66,7 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
+    std::cerr << "cross obj causal mode\n";
     // first, we compute the condensed version of prior causal chains
     map<Key, std::unordered_set<VectorClock, VectorClockHash>> causal_frontier;
 
