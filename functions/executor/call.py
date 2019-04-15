@@ -51,7 +51,7 @@ def exec_function(exec_socket, kvs, status):
             result = serialize_val(('ERROR: ' + str(e),
                     sutils.error.SerializeToString()))
 
-    kvs.causal_put(call.resp_id, {}, {}, result, 0)
+    kvs.causal_put(call.resp_id, {}, {}, result, '0')
 
 def _exec_single_func_causal(kvs, func, args):
     func_args = ()

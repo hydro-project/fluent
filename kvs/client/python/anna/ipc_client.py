@@ -214,7 +214,7 @@ class IpcAnnaClient:
     def causal_put(self, key, vector_clock, dependency, value, client_id):
         request = CausalRequest()
         request.consistency = CROSS
-        request.id = client_id
+        request.id = str(client_id)
 
         tp = request.tuples.add()
         tp.key = key
