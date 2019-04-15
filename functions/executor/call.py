@@ -42,7 +42,7 @@ def exec_function(exec_socket, kvs, status):
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-            result = _exec_func_normal(kvs, f, fargs)
+            result = _exec_single_func_causal(kvs, f, fargs)
             result = serialize_val(result)
         except Exception as e:
             logging.info('Unexpected error %s while executing function.' %
@@ -51,8 +51,44 @@ def exec_function(exec_socket, kvs, status):
             result = serialize_val(('ERROR: ' + str(e),
                     sutils.error.SerializeToString()))
 
-    result_lattice = LWWPairLattice(generate_timestamp(0), result)
-    kvs.put(call.resp_id, result_lattice)
+    kvs.causal_put(call.resp_id, {}, {}, result, 0)
+
+def _exec_single_func_causal(kvs, func, args):
+    func_args = ()
+    to_resolve = []
+    deserialize = {}
+
+    # resolve any references to KVS objects
+    key_index_map = {}
+    for i, arg in enumerate(args):
+        if isinstance(arg, FluentReference):
+            to_resolve.append(arg)
+            key_index_map[arg.key] = i
+            deserialize[arg.key] = arg.deserialize
+        func_args += (arg,)
+
+    if len(to_resolve) > 0:
+        keys = [ref.key for ref in to_resolve]
+        result = kvs.causal_get(keys, set(),
+                                {},
+                                SINGLE, 0)
+
+        while not result:
+            result = kvs.causal_get(keys, set(),
+                                {},
+                                SINGLE, 0)
+
+        kv_pairs = result[1]
+
+        for key in kv_pairs:
+            if deserialize[key]:
+                func_args[key_index_map[key]] = \
+                                deserialize_val(kv_pairs[key][1])
+            else:
+                func_args[key_index_map[key]] = kv_pairs[key][1]
+
+    # execute the function
+    return  func(*func_args)
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
@@ -275,7 +311,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
                             schedule.consistency, schedule.client_id)
 
     while not result:
-        result = kvs.causal_get(refs, future_read_set,
+        result = kvs.causal_get(keys, future_read_set,
                                 versioned_key_locations,
                                 schedule.consistency, schedule.client_id)
 
