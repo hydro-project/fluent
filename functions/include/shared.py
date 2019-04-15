@@ -49,7 +49,7 @@ class FluentFuture():
 
         if isinstance(obj, LWWPairLattice):
             return serializer.deserialize_val(obj.reveal()[1])
-        elif type(obj.__name__) == 'CrossCausalValue':
+        elif type(obj).__name__ == 'CrossCausalValue':
             return serializer.deserialize_val(obj.values[0])
 
 
