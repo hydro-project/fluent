@@ -38,11 +38,11 @@ class IpcAnnaClient:
         self.put_request_socket.connect(PUT_REQUEST_ADDR)
 
         self.get_response_socket = self.context.socket(zmq.PULL)
-        self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
+        #self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.get_response_socket.bind(self.get_response_address)
 
         self.put_response_socket = self.context.socket(zmq.PULL)
-        self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
+        #self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.put_response_socket.bind(self.put_response_address)
 
     def get(self, keys):
@@ -153,13 +153,7 @@ class IpcAnnaClient:
             else:
                 print("other error")
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
-
-            resp = {}
-            for key in keys:
-                resp[key] = None
-
-            return resp
-
+            return None
         else:
             print("received GET response")
             kv_pairs = {}
