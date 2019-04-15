@@ -262,6 +262,9 @@ void respond_to_client(
     const VersionStoreType& version_store, SocketCache& pushers,
     const CausalCacheThread& cct) {
   CausalResponse response;
+  std::cerr << "addr to respond is " << addr << "\n";
+  std::cerr << "pending cross metadata size is " << std::to_string(pending_cross_metadata.size()) << "\n";
+
 
   for (const Key& key : pending_cross_metadata[addr].read_set_) {
     CausalTuple* tp = response.add_tuples();
