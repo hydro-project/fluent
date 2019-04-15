@@ -28,11 +28,7 @@ def _retrieve_function(name, kvs):
     result = kvs.causal_get([kvs_name], set(), {}, SINGLE, 0)
 
     if result:
-        kv_pairs = result[1]
-        for key in kv_pairs:
-            print(key)
-        val = kv_pairs[key][1]
-        return serializer.function_ser.load(val)
+        return serializer.function_ser.load(result[1][kvs_name][1])
     else:
         return None
 
