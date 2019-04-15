@@ -43,7 +43,6 @@ def exec_function(exec_socket, kvs, status):
     else:
         try:
             result = _exec_single_func_causal(kvs, f, fargs)
-            print("func execution result is ", result)
             result = serialize_val(result)
         except Exception as e:
             logging.info('Unexpected error %s while executing function.' %
@@ -83,10 +82,13 @@ def _exec_single_func_causal(kvs, func, args):
 
         for key in kv_pairs:
             if deserialize[key]:
+                print("deserializing key ", key)
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
+                print("no deserialization for key ", key)
                 func_args[key_index_map[key]] = kv_pairs[key][1]
+            print(func_args[key_index_map[key]])
 
     # execute the function
     return  func(*func_args)
