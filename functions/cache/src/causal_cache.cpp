@@ -171,7 +171,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
-      log->info("received KVS response");
       kvs_response_handler(response, unmerged_store, in_preparation,
                            causal_cut_store, version_store, single_callback_map,
                            pending_single_metadata, pending_cross_metadata,
