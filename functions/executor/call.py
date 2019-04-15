@@ -328,12 +328,16 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         _resolve_ref_causal(to_resolve, kvs, kv_pairs,
                             schedule, versioned_key_locations)
 
+        print('key value pair size is ', len(kv_pairs))
+
         for key in kv_pairs:
+            print('key is ', key)
             if deserialize[key]:
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
                 func_args[key_index_map[key]] = kv_pairs[key][1]
+            print(func_args[key_index_map[key]])
 
     # execute the function
     return  func(*tuple(func_args))
