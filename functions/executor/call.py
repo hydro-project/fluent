@@ -83,12 +83,12 @@ def _exec_single_func_causal(kvs, func, args):
         keys = [ref.key for ref in to_resolve]
         result = kvs.causal_get(keys, set(),
                                 {},
-                                SINGLE, 0)
+                                CROSS, 0)
 
         while not result:
             result = kvs.causal_get(keys, set(),
                                 {},
-                                SINGLE, 0)
+                                CROSS, 0)
 
         kv_pairs = result[1]
 
