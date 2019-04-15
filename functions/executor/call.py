@@ -237,6 +237,9 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             else:
                 dependencies[dep.key] = dep.vector_clock
 
+    logging.info('Executing function %s for DAG %s (ID %d) in ' +
+        'causal consistency.' % (fname, schedule.dag.name, schedule.id))
+
     fargs = _process_args(fargs)
 
     kv_pairs = {}
