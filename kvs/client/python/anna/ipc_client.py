@@ -139,8 +139,10 @@ class IpcAnnaClient:
             msg = self.get_response_socket.recv()
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
+                print("timeout")
                 logging.error("Request for %s timed out!" % (str(keys)))
             else:
+                print("other error")
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
 
             resp = {}

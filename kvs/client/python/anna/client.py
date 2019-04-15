@@ -56,9 +56,7 @@ class AnnaClient():
 
 
     def get(self, key):
-        logging.info("getting worker addr")
         worker_address = self._get_worker_address(key)
-        logging.info("got worker addr")
 
         if not worker_address:
             return None
