@@ -34,6 +34,12 @@ def create_func(func_create_socket, kvs):
     ccv = CrossCausalValue()
     ccv.values.extend([func.body])
 
+    if (type(ccv) is CrossCausalValue):
+        print("sane")
+    else:
+        print(type(ccv))
+        print("insane")
+
     kvs.put(name, ccv)
     logging.info('put func to kvs finished')
 
