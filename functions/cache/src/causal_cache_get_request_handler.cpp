@@ -67,6 +67,7 @@ void get_request_handler(
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
     std::cerr << "cross obj causal mode\n";
+    std::cerr << "response addr is " << request.response_address() << "\n";
     // first, we compute the condensed version of prior causal chains
     map<Key, std::unordered_set<VectorClock, VectorClockHash>> causal_frontier;
 
@@ -173,16 +174,19 @@ void get_request_handler(
       }
     }
     if (!covered_locally) {
+      std::cerr << "not covered" << "\n";
       pending_cross_metadata[request.response_address()].read_set_ = read_set;
       pending_cross_metadata[request.response_address()].to_cover_set_ =
           to_cover;
     } else {
+      std::cerr << "covered" << "\n";
       pending_cross_metadata[request.response_address()].read_set_ = read_set;
       // decide local and remote read set
       if (!fire_remote_read_requests(
               pending_cross_metadata[request.response_address()], version_store,
               causal_cut_store, pushers, cct)) {
         // all local
+        std::cerr << "all local read\n";
         respond_to_client(pending_cross_metadata, request.response_address(),
                           causal_cut_store, version_store, pushers, cct);
       } else {
