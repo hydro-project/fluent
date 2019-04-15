@@ -282,8 +282,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
-        logging.info('DAG %s (ID %d) completed in causal mode; result at %s.' %
-                (schedule.dag.name, trigger.id, schedule.output_key))
+        logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
+                (schedule.dag.name, schedule.id, schedule.output_key))
 
         vector_clock = {}
         if schedule.output_key in dependencies:
