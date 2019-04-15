@@ -20,6 +20,7 @@ import zmq
 
 from anna.lattices import *
 from include.functions_pb2 import *
+from include.kvs_pb2 import *
 import include.server_utils as sutils
 from include.shared import *
 from . import utils
