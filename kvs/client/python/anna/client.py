@@ -223,6 +223,7 @@ class AnnaClient():
             return val.SerializeToString(), CROSSCAUSAL
         else:
             print("bad")
+            print(type(val))
             return 123, 456
 
     def _prepare_data_request(self, key):
