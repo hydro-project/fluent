@@ -123,7 +123,7 @@ class IpcAnnaClient:
             request.versioned_key_locations[addr].versioned_keys.extend(
                                 versioned_key_locations[addr].versioned_keys)
 
-        for keys in keys:
+        for key in keys:
             tp = request.tuples.add()
             tp.key = key
 
