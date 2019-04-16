@@ -64,7 +64,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
 
     logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 
-    loc_ip = []
+    #loc_ip = []
 
     logging.info('start function location scheduling')
     for fname in dag.functions:
@@ -77,10 +77,10 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
         loc = _pick_node(locations, key_ip_map, refs)
 
         # this force functions to be scheduled on different nodes
-        while loc[0] in loc_ip:
-            loc = _pick_node(locations, key_ip_map, refs)
+        #while loc[0] in loc_ip:
+        #    loc = _pick_node(locations, key_ip_map, refs)
 
-        loc_ip.append(loc[0])
+        #loc_ip.append(loc[0])
 
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
