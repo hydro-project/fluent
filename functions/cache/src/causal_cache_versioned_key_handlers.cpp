@@ -32,6 +32,7 @@ void versioned_key_request_handler(const string& serialized,
             "store.",
             key, request.id());
       } else {
+        log->info("assembling payload for key {}", key);
         std::cerr << "assembling payload for key " << key << "\n";
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);
@@ -53,7 +54,7 @@ void versioned_key_response_handler(
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     map<string, set<Address>>& client_id_to_address_map,
     const CausalCacheThread& cct, SocketCache& pushers,
-    ZmqUtilInterface* kZmqUtil) {
+    ZmqUtilInterface* kZmqUtil, logger log) {
   VersionedKeyResponse response;
   response.ParseFromString(serialized);
 
@@ -72,6 +73,7 @@ void versioned_key_response_handler(
 
         if (pending_cross_metadata[addr].remote_read_set_.size() == 0) {
           // all remote read finished
+          log->info("all remote read finished for addr {}", addr);
           std::cerr << "all remote read finished for addr " << addr << "\n";
           CausalResponse response;
 

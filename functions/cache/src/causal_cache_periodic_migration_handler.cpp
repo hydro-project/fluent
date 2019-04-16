@@ -23,7 +23,8 @@ void periodic_migration_handler(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map) {
+    map<string, set<Address>>& client_id_to_address_map,
+    logger log) {
   for (const auto& pair : unmerged_store) {
     if ((causal_cut_store.find(pair.first) == causal_cut_store.end() ||
          causal_comparison(causal_cut_store[pair.first], pair.second) !=
@@ -39,7 +40,7 @@ void periodic_migration_handler(
         // all dependency met
         merge_into_causal_cut(pair.first, causal_cut_store, in_preparation,
                               version_store, pending_cross_metadata, pushers,
-                              cct, client_id_to_address_map);
+                              cct, client_id_to_address_map, log);
         to_fetch_map.erase(pair.first);
       }
     }
