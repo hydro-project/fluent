@@ -349,15 +349,18 @@ def _compute_children_read_set(schedule):
         new_delta = set()
         for conn in schedule.dag.connections:
             if conn.source in delta and not conn.sink in children:
+                logging.info("adding children %s" % conn.sink)
                 children.add(conn.sink)
                 new_delta.add(conn.sink)
         delta = new_delta
 
+    logging.info("children size is %d" % len(children))
+
     for child in children:
         fargs = list(schedule.arguments[child].args)
         refs = list(filter(lambda arg: type(arg) == FluentReference,
-            map(lambda arg: get_serializer(arg.type).load(arg.body),
-                fargs)))
+            list(map(lambda arg: get_serializer(arg.type).load(arg.body),
+                fargs))))
         (future_read_set.add(ref.key) for ref in refs)
 
     return future_read_set
