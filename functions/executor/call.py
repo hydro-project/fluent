@@ -345,9 +345,15 @@ def _compute_children_read_set(schedule):
     children = set()
     delta = set(fname)
 
+    logging.info("length of delta set is %d" % len(delta))
+
     while not len(delta) == 0:
         new_delta = set()
         for conn in schedule.dag.connections:
+            logging.info("conn source is %s and sink is %s" % (conn.source, conn.sink))
+            logging.info("children size is %d" % len(children))
+            for name in children:
+                logging.info("children is %s" % name)
             if conn.source in delta and not conn.sink in children:
                 logging.info("adding children %s" % conn.sink)
                 children.add(conn.sink)
