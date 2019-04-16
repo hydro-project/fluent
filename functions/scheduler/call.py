@@ -76,7 +76,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
     logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 
-    loc_ip = []
+    #loc_ip = []
 
     logging.info('start function location scheduling')
     for fname in dag.functions:
