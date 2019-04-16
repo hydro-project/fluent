@@ -374,15 +374,15 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule,
 
 
 def _compute_children_read_set(schedule):
-    future_read_set = set()
+    future_read_set = ()
     fname = schedule.target_function
-    children = set()
-    delta = set(fname)
+    children = ()
+    delta = (fname,)
 
     logging.info("length of delta set is %d" % len(delta))
 
     while not len(delta) == 0:
-        new_delta = set()
+        new_delta = ()
         for conn in schedule.dag.connections:
             logging.info("conn source is %s and sink is %s" % (conn.source, conn.sink))
             logging.info("children size is %d" % len(children))
@@ -390,8 +390,8 @@ def _compute_children_read_set(schedule):
                 logging.info("children is %s" % name)
             if conn.source in delta and not conn.sink in children:
                 logging.info("adding children %s" % conn.sink)
-                children.add(conn.sink)
-                new_delta.add(conn.sink)
+                children += (conn.sink,)
+                new_delta += (conn.sink,)
         delta = new_delta
 
     logging.info("children size is %d" % len(children))
@@ -401,7 +401,8 @@ def _compute_children_read_set(schedule):
         refs = list(filter(lambda arg: type(arg) == FluentReference,
             list(map(lambda arg: get_serializer(arg.type).load(arg.body),
                 fargs))))
-        (future_read_set.add(ref.key) for ref in refs)
+        for ref in refs:
+            future_read_set += (ref.key,)
 
     return future_read_set
 
