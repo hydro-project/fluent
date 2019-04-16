@@ -203,13 +203,13 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
   for (const Key& key : metadata.read_set_) {
     if (metadata.dne_set_.find(key) != metadata.dne_set_.end()) {
       // the key dne
+      std::cerr << "key " << key << " doesn't exist\n";
       metadata.serialized_local_payload_[key] = "";
       continue;
     }
     if (causal_cut_store.find(key) == causal_cut_store.end()) {
       // no key in local causal cache, find a remote and fire request
       remote_request = true;
-
       Address remote_addr =
           find_address(key, VectorClock(), metadata.prior_causal_chains_);
       if (addr_request_map.find(remote_addr) == addr_request_map.end()) {
@@ -219,6 +219,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       }
       addr_request_map[remote_addr].add_keys(key);
       metadata.remote_read_set_.insert(key);
+      std::cerr << "key " << key << " need to be read from remote addr " << remote_addr << " and doesn't exist locally\n";
     } else {
       Address remote_addr =
           find_address(key, causal_cut_store.at(key)->reveal().vector_clock,
@@ -226,6 +227,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       if (remote_addr != "") {
         // we need to read from remote
         remote_request = true;
+        std::cerr << "key " << key << " need to be read from remote addr " << remote_addr << " because it is dominating local\n";
 
         if (addr_request_map.find(remote_addr) == addr_request_map.end()) {
           addr_request_map[remote_addr].set_id(metadata.client_id_);
@@ -236,6 +238,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
         metadata.remote_read_set_.insert(key);
       } else {
         // we can read from local
+        std::cerr << "key " << key << " can be read from local\n";
         metadata.serialized_local_payload_[key] =
             serialize(*(causal_cut_store.at(key)));
         // copy pointer to keep the version (only for those in the future read
