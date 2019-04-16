@@ -118,6 +118,8 @@ void versioned_key_response_handler(
           string resp_string;
           response.SerializeToString(&resp_string);
           kZmqUtil->send_string(resp_string, &pushers[addr]);
+          std::cerr << "response sent\n";
+          std::cerr << "GC start\n";
           // GC
           pending_cross_metadata.erase(addr);
 
@@ -134,6 +136,7 @@ void versioned_key_response_handler(
           for (const auto& id : to_remove_id) {
             client_id_to_address_map.erase(id);
           }
+          std::cerr << "GC finish\n";
         }
       }
     }
