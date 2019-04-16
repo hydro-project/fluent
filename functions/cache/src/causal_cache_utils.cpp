@@ -160,16 +160,19 @@ void recursive_dependency_check(
 Address find_address(
     const Key& key, const VectorClock& vc,
     const map<Address, map<Key, VectorClock>>& prior_causal_chains) {
+  std::cerr << "enter find address for key " << key << "\n";
   for (const auto& address_map_pair : prior_causal_chains) {
     for (const auto& key_vc_pair : address_map_pair.second) {
       if (key_vc_pair.first == key &&
           vector_clock_comparison(vc, key_vc_pair.second) == kCausalLess) {
         // find a remote vector clock that dominates the local one, so read from
         // the remote node
+        std::cerr << "found address " << address_map_pair.first << "\n";
         return address_map_pair.first;
       }
     }
   }
+  std::cerr << "address not found\n";
   // we are good to read from the local causal cache
   return "";
 }
@@ -178,8 +181,10 @@ void save_versions(const string& id, const Key& key,
                    VersionStoreType& version_store,
                    const StoreType& causal_cut_store,
                    const set<Key>& future_read_set, set<Key>& observed_keys) {
+  std::cerr << "enter save version for key " << key << "\n";
   if (observed_keys.find(key) == observed_keys.end()) {
     if (future_read_set.find(key) != future_read_set.end()) {
+      std::cerr << "saving version for key " << key << "\n";
       version_store[id][key] = causal_cut_store.at(key);
     }
     for (const auto& pair :
@@ -211,6 +216,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       continue;
     }
     if (causal_cut_store.find(key) == causal_cut_store.end()) {
+      std::cerr << "key " << key << " no in local causal cache\n";
       // no key in local causal cache, find a remote and fire request
       remote_request = true;
       Address remote_addr =
@@ -252,6 +258,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
         set<Key> observed_keys;
         save_versions(metadata.client_id_, key, version_store, causal_cut_store,
                       metadata.future_read_set_, observed_keys);
+        std::cerr << "finished saving versions\n";
       }
     }
   }
