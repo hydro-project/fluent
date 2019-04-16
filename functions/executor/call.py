@@ -297,7 +297,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                 dependencies[schedule.output_key][schedule.client_id] += 1
             else:
                 dependencies[schedule.output_key][schedule.client_id] = 1
-            vector_clock = dependencies[schedule.output_key][schedule.client_id]
+            vector_clock = dependencies[schedule.output_key].copy()
             del dependencies[schedule.output_key]
         else:
             vector_clock = {schedule.client_id : 1}
