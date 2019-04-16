@@ -142,6 +142,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             logging.info('Received a schedule for DAG %s (%s), function %s.' %
                     (schedule.dag.name, schedule.id, fname))
 
+            logging.info('This schedule has %d triggers.' %
+                    (len(schedule.triggers)))
+
             if fname not in queue:
                 queue[fname] = {}
 
@@ -190,6 +193,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             received_triggers[key][trigger.source] = trigger
             if fname in queue and trigger.id in queue[fname]:
                 schedule = queue[fname][trigger.id]
+                logging.info('Already received %d triggers.' %
+                    (len(received_triggers[key])))
                 if len(received_triggers[key]) == len(schedule.triggers):
                     exec_dag_function(pusher_cache, client,
                             received_triggers[key],
