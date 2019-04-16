@@ -32,6 +32,7 @@ void versioned_key_request_handler(const string& serialized,
             "store.",
             key, request.id());
       } else {
+        std::cerr << "assembling payload for key " << key << "\n";
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);
         tp->set_payload(serialize(*(version_store[request.id()][key])));
@@ -71,6 +72,7 @@ void versioned_key_response_handler(
 
         if (pending_cross_metadata[addr].remote_read_set_.size() == 0) {
           // all remote read finished
+          std::cerr << "all remote read finished for addr " << addr << "\n";
           CausalResponse response;
 
           for (const auto& pair :

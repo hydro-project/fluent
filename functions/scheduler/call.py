@@ -64,6 +64,9 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
 
     logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 
+    loc_ip = []
+
+    logging.info('start function location scheduling')
     for fname in dag.functions:
         locations = func_locations[fname]
         args = call.function_args[fname].args
@@ -72,11 +75,20 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
             map(lambda arg: get_serializer(arg.type).load(arg.body),
                 args)))
         loc = _pick_node(locations, key_ip_map, refs)
+
+        # this force functions to be scheduled on different nodes
+        while loc[0] in loc_ip:
+            loc = _pick_node(locations, key_ip_map, refs)
+
+        loc_ip.append(loc[0])
+
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
+
+    logging.info('end function location scheduling')
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
