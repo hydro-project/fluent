@@ -204,6 +204,9 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             else:
                 dependencies[dep.key] = dep.vector_clock
 
+    for dep in dependencies:
+        print('dependency key includes %s' % dep.key)
+
     logging.info('Executing function %s for DAG %s (ID %s) in causal consistency.' % (fname, schedule.dag.name, schedule.id))
 
     fargs = _process_args(fargs)
@@ -241,9 +244,10 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                                     versioned_key_locations[addr].versioned_keys)
 
             for key in dependencies:
+                print("to send trigger dependency includes key %s" % key)
                 dep = new_trigger.dependencies.add()
                 dep.key = key
-                dep.vector_clock = dependencies[key]
+                dep.vector_clock.update(dependencies[key])
 
             dest_ip = schedule.locations[conn.sink]
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
