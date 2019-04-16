@@ -180,8 +180,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             trigger.ParseFromString(dag_exec_socket.recv())
 
             fname = trigger.target_function
-            logging.info('Received a trigger for schedule %s, function %s.' %
-                    (trigger.id, fname))
+            logging.info('Received a trigger for schedule %s, function %s Trigger source is %s.' %
+                    (trigger.id, fname, trigger.source))
 
             key = (trigger.id, fname)
             if trigger.id not in received_triggers:
