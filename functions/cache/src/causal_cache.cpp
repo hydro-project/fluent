@@ -100,7 +100,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle a GET request
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      log->info("received a GET request");
       string serialized = kZmqUtil->recv_string(&get_puller);
       get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                           causal_cut_store, version_store, single_callback_map,
@@ -111,7 +110,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle a PUT request
     if (pollitems[1].revents & ZMQ_POLLIN) {
-      log->info("received a PUT request");
       string serialized = kZmqUtil->recv_string(&put_puller);
       put_request_handler(serialized, unmerged_store, causal_cut_store,
                           version_store, request_id_to_address_map, client);
@@ -166,7 +164,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
       versioned_key_response_handler(
           serialized, causal_cut_store, version_store, pending_cross_metadata,
-          client_id_to_address_map, cct, pushers, kZmqUtil);
+          client_id_to_address_map, cct, pushers, kZmqUtil, log);
     }
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
@@ -216,7 +214,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       periodic_migration_handler(
           unmerged_store, in_preparation, causal_cut_store, version_store,
           pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct,
-          client_id_to_address_map);
+          client_id_to_address_map, log);
       migrate_start = std::chrono::system_clock::now();
     }
 

@@ -167,7 +167,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
                                VersionStoreType& version_store,
                                const StoreType& causal_cut_store,
                                SocketCache& pushers,
-                               const CausalCacheThread& cct);
+                               const CausalCacheThread& cct, logger log);
 
 // respond to client with keys all from the local causal cache
 void respond_to_client(
@@ -183,7 +183,7 @@ void merge_into_causal_cut(
     InPreparationType& in_preparation, VersionStoreType& version_store,
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map);
+    map<string, set<Address>>& client_id_to_address_map, logger log);
 
 // process a GET response received from the KVS
 void process_response(

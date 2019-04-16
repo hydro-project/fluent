@@ -204,8 +204,10 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             else:
                 dependencies[dep.key] = dep.vector_clock
 
+    logging.info('versioned key location has %d entry for this func execution' % (len(versioned_key_locations)))
+
     for key in dependencies:
-        print('dependency key includes %s' % key)
+        logging.info('dependency key includes %s' % key)
 
     logging.info('Executing function %s for DAG %s (ID %s) in causal consistency.' % (fname, schedule.dag.name, schedule.id))
 
@@ -244,7 +246,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                                     versioned_key_locations[addr].versioned_keys)
 
             for key in dependencies:
-                print("to send trigger dependency includes key %s" % key)
+                logging.info("to send trigger dependency includes key %s" % key)
                 dep = new_trigger.dependencies.add()
                 dep.key = key
                 dep.vector_clock.update(dependencies[key])
@@ -317,6 +319,9 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
     future_read_set = _compute_children_read_set(schedule)
+    logging.info('future read set size for function %s is %d' % (schedule.target_function, len(future_read_set)))
+    for k in future_read_set:
+        logging.info('future read set has key %s' % (k))
     keys = [ref.key for ref in refs]
     result = kvs.causal_get(keys, future_read_set,
                             versioned_key_locations,
@@ -329,6 +334,8 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
 
     if result[0] is not None:
         versioned_key_locations[result[0][0]].versioned_keys.extend(result[0][1])
+
+    logging.info('versioned key location has %d entry for this GET' % (len(versioned_key_locations)))
 
     kv_pairs.update(result[1])
 

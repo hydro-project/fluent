@@ -194,8 +194,10 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
                                VersionStoreType& version_store,
                                const StoreType& causal_cut_store,
                                SocketCache& pushers,
-                               const CausalCacheThread& cct) {
+                               const CausalCacheThread& cct,
+                               logger log) {
   // first we determine which key should be read from remote
+  log->info("enter fire remote read request");
   bool remote_request = false;
 
   map<Address, VersionedKeyRequest> addr_request_map;
@@ -203,6 +205,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
   for (const Key& key : metadata.read_set_) {
     if (metadata.dne_set_.find(key) != metadata.dne_set_.end()) {
       // the key dne
+      log->info("key {} doesn't exist", key);
       std::cerr << "key " << key << " doesn't exist\n";
       metadata.serialized_local_payload_[key] = "";
       continue;
@@ -219,6 +222,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       }
       addr_request_map[remote_addr].add_keys(key);
       metadata.remote_read_set_.insert(key);
+      log->info("key {} need to be read from remote addr {} and doesn't exist locally", key, remote_addr);
       std::cerr << "key " << key << " need to be read from remote addr " << remote_addr << " and doesn't exist locally\n";
     } else {
       Address remote_addr =
@@ -227,6 +231,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       if (remote_addr != "") {
         // we need to read from remote
         remote_request = true;
+        log->info("key {} need to be read from remote addr {} because it is dominating local", key, remote_addr);
         std::cerr << "key " << key << " need to be read from remote addr " << remote_addr << " because it is dominating local\n";
 
         if (addr_request_map.find(remote_addr) == addr_request_map.end()) {
@@ -238,6 +243,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
         metadata.remote_read_set_.insert(key);
       } else {
         // we can read from local
+        log->info("key {} can be read from local", key);
         std::cerr << "key " << key << " can be read from local\n";
         metadata.serialized_local_payload_[key] =
             serialize(*(causal_cut_store.at(key)));
@@ -313,7 +319,7 @@ void merge_into_causal_cut(
     InPreparationType& in_preparation, VersionStoreType& version_store,
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map) {
+    map<string, set<Address>>& client_id_to_address_map, logger log) {
   bool key_dne = false;
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
@@ -351,7 +357,7 @@ void merge_into_causal_cut(
         // decide local and remote read set
         if (!fire_remote_read_requests(pending_cross_metadata[addr],
                                        version_store, causal_cut_store, pushers,
-                                       cct)) {
+                                       cct, log)) {
           // all local
           std::cerr << "all local read\n";
           respond_to_client(pending_cross_metadata, addr, causal_cut_store,
@@ -430,7 +436,7 @@ void process_response(
       // this key has no dependency
       merge_into_causal_cut(key, causal_cut_store, in_preparation,
                             version_store, pending_cross_metadata, pushers, cct,
-                            client_id_to_address_map);
+                            client_id_to_address_map, log);
       to_fetch_map.erase(key);
     }
   }
@@ -480,7 +486,7 @@ void process_response(
           // all dependency is met
           merge_into_causal_cut(head_key, causal_cut_store, in_preparation,
                                 version_store, pending_cross_metadata, pushers,
-                                cct, client_id_to_address_map);
+                                cct, client_id_to_address_map, log);
           to_fetch_map.erase(head_key);
         }
       }
