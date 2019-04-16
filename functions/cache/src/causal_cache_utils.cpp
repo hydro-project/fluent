@@ -183,6 +183,7 @@ void save_versions(const string& id, const Key& key,
                    const set<Key>& future_read_set, set<Key>& observed_keys) {
   std::cerr << "enter save version for key " << key << "\n";
   if (observed_keys.find(key) == observed_keys.end()) {
+    observed_keys.insert(key);
     if (future_read_set.find(key) != future_read_set.end()) {
       std::cerr << "saving version for key " << key << "\n";
       version_store[id][key] = causal_cut_store.at(key);
