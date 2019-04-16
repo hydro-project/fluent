@@ -280,8 +280,9 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
         # issue requests to GC the version store
         for cache_addr in versioned_key_locations:
             gc_addr = cache_addr[:-4] + str(int(cache_addr[-4:]) - 50)
+            logging.info("cache GC addr is %s" % gc_addr)
             sckt = pusher_cache.get(gc_addr)
-            sckt.send(schedule.client_id)
+            sckt.send_string(schedule.client_id)
 
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
