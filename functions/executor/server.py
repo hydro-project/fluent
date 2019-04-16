@@ -184,7 +184,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     (trigger.id, fname, trigger.source))
 
             key = (trigger.id, fname)
-            if trigger.id not in received_triggers:
+            if key not in received_triggers:
                 received_triggers[key] = {}
 
             if (trigger.id, fname) not in receive_times:
