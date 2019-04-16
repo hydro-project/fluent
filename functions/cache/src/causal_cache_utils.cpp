@@ -217,7 +217,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       continue;
     }
     if (causal_cut_store.find(key) == causal_cut_store.end()) {
-      std::cerr << "key " << key << " no in local causal cache\n";
+      std::cerr << "key " << key << " not in local causal cache\n";
       // no key in local causal cache, find a remote and fire request
       remote_request = true;
       Address remote_addr =
@@ -505,6 +505,12 @@ void process_response(
       // not fully covered, so we re-issue the read request
       client->get_async(key);
     }
+  }
+
+  // if the original response from KVS actually says key dne, remove it from unmerged map
+  if (vector_clock_comparison(
+          VectorClock(), unmerged_store[key]->reveal().vector_clock) == kCausalGreaterOrEqual) {
+    unmerged_store.erase(key);
   }
 }
 
