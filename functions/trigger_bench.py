@@ -24,10 +24,39 @@ recv_socket.bind('tcp://*:3000')
 
 sent_msgs = 0
 
-sckt = ctx.socket(zmq.PUSH)
-sckt.connect('tcp://' + ips[0] + ':3000')
+if 'create' in msg:
+    sckt = ctx.socket(zmq.PUSH)
+    sckt.connect('tcp://' + ips[0] + ':3000')
 
-sckt.send_string(msg)
-msg = recv_socket.recv()
+    sckt.send_string(msg)
+    sent_msgs += 1
+elif 'warmup' in msg:
+	index = 0
+    for ip in ips:
+        for tid in range(NUM_THREADS):
+            sckt = ctx.socket(zmq.PUSH)
+            sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
 
-logging.info("%s" % msg)
+            sckt.send_string(msg + ':' + str(index))
+            sent_msgs += 1
+            index += 1
+elif 'run' in msg:
+	index = 0
+	for ip in ips:
+		for tid in range(NUM_THREADS):
+            sckt = ctx.socket(zmq.PUSH)
+            sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
+
+            sckt.send_string(msg + ':' + str(index))
+            sent_msgs += 1
+            index += 1
+
+end_recv = 0
+
+while end_recv < sent_msgs:
+	msg = recv_socket.recv()
+	logging.info("received response")
+	logging.info("%s" % msg)
+	end_recv += 1
+
+logging.info("benchmark done")

@@ -27,17 +27,20 @@ def benchmark(flconn, tid):
 
         resp_addr = splits[0]
         bname = splits[1]
-        num_requests = int(splits[2])
+        mode = splits[2]
+        segment = None
+        if len(splits) > 3:
+            segment = int(splits[3])
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + resp_addr + ':3000')
-        run_bench(bname, num_requests, flconn, kvs, sckt)
+        run_bench(bname, mode, segment, flconn, kvs, sckt)
 
-def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
+def run_bench(bname, mode, segment, flconn, kvs, sckt):
     logging.info('Running benchmark %s, %d requests.' % (bname, num_requests))
 
     if bname == 'causal':
-        causal.run(flconn, kvs, num_requests, sckt)
+        causal.run(mode, segment, flconn, kvs)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')

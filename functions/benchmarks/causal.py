@@ -13,184 +13,191 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
-def run(flconn, kvs, num_requests, sckt):
-    ### DEFINE AND REGISTER FUNCTIONS ###
-    def strmnp1(a,b):
-        result = ''
-        for i, char in enumerate(a):
-            if i % 2 == 0:
-                result += a[i]
-            else:
-                result += b[i]
-        return result
+def run(mode, segment, flconn, kvs):
+    if mode == 'create'
+        ### DEFINE AND REGISTER FUNCTIONS ###
+        def strmnp1(a,b):
+            result = ''
+            for i, char in enumerate(a):
+                if i % 2 == 0:
+                    result += a[i]
+                else:
+                    result += b[i]
+            return result
 
-    def strmnp2(a,b):
-        result = ''
-        for i, char in enumerate(a):
-            if i % 2 == 0:
-                result += a[i]
-            else:
-                result += b[i]
-        return result
+        def strmnp2(a,b):
+            result = ''
+            for i, char in enumerate(a):
+                if i % 2 == 0:
+                    result += a[i]
+                else:
+                    result += b[i]
+            return result
 
-    def strmnp3(a,b):
-        result = ''
-        for i, char in enumerate(a):
-            if i % 2 == 0:
-                result += a[i]
-            else:
-                result += b[i]
-        return result
+        def strmnp3(a,b):
+            result = ''
+            for i, char in enumerate(a):
+                if i % 2 == 0:
+                    result += a[i]
+                else:
+                    result += b[i]
+            return result
 
-    def strmnp4(a,b):
-        result = ''
-        for i, char in enumerate(a):
-            if i % 2 == 0:
-                result += a[i]
-            else:
-                result += b[i]
-        return result
+        def strmnp4(a,b):
+            result = ''
+            for i, char in enumerate(a):
+                if i % 2 == 0:
+                    result += a[i]
+                else:
+                    result += b[i]
+            return result
 
-    def strmnp5(a,b):
-        result = ''
-        for i, char in enumerate(a):
-            if i % 2 == 0:
-                result += a[i]
-            else:
-                result += b[i]
-        return result
+        def strmnp5(a,b):
+            result = ''
+            for i, char in enumerate(a):
+                if i % 2 == 0:
+                    result += a[i]
+                else:
+                    result += b[i]
+            return result
 
-    cloud_strmnp1 = flconn.register(strmnp1, 'strmnp1')
-    cloud_strmnp2 = flconn.register(strmnp2, 'strmnp2')
-    cloud_strmnp3 = flconn.register(strmnp3, 'strmnp3')
-    cloud_strmnp4 = flconn.register(strmnp3, 'strmnp4')
-    cloud_strmnp5 = flconn.register(strmnp3, 'strmnp5')
+        cloud_strmnp1 = flconn.register(strmnp1, 'strmnp1')
+        cloud_strmnp2 = flconn.register(strmnp2, 'strmnp2')
+        cloud_strmnp3 = flconn.register(strmnp3, 'strmnp3')
+        cloud_strmnp4 = flconn.register(strmnp3, 'strmnp4')
+        cloud_strmnp5 = flconn.register(strmnp3, 'strmnp5')
 
-    if cloud_strmnp1 and cloud_strmnp2 and cloud_strmnp3 and cloud_strmnp4 and cloud_strmnp5:
-        logging.info('Successfully registered the string manipulation functions.')
-    else:
-        sys.exit(1)
+        if cloud_strmnp1 and cloud_strmnp2 and cloud_strmnp3 and cloud_strmnp4 and cloud_strmnp5:
+            logging.info('Successfully registered the string manipulation functions.')
+        else:
+            sys.exit(1)
 
-    ### TEST REGISTERED FUNCTIONS ###
-    refs = ()
-    for _ in range(2):
+        ### TEST REGISTERED FUNCTIONS ###
+        refs = ()
+        for _ in range(2):
+            val = '00000'
+            ccv = CrossCausalValue()
+            ccv.vector_clock['base'] = 1
+            ccv.values.extend([serialize_val(val)])
+            k = str(uuid.uuid4())
+            print("key name is ", k)
+            kvs.put(k, ccv)
+
+            refs += (FluentReference(k, True, CROSSCAUSAL),)
+
+        strmnp_test1 = cloud_strmnp1(*refs).get()
+        strmnp_test2 = cloud_strmnp2(*refs).get()
+        strmnp_test3 = cloud_strmnp3(*refs).get()
+        strmnp_test4 = cloud_strmnp4(*refs).get()
+        strmnp_test5 = cloud_strmnp5(*refs).get()
+
+        if strmnp_test1 != '00000' or strmnp_test2 != '00000' or strmnp_test3 != '00000' or strmnp_test4 != '00000' or strmnp_test5 != '00000':
+            logging.error('Unexpected result from strmnp(v1, v2): %s %s %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3), str(strmnp_test4), str(strmnp_test5)))
+            sys.exit(1)
+
+        logging.info('Successfully tested functions!')
+
+    elif mode == 'warmup':
+        ### POPULATE DATA###
         val = '00000'
         ccv = CrossCausalValue()
         ccv.vector_clock['base'] = 1
         ccv.values.extend([serialize_val(val)])
-        k = str(uuid.uuid4())
-        print("key name is ", k)
-        kvs.put(k, ccv)
 
-        refs += (FluentReference(k, True, CROSSCAUSAL),)
+        total_num_keys = 10000
+        bin_size = total_num_keys / 8
 
-    strmnp_test1 = cloud_strmnp1(*refs).get()
-    strmnp_test2 = cloud_strmnp2(*refs).get()
-    strmnp_test3 = cloud_strmnp3(*refs).get()
-    strmnp_test4 = cloud_strmnp4(*refs).get()
-    strmnp_test5 = cloud_strmnp5(*refs).get()
+        for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
+            k = str(i).zfill(len(str(total_num_keys)))
+            if i % 1000 == 0:
+                logging.info('key is %s' % k)
+            kvs.put(k, ccv)
 
-    if strmnp_test1 != '00000' or strmnp_test2 != '00000' or strmnp_test3 != '00000' or strmnp_test4 != '00000' or strmnp_test5 != '00000':
-        logging.error('Unexpected result from strmnp(v1, v2): %s %s %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3), str(strmnp_test4), str(strmnp_test5)))
-        sys.exit(1)
+        logging.info('Data populated')
 
-    logging.info('Successfully tested functions!')
+    elif mode == 'run':
+        total_num_keys = 10000
+        ### CREATE DAG ###
+        dags = {}
+        # create 100 dags
+        dag_names = []
+        dag_num = 50
+        for dag_id in range(dag_num):
+            dag_name = 'dag_' + str(dag_id)
+            dag_names.append(dag_name)
+            func_list = ['strmnp1', 'strmnp2', 'strmnp3', 'strmnp4', 'strmnp5']
 
-    ### POPULATE DATA###
-    val = '00000'
-    ccv = CrossCausalValue()
-    ccv.vector_clock['base'] = 1
-    ccv.values.extend([serialize_val(val)])
+            functions, connections = generate_dag(func_list)
 
-    total_num_keys = 10000
+            success, error = flconn.register_dag(dag_name, functions, connections)
 
-    for i in range(1, total_num_keys+1):
-        k = str(i).zfill(len(str(total_num_keys)))
-        if i % 1000 == 0:
-            logging.info('key is %s' % k)
-        kvs.put(k, ccv)
+            if not success:
+                logging.info('Failed to register DAG: %s' % (ErrorType.Name(error)))
+                sys.exit(1)
+            logging.info("Successfully created the DAG")
 
-    logging.info('Data populated')
+            logging.info("DAG contains %d functions" % len(functions))
 
-    ### CREATE DAG ###
-    dags = {}
-    # create 100 dags
-    dag_names = []
-    dag_num = 100
-    for dag_id in range(dag_num):
-        dag_name = 'dag_' + str(dag_id)
-        dag_names.append(dag_name)
-        func_list = ['strmnp1', 'strmnp2', 'strmnp3', 'strmnp4', 'strmnp5']
+            for conn in connections:
+                logging.info("(%s, %s)" % (conn[0], conn[1]))
 
-        functions, connections = generate_dag(func_list)
+            dags[dag_name] = (functions, connections)
 
-        success, error = flconn.register_dag(dag_name, functions, connections)
+        ### CREATE ZIPF TABLE###
+        zipf = 1.0
+        base = get_base(total_num_keys, zipf)
+        sum_probs = {}
+        sum_probs[0] = 0.0
+        for i in range(1, total_num_keys+1):
+            sum_probs[i] = sum_probs[i - 1] + (base / np.power(float(i), zipf))
 
-        if not success:
-            logging.info('Failed to register DAG: %s' % (ErrorType.Name(error)))
-            sys.exit(1)
-        logging.info("Successfully created the DAG")
+        logging.info("Created Probability Table with zipf %f" % zipf)
 
-        logging.info("DAG contains %d functions" % len(functions))
+        ### RUN DAG ###
+        max_vc_length = 0;
+        client_num = 4000
+        bin_size = client_num / 8
+        
+        for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
+            cid = 'client_' + str(i)
+            if i % 1000 == 0:
+                logging.info("running client %s" % cid)
 
-        for conn in connections:
-            logging.info("(%s, %s)" % (conn[0], conn[1]))
+            # randomly pick a dag
+            dag_name = random.choice(dag_names)
+            functions, connections = dags[dag_name]
 
-        dags[dag_name] = (functions, connections)
+            arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs)
 
-    ### CREATE ZIPF TABLE###
-    zipf = 1.0
-    base = get_base(total_num_keys, zipf)
-    sum_probs = {}
-    sum_probs[0] = 0.0
-    for i in range(1, total_num_keys+1):
-        sum_probs[i] = sum_probs[i - 1] + (base / np.power(float(i), zipf))
+            #for func in arg_map:
+            #    logging.info("function is %s" % func)
+            #    for ref in arg_map[func]:
+            #        logging.info("key of reference is %s" % ref.key)
 
-    logging.info("Created Probability Table with zipf %f" % zipf)
+            #for key in read_set:
+            #    logging.info("read set contains %s" % key)
 
-    ### RUN DAG ###
-    max_vc_length = 0;
-    client_num = 5000
-    for i in range(client_num):
-        cid = 'client_' + str(i)
-        if i % 1000 == 0:
-            logging.info("running client %s" % cid)
+            output = random.choice(read_set)
+            #output = 'result'
 
-        # randomly pick a dag
-        dag_name = random.choice(dag_names)
-        functions, connections = dags[dag_name]
+            rid = flconn.call_dag(dag_name, arg_map, consistency=CROSS, output_key=output, client_id=cid)
+            #logging.info("Output key is %s" % rid)
 
-        arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs)
-
-        #for func in arg_map:
-        #    logging.info("function is %s" % func)
-        #    for ref in arg_map[func]:
-        #        logging.info("key of reference is %s" % ref.key)
-
-        #for key in read_set:
-        #    logging.info("read set contains %s" % key)
-
-        output = random.choice(read_set)
-        #output = 'result'
-
-        rid = flconn.call_dag(dag_name, arg_map, consistency=CROSS, output_key=output, client_id=cid)
-        #logging.info("Output key is %s" % rid)
-
-        res = kvs.get(rid)
-        while not res:
             res = kvs.get(rid)
-        while cid not in res.vector_clock:
-            res = kvs.get(rid)
+            while not res:
+                res = kvs.get(rid)
+            while cid not in res.vector_clock:
+                res = kvs.get(rid)
 
-        #logging.info("size of vector clock is %d" % len(res.vector_clock))
-        if len(res.vector_clock) > max_vc_length:
-            max_vc_length = len(res.vector_clock)
-        res = deserialize_val(res.values[0])
+            #logging.info("size of vector clock is %d" % len(res.vector_clock))
+            if len(res.vector_clock) > max_vc_length:
+                max_vc_length = len(res.vector_clock)
+            res = deserialize_val(res.values[0])
 
-        if not res == '00000':
-            logging.info("error, res is %s" % res)
+            if not res == '00000':
+                logging.info("error, res is %s" % res)
 
-    logging.info("max vector clock length is %d" % max_vc_length)
+        logging.info("max vector clock length is %d" % max_vc_length)
 
 
 def get_base(N, skew):
