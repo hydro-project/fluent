@@ -38,7 +38,7 @@ def benchmark(flconn, tid):
         run_bench(bname, mode, segment, flconn, kvs, sckt)
 
 def run_bench(bname, mode, segment, flconn, kvs, sckt):
-    logging.info('Running benchmark %s, %d requests.' % (bname, num_requests))
+    logging.info('Running benchmark %s.' % (bname))
 
     if bname == 'causal':
         causal.run(mode, segment, flconn, kvs)
