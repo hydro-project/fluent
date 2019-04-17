@@ -30,10 +30,8 @@ void cache_ip_response_handler(string& serialized,
     unsigned error = tuple.error();
 
     if (error == 0) {
-      log->info("No error.");
       // Extract the cache IP.
       Address cache_ip = get_key_from_user_metadata(tuple.key(), log);
-      log->info("Cache IP is {}.", cache_ip);
 
       // Extract the keys that the cache is responsible for.
       LWWValue lww_value;
@@ -67,10 +65,6 @@ void cache_ip_response_handler(string& serialized,
         cache_ip_to_keys[cache_ip].emplace(std::move(cache_key));
         key_to_cache_ips[cache_key].insert(cache_ip);
       }
-    } else if (error == 1) {
-      log->info("Key DNE.");
-    } else {
-      log->info("Wrong node.");
     }
     // We can also get error 1 (key does not exist)
     // or error 2 (node not responsible for key).

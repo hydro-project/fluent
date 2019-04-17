@@ -65,11 +65,6 @@ void get_request_handler(
       kZmqUtil->send_string(resp_string, &pushers[request.response_address()]);
     }
   } else if (request.consistency() == ConsistencyType::CROSS) {
-    std::cerr << "response addr is " << request.response_address() << "\n";
-    for (const auto& addr_versioned_key_list_pair :
-         request.versioned_key_locations()) {
-      log->info("addr is {} in versioned key locations map", addr_versioned_key_list_pair.first);
-    }
     // first, we compute the condensed version of prior causal chains
     map<Key, std::unordered_set<VectorClock, VectorClockHash>> causal_frontier;
 
@@ -112,13 +107,13 @@ void get_request_handler(
 
     // set the future read set field
     for (const Key& key : request.future_read_set()) {
-      log->info("future read set has key {}", key);
+      //log->info("future read set has key {}", key);
       pending_cross_metadata[request.response_address()]
           .future_read_set_.insert(key);
     }
 
     for (CausalTuple tuple : request.tuples()) {
-      log->info("received a GET request for key {}", tuple.key());
+      //log->info("received a GET request for key {}", tuple.key());
       Key key = tuple.key();
       read_set.insert(key);
       key_set.insert(key);
@@ -177,23 +172,23 @@ void get_request_handler(
       }
     }
     if (!covered_locally) {
-      log->info("not covered");
+      //log->info("not covered");
       pending_cross_metadata[request.response_address()].read_set_ = read_set;
       pending_cross_metadata[request.response_address()].to_cover_set_ =
           to_cover;
     } else {
-      log->info("covered");
+      //log->info("covered");
       pending_cross_metadata[request.response_address()].read_set_ = read_set;
       // decide local and remote read set
       if (!fire_remote_read_requests(
               pending_cross_metadata[request.response_address()], version_store,
               causal_cut_store, pushers, cct, log)) {
         // all local
-        log->info("all local read");
+        //log->info("all local read");
         respond_to_client(pending_cross_metadata, request.response_address(),
                           causal_cut_store, version_store, pushers, cct);
       } else {
-        log->info("some reads have to be done remotely");
+        //log->info("some reads have to be done remotely");
         client_id_to_address_map[request.id()].insert(
             request.response_address());
       }

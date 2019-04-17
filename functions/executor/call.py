@@ -30,7 +30,7 @@ def _process_args(arg_list):
 def exec_function(exec_socket, kvs, status):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
-    logging.info('Received call for ' + call.name)
+    #logging.info('Received call for ' + call.name)
 
     fargs = _process_args(call.args)
 
@@ -80,17 +80,16 @@ def _exec_single_func_causal(kvs, func, args):
 
         kv_pairs = result[1]
 
-        logging.info('key value pair size is %d' % len(kv_pairs))
+        #logging.info('key value pair size is %d' % len(kv_pairs))
 
         for key in kv_pairs:
             if deserialize[key]:
-                logging.info('deserializing key %s' % key)
+                #logging.info('deserializing key %s' % key)
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
-                logging.info('no deserialization for key %s' % key)
+                #logging.info('no deserialization for key %s' % key)
                 func_args[key_index_map[key]] = kv_pairs[key][1]
-            print(func_args[key_index_map[key]])
 
     # execute the function
     return  func(*tuple(func_args))
@@ -112,8 +111,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
 
-    logging.info('Executing function %s for DAG %s (ID %s): started at %.6f.' %
-            (schedule.dag.name, fname, trigger.id, time.time()))
+    #logging.info('Executing function %s for DAG %s (ID %s): started at %.6f.' %
+    #        (schedule.dag.name, fname, trigger.id, time.time()))
 
     fargs = _process_args(fargs)
 
@@ -139,11 +138,11 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
-    logging.info('Finished executing function %s for DAG %s (ID %s): started at %.6f.' %
-            (schedule.dag.name, fname, trigger.id, time.time()))
+    #logging.info('Finished executing function %s for DAG %s (ID %s): started at %.6f.' %
+    #        (schedule.dag.name, fname, trigger.id, time.time()))
     if is_sink:
-        logging.info('DAG %s (ID %s) completed; result at %s.' %
-                (schedule.dag.name, trigger.id, schedule.id))
+        #logging.info('DAG %s (ID %s) completed; result at %s.' %
+        #        (schedule.dag.name, trigger.id, schedule.id))
         l = LWWPairLattice(generate_timestamp(0), serialize_val(result))
         if schedule.HasField('output_key'):
             kvs.put(schedule.output_key, l)
@@ -204,12 +203,12 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             else:
                 dependencies[dep.key] = dep.vector_clock
 
-    logging.info('versioned key location has %d entry for this func execution' % (len(versioned_key_locations)))
+    #logging.info('versioned key location has %d entry for this func execution' % (len(versioned_key_locations)))
 
-    for key in dependencies:
-        logging.info('dependency key includes %s' % key)
+    #for key in dependencies:
+    #    logging.info('dependency key includes %s' % key)
 
-    logging.info('Executing function %s for DAG %s (ID %s) in causal consistency.' % (fname, schedule.dag.name, schedule.id))
+    #logging.info('Executing function %s for DAG %s (ID %s) in causal consistency.' % (fname, schedule.dag.name, schedule.id))
 
     fargs = _process_args(fargs)
 
@@ -246,7 +245,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
                                     versioned_key_locations[addr].versioned_keys)
 
             for key in dependencies:
-                logging.info("to send trigger dependency includes key %s" % key)
+                #logging.info("to send trigger dependency includes key %s" % key)
                 dep = new_trigger.dependencies.add()
                 dep.key = key
                 dep.vector_clock.update(dependencies[key])
@@ -256,8 +255,8 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
-        logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
-                (schedule.dag.name, schedule.id, schedule.output_key))
+        #logging.info('DAG %s (ID %s) completed in causal mode; result at %s.' %
+        #        (schedule.dag.name, schedule.id, schedule.output_key))
 
         vector_clock = {}
         if schedule.output_key in dependencies:
@@ -280,7 +279,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
         # issue requests to GC the version store
         for cache_addr in versioned_key_locations:
             gc_addr = cache_addr[:-4] + str(int(cache_addr[-4:]) - 50)
-            logging.info("cache GC addr is %s" % gc_addr)
+            #logging.info("cache GC addr is %s" % gc_addr)
             sckt = pusher_cache.get(gc_addr)
             sckt.send_string(schedule.client_id)
 
@@ -304,25 +303,21 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
         _resolve_ref_causal(to_resolve, kvs, kv_pairs,
                             schedule, versioned_key_locations)
 
-        print('key value pair size is ', len(kv_pairs))
-
         for key in kv_pairs:
-            print('key is ', key)
             if deserialize[key]:
                 func_args[key_index_map[key]] = \
                                 deserialize_val(kv_pairs[key][1])
             else:
                 func_args[key_index_map[key]] = kv_pairs[key][1]
-            print(func_args[key_index_map[key]])
 
     # execute the function
     return  func(*tuple(func_args))
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
     future_read_set = _compute_children_read_set(schedule)
-    logging.info('future read set size for function %s is %d' % (schedule.target_function, len(future_read_set)))
-    for k in future_read_set:
-        logging.info('future read set has key %s' % (k))
+    #logging.info('future read set size for function %s is %d' % (schedule.target_function, len(future_read_set)))
+    #for k in future_read_set:
+    #    logging.info('future read set has key %s' % (k))
     keys = [ref.key for ref in refs]
     result = kvs.causal_get(keys, future_read_set,
                             versioned_key_locations,
@@ -336,7 +331,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
     if result[0] is not None:
         versioned_key_locations[result[0][0]].versioned_keys.extend(result[0][1])
 
-    logging.info('versioned key location has %d entry for this GET' % (len(versioned_key_locations)))
+    #logging.info('versioned key location has %d entry for this GET' % (len(versioned_key_locations)))
 
     kv_pairs.update(result[1])
 
@@ -346,22 +341,13 @@ def _compute_children_read_set(schedule):
     children = ()
     delta = (fname,)
 
-    logging.info("length of delta set is %d" % len(delta))
-
     while not len(delta) == 0:
         new_delta = ()
         for conn in schedule.dag.connections:
-            logging.info("conn source is %s and sink is %s" % (conn.source, conn.sink))
-            logging.info("children size is %d" % len(children))
-            for name in children:
-                logging.info("children is %s" % name)
             if conn.source in delta and not conn.sink in children:
-                logging.info("adding children %s" % conn.sink)
                 children += (conn.sink,)
                 new_delta += (conn.sink,)
         delta = new_delta
-
-    logging.info("children size is %d" % len(children))
 
     for child in children:
         fargs = list(schedule.arguments[child].args)

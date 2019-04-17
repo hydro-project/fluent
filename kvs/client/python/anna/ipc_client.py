@@ -79,7 +79,7 @@ class IpcAnnaClient:
 
             for tp in resp.tuples:
                 if tp.error == 1:
-                    logging.info('Key %s does not exist!' % (key))
+                    #logging.info('Key %s does not exist!' % (key))
                     kv_pairs[tp.key] = None
 
                 if tp.lattice_type == LWW:
@@ -133,8 +133,8 @@ class IpcAnnaClient:
 
         self.get_request_socket.send(request.SerializeToString())
 
-        for key in keys:
-            logging.info('sent GET request for key %s' % (key))
+        #for key in keys:
+        #    logging.info('sent GET request for key %s' % (key))
 
         try:
             msg = self.get_response_socket.recv()
@@ -145,15 +145,15 @@ class IpcAnnaClient:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
             return None
         else:
-            logging.info("received GET response")
+            #logging.info("received GET response")
             kv_pairs = {}
             resp = CausalResponse()
             resp.ParseFromString(msg)
 
             for tp in resp.tuples:
-                logging.info('response key is %s' % tp.key)
+                #logging.info('response key is %s' % tp.key)
                 if tp.error == 1:
-                    logging.info('Key %s does not exist!' % (key))
+                    #logging.info('Key %s does not exist!' % (key))
                     return None
 
                 val = CrossCausalValue()
