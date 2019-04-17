@@ -412,7 +412,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
       // only gossip if we have changes
       if (local_changeset.size() > 0) {
-        log->info("Has key to gossip.");
+        //log->info("Has key to gossip.");
         AddressKeysetMap addr_keyset_map;
 
         bool succeed;
@@ -434,16 +434,16 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           }
 
           // Get the caches that we need to gossip to.
-          log->info("Looping cache for key {}.", key);
+          //log->info("Looping cache for key {}.", key);
           if (key_to_cache_ips.find(key) != key_to_cache_ips.end()) {
             set<Address>& cache_ips = key_to_cache_ips[key];
             for (const Address& cache_ip : cache_ips) {
-              log->info("cache address is {}.", cache_ip);
+              //log->info("cache address is {}.", cache_ip);
               CausalCacheThread cct(cache_ip, 0);
               addr_keyset_map[cct.causal_cache_update_connect_address()].insert(key);
             }
           } else {
-            log->info("key {} not cached anywhere.", key);
+            //log->info("key {} not cached anywhere.", key);
           }
         }
 
@@ -617,7 +617,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       // Update extant_caches with the response.
       set<Address> deleted_caches = std::move(extant_caches);
       extant_caches = set<Address>();
+      log->info("Checking latest cache addresses.");
       for (const auto& func_node : func_nodes.keys()) {
+        log->info("Cache addr is {}.", func_node);
         deleted_caches.erase(func_node);
         extant_caches.insert(func_node);
       }
