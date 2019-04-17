@@ -81,7 +81,7 @@ inline Key get_key_from_user_metadata(Key metadata_key, logger log) {
   // Find the second delimiter; this skips over the metadata type.
   n_type = metadata_key.find(kMetadataDelimiter, n_id + 1);
   log->info("n_type is {}", n_type);
-  string metadata_type = metadata_key.substr(n_id + 1, n_type);
+  string metadata_type = metadata_key.substr(n_id + 1, n_type - (n_id + 1));
   log->info("metadata type is {}", metadata_type);
   log->info("kMetadataTypeCacheIP is {}", kMetadataTypeCacheIP);
   if (metadata_type == kMetadataTypeCacheIP) {
