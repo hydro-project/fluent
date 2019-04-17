@@ -31,9 +31,9 @@ void kvs_response_handler(
   Key key = response.tuples(0).key();
   // first, check if the request failed
   if (response.has_error() && response.error() == ResponseErrorType::TIMEOUT) {
-    log->info("req timed out");
+    //log->info("req timed out");
     if (response.type() == RequestType::GET) {
-      log->info("retrying GET for key {}", key);
+      //log->info("retrying GET for key {}", key);
       client->get_async(key);
     } else {
       if (request_id_to_address_map.find(response.response_id()) !=
@@ -50,7 +50,7 @@ void kvs_response_handler(
     }
   } else {
     if (response.type() == RequestType::GET) {
-      log->info("received KVS GET response for key {}", key);
+      //log->info("received KVS GET response for key {}", key);
       auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>();
       if (response.tuples(0).error() != 1) {
         //log->info("key {} exists", key);
@@ -67,7 +67,7 @@ void kvs_response_handler(
                        to_fetch_map, cover_map, pushers, client, log, cct,
                        client_id_to_address_map);
     } else {
-      log->info("received KVS PUT response for key {}", key);
+      //log->info("received KVS PUT response for key {}", key);
       if (request_id_to_address_map.find(response.response_id()) ==
           request_id_to_address_map.end()) {
         if (response.tuples(0).lattice_type() != LatticeType::LWW) {

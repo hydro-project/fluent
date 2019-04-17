@@ -117,14 +117,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle updates received from the KVS
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      log->info("received a KVS update");
+      //log->info("received a KVS update");
       string serialized = kZmqUtil->recv_string(&update_puller);
       KeyRequest updates;
       updates.ParseFromString(serialized);
 
       for (const KeyTuple& tuple : updates.tuples()) {
         Key key = tuple.key();
-        log->info("key to update is {}", key);
+        //log->info("key to update is {}", key);
         // if we are no longer caching this key, then we simply ignore updates
         // for it because we received the update based on outdated information
         if (key_set.find(key) == key_set.end()) {
@@ -147,12 +147,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       // assume this string is the client id
       string serialized = kZmqUtil->recv_string(&version_gc_puller);
       version_store.erase(serialized);
-      log->info("received version GC request for client id {}", serialized);
+      //log->info("received version GC request for client id {}", serialized);
     }
 
     // handle versioned key request
     if (pollitems[4].revents & ZMQ_POLLIN) {
-      log->info("received a versioned key request");
+      //log->info("received a versioned key request");
       string serialized = kZmqUtil->recv_string(&versioned_key_request_puller);
       versioned_key_request_handler(serialized, version_store, pushers, log,
                                     kZmqUtil);
@@ -160,7 +160,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle versioned key response
     if (pollitems[5].revents & ZMQ_POLLIN) {
-      log->info("received a versioned key response");
+      //log->info("received a versioned key response");
       string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
       versioned_key_response_handler(
           serialized, causal_cut_store, version_store, pending_cross_metadata,
@@ -186,7 +186,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // caching; we only do this periodically because we are okay with receiving
     // potentially stale updates
     if (duration >= kCausalCacheReportThreshold) {
-      log->info("reporting");
+      //log->info("reporting");
       KeySet set;
 
       for (const auto& pair : unmerged_store) {
@@ -210,13 +210,13 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // check if any key in unmerged_store is newer and migrate
     if (duration >= kMigrateThreshold) {
-      log->info("migration");
+      //log->info("migration");
       periodic_migration_handler(
           unmerged_store, in_preparation, causal_cut_store, version_store,
           pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct,
           client_id_to_address_map, log);
       migrate_start = std::chrono::system_clock::now();
-      log->info("end migration");
+      //log->info("end migration");
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.

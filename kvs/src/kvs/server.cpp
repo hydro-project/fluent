@@ -209,7 +209,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     causal_serializer = new EBSCausalSerializer(thread_id);
     cross_causal_serializer = new EBSCrossCausalSerializer(thread_id);
   } else {
-    log->info("Invalid node type");
+    log->error("Invalid node type");
     exit(1);
   }
 
@@ -397,7 +397,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
     // Receive cache IP lookup response.
     if (pollitems[7].revents & ZMQ_POLLIN) {
-      log->info("Received cache key lookup response.");
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&cache_ip_response_puller);
@@ -418,7 +417,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
       // only gossip if we have changes
       if (local_changeset.size() > 0) {
-        //log->info("Has key to gossip.");
         AddressKeysetMap addr_keyset_map;
 
         bool succeed;
@@ -440,7 +438,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           }
 
           // Get the caches that we need to gossip to.
-          //log->info("Looping cache for key {}.", key);
           if (key_to_cache_ips.find(key) != key_to_cache_ips.end()) {
             set<Address>& cache_ips = key_to_cache_ips[key];
             for (const Address& cache_ip : cache_ips) {
@@ -448,8 +445,6 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
               CausalCacheThread cct(cache_ip, 0);
               addr_keyset_map[cct.causal_cache_update_connect_address()].insert(key);
             }
-          } else {
-            log->info("key {} not cached anywhere.", key);
           }
         }
 
@@ -623,9 +618,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       // Update extant_caches with the response.
       set<Address> deleted_caches = std::move(extant_caches);
       extant_caches = set<Address>();
-      log->info("Checking latest cache addresses.");
       for (const auto& func_node : func_nodes.keys()) {
-        log->info("Cache addr is {}.", func_node);
         deleted_caches.erase(func_node);
         extant_caches.insert(func_node);
       }

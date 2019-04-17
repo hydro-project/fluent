@@ -152,7 +152,7 @@ void recursive_dependency_check(
         to_fetch_map[head_key].insert(dep_key);
         cover_map[dep_key][lattice->reveal().dependency.reveal().at(dep_key)]
             .insert(head_key);
-        log->info("Issue GET for key {} during dependency check.", dep_key);
+        //log->info("Issue GET for key {} during dependency check.", dep_key);
         client->get_async(dep_key);
       }
     }
@@ -200,7 +200,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
                                const CausalCacheThread& cct,
                                logger log) {
   // first we determine which key should be read from remote
-  log->info("enter fire remote read request");
+  //log->info("enter fire remote read request");
   bool remote_request = false;
 
   map<Address, VersionedKeyRequest> addr_request_map;
@@ -208,8 +208,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
   for (const Key& key : metadata.read_set_) {
     if (metadata.dne_set_.find(key) != metadata.dne_set_.end()) {
       // the key dne
-      log->info("key {} doesn't exist", key);
-      std::cerr << "key " << key << " doesn't exist\n";
+      //log->info("key {} doesn't exist", key);
       metadata.serialized_local_payload_[key] = "";
       continue;
     }
@@ -225,7 +224,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       }
       addr_request_map[remote_addr].add_keys(key);
       metadata.remote_read_set_.insert(key);
-      log->info("key {} need to be read from remote addr {} and doesn't exist locally", key, remote_addr);
+     // log->info("key {} need to be read from remote addr {} and doesn't exist locally", key, remote_addr);
     } else {
       Address remote_addr =
           find_address(key, causal_cut_store.at(key)->reveal().vector_clock,
@@ -233,7 +232,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       if (remote_addr != "") {
         // we need to read from remote
         remote_request = true;
-        log->info("key {} need to be read from remote addr {} because it is dominating local", key, remote_addr);
+        //log->info("key {} need to be read from remote addr {} because it is dominating local", key, remote_addr);
 
         if (addr_request_map.find(remote_addr) == addr_request_map.end()) {
           addr_request_map[remote_addr].set_id(metadata.client_id_);
@@ -244,7 +243,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
         metadata.remote_read_set_.insert(key);
       } else {
         // we can read from local
-        log->info("key {} can be read from local", key);
+        //log->info("key {} can be read from local", key);
         metadata.serialized_local_payload_[key] =
             serialize(*(causal_cut_store.at(key)));
         // copy pointer to keep the version (only for those in the future read
@@ -350,18 +349,18 @@ void merge_into_causal_cut(
       }
       pending_cross_metadata[addr].to_cover_set_.erase(key);
       if (pending_cross_metadata[addr].to_cover_set_.size() == 0) {
-        log->info("client addr to notify is {}", addr);
+        //log->info("client addr to notify is {}", addr);
         // all keys are covered, safe to read
         // decide local and remote read set
         if (!fire_remote_read_requests(pending_cross_metadata[addr],
                                        version_store, causal_cut_store, pushers,
                                        cct, log)) {
           // all local
-          log->info("all local read");
+          //log->info("all local read");
           respond_to_client(pending_cross_metadata, addr, causal_cut_store,
                             version_store, pushers, cct);
         } else {
-          log->info("some reads have to be done remotely");
+          //log->info("some reads have to be done remotely");
           client_id_to_address_map[pending_cross_metadata[addr].client_id_]
               .insert(addr);
         }

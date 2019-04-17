@@ -32,8 +32,7 @@ void versioned_key_request_handler(const string& serialized,
             "store.",
             key, request.id());
       } else {
-        log->info("assembling payload for key {}", key);
-        std::cerr << "assembling payload for key " << key << "\n";
+        //log->info("assembling payload for key {}", key);
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);
         tp->set_payload(serialize(*(version_store[request.id()][key])));
@@ -76,8 +75,7 @@ void versioned_key_response_handler(
 
         if (pending_cross_metadata[addr].remote_read_set_.size() == 0) {
           // all remote read finished
-          log->info("all remote read finished for addr {}", addr);
-          std::cerr << "all remote read finished for addr " << addr << "\n";
+          //log->info("all remote read finished for addr {}", addr);
           CausalResponse response;
 
           for (const auto& pair :
@@ -121,7 +119,6 @@ void versioned_key_response_handler(
           string resp_string;
           response.SerializeToString(&resp_string);
           kZmqUtil->send_string(resp_string, &pushers[addr]);
-          std::cerr << "response sent\n";
           // GC
           pending_cross_metadata.erase(addr);
 
@@ -130,7 +127,6 @@ void versioned_key_response_handler(
       }
     }
     // GC
-    std::cerr << "GC start\n";
     for (const Address& addr : address_to_gc) {
       client_id_to_address_map[response.id()].erase(addr);
     }
@@ -138,6 +134,5 @@ void versioned_key_response_handler(
     if (client_id_to_address_map[response.id()].size() == 0) {
       client_id_to_address_map.erase(response.id());
     }
-    std::cerr << "GC finish\n";
   }
 }
