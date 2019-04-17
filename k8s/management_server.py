@@ -336,16 +336,16 @@ def check_executor_utilization(client, ctx, executor_statuses,
     if time.time() > (grace_start + GRACE_PERIOD):
         grace_start = 0
 
-        if avg_utilization > UTILIZATION_MAX or avg_pinned_count > \
-                PINNED_COUNT_MAX:
-            logging.info(('Average utilization is %.4f. Adding %d nodes to '
-                 + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
+        #if avg_utilization > UTILIZATION_MAX or avg_pinned_count > \
+        #        PINNED_COUNT_MAX:
+        #    logging.info(('Average utilization is %.4f. Adding %d nodes to '
+        #         + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
 
-            msg = 'function:' + str(EXECUTOR_INCREASE)
-            add_push_socket.send_string(msg)
+        #    msg = 'function:' + str(EXECUTOR_INCREASE)
+        #    add_push_socket.send_string(msg)
 
             # start the grace period after adding nodes
-            grace_start = time.time()
+        #    grace_start = time.time()
 
         # we only decide to kill nodes if they are underutilized and if there
         # are at least 5 executors in the system -- we never scale down past

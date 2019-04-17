@@ -34,8 +34,10 @@ def pin(pin_socket, client, status, pinned_functions, runtimes, exec_counts):
     while not func:
         func = utils._retrieve_function(name, client)
 
-    status.functions.append(name)
-    pinned_functions[name] = func
+    if name not in pinned_functions:
+        pinned_functions[name] = func
+        status.functions.append(name)
+
     runtimes[name] = 0.0
     exec_counts[name] = 0
 
