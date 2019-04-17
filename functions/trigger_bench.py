@@ -32,24 +32,22 @@ if 'create' in msg:
     sent_msgs += 1
 elif 'warmup' in msg:
 	index = 0
-    for ip in ips:
-        for tid in range(NUM_THREADS):
-            sckt = ctx.socket(zmq.PUSH)
-            sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
-
-            sckt.send_string(msg + ':' + str(index))
-            sent_msgs += 1
-            index += 1
+	for ip in ips:
+		for tid in range(NUM_THREADS):
+			sckt = ctx.socket(zmq.PUSH)
+			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
+			sckt.send_string(msg + ':' + str(index))
+			sent_msgs += 1
+			index += 1
 elif 'run' in msg:
 	index = 0
 	for ip in ips:
 		for tid in range(NUM_THREADS):
-            sckt = ctx.socket(zmq.PUSH)
-            sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
-
-            sckt.send_string(msg + ':' + str(index))
-            sent_msgs += 1
-            index += 1
+			sckt = ctx.socket(zmq.PUSH)
+			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
+			sckt.send_string(msg + ':' + str(index))
+			sent_msgs += 1
+			index += 1
 
 end_recv = 0
 
