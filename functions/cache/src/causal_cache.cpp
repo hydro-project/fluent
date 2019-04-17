@@ -124,7 +124,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       for (const KeyTuple& tuple : updates.tuples()) {
         Key key = tuple.key();
-
+        log->info("key to update is {}", key);
         // if we are no longer caching this key, then we simply ignore updates
         // for it because we received the update based on outdated information
         if (key_set.find(key) == key_set.end()) {
