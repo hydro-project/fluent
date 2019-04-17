@@ -71,7 +71,7 @@ inline Key get_user_metadata_key(string data_key, UserMetadataType type) {
 
 // Inverse of get_user_metadata_key, returning just the key itself.
 // TODO: same problem as get_user_metadata_key with the metadata types.
-inline Key get_key_from_user_metadata(Key metadata_key) {
+inline Key get_key_from_user_metadata(Key metadata_key, logger log) {
   string::size_type n_id;
   string::size_type n_type;
   // Find the first delimiter; this skips over the metadata identifier.
@@ -79,6 +79,8 @@ inline Key get_key_from_user_metadata(Key metadata_key) {
   // Find the second delimiter; this skips over the metadata type.
   n_type = metadata_key.find(kMetadataDelimiter, n_id + 1);
   string metadata_type = metadata_key.substr(n_id + 1, n_type);
+  log->info("metadata type is {}", metadata_type);
+  log->info("kMetadataTypeCacheIP is {}", kMetadataTypeCacheIP);
   if (metadata_type == kMetadataTypeCacheIP) {
     return metadata_key.substr(n_type + 1);
   }

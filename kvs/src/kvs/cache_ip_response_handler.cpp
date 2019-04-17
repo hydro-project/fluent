@@ -32,7 +32,7 @@ void cache_ip_response_handler(string& serialized,
     if (error == 0) {
       log->info("No error.");
       // Extract the cache IP.
-      Address cache_ip = get_key_from_user_metadata(tuple.key());
+      Address cache_ip = get_key_from_user_metadata(tuple.key(), log);
       log->info("Cache IP is {}.", cache_ip);
 
       // Extract the keys that the cache is responsible for.
