@@ -14,7 +14,7 @@ from include.shared import *
 from . import utils
 
 def run(mode, segment, flconn, kvs):
-    if mode == 'create'
+    if mode == 'create':
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp1(a,b):
             result = ''
@@ -157,7 +157,7 @@ def run(mode, segment, flconn, kvs):
         max_vc_length = 0;
         client_num = 4000
         bin_size = client_num / 8
-        
+
         for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
             cid = 'client_' + str(i)
             if i % 1000 == 0:
