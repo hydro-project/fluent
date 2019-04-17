@@ -397,10 +397,11 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
     // Receive cache IP lookup response.
     if (pollitems[7].revents & ZMQ_POLLIN) {
+      log->info("Received cache key lookup response.");
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&cache_ip_response_puller);
-      cache_ip_response_handler(serialized, cache_ip_to_keys, key_to_cache_ips);
+      cache_ip_response_handler(serialized, cache_ip_to_keys, key_to_cache_ips, log);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -443,12 +444,12 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           if (key_to_cache_ips.find(key) != key_to_cache_ips.end()) {
             set<Address>& cache_ips = key_to_cache_ips[key];
             for (const Address& cache_ip : cache_ips) {
-              //log->info("cache address is {}.", cache_ip);
+              log->info("cache address is {}.", cache_ip);
               CausalCacheThread cct(cache_ip, 0);
               addr_keyset_map[cct.causal_cache_update_connect_address()].insert(key);
             }
           } else {
-            //log->info("key {} not cached anywhere.", key);
+            log->info("key {} not cached anywhere.", key);
           }
         }
 
