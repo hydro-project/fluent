@@ -12,8 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
-
 from anna.lattices import *
 from include.kvs_pb2 import *
 from include.shared import *
@@ -119,16 +117,11 @@ def _update_key_maps(key_ip_map, executors, kvs):
         ks = KeySet()
         ks.ParseFromString(l.reveal()[1])
 
-        logging.info('Node %s has %d things cached!' % (ip, len(ks.keys)))
-
         for key in ks.keys:
             if key not in key_ip_map:
                 key_ip_map[key] = []
 
             key_ip_map[key].append(ip)
-
-    for key in key_ip_map:
-        logging.info('%s: %d' % (key, len(key_ip_map[key])))
 
 def _find_dag_source(dag):
     sinks = set()

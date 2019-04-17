@@ -5,6 +5,7 @@ import sys
 
 from benchmarks import composition
 from benchmarks import locality
+from benchmarks import predserving
 from benchmarks import utils
 import client as flclient
 
@@ -31,17 +32,24 @@ bname = sys.argv[1]
 if bname == 'composition':
     total, scheduler, kvs, retries = composition.run(flconn, kvs, num_requests,
             None)
-if bname == 'locality':
+elif bname == 'locality':
     locality.run(flconn, kvs, num_requests, True, None)
     total, scheduler, kvs, retries = locality.run(flconn, kvs, num_requests,
             False, None)
+elif bname == 'pred_serving':
+    total, scheduler, kvs, retries = predserving.run(flconn, kvs,
+            num_requests, None)
 else:
     print('Unknown benchmark type: %s!' % (bname))
 
 print('Total computation time: %.4f' % (sum(total)))
 
-utils.print_latency_stats(total, 'E2E')
-utils.print_latency_stats(scheduler, 'SCHEDULER')
-utils.print_latency_stats(kvs, 'KVS')
+if total:
+    utils.print_latency_stats(total, 'E2E')
+if scheduler:
+    utils.print_latency_stats(scheduler, 'SCHEDULER')
+if kvs:
+    utils.print_latency_stats(kvs, 'KVS')
 
-print('Number of KVS get retries: %d' % (retries))
+if retries > 0:
+    print('Number of KVS get retries: %d' % (retries))

@@ -74,6 +74,11 @@ def scheduler(ip, mgmt_ip, route_addr):
     backoff_socket = ctx.socket(zmq.PULL)
     backoff_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.BACKOFF_PORT))
 
+    pin_accept_socket = ctx.socket(zmq.PULL)
+    pin_accept_socket.setsockopt(zmq.RCVTIMEO, 500)
+    pin_accept_socket.bind(sutils.BIND_ADDR_TEMPLATE %
+            (sutils.PIN_ACCEPT_PORT))
+
     requestor_cache = SocketCache(ctx, zmq.REQ)
     pusher_cache = SocketCache(ctx, zmq.PUSH)
 
@@ -112,12 +117,21 @@ def scheduler(ip, mgmt_ip, route_addr):
                     key_ip_map, running_counts, backoff)
 
         if dag_create_socket in socks and socks[dag_create_socket] == zmq.POLLIN:
-            create_dag(dag_create_socket, pusher_cache, kvs, executors,
-                    dags, func_locations, call_frequency)
+            create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
+                    ip, pin_accept_socket, func_locations, call_frequency)
 
         if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
             call = DagCall()
             call.ParseFromString(dag_call_socket.recv())
+
+            if call.name not in dags:
+                resp = GenericResponse()
+                resp.success = False
+                resp.error = NO_SUCH_DAG
+
+                dag_call_socket.send(resp.SerializeToString())
+                continue
+
             exec_id = generate_timestamp(0)
 
             dag = dags[call.name]

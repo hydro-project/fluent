@@ -107,8 +107,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
-            pin(pin_socket, client, status, pinned_functions, runtimes,
-                    exec_counts)
+            pin(pin_socket, pusher_cache, client, status, pinned_functions,
+                    runtimes, exec_counts)
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -181,7 +181,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     (trigger.id, fname))
 
             key = (trigger.id, fname)
-            if trigger.id not in received_triggers:
+            if key not in received_triggers:
                 received_triggers[key] = {}
 
             if (trigger.id, fname) not in receive_times:

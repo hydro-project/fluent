@@ -15,6 +15,7 @@
 import logging
 import random
 import sys
+import time
 import zmq
 
 from anna.lattices import *
@@ -42,8 +43,8 @@ def create_func(func_create_socket, kvs):
     func_create_socket.send(sutils.ok_resp)
 
 
-def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
-        func_locations, call_frequency, num_replicas=45):
+def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
+        pin_accept_socket, func_locations, call_frequency, num_replicas=1):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -59,12 +60,8 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
             if len(candidates) == 0:
                 break
 
-            node, tid = sys_random.sample(candidates, 1)[0]
-
-            # this is currently a fire-and-forget operation -- we can see if we
-            # want to make stronger guarantees in the future
-            sckt = pusher_cache.get(utils._get_pin_address(node, tid))
-            sckt.send_string(fname)
+            node, tid, = _pin_func(fname, func_locations, candidates,
+                    pin_accept_socket, ip, pusher_cache)
 
             if fname not in call_frequency:
                 call_frequency[fname] = 0
@@ -77,4 +74,48 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
 
     dags[dag.name] = (dag, utils._find_dag_source(dag))
     dag_create_socket.send(sutils.ok_resp)
+
+def _pin_func(fname, func_locations, candidates, pin_accept_socket, ip, pusher_cache):
+    # pick the node with the fewest functions pinned
+    ip_func_map = {}
+    for fn in func_locations:
+        for loc in func_locations[fn]:
+            if loc not in ip_func_map:
+                ip_func_map[loc] = set()
+            ip_func_map[loc].add(fn)
+
+    min_count = 1000000
+    min_ip = None
+    for candidate in candidates:
+        if candidate in ip_func_map:
+            count = len(ip_func_map[candidate])
+        else:
+            count = 0
+
+        if count < min_count:
+            min_count = count
+            min_ip = candidate
+
+    node, tid = min_ip
+
+    sckt = pusher_cache.get(utils._get_pin_address(node, tid))
+    msg = ip + ':' + fname
+    sckt.send_string(msg)
+
+    resp = GenericResponse()
+    try:
+        resp.ParseFromString(pin_accept_socket.recv())
+    except zmq.ZMQError as e:
+        logging.info('Pin operation to %s:%d timed out. Retrying.' % (node, tid))
+        # request timed out, try again
+        return _pin_func(fname, func_locations, candidates, pin_accept_socket, ip,
+                pusher_cache)
+
+    if resp.success:
+        return node, tid
+    else: # the pin operation was rejected, remove node and try again
+        logging.info('Node %s:%d rejected pin operation. Retrying.' % (node, tid))
+        candidates.discard((node, tid))
+        return _pin_func(fname, func_locations, candidates, pin_accept_socket, ip,
+                pusher_cache)
 

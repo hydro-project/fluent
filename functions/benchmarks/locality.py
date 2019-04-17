@@ -14,7 +14,7 @@ from include.shared import *
 from . import utils
 
 sys_random = random.SystemRandom()
-OSIZE = 100000
+OSIZE = 10
 
 def run(flconn, kvs, num_requests, create, sckt):
     dag_name = 'locality'
@@ -96,6 +96,16 @@ def run(flconn, kvs, num_requests, create, sckt):
         # l = kvs.get('LOCALITY_OIDS')
         # oids = cp.loads(l.reveal()[1])
 
+        oids = []
+        for i in range(num_requests):
+            for _ in range(10):
+                array = np.random.rand(OSIZE)
+                oid = str(uuid.uuid4())
+                val = LWWPairLattice(0, serialize_val(array))
+
+                kvs.put(oid, val)
+                oids.append(oid)
+
         total_time = []
         scheduler_time = []
         kvs_time = []
@@ -110,20 +120,11 @@ def run(flconn, kvs, num_requests, create, sckt):
         epoch_kvs = []
 
         seen_oids = set()
-        for _ in range(num_requests):
+        for i in range(num_requests):
             refs = []
-            for _ in range(10):
-                arr = np.random.rand(OSIZE)
-                oid = str(uuid.uuid4())
-                val = LWWPairLattice(0, serialize_val(arr))
-                kvs.put(oid, val)
-                if oid in seen_oids:
-                    logging.info('Seen oid %s before!' % (oid))
-                seen_oids.add(oid)
+            for ref in oids[(i * 10):(i * 10) + 10]:
+                refs.append(FluentReference(ref, True, LWW))
 
-                refs.append(FluentReference(oid, True, LWW))
-
-            time.sleep(.01)
             start = time.time()
             arg_map = { 'dot' : refs }
 

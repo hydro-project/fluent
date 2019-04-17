@@ -141,7 +141,6 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     max_ip = None
     max_count = 0
     for ip in arg_map.keys():
-        # logging.info('IP %s has count %d' % (ip, arg_map[ip]))
         if arg_map[ip] > max_count:
             max_count = arg_map[ip]
             max_ip = ip
@@ -165,8 +164,6 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
         running_counts[max_ip] = set()
 
     running_counts[max_ip].add(time.time())
-    # logging.info('Picking node %s:%d for reason %s' % (max_ip[0], max_ip[1],
-    #     reason))
 
     return max_ip
 

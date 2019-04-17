@@ -147,6 +147,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   auto report_start = std::chrono::system_clock::now();
   auto report_end = std::chrono::system_clock::now();
 
+  std::list<Key> access_order;
+  map<Key, std::list<Key>::iterator> iterator_cache;
+
   while (true) {
     kZmqUtil->poll(0, &pollitems);
 
@@ -170,7 +173,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           to_retrieve.insert(key);
           key_requestor_map[key].insert(request.response_address());
           client->get_async(key);
+        } else {
+          access_order.erase(iterator_cache[key]);
         }
+
+        access_order.push_front(key);
+        iterator_cache[key] = access_order.begin();
       }
 
       if (covered) {
@@ -363,7 +371,23 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       report_start = std::chrono::system_clock::now();
     }
 
-    // TODO: check if cache size is exceeding (threshold x capacity) and evict.
+    if (key_type_map.size() > 1000) {
+      // drop the 10 least recently accessed keys
+      for (int i = 0; i < 10; i++) {
+        Key key = access_order.back();
+        access_order.pop_back();
+        iterator_cache.erase(key);
+
+        LatticeType type = key_type_map[key];
+        key_type_map.erase(key);
+
+        if (type == LWW) {
+          local_lww_cache.erase(key);
+        } else if (type == SET) {
+          local_set_cache.erase(key);
+        }
+      }
+    }
   }
 }
 

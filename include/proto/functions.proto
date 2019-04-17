@@ -30,6 +30,7 @@ enum ErrorType {
   NOT_PINNED = 2;
   INVALID_TARGET = 3;
   EXEC_ERROR = 4;
+  NO_SUCH_DAG = 5;
 }
 
 enum ConsistencyType {
