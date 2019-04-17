@@ -105,7 +105,7 @@ def run(mode, segment, flconn, kvs):
         ccv.values.extend([serialize_val(val)])
 
         total_num_keys = 10000
-        bin_size = total_num_keys / 8
+        bin_size = int(total_num_keys / 8)
 
         for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
             k = str(i).zfill(len(str(total_num_keys)))
@@ -156,7 +156,7 @@ def run(mode, segment, flconn, kvs):
         ### RUN DAG ###
         max_vc_length = 0;
         client_num = 4000
-        bin_size = client_num / 8
+        bin_size = int(client_num / 8)
 
         for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
             cid = 'client_' + str(i)
