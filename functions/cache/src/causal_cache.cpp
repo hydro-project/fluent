@@ -100,7 +100,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle a GET request
     if (pollitems[0].revents & ZMQ_POLLIN) {
-      std::cerr << "GET\n";
       string serialized = kZmqUtil->recv_string(&get_puller);
       get_request_handler(serialized, key_set, unmerged_store, in_preparation,
                           causal_cut_store, version_store, single_callback_map,
@@ -111,15 +110,13 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle a PUT request
     if (pollitems[1].revents & ZMQ_POLLIN) {
-      std::cerr << "PUT\n";
       string serialized = kZmqUtil->recv_string(&put_puller);
       put_request_handler(serialized, unmerged_store, causal_cut_store,
-                          version_store, request_id_to_address_map, client);
+                          version_store, request_id_to_address_map, client, log);
     }
 
     // handle updates received from the KVS
     if (pollitems[2].revents & ZMQ_POLLIN) {
-      std::cerr << "KVS update\n";
       log->info("received a KVS update");
       string serialized = kZmqUtil->recv_string(&update_puller);
       KeyRequest updates;
@@ -147,7 +144,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle version GC request
     if (pollitems[3].revents & ZMQ_POLLIN) {
-      std::cerr << "GC routine\n";
       // assume this string is the client id
       string serialized = kZmqUtil->recv_string(&version_gc_puller);
       version_store.erase(serialized);
@@ -156,7 +152,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle versioned key request
     if (pollitems[4].revents & ZMQ_POLLIN) {
-      std::cerr << "versioned key request\n";
       log->info("received a versioned key request");
       string serialized = kZmqUtil->recv_string(&versioned_key_request_puller);
       versioned_key_request_handler(serialized, version_store, pushers, log,
@@ -165,7 +160,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // handle versioned key response
     if (pollitems[5].revents & ZMQ_POLLIN) {
-      std::cerr << "versioned key response\n";
       log->info("received a versioned key response");
       string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
       versioned_key_response_handler(
@@ -175,7 +169,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
     for (const auto& response : responses) {
-      std::cerr << "received response from KVS\n";
       kvs_response_handler(response, unmerged_store, in_preparation,
                            causal_cut_store, version_store, single_callback_map,
                            pending_single_metadata, pending_cross_metadata,
@@ -193,7 +186,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // caching; we only do this periodically because we are okay with receiving
     // potentially stale updates
     if (duration >= kCausalCacheReportThreshold) {
-      std::cerr << "reporting\n";
       log->info("reporting");
       KeySet set;
 
@@ -218,13 +210,13 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
     // check if any key in unmerged_store is newer and migrate
     if (duration >= kMigrateThreshold) {
-      std::cerr << "migration\n";
       log->info("migration");
       periodic_migration_handler(
           unmerged_store, in_preparation, causal_cut_store, version_store,
           pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct,
           client_id_to_address_map, log);
       migrate_start = std::chrono::system_clock::now();
+      log->info("end migration");
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.

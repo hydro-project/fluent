@@ -204,7 +204,7 @@ class AnnaClient():
             return res
 
     def _serialize(self, val):
-        print("entering serialize")
+        #print("entering serialize")
         if isinstance(val, LWWPairLattice):
             print("lww")
             lww = LWWValue()
@@ -218,7 +218,7 @@ class AnnaClient():
                 s.values.append(o)
             return s.SerializeToString(), SET
         elif type(val).__name__ == 'CrossCausalValue':
-            print("causal")
+            #print("causal")
             return val.SerializeToString(), CROSSCAUSAL
         else:
             print("very bad")

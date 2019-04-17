@@ -144,7 +144,8 @@ void recursive_dependency_check(
     const StoreType& unmerged_store, map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    KvsAsyncClientInterface* client);
+    KvsAsyncClientInterface* client,
+    logger log);
 
 // check if the given vector clock is dominated by any vector clock in the
 // causal chain if so, return the address of the remote cache, else return empty

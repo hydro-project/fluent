@@ -29,8 +29,6 @@ void kvs_response_handler(
     map<string, set<Address>>& client_id_to_address_map,
     map<string, Address>& request_id_to_address_map) {
   Key key = response.tuples(0).key();
-  log->info("received KVS response for key {}", key);
-  std::cerr << "received KVS response for key " << key << "\n";
   // first, check if the request failed
   if (response.has_error() && response.error() == ResponseErrorType::TIMEOUT) {
     log->info("req timed out");
@@ -52,17 +50,16 @@ void kvs_response_handler(
     }
   } else {
     if (response.type() == RequestType::GET) {
+      log->info("received KVS GET response for key {}", key);
       auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>();
       if (response.tuples(0).error() != 1) {
-        log->info("key {} exists", key);
-        std::cerr << "key " << key << " exists" << "\n";
+        //log->info("key {} exists", key);
         // key exists
         *lattice =
             CrossCausalLattice<SetLattice<string>>(to_cross_causal_payload(
                 deserialize_cross_causal(response.tuples(0).payload())));
       } else {
-        log->info("key {} doesn't exist", key);
-        std::cerr << "key " << key << " doesn't exist" << "\n";
+        //log->info("key {} doesn't exist", key);
       }
       process_response(key, lattice, unmerged_store, in_preparation,
                        causal_cut_store, version_store, single_callback_map,
@@ -70,6 +67,7 @@ void kvs_response_handler(
                        to_fetch_map, cover_map, pushers, client, log, cct,
                        client_id_to_address_map);
     } else {
+      log->info("received KVS PUT response for key {}", key);
       if (request_id_to_address_map.find(response.response_id()) ==
           request_id_to_address_map.end()) {
         if (response.tuples(0).lattice_type() != LatticeType::LWW) {

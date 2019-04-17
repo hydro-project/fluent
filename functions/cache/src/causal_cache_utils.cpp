@@ -107,7 +107,8 @@ void recursive_dependency_check(
     const StoreType& unmerged_store, map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    KvsAsyncClientInterface* client) {
+    KvsAsyncClientInterface* client,
+    logger log) {
   for (const auto& pair : lattice->reveal().dependency.reveal()) {
     Key dep_key = pair.first;
     // first, check if the dependency is already satisfied in the causal cut
@@ -127,7 +128,7 @@ void recursive_dependency_check(
                                   in_preparation)) {
         recursive_dependency_check(head_key, target_lattice, in_preparation,
                                    causal_cut_store, unmerged_store,
-                                   to_fetch_map, cover_map, client);
+                                   to_fetch_map, cover_map, client, log);
       }
       // in_preparation[head_key].second[dep_key] = target_lattice;
     } else {
@@ -144,13 +145,14 @@ void recursive_dependency_check(
           recursive_dependency_check(head_key, unmerged_store.at(dep_key),
                                      in_preparation, causal_cut_store,
                                      unmerged_store, to_fetch_map, cover_map,
-                                     client);
+                                     client, log);
         }
       } else {
         // we issue GET to KVS
         to_fetch_map[head_key].insert(dep_key);
         cover_map[dep_key][lattice->reveal().dependency.reveal().at(dep_key)]
             .insert(head_key);
+        log->info("Issue GET for key {} during dependency check.", dep_key);
         client->get_async(dep_key);
       }
     }
@@ -160,19 +162,16 @@ void recursive_dependency_check(
 Address find_address(
     const Key& key, const VectorClock& vc,
     const map<Address, map<Key, VectorClock>>& prior_causal_chains) {
-  std::cerr << "enter find address for key " << key << "\n";
   for (const auto& address_map_pair : prior_causal_chains) {
     for (const auto& key_vc_pair : address_map_pair.second) {
       if (key_vc_pair.first == key &&
           vector_clock_comparison(vc, key_vc_pair.second) == kCausalLess) {
         // find a remote vector clock that dominates the local one, so read from
         // the remote node
-        std::cerr << "found address " << address_map_pair.first << "\n";
         return address_map_pair.first;
       }
     }
   }
-  std::cerr << "address not found\n";
   // we are good to read from the local causal cache
   return "";
 }
@@ -181,11 +180,9 @@ void save_versions(const string& id, const Key& key,
                    VersionStoreType& version_store,
                    const StoreType& causal_cut_store,
                    const set<Key>& future_read_set, set<Key>& observed_keys) {
-  std::cerr << "enter save version for key " << key << "\n";
   if (observed_keys.find(key) == observed_keys.end()) {
     observed_keys.insert(key);
     if (future_read_set.find(key) != future_read_set.end()) {
-      std::cerr << "saving version for key " << key << "\n";
       version_store[id][key] = causal_cut_store.at(key);
     }
     for (const auto& pair :
@@ -217,7 +214,6 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       continue;
     }
     if (causal_cut_store.find(key) == causal_cut_store.end()) {
-      std::cerr << "key " << key << " not in local causal cache\n";
       // no key in local causal cache, find a remote and fire request
       remote_request = true;
       Address remote_addr =
@@ -230,7 +226,6 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       addr_request_map[remote_addr].add_keys(key);
       metadata.remote_read_set_.insert(key);
       log->info("key {} need to be read from remote addr {} and doesn't exist locally", key, remote_addr);
-      std::cerr << "key " << key << " need to be read from remote addr " << remote_addr << " and doesn't exist locally\n";
     } else {
       Address remote_addr =
           find_address(key, causal_cut_store.at(key)->reveal().vector_clock,
@@ -239,7 +234,6 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
         // we need to read from remote
         remote_request = true;
         log->info("key {} need to be read from remote addr {} because it is dominating local", key, remote_addr);
-        std::cerr << "key " << key << " need to be read from remote addr " << remote_addr << " because it is dominating local\n";
 
         if (addr_request_map.find(remote_addr) == addr_request_map.end()) {
           addr_request_map[remote_addr].set_id(metadata.client_id_);
@@ -251,7 +245,6 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       } else {
         // we can read from local
         log->info("key {} can be read from local", key);
-        std::cerr << "key " << key << " can be read from local\n";
         metadata.serialized_local_payload_[key] =
             serialize(*(causal_cut_store.at(key)));
         // copy pointer to keep the version (only for those in the future read
@@ -259,7 +252,6 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
         set<Key> observed_keys;
         save_versions(metadata.client_id_, key, version_store, causal_cut_store,
                       metadata.future_read_set_, observed_keys);
-        std::cerr << "finished saving versions\n";
       }
     }
   }
@@ -279,8 +271,6 @@ void respond_to_client(
     const VersionStoreType& version_store, SocketCache& pushers,
     const CausalCacheThread& cct) {
   CausalResponse response;
-  std::cerr << "addr to respond is " << addr << "\n";
-  std::cerr << "pending cross metadata size is " << std::to_string(pending_cross_metadata.size()) << "\n";
 
 
   for (const Key& key : pending_cross_metadata[addr].read_set_) {
@@ -360,17 +350,18 @@ void merge_into_causal_cut(
       }
       pending_cross_metadata[addr].to_cover_set_.erase(key);
       if (pending_cross_metadata[addr].to_cover_set_.size() == 0) {
-        std::cerr << "client addr to notify is " << addr << "\n";
+        log->info("client addr to notify is {}", addr);
         // all keys are covered, safe to read
         // decide local and remote read set
         if (!fire_remote_read_requests(pending_cross_metadata[addr],
                                        version_store, causal_cut_store, pushers,
                                        cct, log)) {
           // all local
-          std::cerr << "all local read\n";
+          log->info("all local read");
           respond_to_client(pending_cross_metadata, addr, causal_cut_store,
                             version_store, pushers, cct);
         } else {
+          log->info("some reads have to be done remotely");
           client_id_to_address_map[pending_cross_metadata[addr].client_id_]
               .insert(addr);
         }
@@ -439,7 +430,7 @@ void process_response(
     in_preparation[key].second[key] = unmerged_store[key];
     recursive_dependency_check(key, unmerged_store[key], in_preparation,
                                causal_cut_store, unmerged_store, to_fetch_map,
-                               cover_map, client);
+                               cover_map, client, log);
     if (to_fetch_map[key].size() == 0) {
       // this key has no dependency
       merge_into_causal_cut(key, causal_cut_store, in_preparation,
@@ -489,7 +480,7 @@ void process_response(
       for (const auto& head_key : pair.second) {
         recursive_dependency_check(
             head_key, unmerged_store[key], in_preparation, causal_cut_store,
-            unmerged_store, to_fetch_map, cover_map, client);
+            unmerged_store, to_fetch_map, cover_map, client, log);
         if (to_fetch_map[head_key].size() == 0) {
           // all dependency is met
           merge_into_causal_cut(head_key, causal_cut_store, in_preparation,
