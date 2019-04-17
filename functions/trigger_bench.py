@@ -16,6 +16,9 @@ with open('bench_ips.txt', 'r') as f:
         ips.append(l.strip())
         l = f.readline()
 
+for ip in ips:
+	print(ip)
+
 msg = sys.argv[1]
 ctx = zmq.Context(1)
 

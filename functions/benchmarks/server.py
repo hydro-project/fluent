@@ -14,7 +14,7 @@ BENCHMARK_START_PORT = 3000
 
 def benchmark(flconn, tid):
     logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO, format='%(asctime)s %(message)s')
-
+    logging.info('start benchmark thread')
     ctx = zmq.Context(1)
 
     benchmark_start_socket = ctx.socket(zmq.PULL)
@@ -23,6 +23,7 @@ def benchmark(flconn, tid):
 
     while True:
         msg = benchmark_start_socket.recv_string()
+        logging.info('receive benchmark request')
         splits = msg.split(':')
 
         resp_addr = splits[0]
