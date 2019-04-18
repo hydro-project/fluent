@@ -25,6 +25,7 @@ enum LatticeType {
   SET = 2;
   CAUSAL = 3;
   CROSSCAUSAL = 4;
+  ORDERED_SET = 5;
 }
 
 enum ResponseErrorType {

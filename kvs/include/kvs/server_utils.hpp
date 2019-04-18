@@ -35,6 +35,7 @@
 
 typedef KVStore<Key, LWWPairLattice<string>> MemoryLWWKVS;
 typedef KVStore<Key, SetLattice<string>> MemorySetKVS;
+typedef KVStore<Key, OrderedSetLattice<string>> MemoryOrderedSetKVS;
 typedef KVStore<Key, CausalPairLattice<SetLattice<string>>> MemoryCausalKVS;
 typedef KVStore<Key, CrossCausalLattice<SetLattice<string>>>
     MemoryCrossCausalKVS;
@@ -89,6 +90,29 @@ class MemorySetSerializer : public Serializer {
 
   unsigned put(const Key& key, const string& serialized) {
     SetLattice<string> sl = deserialize_set(serialized);
+    kvs_->put(key, sl);
+    return kvs_->size(key);
+  }
+
+  void remove(const Key& key) { kvs_->remove(key); }
+};
+
+class MemoryOrderedSetSerializer : public Serializer {
+  MemoryOrderedSetKVS* kvs_;
+
+ public:
+  MemoryOrderedSetSerializer(MemoryOrderedSetKVS* kvs) : kvs_(kvs) {}
+
+  string get(const Key& key, unsigned& err_number) {
+    auto val = kvs_->get(key, err_number);
+    if (val.size().reveal() == 0) {
+      err_number = 1;
+    }
+    return serialize(val);
+  }
+
+  unsigned put(const Key& key, const string& serialized) {
+    OrderedSetLattice<string> sl = deserialize_ordered_set(serialized);
     kvs_->put(key, sl);
     return kvs_->size(key);
   }
@@ -293,6 +317,102 @@ class EBSSetSerializer : public Serializer {
     } else {
       // get the existing value that we have and merge
       set<string> set_union;
+      for (auto& val : original_value.values()) {
+        set_union.emplace(std::move(val));
+      }
+      for (auto& val : input_value.values()) {
+        set_union.emplace(std::move(val));
+      }
+
+      SetValue new_value;
+      for (auto& val : set_union) {
+        new_value.add_values(std::move(val));
+      }
+
+      // write out the new payload.
+      std::fstream output(fname,
+                          std::ios::out | std::ios::trunc | std::ios::binary);
+
+      if (!new_value.SerializeToOstream(&output)) {
+        std::cerr << "Failed to write payload" << std::endl;
+      }
+      return output.tellp();
+    }
+  }
+
+  void remove(const Key& key) {
+    string fname = ebs_root_ + "ebs_" + std::to_string(tid_) + "/" + key;
+
+    if (std::remove(fname.c_str()) != 0) {
+      std::cerr << "Error deleting file" << std::endl;
+    }
+  }
+};
+
+class EBSOrderedSetSerializer : public Serializer {
+  unsigned tid_;
+  string ebs_root_;
+
+ public:
+  EBSOrderedSetSerializer(unsigned& tid) : tid_(tid) {
+    YAML::Node conf = YAML::LoadFile("conf/kvs-config.yml");
+
+    ebs_root_ = conf["ebs"].as<string>();
+
+    if (ebs_root_.back() != '/') {
+      ebs_root_ += "/";
+    }
+  }
+
+  string get(const Key& key, unsigned& err_number) {
+    string res;
+    SetValue value;
+
+    // open a new filestream for reading in a binary
+    string fname = ebs_root_ + "ebs_" + std::to_string(tid_) + "/" + key;
+    std::fstream input(fname, std::ios::in | std::ios::binary);
+
+    if (!input) {
+      err_number = 1;
+    } else if (!value.ParseFromIstream(&input)) {
+      std::cerr << "Failed to parse payload." << std::endl;
+      err_number = 1;
+    } else {
+      if (value.values_size() == 0) {
+        err_number = 1;
+      } else {
+        value.SerializeToString(&res);
+      }
+    }
+    return res;
+  }
+
+  unsigned put(const Key& key, const string& serialized) {
+    SetValue input_value;
+    input_value.ParseFromString(serialized);
+
+    SetValue original_value;
+
+    string fname = ebs_root_ + "ebs_" + std::to_string(tid_) + "/" + key;
+    std::fstream input(fname, std::ios::in | std::ios::binary);
+
+    if (!input) {  // in this case, this key has never been seen before, so we
+                   // attempt to create a new file for it
+      // ios::trunc means that we overwrite the existing file
+      std::fstream output(fname,
+                          std::ios::out | std::ios::trunc | std::ios::binary);
+      if (!input_value.SerializeToOstream(&output)) {
+        std::cerr << "Failed to write payload." << std::endl;
+      }
+      return output.tellp();
+    } else if (!original_value.ParseFromIstream(
+                   &input)) {  // if we have seen the key before, attempt to
+                               // parse what was there before
+      std::cerr << "Failed to parse payload." << std::endl;
+      return 0;
+    } else {
+      // get the existing value that we have and merge
+      ordered_set<string> set_union;
       for (auto& val : original_value.values()) {
         set_union.emplace(std::move(val));
       }

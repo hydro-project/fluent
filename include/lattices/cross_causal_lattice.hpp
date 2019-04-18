@@ -74,7 +74,8 @@ class CrossCausalLattice : public Lattice<CrossCausalPayload<T>> {
   }
 
  public:
-  CrossCausalLattice() : Lattice<CrossCausalPayload<T>>() {}
+  CrossCausalLattice() :
+      Lattice<CrossCausalPayload<T>>(CrossCausalPayload<T>()) {}
   CrossCausalLattice(const CrossCausalPayload<T> &p) :
       Lattice<CrossCausalPayload<T>>(p) {}
   MaxLattice<unsigned> size() { return {this->element.size()}; }

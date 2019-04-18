@@ -15,6 +15,7 @@
 #ifndef INCLUDE_TYPES_HPP_
 #define INCLUDE_TYPES_HPP_
 
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -25,6 +26,9 @@ using string = std::string;
 
 template <class K, class V>
 using map = std::unordered_map<K, V>;
+
+template <class T>
+using ordered_set = std::set<T>;
 
 template <class T>
 using set = std::unordered_set<T>;

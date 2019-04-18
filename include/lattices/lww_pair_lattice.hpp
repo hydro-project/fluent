@@ -52,7 +52,7 @@ class LWWPairLattice : public Lattice<TimestampValuePair<T>> {
   }
 
  public:
-  LWWPairLattice() : Lattice<TimestampValuePair<T>>() {}
+  LWWPairLattice() : Lattice<TimestampValuePair<T>>(TimestampValuePair<T>()) {}
   LWWPairLattice(const TimestampValuePair<T>& p) :
       Lattice<TimestampValuePair<T>>(p) {}
   MaxLattice<unsigned> size() { return {this->element.size()}; }

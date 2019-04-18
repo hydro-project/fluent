@@ -128,6 +128,24 @@ class KvsClient {
   }
 
   /**
+   * Issue a PUT request to the KVS for a set value.
+   */
+  bool put(Key key, OrderedSetLattice<string> value) {
+    return put(key, value, 10);
+  }
+  bool put(Key key, OrderedSetLattice<string> value, unsigned trial_limit) {
+    KeyRequest request;
+    KeyTuple* tuple = prepare_data_request(request, key);
+    request.set_type(RequestType::PUT);
+    tuple->set_lattice_type(LatticeType::ORDERED_SET);
+    tuple->set_payload(serialize(value));
+
+    KeyResponse response = try_request(request, trial_limit);
+
+    return !is_error_response(response);
+  }
+
+  /**
    * Issue a durable PUT request to the KVS with a last-writer-wins value.
    *
    * This method issues a PUT request to all of the replicas of a particular
@@ -184,6 +202,24 @@ class KvsClient {
     KeyTuple* tuple = prepare_data_request(request, key);
     request.set_type(RequestType::PUT);
     tuple->set_lattice_type(LatticeType::SET);
+    tuple->set_payload(serialize(value));
+
+    vector<KeyResponse> responses = try_multi_request(request, trial_limit);
+
+    return responses.size() != 0;
+  }
+
+  /**
+   * Issue a durable PUT request to the KVS with a set value.
+   */
+  bool put_all(Key key, OrderedSetLattice<string> value) {
+    return put_all(key, value, 5);
+  }
+  bool put_all(Key key, OrderedSetLattice<string> value, unsigned trial_limit) {
+    KeyRequest request;
+    KeyTuple* tuple = prepare_data_request(request, key);
+    request.set_type(RequestType::PUT);
+    tuple->set_lattice_type(LatticeType::ORDERED_SET);
     tuple->set_payload(serialize(value));
 
     vector<KeyResponse> responses = try_multi_request(request, trial_limit);
@@ -351,6 +387,66 @@ class KvsClient {
       }
 
       result.push_back(deserialize_set(tuple.payload()));
+    }
+
+    return result;
+  }
+
+  /**
+   * Issue a GET request to the KVS for a set value.
+   */
+  OrderedSetLattice<string> get_ordered_set(Key key) {
+    return get_ordered_set(key, 10);
+  }
+  OrderedSetLattice<string> get_ordered_set(Key key, unsigned trial_limit) {
+    KeyRequest request;
+    prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
+    ordered_set<string> result;
+
+    KeyResponse response = try_request(request, trial_limit);
+
+    if (is_error_response(response)) {
+      return result;
+    }
+
+    KeyTuple rtuple = response.tuples(0);
+    if (rtuple.error() == 1) {
+      log_->info("Key {} does not exist and could not be retrieved.", key);
+      return result;
+    }
+
+    return deserialize_ordered_set(rtuple.payload());
+  }
+
+  /**
+   * Retrieve all replicas of a key from the KVS for a set value.
+   */
+  vector<OrderedSetLattice<string>> get_ordered_set_all(Key key) {
+    return get_ordered_set_all(key, 5);
+  }
+  vector<OrderedSetLattice<string>> get_ordered_set_all(Key key,
+                                                        unsigned trial_limit) {
+    KeyRequest request;
+    prepare_data_request(request, key);
+    request.set_type(RequestType::GET);
+
+    vector<KeyResponse> responses = try_multi_request(request, trial_limit);
+    vector<OrderedSetLattice<string>> result;
+
+    if (responses.size() == 0) {
+      return result;
+    }
+
+    for (KeyResponse response : responses) {
+      KeyTuple tuple = response.tuples(0);
+      if (tuple.error() == 1) {
+        log_->info("Key {} does not exist and could not be retrieved.", key);
+        result.clear();
+        return result;
+      }
+
+      result.push_back(deserialize_ordered_set(tuple.payload()));
     }
 
     return result;
