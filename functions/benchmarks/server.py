@@ -22,6 +22,7 @@ def benchmark(flconn, tid):
     kvs = flconn.kvs_client
 
     dags = {}
+    dag_names = []
 
     while True:
         msg = benchmark_start_socket.recv_string()
@@ -37,13 +38,13 @@ def benchmark(flconn, tid):
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + resp_addr + ':3000')
-        run_bench(bname, mode, segment, flconn, kvs, sckt, dags)
+        run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names)
 
-def run_bench(bname, mode, segment, flconn, kvs, sckt, dags):
+def run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names):
     logging.info('Running benchmark %s.' % (bname))
 
     if bname == 'causal':
-        causal.run(mode, segment, flconn, kvs, dags)
+        causal.run(mode, segment, flconn, kvs, dags, dag_names)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')

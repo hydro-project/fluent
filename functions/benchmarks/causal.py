@@ -13,7 +13,7 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
-def run(mode, segment, flconn, kvs, dags):
+def run(mode, segment, flconn, kvs, dags, dag_names):
     if mode == 'create':
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp1(a,b):
@@ -117,7 +117,6 @@ def run(mode, segment, flconn, kvs, dags):
 
         ### CREATE DAG ###
         # create 100 dags
-        dag_names = []
         
         dag_num = 240
         bin_size = int(dag_num / 8)
