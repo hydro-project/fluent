@@ -111,7 +111,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         ccv.vector_clock['base'] = 1
         ccv.values.extend([serialize_val(val)])
 
-        total_num_keys = 1000000
+        total_num_keys = 100000
         bin_size = int(total_num_keys / 8)
 
         start = time.time()
@@ -155,7 +155,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             dags[dag_name] = (functions, connections)
 
     elif mode == 'run':
-        total_num_keys = 1000000
+        total_num_keys = 100000
 
 
         ### CREATE ZIPF TABLE###
