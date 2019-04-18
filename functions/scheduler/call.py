@@ -74,11 +74,11 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         schedule.client_id = call.client_id
 
 
-    logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
+    #logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 
     #loc_ip = []
 
-    logging.info('start function location scheduling')
+    #logging.info('start function location scheduling')
     for fname in dag.functions:
         locations = func_locations[fname]
         args = call.function_args[fname].args
@@ -93,7 +93,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
 
-    logging.info('end function location scheduling')
+    #logging.info('end function location scheduling')
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
