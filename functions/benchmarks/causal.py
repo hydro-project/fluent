@@ -179,7 +179,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
         for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
             cid = 'client_' + str(i)
-            if i % 1000 == 0:
+            if i % 100 == 0:
                 logging.info("running client %s" % cid)
 
             # randomly pick a dag
@@ -205,8 +205,10 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
             res = kvs.get(rid)
             while not res:
+                logging.info("key %s does not exist" % rid)
                 res = kvs.get(rid)
             while cid not in res.vector_clock:
+                logging.info("client id %s not in key %s VC" % (cid, rid))
                 res = kvs.get(rid)
             end = time.time()
 
