@@ -200,7 +200,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             #output = 'result'
 
             start = time.time()
-            rid = flconn.call_dag(dag_name, arg_map, consistency=SINGLE, output_key=output, client_id=cid)
+            rid = flconn.call_dag(dag_name, arg_map, consistency=CROSS, output_key=output, client_id=cid)
             #logging.info("Output key is %s" % rid)
 
             res = kvs.get(rid)
