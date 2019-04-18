@@ -53,7 +53,7 @@ void kvs_response_handler(
       //log->info("received KVS GET response for key {}", key);
       auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>();
       if (response.tuples(0).error() != 1) {
-        //log->info("key {} exists", key);
+        log->info("key {} exists", key);
         // key exists
         *lattice =
             CrossCausalLattice<SetLattice<string>>(to_cross_causal_payload(
