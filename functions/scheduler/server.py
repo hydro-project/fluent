@@ -30,7 +30,7 @@ from .create import *
 from .call import *
 from . import utils
 
-THRESHOLD = 10 # how often metadata is updated
+THRESHOLD = 5 # how often metadata is updated
 
 def scheduler(ip, mgmt_ip, route_addr):
     logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO)

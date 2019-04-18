@@ -13,7 +13,7 @@ from include.serializer import *
 from include.shared import *
 from . import utils
 
-def run(mode, segment, flconn, kvs):
+def run(mode, segment, flconn, kvs, dags):
     if mode == 'create':
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp1(a,b):
@@ -115,10 +115,7 @@ def run(mode, segment, flconn, kvs):
 
         logging.info('Data populated')
 
-    elif mode == 'run':
-        total_num_keys = 10000
         ### CREATE DAG ###
-        dags = {}
         # create 100 dags
         dag_names = []
         
@@ -145,6 +142,10 @@ def run(mode, segment, flconn, kvs):
                 logging.info("(%s, %s)" % (conn[0], conn[1]))
 
             dags[dag_name] = (functions, connections)
+
+    elif mode == 'run':
+        total_num_keys = 10000
+
 
         ### CREATE ZIPF TABLE###
         zipf = 1.0
