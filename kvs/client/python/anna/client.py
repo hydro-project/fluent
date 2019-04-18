@@ -192,9 +192,9 @@ class AnnaClient():
             s = SetValue()
             s.ParseFromString(tup.payload)
 
-            result = {}
+            result = set()
             for k in s.keys:
-                result.insert(k)
+                result.add(k)
 
             return SetLattice(result)
         elif tup.lattice_type == CROSSCAUSAL:
