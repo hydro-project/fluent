@@ -29,7 +29,7 @@ class FluentConnection():
         self.service_addr = 'tcp://'+  func_addr + ':%d'
         self.context = zmq.Context(1)
         kvs_addr = self._connect()
-        print("connected")
+        logging.info("connected")
 
         if ip:
             self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
