@@ -359,6 +359,12 @@ class KvsAsyncClient : public KvsAsyncClientInterface {
    * information.
    */
   void invalidate_cache_for_key(const Key& key, const KeyTuple& tuple) {
+    for (const Address& addr : key_address_cache_[key]) {
+      log_->info("cache thinks key {} has address {}", key, addr);
+    }
+    for (const Address& addr : tuple.addresses()) {
+      log_->info("kvs thinks key {} has address {}", key, addr);
+    }
     key_address_cache_.erase(key);
     set<Address> new_cache;
 
