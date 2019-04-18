@@ -385,18 +385,18 @@ void process_response(
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map) {
-  log->info("processing key {}", key);
+  //log->info("processing key {}", key);
   // first, update unmerged store
   if (unmerged_store.find(key) == unmerged_store.end()) {
-    log->info("key {} not in unmerged store", key);
+    //log->info("key {} not in unmerged store", key);
     // key doesn't exist in unmerged map
     unmerged_store[key] = lattice;
     // check call back addresses for single obj causal consistency
     if (single_callback_map.find(key) != single_callback_map.end()) {
-      log->info("key {} in single_callback_map", key);
+      //log->info("key {} in single_callback_map", key);
       // notify clients
       for (const auto& addr : single_callback_map[key]) {
-        log->info("client address is {}", addr);
+        //log->info("client address is {}", addr);
         // pending_single_metadata[addr].to_cover_set should have this
         // key, and we remove it
         pending_single_metadata[addr].to_cover_set_.erase(key);
@@ -407,10 +407,10 @@ void process_response(
             tp->set_key(key);
             if (vector_clock_comparison(
                     VectorClock(), unmerged_store[key]->reveal().vector_clock) == kCausalGreaterOrEqual) {
-              log->info("key {} actually dne", key);
+              //log->info("key {} actually dne", key);
               tp->set_error(1);
             } else {
-              log->info("key {} is good to respond", key);
+              //log->info("key {} is good to respond", key);
               tp->set_error(0);
               tp->set_payload(serialize(*(unmerged_store[key])));
             }
@@ -512,7 +512,7 @@ void process_response(
   // if the original response from KVS actually says key dne, remove it from unmerged map
   if (vector_clock_comparison(
           VectorClock(), unmerged_store[key]->reveal().vector_clock) == kCausalGreaterOrEqual) {
-    log->info("removing key {} from unmerged store", key);
+    //log->info("removing key {} from unmerged store", key);
     unmerged_store.erase(key);
   }
 }
