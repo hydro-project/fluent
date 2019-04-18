@@ -28,6 +28,9 @@ SELF_DEPART_PORT = 4050
 STATUS_PORT = 5006
 SCHED_UPDATE_PORT = 5007
 
+# For message sending via the user library.
+RECV_INBOX_PORT = 5500
+
 STATISTICS_REPORT_PORT = 7006
 
 # create generic error response
@@ -60,3 +63,6 @@ def _get_dag_predecessors(dag, fname):
             result.append(connection.source)
 
     return result
+
+def _get_user_msg_inbox_addr(ip, tid):
+    return 'tcp://' + ip + ':' + str(int(tid) + RECV_INBOX_PORT)
