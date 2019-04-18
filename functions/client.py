@@ -11,6 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import logging
 
 import boto3
 import cloudpickle as cp
@@ -55,7 +56,7 @@ class FluentConnection():
         self.rid = 0
 
     def _connect(self):
-        print("connecting")
+        logging.info("connecting")
         sckt = self.context.socket(zmq.REQ)
         sckt.connect(self.service_addr % CONNECT_PORT)
         sckt.send_string('')
@@ -68,8 +69,8 @@ class FluentConnection():
 
     def get(self, name):
         if name not in self._get_func_list():
-            print("No function found with name '" + name + "'.")
-            print("To view all functions, use the `list` method.")
+            logging.info("No function found with name %s. % name")
+            logging.info("To view all functions, use the `list` method.")
             return None
 
         return FluentFunction(name, self, self.kvs_client)
@@ -119,8 +120,7 @@ class FluentConnection():
         flist = self._get_func_list()
         for fname in functions:
             if fname not in flist.names:
-                print(('Function %s not registered. Please register before'
-                      + 'including it in a DAG.') % (fname))
+                logging.info('Function %s not registered. Please register before including it in a DAG.' % (fname))
                 return False, None
 
         dag = Dag()

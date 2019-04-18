@@ -159,7 +159,10 @@ def scheduler(ip, mgmt_ip, route_addr):
             prefix = msg if msg else ''
 
             resp = FunctionList()
-            resp.names.extend(utils._get_func_list(kvs, prefix))
+            flist = utils._get_func_list(kvs, prefix)
+            if len(flist) == 0:
+                logging.info('Function list is empty.')
+            resp.names.extend(flist)
 
             list_socket.send(resp.SerializeToString())
 
