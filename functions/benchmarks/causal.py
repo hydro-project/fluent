@@ -121,8 +121,11 @@ def run(mode, segment, flconn, kvs):
         dags = {}
         # create 100 dags
         dag_names = []
-        dag_num = 50
-        for dag_id in range(dag_num):
+        
+        dag_num = 240
+        bin_size = int(dag_num / 8)
+
+        for dag_id in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
             dag_name = 'dag_' + str(dag_id)
             dag_names.append(dag_name)
             func_list = ['strmnp1', 'strmnp2', 'strmnp3', 'strmnp4', 'strmnp5']
