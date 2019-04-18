@@ -310,7 +310,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             vector_clock = {schedule.client_id : 1}
 
         succeed = kvs.causal_put(schedule.output_key,
-                                 vector_clock, dependencies,
+                                 vector_clock, {},
                                  serialize_val(result), schedule.client_id)
         while not succeed:
             kvs.causal_put(schedule.output_key, vector_clock,
