@@ -36,6 +36,7 @@ def create_func(func_create_socket, kvs):
     logging.info('Creating function %s.' % (name))
 
     ccv = CrossCausalValue()
+    ccv.vector_clock['base'] = 1
     ccv.values.extend([func.body])
 
     kvs.put(name, ccv)
