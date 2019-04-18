@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.6
-
+import cloudpickle as cp
 import logging
 import sys
 import zmq
@@ -54,10 +54,10 @@ def run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names):
         return
 
     # some benchmark modes return no results
-    sckt.send(b'END')
+    sckt.send(cp.dumps(latency))
     logging.info('*** Benchmark %s finished. ***' % (bname))
 
     if mode == 'warmup':
         logging.info('Warmup latency is %.6f' % (latency[0]))
-    if mode == 'run':
-        utils.print_latency_stats(latency, 'Causal', True)
+    #if mode == 'run':
+    #    utils.print_latency_stats(latency, 'Causal', True)

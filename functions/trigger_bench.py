@@ -54,10 +54,16 @@ elif 'run' in msg:
 
 end_recv = 0
 
+latency = []
+
 while end_recv < sent_msgs:
-	msg = recv_socket.recv()
+	payload = recv_socket.recv()
 	logging.info("received response")
-	logging.info("%s" % msg)
 	end_recv += 1
+	if 'run' in msg:
+		latency = latency + cp.loads(payload)
+
+if 'run' in msg:
+	utils.print_latency_stats(latency, 'Causal', True)
 
 logging.info("benchmark done")
