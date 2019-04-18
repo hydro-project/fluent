@@ -193,7 +193,7 @@ class AnnaClient():
             s.ParseFromString(tup.payload)
 
             result = set()
-            for k in s.keys:
+            for k in s.values:
                 result.add(k)
 
             return SetLattice(result)
