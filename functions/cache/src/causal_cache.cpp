@@ -209,7 +209,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                    .count();
 
     // check if any key in unmerged_store is newer and migrate
-    if (duration >= kMigrateThreshold) {
+    /*if (duration >= kMigrateThreshold) {
       //log->info("migration");
       periodic_migration_handler(
           unmerged_store, in_preparation, causal_cut_store, version_store,
@@ -217,7 +217,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           client_id_to_address_map, log);
       migrate_start = std::chrono::system_clock::now();
       //log->info("end migration");
-    }
+    }*/
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.
   }
