@@ -12,8 +12,6 @@ from . import utils
 
 BENCHMARK_START_PORT = 3000
 
-logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO, format='%(asctime)s %(message)s')
-
 def benchmark(flconn, tid):
     logging.info('start benchmark thread')
     ctx = zmq.Context(1)
