@@ -213,7 +213,7 @@ class AnnaClient():
         elif isinstance(val, SetLattice):
             #print("set")
             s = SetValue()
-            for o in val:
+            for o in val.reveal():
                 s.values.append(o)
             return s.SerializeToString(), SET
         elif type(val).__name__ == 'CrossCausalValue':
