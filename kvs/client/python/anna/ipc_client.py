@@ -133,8 +133,8 @@ class IpcAnnaClient:
 
         self.get_request_socket.send(request.SerializeToString())
 
-        for key in keys:
-            logging.info('sent GET request for key %s' % (key))
+        #for key in keys:
+        #    logging.info('sent GET request for key %s' % (key))
 
         try:
             msg = self.get_response_socket.recv()
@@ -145,13 +145,13 @@ class IpcAnnaClient:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
             return None
         else:
-            logging.info('Received response from KVS')
+            #logging.info('Received response from KVS')
             kv_pairs = {}
             resp = CausalResponse()
             resp.ParseFromString(msg)
 
             for tp in resp.tuples:
-                logging.info('response key is %s' % tp.key)
+                #logging.info('response key is %s' % tp.key)
                 if tp.error == 1:
                     logging.info('Key %s does not exist!' % (key))
                     return None

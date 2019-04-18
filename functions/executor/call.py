@@ -30,12 +30,12 @@ def _process_args(arg_list):
 def exec_function(exec_socket, kvs, status):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
-    logging.info('Received call for %s' % call.name)
+    #logging.info('Received call for %s' % call.name)
 
     fargs = _process_args(call.args)
 
     f = utils._retrieve_function(call.name, kvs)
-    logging.info('Retrieved function')
+    #logging.info('Retrieved function')
     if not f:
         logging.info('Function %s not found! Putting an error.' %
                 (call.name))
@@ -52,7 +52,7 @@ def exec_function(exec_socket, kvs, status):
             result = serialize_val(('ERROR: ' + str(e),
                     sutils.error.SerializeToString()))
 
-    logging.info('Finish execution, putting result to key %s' % call.resp_id)
+    #logging.info('Finish execution, putting result to key %s' % call.resp_id)
 
     succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
 
@@ -60,7 +60,7 @@ def exec_function(exec_socket, kvs, status):
         logging.info('Put key %s unsuccessful' % call.resp_id)
 
 def _exec_single_func_causal(kvs, func, args):
-    logging.info('Enter single function causal')
+    #logging.info('Enter single function causal')
     func_args = []
     to_resolve = []
     deserialize = {}

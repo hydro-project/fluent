@@ -52,7 +52,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
   log->flush_on(spdlog::level::info);
 
-  log->info("Memory Replication is {}.", kDefaultGlobalMemoryReplication);
+  //log->info("Memory Replication is {}.", kDefaultGlobalMemoryReplication);
 
   // each thread has a handle to itself
   ServerThread wt = ServerThread(public_ip, private_ip, thread_id);
@@ -438,7 +438,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           if (key_to_cache_ips.find(key) != key_to_cache_ips.end()) {
             set<Address>& cache_ips = key_to_cache_ips[key];
             for (const Address& cache_ip : cache_ips) {
-              log->info("cache address is {}.", cache_ip);
+              //log->info("cache address is {}.", cache_ip);
               CausalCacheThread cct(cache_ip, 0);
               addr_keyset_map[cct.causal_cache_update_connect_address()].insert(key);
             }

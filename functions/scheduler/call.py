@@ -30,7 +30,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map):
     if not call.HasField('resp_id'):
         call.resp_id = str(uuid.uuid4())
 
-    logging.info('Calling function %s.' % (call.name))
+    #logging.info('Calling function %s.' % (call.name))
 
     refs = list(filter(lambda arg: type(arg) == FluentReference,
         map(lambda arg: get_serializer(arg.type).load(arg.body),
@@ -62,11 +62,11 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
         schedule.client_id = call.client_id
 
 
-    logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
+    #logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 
     #loc_ip = []
 
-    logging.info('start function location scheduling')
+    #logging.info('start function location scheduling')
     for fname in dag.functions:
         locations = func_locations[fname]
         args = call.function_args[fname].args
@@ -88,7 +88,7 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
 
-    logging.info('end function location scheduling')
+    #logging.info('end function location scheduling')
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')

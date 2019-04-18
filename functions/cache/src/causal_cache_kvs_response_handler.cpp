@@ -31,7 +31,7 @@ void kvs_response_handler(
   Key key = response.tuples(0).key();
   // first, check if the request failed
   if (response.has_error() && response.error() == ResponseErrorType::TIMEOUT) {
-    log->info("req timed out");
+    //log->info("req timed out");
     if (response.type() == RequestType::GET) {
       //log->info("retrying GET for key {}", key);
       client->get_async(key);
@@ -53,13 +53,13 @@ void kvs_response_handler(
       //log->info("received KVS GET response for key {}", key);
       auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>();
       if (response.tuples(0).error() != 1) {
-        log->info("key {} exists", key);
+        //log->info("key {} exists", key);
         // key exists
         *lattice =
             CrossCausalLattice<SetLattice<string>>(to_cross_causal_payload(
                 deserialize_cross_causal(response.tuples(0).payload())));
       } else {
-        log->info("key {} doesn't exist", key);
+        //log->info("key {} doesn't exist", key);
       }
       process_response(key, lattice, unmerged_store, in_preparation,
                        causal_cut_store, version_store, single_callback_map,
