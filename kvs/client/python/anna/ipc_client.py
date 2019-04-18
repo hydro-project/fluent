@@ -210,7 +210,7 @@ class IpcAnnaClient:
             tp.payload = ser.SerializeToString()
 
         elif type(value) == OrderedSetLattice:
-            tp.lattice_type == ORDERED_SET
+            tp.lattice_type = ORDERED_SET
             ser = SetValue()
             ser.values.extend(value.reveal().lst)
             tp.payload = ser.SerializeToString()

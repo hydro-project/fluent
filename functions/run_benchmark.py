@@ -6,6 +6,7 @@ import sys
 from benchmarks import composition
 from benchmarks import locality
 from benchmarks import user_library_test
+from benchmarks import retwis_benchmark
 from benchmarks import utils
 import client as flclient
 
@@ -38,6 +39,8 @@ elif bname == 'locality':
             False, None)
 elif bname == 'user_library_test':
     user_library_test.run(flconn, kvs, num_requests)
+elif bname == 'retwis':
+    total, scheduler, kvs, retries = retwis_benchmark.run(flconn, kvs)
 else:
     print('Unknown benchmark type: %s!' % (bname))
 

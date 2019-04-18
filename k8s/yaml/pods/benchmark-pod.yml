@@ -35,7 +35,7 @@ spec:
     - name: REPO_ORG
       value: "xyclin"
     - name: REPO_BRANCH
-      value: "dag-fix"
+      value: "redis-shim"
   - name: benchmark-2
     image: fluentproject/executor
     env:
@@ -50,7 +50,7 @@ spec:
     - name: REPO_ORG
       value: "xyclin"
     - name: REPO_BRANCH
-      value: "dag-fix"
+      value: "redis-shim"
   - name: benchmark-3
     image: fluentproject/executor
     env:
@@ -65,7 +65,7 @@ spec:
     - name: REPO_ORG
       value: "xyclin"
     - name: REPO_BRANCH
-      value: "dag-fix"
+      value: "redis-shim"
   - name: benchmark-4
     image: fluentproject/executor
     env:
@@ -80,7 +80,7 @@ spec:
     - name: REPO_ORG
       value: "xyclin"
     - name: REPO_BRANCH
-      value: "dag-fix"
+      value: "redis-shim"
   nodeSelector:
     role: benchmark
     podid: benchmark-NUM_DUMMY

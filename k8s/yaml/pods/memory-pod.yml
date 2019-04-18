@@ -39,7 +39,7 @@ spec:
     - name: REPO_ORG
       value: "xyclin"
     - name: REPO_BRANCH
-      value: "dag-fix"
+      value: "redis-shim"
   nodeSelector:
     role: memory
     podid: memory-NUM_DUMMY
