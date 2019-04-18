@@ -153,7 +153,7 @@ class IpcAnnaClient:
             for tp in resp.tuples:
                 #logging.info('response key is %s' % tp.key)
                 if tp.error == 1:
-                    #logging.info('Key %s does not exist!' % (key))
+                    logging.info('Key %s does not exist!' % (key))
                     return None
 
                 val = CrossCausalValue()

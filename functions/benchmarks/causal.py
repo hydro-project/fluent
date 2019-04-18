@@ -81,8 +81,9 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             ccv.vector_clock['base'] = 1
             ccv.values.extend([serialize_val(val)])
             k = str(uuid.uuid4())
-            print("key name is ", k)
-            kvs.put(k, ccv)
+            logging.info("key name is %s" % k)
+            succeed = kvs.put(k, ccv)
+            logging.info("succeed is %s" % succeed)
 
             refs += (FluentReference(k, True, CROSSCAUSAL),)
 
