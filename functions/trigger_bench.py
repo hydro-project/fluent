@@ -54,16 +54,23 @@ elif 'run' in msg:
 
 end_recv = 0
 
-latency = []
+latency = {}
+latency['unnormalized'] = []
+latency['normalized'] = []
 
 while end_recv < sent_msgs:
 	payload = recv_socket.recv()
 	logging.info("received response")
 	end_recv += 1
 	if 'run' in msg:
-		latency = latency + cp.loads(payload)
+		bench_latency = cp.loads(payload)
+		latency['unnormalized'] += bench_latency['unnormalized']
+		latency['normalized'] += bench_latency['normalized']
 
 if 'run' in msg:
-	utils.print_latency_stats(latency, 'Causal', True)
+	logging.info("unnormalized latency")
+	utils.print_latency_stats(latency['unnormalized'], 'Causal', True)
+	logging.info("normalized latency")
+	utils.print_latency_stats(latency['normalized'], 'Causal', True)
 
 logging.info("benchmark done")

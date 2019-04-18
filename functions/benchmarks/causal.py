@@ -14,7 +14,7 @@ from include.shared import *
 from . import utils
 
 def run(mode, segment, flconn, kvs, dags, dag_names):
-    latency = []
+    latency = {}
     if mode == 'create':
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp1(a,b):
@@ -123,7 +123,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             kvs.put(k, ccv)
 
         end = time.time()
-        latency.append(end - start)
+        latency['warmup'] = end - start
 
         logging.info('Data populated')
 
@@ -138,7 +138,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             dag_names.append(dag_name)
             func_list = ['strmnp1', 'strmnp2', 'strmnp3', 'strmnp4', 'strmnp5']
 
-            functions, connections = generate_dag(func_list)
+            functions, connections, length = generate_dag(func_list)
 
             success, error = flconn.register_dag(dag_name, functions, connections)
 
@@ -152,9 +152,13 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             for conn in connections:
                 logging.info("(%s, %s)" % (conn[0], conn[1]))
 
-            dags[dag_name] = (functions, connections)
+            dags[dag_name] = (functions, connections, length)
 
     elif mode == 'run':
+
+        latency['unnormalized'] = []
+        latency['normalized'] = []
+
         total_num_keys = 1000000
 
 
@@ -180,7 +184,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
             # randomly pick a dag
             dag_name = random.choice(dag_names)
-            functions, connections = dags[dag_name]
+            functions, connections, length = dags[dag_name]
 
             arg_map, read_set = generate_arg_map(functions, connections, total_num_keys, base, sum_probs)
 
@@ -206,7 +210,8 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
                 res = kvs.get(rid)
             end = time.time()
 
-            latency.append(end - start)
+            latency['unnormalized'].append(end - start)
+            latency['normalized'].append((end - start)/length)
 
             #logging.info("size of vector clock is %d" % len(res.vector_clock))
             if len(res.vector_clock) > max_vc_length:
@@ -275,7 +280,26 @@ def generate_dag(function_list):
                 # populate connection
                 connections.append((source, sink))
 
-    return (functions, connections)
+    length = {}
+    for conn in connections:
+        func_source = conn[0]
+        length[func_source] = 1
+        sink = conn[1]
+        has_conn = True
+        while has_conn:
+            has_conn = False
+            for conn in connections:
+                if sink == conn[0]:
+                    has_conn = True
+                    length[func_source] += 1
+                    sink = conn[1]
+
+    max_length = 1
+    for f in length:
+        if length[f] > max_length:
+            max_length = length[f]
+
+    return (functions, connections, max_length)
 
 def generate_arg_map(functions, connections, num_keys, base, sum_probs):
     arg_map = {}

@@ -56,6 +56,6 @@ def run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names):
     logging.info('*** Benchmark %s finished. ***' % (bname))
 
     if mode == 'warmup':
-        logging.info('Warmup latency is %.6f' % (latency[0]))
+        logging.info('Warmup latency is %.6f' % (latency['warmup']))
     #if mode == 'run':
     #    utils.print_latency_stats(latency, 'Causal', True)
