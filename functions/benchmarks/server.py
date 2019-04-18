@@ -43,8 +43,10 @@ def benchmark(flconn, tid):
 def run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names):
     logging.info('Running benchmark %s.' % (bname))
 
+    latency = None
+
     if bname == 'causal':
-        causal.run(mode, segment, flconn, kvs, dags, dag_names)
+        latency = causal.run(mode, segment, flconn, kvs, dags, dag_names)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')
@@ -53,3 +55,8 @@ def run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names):
     # some benchmark modes return no results
     sckt.send(b'END')
     logging.info('*** Benchmark %s finished. ***' % (bname))
+
+    if mode == 'warmup':
+        logging.info('Warmup latency is %.6f' % (latency[0]))
+    if mode == 'run':
+        utils.print_latency_stats(latency, 'Causal', True)

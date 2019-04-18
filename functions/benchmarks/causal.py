@@ -14,6 +14,7 @@ from include.shared import *
 from . import utils
 
 def run(mode, segment, flconn, kvs, dags, dag_names):
+    latency = []
     if mode == 'create':
         ### DEFINE AND REGISTER FUNCTIONS ###
         def strmnp1(a,b):
@@ -107,11 +108,16 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         total_num_keys = 1000000
         bin_size = int(total_num_keys / 8)
 
+        start = time.time()
+
         for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
             k = str(i).zfill(len(str(total_num_keys)))
             if i % 1000 == 0:
                 logging.info('key is %s' % k)
             kvs.put(k, ccv)
+
+        end = time.time()
+        latency.append(end - start)
 
         logging.info('Data populated')
 
@@ -183,6 +189,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             output = random.choice(read_set)
             #output = 'result'
 
+            start = time.time()
             rid = flconn.call_dag(dag_name, arg_map, consistency=CROSS, output_key=output, client_id=cid)
             #logging.info("Output key is %s" % rid)
 
@@ -191,6 +198,9 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
                 res = kvs.get(rid)
             while cid not in res.vector_clock:
                 res = kvs.get(rid)
+            end = time.time()
+
+            latency.append(end - start)
 
             #logging.info("size of vector clock is %d" % len(res.vector_clock))
             if len(res.vector_clock) > max_vc_length:
@@ -201,6 +211,8 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
                 logging.info("error, res is %s" % res)
 
         logging.info("max vector clock length is %d" % max_vc_length)
+
+    return latency
 
 
 def get_base(N, skew):
