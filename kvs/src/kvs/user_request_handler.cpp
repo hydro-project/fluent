@@ -51,6 +51,14 @@ void user_request_handler(
         global_hash_rings, local_hash_rings, key_replication_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
+    if (threads.size() == 0) {
+      log->error("No thread is responsible for key {}.", key);
+    }
+
+    for (const auto& thread : threads) {
+      log->error("Thread {} is responsible for key {}.", thread.public_ip(), key);
+    }
+
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) == threads.end()) {
         if (is_metadata(key)) {

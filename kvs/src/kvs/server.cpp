@@ -52,6 +52,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
   log->flush_on(spdlog::level::info);
 
+  log->info("Memory Replication is {}.", kDefaultGlobalMemoryReplication);
+
   // each thread has a handle to itself
   ServerThread wt = ServerThread(public_ip, private_ip, thread_id);
 
