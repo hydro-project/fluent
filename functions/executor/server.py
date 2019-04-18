@@ -29,6 +29,7 @@ REPORT_THRESH = 20
 
 def executor(ip, mgmt_ip, schedulers, thread_id):
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.info("Starting executor")
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()

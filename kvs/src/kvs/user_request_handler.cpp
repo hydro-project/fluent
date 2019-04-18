@@ -88,6 +88,7 @@ void user_request_handler(
             tp->set_error(res.second);
           }
         } else if (request_type == RequestType::PUT) {
+          log->error("PUT for key {}.", key);
           if (tuple.lattice_type() == LatticeType::NO) {
             log->error("PUT request missing lattice type.");
           } else if (stored_key_map.find(key) != stored_key_map.end() &&

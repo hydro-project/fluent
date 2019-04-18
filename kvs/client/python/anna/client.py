@@ -77,6 +77,7 @@ class AnnaClient():
         if tup.error == 0:
             return self._deserialize(tup)
         elif tup.error == 1:
+            logging.info('key %s does not exist' % key)
             return None # key does not exist
         else:
             return self.get(tup.key) # re-issue the request

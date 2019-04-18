@@ -106,6 +106,7 @@ void replication_response_handler(
         } else if (responsible && request.addr_ == "") {
           // only put requests should fall into this category
           if (request.type_ == RequestType::PUT) {
+            log->error("PUT for key {}.", key);
             if (request.lattice_type_ == LatticeType::NO) {
               log->error("PUT request missing lattice type.");
             } else if (stored_key_map.find(key) != stored_key_map.end() &&
@@ -152,6 +153,7 @@ void replication_response_handler(
               tp->set_error(res.second);
             }
           } else {
+            log->error("PUT for key {}.", key);
             if (request.lattice_type_ == LatticeType::NO) {
               log->error("PUT request missing lattice type.");
             } else if (stored_key_map.find(key) != stored_key_map.end() &&

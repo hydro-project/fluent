@@ -87,10 +87,15 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             refs += (FluentReference(k, True, CROSSCAUSAL),)
 
         strmnp_test1 = cloud_strmnp1(*refs).get()
+        logging.info('Successfully tested strmnp_test1.')
         strmnp_test2 = cloud_strmnp2(*refs).get()
+        logging.info('Successfully tested strmnp_test2.')
         strmnp_test3 = cloud_strmnp3(*refs).get()
+        logging.info('Successfully tested strmnp_test3.')
         strmnp_test4 = cloud_strmnp4(*refs).get()
+        logging.info('Successfully tested strmnp_test4.')
         strmnp_test5 = cloud_strmnp5(*refs).get()
+        logging.info('Successfully tested strmnp_test5.')
 
         if strmnp_test1 != '00000' or strmnp_test2 != '00000' or strmnp_test3 != '00000' or strmnp_test4 != '00000' or strmnp_test5 != '00000':
             logging.error('Unexpected result from strmnp(v1, v2): %s %s %s %s %s' % (str(strmnp_test1), str(strmnp_test2), str(strmnp_test3), str(strmnp_test4), str(strmnp_test5)))
