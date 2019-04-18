@@ -94,6 +94,7 @@ void replication_response_handler(
           KeyTuple* tp = response.add_tuples();
           tp->set_key(key);
           tp->set_error(2);
+          log->error("Wrong address for key {}.", key);
 
           for (const ServerThread& thread : threads) {
             tp->add_addresses(thread.key_request_connect_address());
@@ -142,6 +143,7 @@ void replication_response_handler(
             if (stored_key_map.find(key) == stored_key_map.end() ||
                 stored_key_map[key].type_ == LatticeType::NO) {
               tp->set_error(1);
+              log->error("Key {} doesn't exist.", key);
             } else {
               auto res =
                   process_get(key, serializers[stored_key_map[key].type_]);

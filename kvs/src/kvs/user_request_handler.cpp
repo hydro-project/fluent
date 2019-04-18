@@ -51,10 +51,6 @@ void user_request_handler(
         global_hash_rings, local_hash_rings, key_replication_map, pushers,
         kSelfTierIdVector, succeed, seed);
 
-    if (threads.size() == 0) {
-      log->error("No thread is responsible for key {}.", key);
-    }
-
     for (const auto& thread : threads) {
       log->error("Thread {} is responsible for key {}.", thread.public_ip(), key);
     }
@@ -62,6 +58,7 @@ void user_request_handler(
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) == threads.end()) {
         if (is_metadata(key)) {
+          log->error("Wrong address for metadata key {}.", key);
           // this means that this node is not responsible for this metadata key
           KeyTuple* tp = response.add_tuples();
 
@@ -87,6 +84,7 @@ void user_request_handler(
           if (stored_key_map.find(key) == stored_key_map.end() ||
               stored_key_map[key].type_ == LatticeType::NO) {
             tp->set_error(1);
+            log->error("Key {} doesn't exist.", key);
           } else {
             auto res = process_get(key, serializers[stored_key_map[key].type_]);
             tp->set_lattice_type(stored_key_map[key].type_);
@@ -119,6 +117,7 @@ void user_request_handler(
 
         if (tuple.has_address_cache_size() && tuple.address_cache_size() > 0 &&
             tuple.address_cache_size() != threads.size()) {
+          log->error("Invalidating address for key {}", key);
           tp->set_invalidate(true);
         }
 
