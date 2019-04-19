@@ -22,12 +22,14 @@ from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
 from include import server_utils as sutils
-from . import user_library, utils
+from . import user_library
+from . import utils
 
 def _process_args(arg_list):
     return [get_serializer(arg.type).load(arg.body) for arg in arg_list]
 
 def exec_function(exec_socket, kvs, status, ip, tid):
+    user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
     logging.info('Received call for ' + call.name)
@@ -42,7 +44,6 @@ def exec_function(exec_socket, kvs, status, ip, tid):
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-            user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
             result = _exec_func_normal(kvs, f, fargs, user_lib)
             result = serialize_val(result)
         except Exception as e:
@@ -52,8 +53,9 @@ def exec_function(exec_socket, kvs, status, ip, tid):
             result = serialize_val(('ERROR: ' + str(e),
                     sutils.error.SerializeToString()))
 
-    result_lattice = LWWPairLattice(generate_timestamp(0), result)
-    kvs.put(call.resp_id, result_lattice)
+
+    user_lib.close()
+    kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
@@ -65,6 +67,8 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
                                   triggers, function, schedule)
+
+    user_lib.close()
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, user_lib):
     fname = schedule.target_function
@@ -129,8 +133,7 @@ def _exec_func_normal(kvs, func, args, user_lib):
 
     # execute the function
     res = func(*func_args)
-    end = time.time()
-    return func(*func_args)
+    return res
 
 def _resolve_ref_normal(refs, kvs):
     keys = [ref.key for ref in refs]

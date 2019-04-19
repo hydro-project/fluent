@@ -93,8 +93,9 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(sched_update_socket, zmq.POLLIN)
     poller.register(backoff_socket, zmq.POLLIN)
 
+    executors = set()
     departed_executors = set()
-    executors, schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
+    schedulers = _update_cluster_state(requestor_cache, mgmt_ip, executors,
             departed_executors, key_ip_map, kvs)
 
     # track how often each DAG function is called
@@ -162,8 +163,8 @@ def scheduler(ip, mgmt_ip, route_addr):
             status.ParseFromString(exec_status_socket.recv())
 
             key = (status.ip, status.tid)
-            logging.info('Received status update from executor %s:%d.' %
-                    (key[0], int(key[1])))
+            # logging.info('Received status update from executor %s:%d.' %
+            #         (key[0], int(key[1])))
 
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking
@@ -202,7 +203,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if sched_update_socket in socks and socks[sched_update_socket] == \
                 zmq.POLLIN:
-            logging.info('Received update from another scheduler.')
+            # logging.info('Received update from another scheduler.')
             status = SchedulerStatus()
             status.ParseFromString(sched_update_socket.recv())
 
@@ -258,8 +259,8 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         end = time.time()
         if end - start > THRESHOLD:
-            executors, schedulers = _update_cluster_state(requestor_cache,
-                    mgmt_ip, departed_executors, key_ip_map, kvs)
+            schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
+                    executors, departed_executors, key_ip_map, kvs)
 
             status = SchedulerStatus()
             for name in dags.keys():
@@ -295,21 +296,12 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             start = time.time()
 
-def _update_cluster_state(requestor_cache, mgmt_ip, departed_executors,
-        key_ip_map, kvs):
+def _update_cluster_state(requestor_cache, mgmt_ip, executors,
+        departed_executors, key_ip_map, kvs):
     # update our local key-cache mapping information
-    executors = utils._get_ip_set(utils._get_executor_list_address(mgmt_ip),
-            requestor_cache, True)
-
-    # remove any function executor nodes that might still be running
-    # but that we know are departed
-    for departed in departed_executors:
-        if departed in executors:
-            executors.remove(departed)
-
     utils._update_key_maps(key_ip_map, executors, kvs)
 
     schedulers = utils._get_ip_set(utils._get_scheduler_list_address(mgmt_ip),
             requestor_cache, False)
 
-    return executors, schedulers
+    return schedulers

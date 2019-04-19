@@ -2,10 +2,10 @@
 
 import logging
 import sys
-
 from benchmarks import composition
 from benchmarks import locality
 from benchmarks import predserving
+from benchmarks import scaling
 from benchmarks import summa
 from benchmarks import utils
 import client as flclient
@@ -42,6 +42,8 @@ elif bname == 'pred_serving':
             num_requests, None)
 elif bname == 'summa':
     total, scheduler, kvs, retries = summa.run(flconn, kvs, num_requests, None)
+elif bname == 'scaling':
+    total, scheduler, kvs, retries = scaling.run(flconn, kvs, num_requests, None)
 else:
     print('Unknown benchmark type: %s!' % (bname))
 

@@ -64,9 +64,9 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
                     ip_func_map[loc] = set()
                 ip_func_map[loc].add(fn)
 
-        if sutils.isolation == 'STRONG':
+        if sutils.ISOLATION == 'STRONG':
             for thread in ip_func_map:
-                candidates.remove((node, tid))
+                candidates.discard(thread)
 
         for _ in range(num_replicas):
             if len(candidates) == 0:
@@ -122,7 +122,7 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip, pusher_cach
     except zmq.ZMQError as e:
         logging.info('Pin operation to %s:%d timed out. Retrying.' % (node, tid))
         # request timed out, try again
-        return _pin_func(fname, func_locations, candidates, pin_accept_socket, ip,
+        return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
                 pusher_cache)
 
     if resp.success:
@@ -130,7 +130,7 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip, pusher_cach
     else: # the pin operation was rejected, remove node and try again
         logging.info('Node %s:%d rejected pin operation. Retrying.' % (node, tid))
         candidates.discard((node, tid))
-        return _pin_func(fname, func_locations, candidates, pin_accept_socket, ip,
+        return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
                 pusher_cache)
 
 def _unpin_func(fname, loc, pusher_cache):

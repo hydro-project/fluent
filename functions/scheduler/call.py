@@ -33,13 +33,12 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
     if not call.HasField('resp_id'):
         call.resp_id = str(uuid.uuid4())
 
-    logging.info('Calling function %s.' % (call.name))
-
     refs = list(filter(lambda arg: type(arg) == FluentReference,
         map(lambda arg: get_serializer(arg.type).load(arg.body),
             call.args)))
 
     ip, tid = _pick_node(executors, key_ip_map, refs, running_counts, backoff)
+    logging.info('Calling %s at %s:%d.' % (call.name, ip, tid))
     sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
 
@@ -78,6 +77,8 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
+
+    logging.info('Sending to %s' %(schedule.locations['sleep']))
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')

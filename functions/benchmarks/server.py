@@ -7,6 +7,7 @@ import zmq
 from . import composition
 from . import locality
 from . import lambda_locality
+from . import scaling
 from . import utils
 
 BENCHMARK_START_PORT = 3000
@@ -48,6 +49,9 @@ def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
     elif bname == 'redis' or bname == 's3':
         total, scheduler, kvs, retries = lambda_locality.run(bname, kvs,
                 num_requests, sckt)
+    elif bname == 'scaling':
+        total, scheduler, kvs, retries = scaling.run(flconn, kvs,
+                num_requests, sckt, create)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')

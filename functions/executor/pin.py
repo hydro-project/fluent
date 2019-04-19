@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 import logging
-import sys
+import os
 
 from . import utils
 from include.functions_pb2 import *
@@ -54,8 +54,9 @@ def unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts):
             (name))
 
     # we restart the container to clear all global state
-    if isolation == 'STRONG':
-        sys.exit(0)
+    if sutils.ISOLATION == 'STRONG':
+        logging.info('Restarting to clear global state.')
+        os._exit(0)
 
     # we don't have the function pinned, we can just ignore this
     if name not in status.functions:

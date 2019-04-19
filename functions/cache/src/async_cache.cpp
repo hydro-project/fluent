@@ -248,6 +248,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           update_cache(key, tuple.lattice_type(), tuple.payload(),
                        local_lww_cache, local_set_cache,
                        local_ordered_set_cache, log);
+
+          if (iterator_cache.find(key) != iterator_cache.end()) {
+            access_order.erase(iterator_cache[key]);
+          }
+
+          access_order.push_front(key);
+          iterator_cache[key] = access_order.begin();
+
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
           request_address_map[req_id] = request.response_address();
@@ -374,7 +382,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(
                         report_end - report_start)
                         .count();
-
     // update KVS with information about which keys this node is currently
     // caching; we only do this periodically because we are okay with receiving
     // potentially stale updates
@@ -409,6 +416,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           local_lww_cache.erase(key);
         } else if (type == SET) {
           local_set_cache.erase(key);
+        } else if (type == ORDERED_SET) {
+          local_ordered_set_cache.erase(key);
         }
       }
     }

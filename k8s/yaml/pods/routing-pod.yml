@@ -22,12 +22,16 @@ spec:
   hostNetwork: true
   containers:
   - name: routing-container
-    image: fluentproject/annakvs
+    image: vsreekanti/anna
     env: 
     - name: SERVER_TYPE
       value: r
     - name: MON_IPS
       value: MON_IPS_DUMMY
+    - name: REPO_ORG
+      value: vsreekanti
+    - name: REPO_BRANCH
+      value: benchmarks
   nodeSelector:
     role: routing
     podid: routing-NUM_DUMMY

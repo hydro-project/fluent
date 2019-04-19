@@ -124,12 +124,12 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
             client.create_namespaced_pod(namespace=NAMESPACE,
                     body=pod_spec)
 
-            # wait until all pods of this kind are running
-            ips = get_pod_ips(client, 'role='+kind, isRunning=True)
+        # wait until all pods of this kind are running
+        ips = get_pod_ips(client, 'role='+kind, isRunning=True)
 
-            os.system('cp %s ./kvs-config.yml' % cfile)
-            for pname, cname in created_pods:
-                copy_file_to_pod(client, 'kvs-config.yml', pname,
-                        '/fluent/conf/', cname)
+        os.system('cp %s ./kvs-config.yml' % cfile)
+        for pname, cname in created_pods:
+            copy_file_to_pod(client, 'kvs-config.yml', pname,
+                    '/fluent/conf/', cname)
 
-            os.system('rm ./kvs-config.yml')
+        os.system('rm ./kvs-config.yml')

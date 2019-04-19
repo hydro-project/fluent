@@ -46,6 +46,7 @@ class FluentConnection():
 
         self.response_sock = self.context.socket(zmq.PULL)
         response_port = 9000 + tid
+        self.response_sock.setsockopt(zmq.RCVTIMEO, 1000)
         self.response_sock.bind('tcp://*:' + str(response_port))
 
         self.response_address = 'tcp://' + ip + ':' + str(response_port)
@@ -154,8 +155,15 @@ class FluentConnection():
         r.ParseFromString(self.dag_call_sock.recv())
 
         if direct_response:
-            result = self.response_sock.recv()
-            return deserialize_val(result)
+            try:
+                result = self.response_sock.recv()
+                return deserialize_val(result)
+            except zmq.ZMQError as e:
+                if e.errno == zmq.EAGAIN:
+                    return None
+                    print('Timeout')
+                else:
+                    raise e
         else:
             if r.success:
                 return r.response_id

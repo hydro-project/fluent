@@ -21,9 +21,9 @@ from anna.ipc_client import IpcAnnaClient
 from anna.zmq_util import SocketCache
 from .call import *
 from .pin import *
-from . import utils
 from include import server_utils as sutils
 from include.shared import *
+from . import utils
 
 REPORT_THRESH = 5
 
@@ -194,7 +194,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 if len(received_triggers[key]) == len(schedule.triggers):
                     exec_dag_function(pusher_cache, client,
                             received_triggers[key],
-                            pinned_functions[fname], schedule)
+                            pinned_functions[fname], schedule, ip, thread_id)
                     del received_triggers[key]
                     del queue[fname][trigger.id]
 
@@ -224,6 +224,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         # periodically report function occupancy
         report_end = time.time()
         if report_end - report_start > REPORT_THRESH:
+            # periodically report my status to schedulers
+            utils._push_status(schedulers, pusher_cache, status)
+
             utilization = total_occupancy / (report_end - report_start)
             status.utilization = utilization
 
