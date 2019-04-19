@@ -21,6 +21,8 @@ ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
+  inconsistency = 0;
+
   string log_file = "causal_cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "causal_cache_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
