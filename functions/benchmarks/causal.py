@@ -179,7 +179,8 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
         for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
             cid = 'client_' + str(i)
-            logging.info("running client %s" % cid)
+            if i % 100 == 0:
+                logging.info("running client %s" % cid)
 
             # randomly pick a dag
             dag_name = random.choice(dag_names)
@@ -199,7 +200,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             #output = 'result'
 
             start = time.time()
-            rid = flconn.call_dag(dag_name, arg_map, consistency=SINGLE, output_key=output, client_id=cid)
+            rid = flconn.call_dag(dag_name, arg_map, consistency=CROSS, output_key=output, client_id=cid)
             #logging.info("Output key is %s" % rid)
 
             res = kvs.get(rid)
