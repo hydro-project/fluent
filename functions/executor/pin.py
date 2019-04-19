@@ -19,8 +19,6 @@ from . import utils
 from include.functions_pb2 import *
 from include import server_utils as sutils
 
-ISOLATION = 'STRONG'
-
 def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
         exec_counts):
     msg = pin_socket.recv_string()
@@ -29,7 +27,7 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
     resp_ip, name = splits[0], splits[1]
     sckt = pusher_cache.get(sutils._get_pin_accept_port(resp_ip))
 
-    if (ISOLATION == 'STRONG' and len(pinned_functions) > 0) or not \
+    if (sutils.ISOLATION == 'STRONG' and len(pinned_functions) > 0) or not \
             status.running:
             resp = sutils.error.SerializeToString()
             sckt.send(sutils.error.SerializeToString())

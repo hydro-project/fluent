@@ -32,6 +32,8 @@ PIN_ACCEPT_PORT = 5009
 
 STATISTICS_REPORT_PORT = 7006
 
+ISOLATION = 'STRONG'
+
 # create generic error response
 error = GenericResponse()
 error.success = False
@@ -43,7 +45,6 @@ ok_resp = ok.SerializeToString()
 
 def _get_func_kvs_name(fname):
     return FUNC_PREFIX + fname
-
 
 def _get_dag_trigger_address(ip_tid):
     ip, tid = ip_tid.split(':')

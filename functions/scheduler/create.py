@@ -54,11 +54,30 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
     payload = LWWPairLattice(generate_timestamp(0), serialized)
     kvs.put(dag.name, payload)
 
+    pin_locations = {}
     for fname in dag.functions:
         candidates = set(executors)
+        ip_func_map = {}
+        for fn in func_locations:
+            for loc in func_locations[fn]:
+                if loc not in ip_func_map:
+                    ip_func_map[loc] = set()
+                ip_func_map[loc].add(fn)
+
+        if sutils.isolation == 'STRONG':
+            for thread in ip_func_map:
+                candidates.remove((node, tid))
+
         for _ in range(num_replicas):
             if len(candidates) == 0:
-                break
+                sutils.error.error = NO_RESOURCES
+                dag_create_socket.send(sutils.error.SerializeToString())
+
+                # unpin any previously pinned functions because the operation
+                # failed
+                for loc in pin_locations:
+                    _unpin_func(pin_locations[loc], loc, pusher_cache)
+                return
 
             node, tid, = _pin_func(fname, func_locations, candidates,
                     pin_accept_socket, ip, pusher_cache)
@@ -71,18 +90,13 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
 
             func_locations[fname].add((node, tid))
             candidates.remove((node, tid))
+            pin_locations[(node, tid)] = fname
 
     dags[dag.name] = (dag, utils._find_dag_source(dag))
     dag_create_socket.send(sutils.ok_resp)
 
-def _pin_func(fname, func_locations, candidates, pin_accept_socket, ip, pusher_cache):
+def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip, pusher_cache):
     # pick the node with the fewest functions pinned
-    ip_func_map = {}
-    for fn in func_locations:
-        for loc in func_locations[fn]:
-            if loc not in ip_func_map:
-                ip_func_map[loc] = set()
-            ip_func_map[loc].add(fn)
 
     min_count = 1000000
     min_ip = None
@@ -119,3 +133,8 @@ def _pin_func(fname, func_locations, candidates, pin_accept_socket, ip, pusher_c
         return _pin_func(fname, func_locations, candidates, pin_accept_socket, ip,
                 pusher_cache)
 
+def _unpin_func(fname, loc, pusher_cache):
+    ip, tid = loc
+
+    sckt = pusher_cache.get(utils._get_unpin_address(ip, tid))
+    sckt.send(fname)

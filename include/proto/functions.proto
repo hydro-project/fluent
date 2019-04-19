@@ -31,6 +31,7 @@ enum ErrorType {
   INVALID_TARGET = 3;
   EXEC_ERROR = 4;
   NO_SUCH_DAG = 5;
+  NO_RESOURCES = 6;
 }
 
 enum ConsistencyType {

@@ -43,6 +43,8 @@ EXECUTOR_REPORT_PERIOD = 20
 NUM_EXEC_THREADS = 3
 EXECUTOR_INCREASE = 2 # the number of exec nodes to add at once
 
+ISOLATION = 'STRONG'
+
 logging.basicConfig(filename='log_management.txt', level=logging.INFO)
 
 def run():
@@ -98,6 +100,9 @@ def run():
     function_frequencies = {}
     function_runtimes = {}
     latency_history = {}
+
+    if ISOLATION == 'STRONG':
+        PINNED_COUNT_MAX = .8
 
     start = time.time()
     while True:
