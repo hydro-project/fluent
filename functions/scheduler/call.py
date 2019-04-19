@@ -43,6 +43,8 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
     sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
 
+    executors.discard((ip, tid))
+
     r = GenericResponse()
     r.success = True
     r.response_id = call.resp_id

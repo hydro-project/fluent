@@ -46,7 +46,7 @@ def exec_function(exec_socket, kvs, status, ip, tid):
             result = _exec_func_normal(kvs, f, fargs, user_lib)
             result = serialize_val(result)
         except Exception as e:
-            logging.info('Unexpected error %s while executing function.' %
+            logging.exception('Unexpected error %s while executing function.' %
                     (str(e)))
             sutils.error.error = EXEC_ERROR
             result = serialize_val(('ERROR: ' + str(e),

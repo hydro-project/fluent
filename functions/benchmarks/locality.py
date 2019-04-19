@@ -21,7 +21,7 @@ def run(flconn, kvs, num_requests, create, sckt):
 
     if create:
         ### DEFINE AND REGISTER FUNCTIONS ###
-        def dot(v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
+        def dot(fluent, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
             import numpy as np
             s1 = np.add(v1, v2)
             s2 = np.add(v3, v4)

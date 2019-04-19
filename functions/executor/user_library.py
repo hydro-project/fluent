@@ -66,6 +66,9 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
     def get(self, ref):
         return self.client.get(ref)[ref]
 
+    def getid(self):
+        return (self.executor_ip, self.executor_tid)
+
     # dest is currently (IP string, thread id int) of destination executor.
     def send(self, dest, bytestr):
         ip, tid = dest

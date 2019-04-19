@@ -13,17 +13,17 @@ from include.serializer import *
 def run(flconn, kvs, num_requests, sckt):
     ### DEFINE AND REGISTER FUNCTIONS ###
 
-    def preprocess(inp):
+    def preprocess(fluent, inp):
         from skimage import filters
         return filters.gaussian(inp).reshape(1, 3, 224, 224)
 
-    def sqnet(inp):
+    def sqnet(fluent, inp):
         import torch, torchvision
 
         model = torchvision.models.squeezenet1_1()
         return model(torch.tensor(inp.astype(np.float32))).detach().numpy()
 
-    def average(inp1, inp2, inp3):
+    def average(fluent, inp1, inp2, inp3):
         import numpy as np
         inp = [inp1, inp2, inp3]
         return np.mean(inp, axis=0)

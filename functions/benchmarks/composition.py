@@ -9,10 +9,10 @@ from include.serializer import *
 def run(flconn, kvs, num_requests, sckt):
     ### DEFINE AND REGISTER FUNCTIONS ###
 
-    def incr(x):
+    def incr(fluent, x):
         return x + 1
 
-    def square(x):
+    def square(fluent, x):
         return x * x
 
     cloud_incr = flconn.register(incr, 'incr')

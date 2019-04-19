@@ -127,6 +127,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
             work_start = time.time()
             exec_function(exec_socket, client, status, ip, thread_id)
+            utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
             event_occupancy['func_exec'] += elapsed
