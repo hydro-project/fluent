@@ -103,7 +103,7 @@ class IpcAnnaClient:
             return kv_pairs
 
     def causal_get(self, keys, future_read_set,
-                   versioned_key_locations, consistency, client_id):
+                   versioned_key_locations, consistency, client_id, dependencies={}):
         if type(keys) != list:
             keys = list(keys)
 
@@ -158,6 +158,12 @@ class IpcAnnaClient:
 
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)
+
+                for dep in val.deps:
+                    if dep.key in dependencies:
+                        dependencies[dep.key] = _vc_merge(dependencies[dep.key], dep.vector_clock)
+                    else:
+                        dependencies[dep.key] = dep.vector_clock
 
                 # for now, we just take the first value in the setlattice
                 kv_pairs[tp.key] = (val.vector_clock, val.values[0])
@@ -246,3 +252,12 @@ class IpcAnnaClient:
             return False
         else:
             return True
+
+    def _vc_merge(lhs, rhs):
+        result = lhs
+        for cid in rhs:
+            if cid not in result:
+                result[cid] = rhs[cid]
+            else:
+                result[cid] = max(result[cid], rhs[cid])
+        return result

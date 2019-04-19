@@ -222,7 +222,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     kv_pairs = {}
 
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
-                               schedule, versioned_key_locations)
+                               schedule, versioned_key_locations, dependencies)
 
     for key in kv_pairs:
         if key in dependencies:
@@ -292,7 +292,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
 
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
-                      schedule, versioned_key_locations):
+                      schedule, versioned_key_locations, dependencies):
     func_args = []
     to_resolve = []
     deserialize = {}
@@ -308,7 +308,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
     if len(to_resolve) > 0:
         _resolve_ref_causal(to_resolve, kvs, kv_pairs,
-                            schedule, versioned_key_locations)
+                            schedule, versioned_key_locations, dependencies)
 
         for key in kv_pairs:
             if deserialize[key]:
@@ -320,7 +320,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     # execute the function
     return  func(*tuple(func_args))
 
-def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
+def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations, dependencies):
     future_read_set = _compute_children_read_set(schedule)
     #logging.info('future read set size for function %s is %d' % (schedule.target_function, len(future_read_set)))
     #for k in future_read_set:
@@ -328,12 +328,12 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
     keys = [ref.key for ref in refs]
     result = kvs.causal_get(keys, future_read_set,
                             versioned_key_locations,
-                            schedule.consistency, schedule.client_id)
+                            schedule.consistency, schedule.client_id, dependencies)
 
     while not result:
         result = kvs.causal_get(keys, future_read_set,
                                 versioned_key_locations,
-                                schedule.consistency, schedule.client_id)
+                                schedule.consistency, schedule.client_id, dependencies)
 
     if result[0] is not None:
         versioned_key_locations[result[0][0]].versioned_keys.extend(result[0][1])

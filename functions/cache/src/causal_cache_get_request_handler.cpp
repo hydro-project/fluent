@@ -53,6 +53,18 @@ void get_request_handler(
           PendingClientMetadata(request.id(), read_set, to_cover);
     } else {
       CausalResponse response;
+
+      // check inconsistency
+      for (const Key& key : read_set) {
+        for (const Key& head_key : read_set) {
+          auto& dep_map = unmerged_store[head_key]->reveal().dependency.reveal();
+          if (dep_map.find(key) != dep_map.end() && vector_clock_comparison(unmerged_store[key]->reveal().vector_clock, dep_map.at(key)) == kCausalLess) {
+            inconsistency += 1;
+          }
+        }
+      }
+      // end check
+
       for (const Key& key : read_set) {
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);

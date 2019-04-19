@@ -226,7 +226,6 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       }
       addr_request_map[remote_addr].add_keys(key);
       metadata.remote_read_set_.insert(key);
-      inconsistency += 1;
      // log->info("key {} need to be read from remote addr {} and doesn't exist locally", key, remote_addr);
     } else {
       Address remote_addr =
@@ -235,7 +234,6 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       if (remote_addr != "") {
         // we need to read from remote
         remote_request = true;
-        inconsistency += 1;
         //log->info("key {} need to be read from remote addr {} because it is dominating local", key, remote_addr);
 
         if (addr_request_map.find(remote_addr) == addr_request_map.end()) {
@@ -406,6 +404,18 @@ void process_response(
         pending_single_metadata[addr].to_cover_set_.erase(key);
         if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
           CausalResponse response;
+
+          // check inconsistency
+          for (const Key& key : pending_single_metadata[addr].read_set_) {
+            for (const Key& head_key : pending_single_metadata[addr].read_set_) {
+              auto& dep_map = unmerged_store[head_key]->reveal().dependency.reveal();
+              if (dep_map.find(key) != dep_map.end() && vector_clock_comparison(unmerged_store[key]->reveal().vector_clock, dep_map.at(key)) == kCausalLess) {
+                inconsistency += 1;
+              }
+            }
+          }
+          // end check
+
           for (const Key& key : pending_single_metadata[addr].read_set_) {
             CausalTuple* tp = response.add_tuples();
             tp->set_key(key);
