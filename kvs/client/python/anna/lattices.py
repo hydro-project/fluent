@@ -85,55 +85,6 @@ class SetLattice(Lattice):
 
         return SetLattice(new_set)
 
-
-
-class OrderedSetLattice(Lattice):
-    def __init__(self, value = []):
-        if type(value) != ListBasedOrderedSet:
-            raise ValueError("OrderedSetLattice can only be formed from a ListBasedOrderedSet for now.")
-        self.val = value
-
-    def reveal(self):
-        return self.val
-
-    def assign(self, value):
-        if type(value) != ListBasedOrderedSet:
-            raise ValueError("OrderedSetLattice can only be formed from a ListBasedOrderedSet for now.")
-        self.val = value
-
-    def merge(self, other):
-        if type(other) != OrderedSetLattice:
-            raise ValueError("Cannot merge OrderedSetLattice with type " +
-                str(type(other)) + ".")
-
-        # Merge the two sorted lists by lockstep merge.
-        # Note that reconstruction is faster than in-place merge.
-        new_lst = []
-
-        other = other.reveal()
-        i, j = 0, 0  # Earliest unmerged indices.
-        while i < len(self.val) or j < len(other.val):
-            if i == len(self.val):
-                new_lst.extend(other.val[j:])
-            elif j == len(other.val):
-                new_lst.extend(self.val[i:])
-            else:
-                a = self.val[i]
-                b = other.val[j]
-                if a == b:
-                    new_lst.append(a)
-                    i += 1
-                    j += 1
-                elif a < b:
-                    new_lst.append(a)
-                    i += 1
-                elif b < a:
-                    new_lst.append(b)
-                    j += 1
-
-        return OrderedSetLattice(ListBasedOrderedSet(new_lst))
-
-
 # A wrapper class that implements some convenience OrderedSet operations on top of a list.
 # We use this because it is way cheaper to deserialize into,
 # at the cost of having expensive reordering operations (e.g. random insert),
@@ -142,10 +93,9 @@ class ListBasedOrderedSet:
     # Preconditions: iterable's elements are unique and sorted ascending.
     # Behaviour is undefined if it is not.
     def __init__(self, iterable=[]):
-        if type(iterable) == list:
-            self.lst = iterable
-        else:
-            self.lst = list(iterable)
+        self.lst = []
+        for val in iterable:
+            self.insert(val)
 
     # Inserts a value, maintaining sorted order.
     def insert(self, value):
@@ -180,4 +130,51 @@ class ListBasedOrderedSet:
         return (low, False)
 
 
+class OrderedSetLattice(Lattice):
+    def __init__(self, value = ListBasedOrderedSet()):
+        if type(value) != ListBasedOrderedSet:
+            raise ValueError("OrderedSetLattice can only be formed from a ListBasedOrderedSet for now.")
+        self.val = value
 
+    def reveal(self):
+        return self.val
+
+    def assign(self, value):
+        if type(value) != ListBasedOrderedSet:
+            raise ValueError("OrderedSetLattice can only be formed from a ListBasedOrderedSet for now.")
+        self.val = value
+
+    def merge(self, other):
+        if type(other) != OrderedSetLattice:
+            raise ValueError("Cannot merge OrderedSetLattice with type " +
+                str(type(other)) + ".")
+
+        # Merge the two sorted lists by lockstep merge.
+        # Note that reconstruction is faster than in-place merge.
+        new_lst = []
+
+        other = other.reveal().lst
+        us = self.val.lst
+        i, j = 0, 0  # Earliest unmerged indices.
+        while i < len(us) or j < len(other):
+            if i == len(us):
+                new_lst.extend(other[j:])
+                break
+            elif j == len(other):
+                new_lst.extend(us[i:])
+                break
+            else:
+                a = us[i]
+                b = other[j]
+                if a == b:
+                    new_lst.append(a)
+                    i += 1
+                    j += 1
+                elif a < b:
+                    new_lst.append(a)
+                    i += 1
+                elif b < a:
+                    new_lst.append(b)
+                    j += 1
+
+        return OrderedSetLattice(ListBasedOrderedSet(new_lst))

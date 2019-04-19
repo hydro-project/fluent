@@ -60,7 +60,7 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
     user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if (schedule.consistency == NORMAL):
         _exec_dag_function_normal(pusher_cache, kvs,
-                                  triggers, fargsunction, schedule, user_lib)
+                                  triggers, function, schedule, user_lib)
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,

@@ -57,14 +57,14 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
         self.recv_inbox = queue.Queue()
 
         # Thread for receiving messages into our inbox.
-        self.recv_inbox_thread = threading.Thread(target=self._recv_inbox_listener, args=(self,))
+        self.recv_inbox_thread = threading.Thread(target=self._recv_inbox_listener)
         self.recv_inbox_thread.start()
 
     def put(self, ref, ltc):
         return self.client.put(ref, ltc)
 
-    def get(self, ref, ltype):
-        return self.client.get(ref, ltype)
+    def get(self, ref):
+        return self.client.get(ref)[ref]
 
     # dest is currently (IP string, thread id int) of destination executor.
     def send(self, dest, bytestr):
@@ -90,9 +90,9 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
     # and stores the messages in an inbox.
     def _recv_inbox_listener(self):
         # Socket for receiving send() messages from other nodes.
-        recv_inbox_socket = self.ctx.socket.(zmq.PULL)
-        recv_inbox_socket.bind(server_utils.BIND_ADDR_TEMPLATE % (RECV_INBOX_PORT + self.executor_tid))
+        recv_inbox_socket = self.ctx.socket(zmq.PULL)
+        recv_inbox_socket.bind(server_utils.BIND_ADDR_TEMPLATE % (server_utils.RECV_INBOX_PORT + self.executor_tid))
 
         while True:
-            (sender, msg) = recv_inbox_socket.recv_pyobj(0, copy=True)  # Blocking.
+            (sender, msg) = recv_inbox_socket.recv_pyobj(0)  # Blocking.
             self.recv_inbox.put((sender, msg))

@@ -78,11 +78,11 @@ class IpcAnnaClient:
             resp.ParseFromString(msg)
 
             for tp in resp.tuples:
-                if tp.error == 1:
+                if tp.error == 1 or tp.lattice_type == NO:  # idk why tp.error is not being set
                     logging.info('Key %s does not exist!' % (key))
                     kv_pairs[tp.key] = None
 
-                if tp.lattice_type == LWW:
+                elif tp.lattice_type == LWW:
                     val = LWWValue()
                     val.ParseFromString(tp.payload)
 
