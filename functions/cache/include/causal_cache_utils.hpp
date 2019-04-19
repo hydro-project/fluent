@@ -29,9 +29,6 @@ const unsigned kCausalGreaterOrEqual = 0;
 const unsigned kCausalLess = 1;
 const unsigned kCausalConcurrent = 2;
 
-extern unsigned stale_count;
-extern unsigned key_processed;
-
 using StoreType =
     map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>;
 using InPreparationType = map<

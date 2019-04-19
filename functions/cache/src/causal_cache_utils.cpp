@@ -14,9 +14,6 @@
 
 #include "causal_cache_utils.hpp"
 
-unsigned stale_count;
-unsigned key_processed;
-
 unsigned causal_comparison(
     const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lhs,
     const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& rhs) {
@@ -286,20 +283,6 @@ void respond_to_client(
     } else {
       tp->set_error(0);
       tp->set_payload(serialize(*(causal_cut_store.at(key))));
-
-      // check staleness
-      const auto& unmerged_vc = unmerged_store.at(key)->reveal().vector_clock.reveal();
-      const auto& causal_vc =  causal_cut_store.at(key)->reveal().vector_clock.reveal();
-      for (const auto& unmerged_dep_pair : unmerged_vc) {
-        Key dep_key = unmerged_dep_pair.first;
-        if (causal_vc.find(dep_key) == causal_vc.end()) {
-          stale_count += (unmerged_dep_pair.second.reveal());
-        } else {
-          stale_count += (unmerged_dep_pair.second.reveal() - causal_vc.at(dep_key).reveal());
-        }
-        key_processed += 1;
-      }
-      // end check
     }
   }
 

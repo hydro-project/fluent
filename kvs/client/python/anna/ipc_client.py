@@ -160,11 +160,11 @@ class IpcAnnaClient:
                 val.ParseFromString(tp.payload)
 
                 # this code add transitive dependency
-                #for dep in val.deps:
-                #    if dep.key in dependencies:
-                #        dependencies[dep.key] = self._vc_merge(dependencies[dep.key], dep.vector_clock)
-                #    else:
-                #        dependencies[dep.key] = dep.vector_clock
+                for dep in val.deps:
+                    if dep.key in dependencies:
+                        dependencies[dep.key] = self._vc_merge(dependencies[dep.key], dep.vector_clock)
+                    else:
+                        dependencies[dep.key] = dep.vector_clock
 
                 # for now, we just take the first value in the setlattice
                 kv_pairs[tp.key] = (val.vector_clock, val.values[0])

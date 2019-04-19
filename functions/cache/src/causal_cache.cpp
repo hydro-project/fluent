@@ -21,8 +21,6 @@ ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
-  stale_count = 0;
-  key_processed = 0;
 
   string log_file = "causal_cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "causal_cache_log_" + std::to_string(thread_id);
@@ -204,8 +202,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
       client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
-      log->info("stale count is {}", stale_count);
-      log->info("key processed is {}", key_processed);
     }
 
     migrate_end = std::chrono::system_clock::now();
