@@ -215,6 +215,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
   serializers[LatticeType::LWW] = lww_serializer;
   serializers[LatticeType::SET] = set_serializer;
+  serializers[LatticeType::ORDERED_SET] = ordered_set_serializer;
   serializers[LatticeType::CAUSAL] = causal_serializer;
   serializers[LatticeType::CROSSCAUSAL] = cross_causal_serializer;
 

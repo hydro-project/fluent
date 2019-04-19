@@ -32,7 +32,9 @@ struct PendingClientMetadata {
 string get_serialized_value_from_cache(
     const Key& key, LatticeType type,
     const map<Key, LWWPairLattice<string>>& local_lww_cache,
-    const map<Key, SetLattice<string>>& local_set_cache, logger log) {
+    const map<Key, SetLattice<string>>& local_set_cache,
+    const map<Key, OrderedSetLattice<string>>& local_ordered_set_cache,
+    logger log) {
   if (type == LatticeType::LWW) {
     if (local_lww_cache.find(key) != local_lww_cache.end()) {
       return serialize(local_lww_cache.at(key));
@@ -47,6 +49,13 @@ string get_serialized_value_from_cache(
       log->error("Key {} not found in SET cache.", key);
       return "";
     }
+  } else if (type == LatticeType::ORDERED_SET) {
+    if (local_ordered_set_cache.find(key) != local_ordered_set_cache.end()) {
+      return serialize(local_ordered_set_cache.at(key));
+    } else {
+      log->error("Key {} not found in ORDERED_SET cache.", key);
+      return "";
+    }
   } else {
     log->error("Invalid lattice type.");
     return "";
@@ -55,21 +64,27 @@ string get_serialized_value_from_cache(
 
 void update_cache(const Key& key, LatticeType type, const string& payload,
                   map<Key, LWWPairLattice<string>>& local_lww_cache,
-                  map<Key, SetLattice<string>>& local_set_cache, logger log) {
+                  map<Key, SetLattice<string>>& local_set_cache,
+                  map<Key, OrderedSetLattice<string>>& local_ordered_set_cache,
+                  logger log) {
   if (type == LatticeType::LWW) {
     local_lww_cache[key].merge(deserialize_lww(payload));
   } else if (type == LatticeType::SET) {
     local_set_cache[key].merge(deserialize_set(payload));
+  } else if (type == LatticeType::ORDERED_SET) {
+    local_ordered_set_cache[key].merge(deserialize_ordered_set(payload));
   } else {
     log->error("Invalid lattice type.");
   }
 }
 
-void send_get_response(const set<Key>& read_set, const Address& response_addr,
-                       const map<Key, LatticeType>& key_type_map,
-                       const map<Key, LWWPairLattice<string>>& local_lww_cache,
-                       const map<Key, SetLattice<string>>& local_set_cache,
-                       SocketCache& pushers, logger log) {
+void send_get_response(
+    const set<Key>& read_set, const Address& response_addr,
+    const map<Key, LatticeType>& key_type_map,
+    const map<Key, LWWPairLattice<string>>& local_lww_cache,
+    const map<Key, SetLattice<string>>& local_set_cache,
+    const map<Key, OrderedSetLattice<string>>& local_ordered_set_cache,
+    SocketCache& pushers, logger log) {
   KeyResponse response;
   response.set_type(RequestType::GET);
 
@@ -84,7 +99,8 @@ void send_get_response(const set<Key>& read_set, const Address& response_addr,
       tp->set_error(0);
       tp->set_lattice_type(key_type_map.at(key));
       tp->set_payload(get_serialized_value_from_cache(
-          key, key_type_map.at(key), local_lww_cache, local_set_cache, log));
+          key, key_type_map.at(key), local_lww_cache, local_set_cache,
+          local_ordered_set_cache, log));
     }
   }
 
@@ -115,6 +131,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
   map<Key, LWWPairLattice<string>> local_lww_cache;
   map<Key, SetLattice<string>> local_set_cache;
+  map<Key, OrderedSetLattice<string>> local_ordered_set_cache;
 
   map<Address, PendingClientMetadata> pending_request_read_set;
   map<Key, set<Address>> key_requestor_map;
@@ -175,7 +192,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       if (covered) {
         send_get_response(read_set, request.response_address(), key_type_map,
-                          local_lww_cache, local_set_cache, pushers, log);
+                          local_lww_cache, local_set_cache,
+                          local_ordered_set_cache, pushers, log);
       } else {
         pending_request_read_set[request.response_address()] =
             PendingClientMetadata(read_set, to_retrieve);
@@ -220,7 +238,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           // first update key type map
           key_type_map[key] = tuple.lattice_type();
           update_cache(key, tuple.lattice_type(), tuple.payload(),
-                       local_lww_cache, local_set_cache, log);
+                       local_lww_cache, local_set_cache,
+                       local_ordered_set_cache, log);
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
           request_address_map[req_id] = request.response_address();
@@ -259,6 +278,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           switch (key_type_map[key]) {
             case LatticeType::LWW: local_lww_cache.erase(key); break;
             case LatticeType::SET: local_set_cache.erase(key); break;
+            case LatticeType::ORDERED_SET:
+              local_ordered_set_cache.erase(key);
+              break;
             default:
               break;  // this can never happen
           }
@@ -267,7 +289,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
         }
 
         update_cache(key, tuple.lattice_type(), tuple.payload(),
-                     local_lww_cache, local_set_cache, log);
+                     local_lww_cache, local_set_cache, local_ordered_set_cache,
+                     log);
       }
     }
 
@@ -301,7 +324,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             key_type_map[key] = response.tuples(0).lattice_type();
             update_cache(key, response.tuples(0).lattice_type(),
                          response.tuples(0).payload(), local_lww_cache,
-                         local_set_cache, log);
+                         local_set_cache, local_ordered_set_cache, log);
           }
 
           // notify clients
@@ -313,7 +336,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                 // all keys covered
                 send_get_response(pending_request_read_set[addr].read_set_,
                                   addr, key_type_map, local_lww_cache,
-                                  local_set_cache, pushers, log);
+                                  local_set_cache, local_ordered_set_cache,
+                                  pushers, log);
                 pending_request_read_set.erase(addr);
               }
             }
