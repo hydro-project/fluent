@@ -212,10 +212,10 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     // check if any key in unmerged_store is newer and migrate
     if (duration >= kMigrateThreshold) {
       //log->info("migration");
-      periodic_migration_handler(
+      /*periodic_migration_handler(
           unmerged_store, in_preparation, causal_cut_store, version_store,
           pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct,
-          client_id_to_address_map, log);
+          client_id_to_address_map, log);*/
       migrate_start = std::chrono::system_clock::now();
       //log->info("end migration");
     }
