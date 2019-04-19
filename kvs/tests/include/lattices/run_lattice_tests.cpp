@@ -20,6 +20,7 @@
 #include "test_bool_lattice.hpp"
 #include "test_map_lattice.hpp"
 #include "test_max_lattice.hpp"
+#include "test_ordered_set_lattice.hpp"
 #include "test_set_lattice.hpp"
 
 int main(int argc, char *argv[]) {

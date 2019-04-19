@@ -23,7 +23,7 @@ class BoolLattice : public Lattice<bool> {
   void do_merge(const bool &e) { element |= e; }
 
  public:
-  BoolLattice() : Lattice() {}
+  BoolLattice() : Lattice(false) {}
   BoolLattice(const bool &e) : Lattice(e) {}
 };
 
@@ -39,7 +39,7 @@ class MaxLattice : public Lattice<T> {
   }
 
  public:
-  MaxLattice() : Lattice<T>() {}
+  MaxLattice() : Lattice<T>(T()) {}
   MaxLattice(const T &e) : Lattice<T>(e) {}
 
   // for now, all non-merge methods are non-destructive
@@ -58,7 +58,7 @@ class SetLattice : public Lattice<set<T>> {
   }
 
  public:
-  SetLattice() : Lattice<set<T>>() {}
+  SetLattice() : Lattice<set<T>>(set<T>()) {}
 
   SetLattice(const set<T> &e) : Lattice<set<T>>(e) {}
 
@@ -89,6 +89,47 @@ class SetLattice : public Lattice<set<T>> {
   }
 };
 
+template <typename T>
+class OrderedSetLattice : public Lattice<ordered_set<T>> {
+ protected:
+  void do_merge(const ordered_set<T> &e) {
+    for (const T &elem : e) {
+      this->element.insert(elem);
+    }
+  }
+
+ public:
+  OrderedSetLattice() : Lattice<ordered_set<T>>(ordered_set<T>()) {}
+
+  OrderedSetLattice(const ordered_set<T> &e) : Lattice<ordered_set<T>>(e) {}
+
+  MaxLattice<unsigned> size() const { return this->element.size(); }
+
+  void insert(T e) { this->element.insert(std::move(e)); }
+
+  OrderedSetLattice<T> intersect(ordered_set<T> s) const {
+    ordered_set<T> res;
+
+    for (const T &that_elem : s) {
+      for (const T &this_elem : this->element) {
+        if (this_elem == that_elem) res.insert(this_elem);
+      }
+    }
+
+    return OrderedSetLattice<T>(res);
+  }
+
+  OrderedSetLattice<T> project(bool (*f)(T)) const {
+    ordered_set<T> res;
+
+    for (const T &elem : this->element) {
+      if (f(elem)) res.insert(elem);
+    }
+
+    return OrderedSetLattice<T>(res);
+  }
+};
+
 template <typename K, typename V>
 class MapLattice : public Lattice<map<K, V>> {
  protected:
@@ -110,7 +151,7 @@ class MapLattice : public Lattice<map<K, V>> {
   }
 
  public:
-  MapLattice() : Lattice<map<K, V>>() {}
+  MapLattice() : Lattice<map<K, V>>(map<K, V>()) {}
   MapLattice(const map<K, V> &m) : Lattice<map<K, V>>(m) {}
   MaxLattice<unsigned> size() const { return this->element.size(); }
 

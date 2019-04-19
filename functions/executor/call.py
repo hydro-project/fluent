@@ -22,12 +22,12 @@ from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
 from include import server_utils as sutils
-from . import utils
+from . import user_library, utils
 
 def _process_args(arg_list):
-    return list(map(lambda v: get_serializer(v.type).load(v.body), arg_list))
+    return [get_serializer(arg.type).load(arg.body) for arg in arg_list]
 
-def exec_function(exec_socket, kvs, status):
+def exec_function(exec_socket, kvs, status, ip, tid):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
     logging.info('Received call for ' + call.name)
@@ -42,7 +42,8 @@ def exec_function(exec_socket, kvs, status):
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-            _, _, result = _exec_func_normal(kvs, f, fargs)
+            user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
+            result = _exec_func_normal(kvs, f, fargs, user_lib)
             result = serialize_val(result)
         except Exception as e:
             logging.info('Unexpected error %s while executing function.' %
@@ -55,15 +56,17 @@ def exec_function(exec_socket, kvs, status):
     kvs.put(call.resp_id, result_lattice)
 
 
-def exec_dag_function(pusher_cache, kvs, triggers, function, schedule):
+def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
+    user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
-                                  triggers, function, schedule)
+                                  triggers, function, schedule, user_lib)
     else:
+        # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
                                   triggers, function, schedule)
 
-def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
+def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, user_lib):
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
@@ -76,7 +79,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
 
     fargs = _process_args(fargs)
 
-    ktime, ctime, result = _exec_func_normal(kvs, function, fargs)
+    result = _exec_func_normal(kvs, function, fargs, user_lib)
 
     is_sink = True
     for conn in schedule.dag.connections:
@@ -111,15 +114,13 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule):
             l = LWWPairLattice(generate_timestamp(0), result)
             kvs.put(schedule.id, l)
 
-def _exec_func_normal(kvs, func, args):
+def _exec_func_normal(kvs, func, args, user_lib):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
-    start = time.time()
     if refs:
         refs = _resolve_ref_normal(refs, kvs)
     end = time.time()
-    ktime = end - start
 
-    func_args = ()
+    func_args = (user_lib,)
     for arg in args:
         if isinstance(arg, FluentReference):
             func_args += (refs[arg.key],)
@@ -127,11 +128,9 @@ def _exec_func_normal(kvs, func, args):
             func_args += (arg,)
 
     # execute the function
-    start = time.time()
     res = func(*func_args)
     end = time.time()
-    ctime = end - start
-    return ktime, ctime, res
+    return func(*func_args)
 
 def _resolve_ref_normal(refs, kvs):
     keys = [ref.key for ref in refs]
@@ -268,7 +267,7 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
                 func_args[key_index_map[key]] = kv_pairs[key][1]
 
     # execute the function
-    return  func(*func_args)
+    return func(*func_args)
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
     future_read_set = _compute_children_read_set(schedule)
