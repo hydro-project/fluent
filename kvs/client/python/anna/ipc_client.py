@@ -253,7 +253,7 @@ class IpcAnnaClient:
         else:
             return True
 
-    def _vc_merge(lhs, rhs):
+    def _vc_merge(self, lhs, rhs):
         result = lhs
         for cid in rhs:
             if cid not in result:
