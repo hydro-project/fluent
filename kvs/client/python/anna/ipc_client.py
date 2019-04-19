@@ -161,7 +161,7 @@ class IpcAnnaClient:
 
                 for dep in val.deps:
                     if dep.key in dependencies:
-                        dependencies[dep.key] = _vc_merge(dependencies[dep.key], dep.vector_clock)
+                        dependencies[dep.key] = self._vc_merge(dependencies[dep.key], dep.vector_clock)
                     else:
                         dependencies[dep.key] = dep.vector_clock
 
