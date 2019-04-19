@@ -262,3 +262,12 @@ class IpcAnnaClient:
             return False
         else:
             return True
+
+    def _vc_merge(self, lhs, rhs):
+        result = lhs
+        for cid in rhs:
+            if cid not in result:
+                result[cid] = rhs[cid]
+            else:
+                result[cid] = max(result[cid], rhs[cid])
+        return result
