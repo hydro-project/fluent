@@ -217,6 +217,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           client_id_to_address_map, log);
       migrate_start = std::chrono::system_clock::now();
       //log->info("end migration");
+      log->info("number of inconsistency is {}", inconsistency);
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.

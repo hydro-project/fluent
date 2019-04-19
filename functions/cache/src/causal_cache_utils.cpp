@@ -224,6 +224,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       }
       addr_request_map[remote_addr].add_keys(key);
       metadata.remote_read_set_.insert(key);
+      inconsistency += 1;
      // log->info("key {} need to be read from remote addr {} and doesn't exist locally", key, remote_addr);
     } else {
       Address remote_addr =
@@ -232,6 +233,7 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       if (remote_addr != "") {
         // we need to read from remote
         remote_request = true;
+        inconsistency += 1;
         //log->info("key {} need to be read from remote addr {} because it is dominating local", key, remote_addr);
 
         if (addr_request_map.find(remote_addr) == addr_request_map.end()) {
