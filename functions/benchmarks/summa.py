@@ -29,7 +29,7 @@ def run(flconn, kvs, num_requests, sckt):
                 while loc is None:
                     loc = fluent.get(key)
 
-                proc_locs[(i, j)] = cp.loads(loc)
+                proc_locs[(i, j)] = cp.loads(loc.reveal()[1])
 
         for c in range(numcols):
             for k in range(bsize):

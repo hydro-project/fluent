@@ -43,9 +43,11 @@ class ServerHandlerTest : public ::testing::Test {
   SerializerMap serializers;
   Serializer* lww_serializer;
   Serializer* set_serializer;
+  Serializer* ordered_set_serializer;
   Serializer* causal_serializer;
   MemoryLWWKVS* lww_kvs;
   MemorySetKVS* set_kvs;
+  MemoryOrderedSetKVS* ordered_set_kvs;
   MemoryCausalKVS* causal_kvs;
 
   ServerHandlerTest() {
@@ -57,6 +59,7 @@ class ServerHandlerTest : public ::testing::Test {
     causal_serializer = new MemoryCausalSerializer(causal_kvs);
     serializers[LatticeType::LWW] = lww_serializer;
     serializers[LatticeType::SET] = set_serializer;
+    serializers[LatticeType::ORDERED_SET] = ordered_set_serializer;
     serializers[LatticeType::CAUSAL] = causal_serializer;
 
     wt = ServerThread(ip, ip, thread_id);
@@ -66,8 +69,10 @@ class ServerHandlerTest : public ::testing::Test {
   virtual ~ServerHandlerTest() {
     delete lww_kvs;
     delete set_kvs;
+    delete ordered_set_serializer;
     delete serializers[LatticeType::LWW];
     delete serializers[LatticeType::SET];
+    delete serializers[LatticeType::ORDERED_SET];
   }
 
  public:
