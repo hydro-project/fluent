@@ -55,6 +55,8 @@ class ServerHandlerTest : public ::testing::Test {
     lww_serializer = new MemoryLWWSerializer(lww_kvs);
     set_kvs = new MemorySetKVS();
     set_serializer = new MemorySetSerializer(set_kvs);
+    ordered_set_kvs = new MemoryOrderedSetKVS();
+    ordered_set_serializer = new MemoryOrderedSetSerializer(ordered_set_kvs);
     causal_kvs = new MemoryCausalKVS();
     causal_serializer = new MemoryCausalSerializer(causal_kvs);
     serializers[LatticeType::LWW] = lww_serializer;
@@ -69,7 +71,7 @@ class ServerHandlerTest : public ::testing::Test {
   virtual ~ServerHandlerTest() {
     delete lww_kvs;
     delete set_kvs;
-    delete ordered_set_serializer;
+    delete ordered_set_kvs;
     delete serializers[LatticeType::LWW];
     delete serializers[LatticeType::SET];
     delete serializers[LatticeType::ORDERED_SET];
