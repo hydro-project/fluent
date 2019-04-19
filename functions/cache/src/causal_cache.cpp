@@ -21,7 +21,9 @@ ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
-  inconsistency = 0;
+  stale_count = 0;
+  key_processed = 0;
+
   string log_file = "causal_cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "causal_cache_log_" + std::to_string(thread_id);
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
@@ -202,7 +204,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
       client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
-      log->info("inconsistency is {}", inconsistency);
+      log->info("stale count is {}", stale_count);
+      log->info("key processed is {}", key_processed);
     }
 
     migrate_end = std::chrono::system_clock::now();
@@ -211,7 +214,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
                    .count();
 
     // check if any key in unmerged_store is newer and migrate
-    /*if (duration >= kMigrateThreshold) {
+    if (duration >= kMigrateThreshold) {
       //log->info("migration");
       periodic_migration_handler(
           unmerged_store, in_preparation, causal_cut_store, version_store,
@@ -219,7 +222,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           client_id_to_address_map, log);
       migrate_start = std::chrono::system_clock::now();
       //log->info("end migration");
-    }*/
+    }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.
   }

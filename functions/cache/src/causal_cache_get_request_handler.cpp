@@ -54,17 +54,6 @@ void get_request_handler(
     } else {
       CausalResponse response;
 
-      // check inconsistency
-      for (const Key& key : read_set) {
-        for (const Key& head_key : read_set) {
-          auto& dep_map = unmerged_store[head_key]->reveal().dependency.reveal();
-          if (dep_map.find(key) != dep_map.end() && vector_clock_comparison(unmerged_store[key]->reveal().vector_clock, dep_map.at(key)) == kCausalLess) {
-            inconsistency += 1;
-          }
-        }
-      }
-      // end check
-
       for (const Key& key : read_set) {
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);
@@ -151,7 +140,7 @@ void get_request_handler(
               // all dependency met
               merge_into_causal_cut(key, causal_cut_store, in_preparation,
                                     version_store, pending_cross_metadata,
-                                    pushers, cct, client_id_to_address_map, log);
+                                    pushers, cct, client_id_to_address_map, log, unmerged_store);
               to_fetch_map.erase(key);
             } else {
               in_preparation[key].first.insert(request.response_address());
@@ -167,7 +156,7 @@ void get_request_handler(
               // all dependency met
               merge_into_causal_cut(key, causal_cut_store, in_preparation,
                                     version_store, pending_cross_metadata,
-                                    pushers, cct, client_id_to_address_map, log);
+                                    pushers, cct, client_id_to_address_map, log, unmerged_store);
               to_fetch_map.erase(key);
             } else {
               in_preparation[key].first.insert(request.response_address());
@@ -198,7 +187,7 @@ void get_request_handler(
         // all local
         //log->info("all local read");
         respond_to_client(pending_cross_metadata, request.response_address(),
-                          causal_cut_store, version_store, pushers, cct);
+                          causal_cut_store, version_store, pushers, cct, unmerged_store);
       } else {
         //log->info("some reads have to be done remotely");
         client_id_to_address_map[request.id()].insert(

@@ -41,7 +41,7 @@ void periodic_migration_handler(
         // all dependency met
         merge_into_causal_cut(pair.first, causal_cut_store, in_preparation,
                               version_store, pending_cross_metadata, pushers,
-                              cct, client_id_to_address_map, log);
+                              cct, client_id_to_address_map, log, unmerged_store);
         to_fetch_map.erase(pair.first);
       }
     }

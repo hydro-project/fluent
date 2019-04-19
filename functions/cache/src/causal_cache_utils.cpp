@@ -14,7 +14,8 @@
 
 #include "causal_cache_utils.hpp"
 
-unsigned inconsistency;
+unsigned stale_count;
+unsigned key_processed;
 
 unsigned causal_comparison(
     const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lhs,
@@ -270,7 +271,7 @@ void respond_to_client(
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     const Address& addr, const StoreType& causal_cut_store,
     const VersionStoreType& version_store, SocketCache& pushers,
-    const CausalCacheThread& cct) {
+    const CausalCacheThread& cct, const StoreType& unmerged_store) {
   CausalResponse response;
 
 
@@ -285,6 +286,20 @@ void respond_to_client(
     } else {
       tp->set_error(0);
       tp->set_payload(serialize(*(causal_cut_store.at(key))));
+
+      // check staleness
+      const auto& unmerged_vc = unmerged_store.at(key)->reveal().vector_clock.reveal();
+      const auto& causal_vc =  causal_cut_store.at(key)->reveal().vector_clock.reveal();
+      for (const auto& unmerged_dep_pair : unmerged_vc) {
+        Key dep_key = unmerged_dep_pair.first;
+        if (causal_vc.find(dep_key) == causal_vc.end()) {
+          stale_count += (unmerged_dep_pair.second.reveal());
+        } else {
+          stale_count += (unmerged_dep_pair.second.reveal() - causal_vc.at(dep_key).reveal());
+        }
+        key_processed += 1;
+      }
+      // end check
     }
   }
 
@@ -318,7 +333,7 @@ void merge_into_causal_cut(
     InPreparationType& in_preparation, VersionStoreType& version_store,
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map, logger log) {
+    map<string, set<Address>>& client_id_to_address_map, logger log, const StoreType& unmerged_store) {
   bool key_dne = false;
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
@@ -360,7 +375,7 @@ void merge_into_causal_cut(
           // all local
           //log->info("all local read");
           respond_to_client(pending_cross_metadata, addr, causal_cut_store,
-                            version_store, pushers, cct);
+                            version_store, pushers, cct, unmerged_store);
         } else {
           //log->info("some reads have to be done remotely");
           client_id_to_address_map[pending_cross_metadata[addr].client_id_]
@@ -404,17 +419,6 @@ void process_response(
         pending_single_metadata[addr].to_cover_set_.erase(key);
         if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
           CausalResponse response;
-
-          // check inconsistency
-          for (const Key& key : pending_single_metadata[addr].read_set_) {
-            for (const Key& head_key : pending_single_metadata[addr].read_set_) {
-              auto& dep_map = unmerged_store[head_key]->reveal().dependency.reveal();
-              if (dep_map.find(key) != dep_map.end() && vector_clock_comparison(unmerged_store[key]->reveal().vector_clock, dep_map.at(key)) == kCausalLess) {
-                inconsistency += 1;
-              }
-            }
-          }
-          // end check
 
           for (const Key& key : pending_single_metadata[addr].read_set_) {
             CausalTuple* tp = response.add_tuples();
@@ -460,7 +464,7 @@ void process_response(
       // this key has no dependency
       merge_into_causal_cut(key, causal_cut_store, in_preparation,
                             version_store, pending_cross_metadata, pushers, cct,
-                            client_id_to_address_map, log);
+                            client_id_to_address_map, log, unmerged_store);
       to_fetch_map.erase(key);
     }
   }
@@ -510,7 +514,7 @@ void process_response(
           // all dependency is met
           merge_into_causal_cut(head_key, causal_cut_store, in_preparation,
                                 version_store, pending_cross_metadata, pushers,
-                                cct, client_id_to_address_map, log);
+                                cct, client_id_to_address_map, log, unmerged_store);
           to_fetch_map.erase(head_key);
         }
       }
