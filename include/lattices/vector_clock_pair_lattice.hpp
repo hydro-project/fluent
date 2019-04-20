@@ -61,7 +61,8 @@ class CausalPairLattice : public Lattice<VectorClockValuePair<T>> {
   }
 
  public:
-  CausalPairLattice() : Lattice<VectorClockValuePair<T>>() {}
+  CausalPairLattice() :
+      Lattice<VectorClockValuePair<T>>(VectorClockValuePair<T>()) {}
   CausalPairLattice(const VectorClockValuePair<T> &p) :
       Lattice<VectorClockValuePair<T>>(p) {}
   MaxLattice<unsigned> size() { return {this->element.size()}; }

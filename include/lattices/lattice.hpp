@@ -19,11 +19,10 @@ template <typename T>
 class Lattice {
  protected:
   T element;
-  const T zero{static_cast<T>(0)};
   virtual void do_merge(const T &e) = 0;
 
  public:
-  Lattice<T>() { assign(bot()); }
+  // Lattice<T>() { assign(bot()); }
 
   Lattice<T>(const T &e) { assign(e); }
 
@@ -40,8 +39,6 @@ class Lattice {
   }
 
   const T &reveal() const { return element; }
-
-  const T &bot() const { return zero; }
 
   void merge(const T &e) { return do_merge(e); }
 
