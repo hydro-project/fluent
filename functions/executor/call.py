@@ -326,12 +326,12 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations, 
     #for k in future_read_set:
     #    logging.info('future read set has key %s' % (k))
     keys = [ref.key for ref in refs]
-    result = kvs.causal_get(keys, future_read_set,
+    result = kvs.causal_get(keys, set(),
                             versioned_key_locations,
                             schedule.consistency, schedule.client_id, dependencies)
 
     while not result:
-        result = kvs.causal_get(keys, future_read_set,
+        result = kvs.causal_get(keys, set(),
                                 versioned_key_locations,
                                 schedule.consistency, schedule.client_id, dependencies)
 
