@@ -50,7 +50,7 @@ void address_handler(logger log, string& serialized, SocketCache& pushers,
 
       while (threads.size() == 0 && tier_id < kMaxTier) {
         threads = kHashRingUtil->get_responsible_threads(
-            rt.replication_response_connect_address(), key, false,
+            rt.replication_response_connect_address(), key, is_metadata(key),
             global_hash_rings, local_hash_rings, key_replication_map, pushers,
             {tier_id}, succeed, seed);
 
