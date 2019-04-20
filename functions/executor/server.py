@@ -199,7 +199,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 if len(received_triggers[key]) == len(schedule.triggers):
                     exec_dag_function(pusher_cache, client,
                             received_triggers[key],
-                            pinned_functions[fname], schedule)
+                            pinned_functions[fname], schedule, ip, thread_id)
                     del received_triggers[key]
                     del queue[fname][trigger.id]
 
