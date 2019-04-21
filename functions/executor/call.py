@@ -44,7 +44,7 @@ def exec_function(exec_socket, kvs, status, ip, tid):
     else:
         try:
             user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
-            result = _exec_single_func_causal(kvs, f, fargs) # XXX need to add userlib
+            result = _exec_single_func_causal(kvs, f, fargs, user_lib) # XXX need to add userlib
             result = serialize_val(result)
         except Exception as e:
             logging.info('Unexpected error %s while executing function.' %
@@ -60,9 +60,9 @@ def exec_function(exec_socket, kvs, status, ip, tid):
     if not succeed:
         logging.info('Put key %s unsuccessful' % call.resp_id)
 
-def _exec_single_func_causal(kvs, func, args):
+def _exec_single_func_causal(kvs, func, args, user_lib):
     #logging.info('Enter single function causal')
-    func_args = []
+    func_args = [user_lib]
     to_resolve = []
     deserialize = {}
 
