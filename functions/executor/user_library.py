@@ -12,8 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import cloudpickle as cp
-import logging
 import queue
 import threading
 import zmq
@@ -65,8 +63,7 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
         self.recv_inbox_thread.start()
 
     def put(self, ref, ltc):
-        res = self.client.put(ref, ltc)
-        return res
+        return self.client.put(ref, ltc)
 
     def get(self, ref):
         return self.client.get(ref)[ref]
@@ -115,3 +112,5 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
                     continue
                 else:
                     raise e
+
+        recv_inbox_socket.close()

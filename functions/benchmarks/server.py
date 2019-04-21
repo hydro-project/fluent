@@ -7,6 +7,7 @@ import zmq
 from . import composition
 from . import locality
 from . import lambda_locality
+from . import predserving
 from . import scaling
 from . import utils
 
@@ -48,6 +49,9 @@ def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
                 num_requests, create, sckt)
     elif bname == 'redis' or bname == 's3':
         total, scheduler, kvs, retries = lambda_locality.run(bname, kvs,
+                num_requests, sckt)
+    elif bname == 'predserving':
+        total, scheduler, kvs, retries = predserving.run(flconn, kvs,
                 num_requests, sckt)
     elif bname == 'scaling':
         total, scheduler, kvs, retries = scaling.run(flconn, kvs,

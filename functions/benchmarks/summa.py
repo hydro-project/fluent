@@ -17,7 +17,6 @@ def run(flconn, kvs, num_requests, sckt):
         res = np.zeros((bsize, bsize))
 
         myid = fluent.getid()
-        logging.info('I am (%d, %d)' % (rid, cid))
         key = '%s: (%d, %d)' %  (uid, rid, cid)
         fluent.put(key, LWWPairLattice(0, cp.dumps(myid)))
 
@@ -25,7 +24,6 @@ def run(flconn, kvs, num_requests, sckt):
         for i in range(numrows):
             if i == rid:
                 continue
-            logging.info('Getting (%d, %d)' % (i, cid))
             key = '%s: (%d, %d)' % (uid, i, cid)
             loc = fluent.get(key)
 
@@ -38,7 +36,6 @@ def run(flconn, kvs, num_requests, sckt):
             if j == cid:
                 continue
 
-            logging.info('Getting (%d, %d)' % (rid, j))
             key = '%s: (%d, %d)' % (uid, rid, j)
             loc = fluent.get(key)
 

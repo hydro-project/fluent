@@ -72,39 +72,20 @@ def run(flconn, kvs, num_requests, create, sckt):
             rint('Failed to register DAG: %s' % (ErrorType.Name(error)))
             sys.exit(1)
 
-        ### GENERATE_DATA ###
+    else:
+        ### RUN DAG ###
 
-        NUM_OBJECTS = 0
+        num_data_objects = num_requests * 10 # for the cold version
+        # num_data_objects = 1 # for the hot version
+
         oids = []
-
-        for _ in range(NUM_OBJECTS):
+        for i in range(num_data_objects):
             array = np.random.rand(OSIZE)
             oid = str(uuid.uuid4())
             val = LWWPairLattice(0, serialize_val(array))
 
             kvs.put(oid, val)
             oids.append(oid)
-
-        oid_data = cp.dumps(oids)
-        l = LWWPairLattice(generate_timestamp(0), oid_data)
-        kvs.put('LOCALITY_OIDS', l)
-        logging.info('Successfully created all data!')
-
-        return [], [], [], []
-    else:
-        ### RUN DAG ###
-        # l = kvs.get('LOCALITY_OIDS')
-        # oids = cp.loads(l.reveal()[1])
-
-        oids = []
-        for i in range(num_requests):
-            for _ in range(10):
-                array = np.random.rand(OSIZE)
-                oid = str(uuid.uuid4())
-                val = LWWPairLattice(0, serialize_val(array))
-
-                kvs.put(oid, val)
-                oids.append(oid)
 
         total_time = []
         scheduler_time = []
@@ -116,14 +97,13 @@ def run(flconn, kvs, num_requests, create, sckt):
 
         log_epoch = 0
         epoch_total = []
-        epoch_scheduler = []
-        epoch_kvs = []
 
-        seen_oids = set()
         for i in range(num_requests):
             refs = []
-            for ref in oids[(i * 10):(i * 10) + 10]:
+            for ref in oids[(i * 10):(i * 10) + 10]: # for the cold version
                 refs.append(FluentReference(ref, True, LWW))
+            # for _ in range(10): # for the hot version
+            #     refs.appends(oids[0])
 
             start = time.time()
             arg_map = { 'dot' : refs }
@@ -131,32 +111,7 @@ def run(flconn, kvs, num_requests, create, sckt):
             resp = flconn.call_dag(dag_name, arg_map, True)
             end = time.time()
 
-            stime = end - start
-            ktime = 0
-
-            # start = time.time()
-            # res = kvs.get(rid)
-            # key_rts = 0
-            # while not res:
-            #     retries += 1
-            #     key_rts += 1
-            #     res = kvs.get(rid)
-            # res = deserialize_val(res.reveal()[1])
-            # end = time.time()
-
-            # ktime = end - start
-
-            # total_time += [stime + ktime]
-            # scheduler_time += [stime]
-            # kvs_time += [ktime]
-
-            if ktime > 1:
-                logging.info('Retrieving key %s took %.2f seconds with %d retries!'
-                        % (rid, ktime, key_rts))
-
-            epoch_total += [stime + ktime]
-            # epoch_scheduler += [stime]
-            # epoch_kvs += [ktime]
+            epoch_total += [end - start]
 
             log_end = time.time()
             if (log_end - log_start) > 10:
@@ -164,14 +119,8 @@ def run(flconn, kvs, num_requests, create, sckt):
                     sckt.send(cp.dumps(epoch_total))
                 utils.print_latency_stats(epoch_total, 'EPOCH %d E2E' %
                         (log_epoch), True)
-                # utils.print_latency_stats(epoch_scheduler, 'EPOCH %d SCHEDULER' %
-                #         (log_epoch), True)
-                # utils.print_latency_stats(epoch_kvs, 'EPOCH %d KVS' %
-                #         (log_epoch), True)
 
                 epoch_total.clear()
-                epoch_scheduler.clear()
-                epoch_kvs.clear()
                 log_epoch += 1
                 log_start = time.time()
 

@@ -163,8 +163,8 @@ def scheduler(ip, mgmt_ip, route_addr):
             status.ParseFromString(exec_status_socket.recv())
 
             key = (status.ip, status.tid)
-            # logging.info('Received status update from executor %s:%d.' %
-            #         (key[0], int(key[1])))
+            logging.info('Received status update from executor %s:%d.' %
+                    (key[0], int(key[1])))
 
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking
@@ -203,7 +203,6 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if sched_update_socket in socks and socks[sched_update_socket] == \
                 zmq.POLLIN:
-            # logging.info('Received update from another scheduler.')
             status = SchedulerStatus()
             status.ParseFromString(sched_update_socket.recv())
 

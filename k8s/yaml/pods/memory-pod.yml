@@ -23,7 +23,7 @@ spec:
   restartPolicy: Never
   containers:
   - name: memory-container
-    image: vsreekanti/anna
+    image: fluentproject/annakvs
     imagePullPolicy: Always
     env: 
     - name: SERVER_TYPE
@@ -36,10 +36,6 @@ spec:
       value: SEED_IP_DUMMY
     - name: MON_IPS
       value: MON_IPS_DUMMY
-    - name: REPO_ORG
-      value: vsreekanti
-    - name: REPO_BRANCH
-      value: benchmarks
   nodeSelector:
     role: memory
     podid: memory-NUM_DUMMY
