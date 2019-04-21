@@ -16,6 +16,9 @@ with open('bench_ips.txt', 'r') as f:
         ips.append(l.strip())
         l = f.readline()
 
+for ip in ips:
+	print(ip)
+
 msg = sys.argv[1]
 ctx = zmq.Context(1)
 
@@ -30,34 +33,44 @@ if 'create' in msg:
 
     sckt.send_string(msg)
     sent_msgs += 1
-else:
-    for ip in ips:
-        for tid in range(NUM_THREADS):
-            sckt = ctx.socket(zmq.PUSH)
-            sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
+elif 'warmup' in msg:
+	index = 0
+	for ip in ips:
+		for tid in range(NUM_THREADS):
+			sckt = ctx.socket(zmq.PUSH)
+			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
+			sckt.send_string(msg + ':' + str(index))
+			sent_msgs += 1
+			index += 1
+elif 'run' in msg:
+	index = 0
+	for ip in ips:
+		for tid in range(NUM_THREADS):
+			sckt = ctx.socket(zmq.PUSH)
+			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
+			sckt.send_string(msg + ':' + str(index))
+			sent_msgs += 1
+			index += 1
 
-            sckt.send_string(msg)
-            sent_msgs += 1
-
-total = []
 end_recv = 0
 
-epoch_recv = 0
-epoch = 1
+latency = {}
+latency['unnormalized'] = []
+latency['normalized'] = []
+
 while end_recv < sent_msgs:
-    msg = recv_socket.recv()
+	payload = recv_socket.recv()
+	logging.info("received response")
+	end_recv += 1
+	if 'run' in msg:
+		bench_latency = cp.loads(payload)
+		latency['unnormalized'] += bench_latency['unnormalized']
+		latency['normalized'] += bench_latency['normalized']
 
-    if b'END' in msg:
-        end_recv += 1
-    else:
-        new_tot = cp.loads(msg)
-        total += new_tot
-        epoch_recv += 1
+if 'run' in msg:
+	logging.info("unnormalized latency")
+	utils.print_latency_stats(latency['unnormalized'], 'Causal', True)
+	logging.info("normalized latency")
+	utils.print_latency_stats(latency['normalized'], 'Causal', True)
 
-        if epoch_recv == sent_msgs:
-            logging.info('\n\n*** EPOCH %d ***' % (epoch))
-            utils.print_latency_stats(total, 'E2E', True)
-
-            epoch_recv = 0
-            total.clear()
-            epoch += 1
+logging.info("benchmark done")

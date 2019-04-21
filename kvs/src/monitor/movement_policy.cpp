@@ -36,7 +36,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
        ss.total_memory_consumption);
   bool overflow = false;
 
-  for (const auto& key_access_pair : key_access_summary) {
+/*  for (const auto& key_access_pair : key_access_summary) {
     Key key = key_access_pair.first;
     unsigned access_count = key_access_pair.second;
 
@@ -80,10 +80,10 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
 
   requests.clear();
   total_rep_to_change = 0;
-  required_storage = 0;
+  required_storage = 0;*/
 
   // demote cold keys to ebs tier
-  free_storage =
+/*  free_storage =
       (kMaxEbsNodeConsumption * kTierMetadata[kEbsTierId].node_capacity_ *
            ebs_node_number -
        ss.total_ebs_consumption);
@@ -121,13 +121,13 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
       add_node(log, "ebs", node_to_add, adding_ebs_node, pushers,
                management_ip);
     }
-  }
+  }*/
 
-  requests.clear();
-  total_rep_to_change = 0;
+/*  requests.clear();
+  total_rep_to_change = 0;*/
 
   // reduce the replication factor of some keys that are not so hot anymore
-  KeyReplication minimum_rep =
+/*  KeyReplication minimum_rep =
       create_new_replication_vector(1, kMinimumReplicaNumber - 1, 1, 1);
   for (const auto& key_access_pair : key_access_summary) {
     Key key = key_access_pair.first;
@@ -150,5 +150,5 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   change_replication_factor(requests, global_hash_rings, local_hash_rings,
                             routing_ips, key_replication_map, pushers, mt,
                             response_puller, log, rid);
-  requests.clear();
+  requests.clear();*/
 }

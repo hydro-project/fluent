@@ -37,6 +37,7 @@ def pin(pin_socket, client, status, pinned_functions, runtimes, exec_counts):
     if name not in pinned_functions:
         pinned_functions[name] = func
         status.functions.append(name)
+
     runtimes[name] = 0.0
     exec_counts[name] = 0
 

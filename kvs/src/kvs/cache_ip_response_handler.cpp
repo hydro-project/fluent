@@ -16,7 +16,8 @@
 
 void cache_ip_response_handler(string& serialized,
                                map<Address, set<Key>>& cache_ip_to_keys,
-                               map<Key, set<Address>>& key_to_cache_ips) {
+                               map<Key, set<Address>>& key_to_cache_ips,
+                               logger log) {
   // The response will be a list of cache IPs and their responsible keys.
   KeyResponse response;
   response.ParseFromString(serialized);
@@ -30,7 +31,7 @@ void cache_ip_response_handler(string& serialized,
 
     if (error == 0) {
       // Extract the cache IP.
-      Address cache_ip = get_key_from_user_metadata(tuple.key());
+      Address cache_ip = get_key_from_user_metadata(tuple.key(), log);
 
       // Extract the keys that the cache is responsible for.
       LWWValue lww_value;

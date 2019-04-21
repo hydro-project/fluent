@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
 import os
 import random
 import socket
@@ -52,7 +53,6 @@ class AnnaClient():
 
         self.rid = 0
 
-
     def get(self, key):
         worker_address = self._get_worker_address(key)
 
@@ -77,6 +77,7 @@ class AnnaClient():
         if tup.error == 0:
             return self._deserialize(tup)
         elif tup.error == 1:
+            #logging.info('key %s does not exist' % key)
             return None # key does not exist
         else:
             return self.get(tup.key) # re-issue the request
@@ -163,6 +164,7 @@ class AnnaClient():
 
         req, tup = self._prepare_data_request(key)
         req.type = PUT
+
         tup.payload, tup.lattice_type = self._serialize(value)
 
         send_request(req, send_sock)
@@ -195,19 +197,32 @@ class AnnaClient():
                 result.add(k)
 
             return SetLattice(result)
+        elif tup.lattice_type == CROSSCAUSAL:
+            res = CrossCausalValue()
+            res.ParseFromString(tup.payload)
+            return res
 
     def _serialize(self, val):
+        #print("entering serialize")
         if isinstance(val, LWWPairLattice):
+            #print("lww")
             lww = LWWValue()
             lww.timestamp = val.ts
             lww.value = val.val
             return lww.SerializeToString(), LWW
         elif isinstance(val, SetLattice):
+            #print("set")
             s = SetValue()
             for o in val.reveal():
                 s.values.append(o)
-
             return s.SerializeToString(), SET
+        elif type(val).__name__ == 'CrossCausalValue':
+            #print("causal")
+            return val.SerializeToString(), CROSSCAUSAL
+        else:
+            print("very bad")
+            #print(type(val))
+            return 123, 456
 
     def _prepare_data_request(self, key):
         req = KeyRequest()

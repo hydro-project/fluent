@@ -30,7 +30,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map):
     if not call.HasField('resp_id'):
         call.resp_id = str(uuid.uuid4())
 
-    logging.info('Calling function %s.' % (call.name))
+    #logging.info('Calling function %s.' % (call.name))
 
     refs = list(filter(lambda arg: type(arg) == FluentReference,
         map(lambda arg: get_serializer(arg.type).load(arg.body),
@@ -53,10 +53,20 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
     schedule = DagSchedule()
     schedule.id = str(uuid.uuid4())
     schedule.dag.CopyFrom(dag)
-    schedule.consistency = NORMAL
+    schedule.consistency = call.consistency
 
-    logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
+    if call.HasField('output_key'):
+        schedule.output_key = call.output_key
 
+    if call.HasField('client_id'):
+        schedule.client_id = call.client_id
+
+
+    #logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
+
+    #loc_ip = []
+
+    #logging.info('start function location scheduling')
     for fname in dag.functions:
         locations = func_locations[fname]
         args = call.function_args[fname].args
@@ -65,11 +75,20 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
             map(lambda arg: get_serializer(arg.type).load(arg.body),
                 args)))
         loc = _pick_node(locations, key_ip_map, refs)
+
+        # this force functions to be scheduled on different nodes
+        #while loc[0] in loc_ip:
+        #    loc = _pick_node(locations, key_ip_map, refs)
+
+        #loc_ip.append(loc[0])
+
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
+
+    #logging.info('end function location scheduling')
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
@@ -96,7 +115,10 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
         sckt = pusher_cache.get(ip)
         sckt.send(trigger.SerializeToString())
 
-    return schedule.id
+    if schedule.HasField('output_key'):
+        return schedule.output_key
+    else:
+        return schedule.id
 
 
 def _pick_node(executors, key_ip_map, refs):

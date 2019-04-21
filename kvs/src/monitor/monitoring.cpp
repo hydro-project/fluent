@@ -245,7 +245,7 @@ int main(int argc, char *argv[]) {
       }
 
       // execute policies
-      storage_policy(log, global_hash_rings, grace_start, ss,
+      /*storage_policy(log, global_hash_rings, grace_start, ss,
                      memory_node_number, ebs_node_number, adding_memory_node,
                      adding_ebs_node, removing_ebs_node, management_ip, mt,
                      departing_node_map, pushers);
@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
                  memory_node_number, adding_memory_node, removing_memory_node,
                  management_ip, key_replication_map, key_access_summary, mt,
                  departing_node_map, pushers, response_puller, routing_ips, rid,
-                 latency_miss_ratio_map);
+                 latency_miss_ratio_map);*/
 
       report_start = std::chrono::system_clock::now();
     }

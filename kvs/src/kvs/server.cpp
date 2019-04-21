@@ -52,6 +52,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   auto log = spdlog::basic_logger_mt(log_name, log_file, true);
   log->flush_on(spdlog::level::info);
 
+  //log->info("Memory Replication is {}.", kDefaultGlobalMemoryReplication);
+
   // each thread has a handle to itself
   ServerThread wt = ServerThread(public_ip, private_ip, thread_id);
 
@@ -209,7 +211,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     causal_serializer = new EBSCausalSerializer(thread_id);
     cross_causal_serializer = new EBSCrossCausalSerializer(thread_id);
   } else {
-    log->info("Invalid node type");
+    log->error("Invalid node type");
     exit(1);
   }
 
@@ -400,7 +402,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
       auto work_start = std::chrono::system_clock::now();
 
       string serialized = kZmqUtil->recv_string(&cache_ip_response_puller);
-      cache_ip_response_handler(serialized, cache_ip_to_keys, key_to_cache_ips);
+      cache_ip_response_handler(serialized, cache_ip_to_keys, key_to_cache_ips, log);
 
       auto time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::system_clock::now() - work_start)
@@ -441,8 +443,9 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
           if (key_to_cache_ips.find(key) != key_to_cache_ips.end()) {
             set<Address>& cache_ips = key_to_cache_ips[key];
             for (const Address& cache_ip : cache_ips) {
-              CacheThread ct(cache_ip, 0);
-              addr_keyset_map[ct.cache_update_connect_address()].insert(key);
+              //log->info("cache address is {}.", cache_ip);
+              CausalCacheThread cct(cache_ip, 0);
+              addr_keyset_map[cct.causal_cache_update_connect_address()].insert(key);
             }
           }
         }

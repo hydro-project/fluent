@@ -30,7 +30,7 @@ from .create import *
 from .call import *
 from . import utils
 
-THRESHOLD = 10 # how often metadata is updated
+THRESHOLD = 5 # how often metadata is updated
 
 def scheduler(ip, mgmt_ip, route_addr):
     logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO)
@@ -134,7 +134,10 @@ def scheduler(ip, mgmt_ip, route_addr):
             prefix = msg if msg else ''
 
             resp = FunctionList()
-            resp.names.extend(utils._get_func_list(kvs, prefix))
+            flist = utils._get_func_list(kvs, prefix)
+            #if len(flist) == 0:
+            #    logging.info('Function list is empty.')
+            resp.names.extend(flist)
 
             list_socket.send(resp.SerializeToString())
 
@@ -268,7 +271,7 @@ def _update_cluster_state(requestor_cache, mgmt_ip, departed_executors,
         if departed in executors:
             executors.remove(departed)
 
-    utils._update_key_maps(key_cache_map, key_ip_map, executors, kvs)
+    utils._update_key_maps(key_cache_map, key_ip_map, executors, kvs, logging)
 
     schedulers = utils._get_ip_set(utils._get_scheduler_list_address(mgmt_ip),
             requestor_cache, False)

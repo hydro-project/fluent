@@ -54,6 +54,7 @@ void user_request_handler(
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) == threads.end()) {
         if (is_metadata(key)) {
+          log->error("Wrong address for metadata key {}.", key);
           // this means that this node is not responsible for this metadata key
           KeyTuple* tp = response.add_tuples();
 
@@ -79,6 +80,7 @@ void user_request_handler(
           if (stored_key_map.find(key) == stored_key_map.end() ||
               stored_key_map[key].type_ == LatticeType::NO) {
             tp->set_error(1);
+            //log->error("Key {} doesn't exist.", key);
           } else {
             auto res = process_get(key, serializers[stored_key_map[key].type_]);
             tp->set_lattice_type(stored_key_map[key].type_);
@@ -86,6 +88,7 @@ void user_request_handler(
             tp->set_error(res.second);
           }
         } else if (request_type == RequestType::PUT) {
+          //log->error("PUT for key {}.", key);
           if (tuple.lattice_type() == LatticeType::NO) {
             log->error("PUT request missing lattice type.");
           } else if (stored_key_map.find(key) != stored_key_map.end() &&
@@ -102,6 +105,7 @@ void user_request_handler(
 
             local_changeset.insert(key);
             tp->set_error(0);
+            tp->set_lattice_type(tuple.lattice_type());
           }
         } else {
           log->error("Unknown request type {} in user request handler.",
@@ -110,6 +114,7 @@ void user_request_handler(
 
         if (tuple.has_address_cache_size() && tuple.address_cache_size() > 0 &&
             tuple.address_cache_size() != threads.size()) {
+          log->error("Invalidating address for key {}", key);
           tp->set_invalidate(true);
         }
 

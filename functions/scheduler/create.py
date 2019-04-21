@@ -19,6 +19,7 @@ import zmq
 
 from anna.lattices import *
 from include.functions_pb2 import *
+from anna.kvs_pb2 import *
 import include.server_utils as sutils
 from include.shared import *
 from . import utils
@@ -30,8 +31,11 @@ def create_func(func_create_socket, kvs):
     name = sutils._get_func_kvs_name(func.name)
     logging.info('Creating function %s.' % (name))
 
-    body = LWWPairLattice(generate_timestamp(0), func.body)
-    kvs.put(name, body)
+    ccv = CrossCausalValue()
+    ccv.vector_clock['base'] = 1
+    ccv.values.extend([func.body])
+
+    kvs.put(name, ccv)
 
     funcs = utils._get_func_list(kvs, '', fullname=True)
     funcs.append(name)

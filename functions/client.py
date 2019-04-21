@@ -11,6 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import logging
 
 import boto3
 import cloudpickle as cp
@@ -24,9 +25,11 @@ from include.serializer import *
 
 class FluentConnection():
     def __init__(self, func_addr, ip=None, tid=0):
+        print(func_addr)
         self.service_addr = 'tcp://'+  func_addr + ':%d'
         self.context = zmq.Context(1)
         kvs_addr = self._connect()
+        logging.info("connected")
 
         if ip:
             self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
@@ -51,6 +54,7 @@ class FluentConnection():
         self.rid = 0
 
     def _connect(self):
+        logging.info("connecting")
         sckt = self.context.socket(zmq.REQ)
         sckt.connect(self.service_addr % CONNECT_PORT)
         sckt.send_string('')
@@ -63,8 +67,8 @@ class FluentConnection():
 
     def get(self, name):
         if name not in self._get_func_list():
-            print("No function found with name '" + name + "'.")
-            print("To view all functions, use the `list` method.")
+            logging.info("No function found with name %s. % name")
+            logging.info("To view all functions, use the `list` method.")
             return None
 
         return FluentFunction(name, self, self.kvs_client)
@@ -114,8 +118,7 @@ class FluentConnection():
         flist = self._get_func_list()
         for fname in functions:
             if fname not in flist.names:
-                print(('Function %s not registered. Please register before'
-                        + 'including it in a DAG.') % (fname))
+                logging.info('Function %s not registered. Please register before including it in a DAG.' % (fname))
                 return False, None
 
         dag = Dag()
@@ -133,9 +136,16 @@ class FluentConnection():
 
         return r.success, r.error
 
-    def call_dag(self, dname, arg_map):
+    def call_dag(self, dname, arg_map, consistency=NORMAL, output_key=None, client_id=None):
         dc = DagCall()
         dc.name = dname
+        dc.consistency = consistency
+
+        if output_key:
+            dc.output_key = output_key
+
+        if client_id:
+            dc.client_id = client_id
 
         for fname in arg_map:
             args = [serialize_val(arg, serialize=False) for arg in

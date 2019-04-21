@@ -14,7 +14,9 @@
 
 import time
 
+from anna.lattices import *
 from .functions_pb2 import *
+from .kvs_pb2 import *
 from . import serializer
 
 CONNECT_PORT = 5000
@@ -44,7 +46,10 @@ class FluentFuture():
         while not obj:
             obj = self.kvs_client.get(self.obj_id)
 
-        return serializer.deserialize_val(obj.reveal()[1])
+        if type(obj).__name__ == 'LWWPairLattice':
+            return serializer.deserialize_val(obj.reveal()[1])
+        elif type(obj).__name__ == 'CrossCausalValue':
+            return serializer.deserialize_val(obj.values[0])
 
 class FluentFunction():
     def __init__(self, name, conn, kvs_client):

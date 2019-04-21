@@ -29,6 +29,7 @@ REPORT_THRESH = 20
 
 def executor(ip, mgmt_ip, schedulers, thread_id):
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.info("Starting executor")
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()
@@ -139,8 +140,11 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             schedule.ParseFromString(dag_queue_socket.recv())
             fname = schedule.target_function
 
-            logging.info('Received a schedule for DAG %s (%s), function %s.' %
-                    (schedule.dag.name, schedule.id, fname))
+            #logging.info('Received a schedule for DAG %s (%s), function %s.' %
+            #        (schedule.dag.name, schedule.id, fname))
+
+            #logging.info('This schedule has %d triggers.' %
+            #        (len(schedule.triggers)))
 
             if fname not in queue:
                 queue[fname] = {}
@@ -177,11 +181,11 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             trigger.ParseFromString(dag_exec_socket.recv())
 
             fname = trigger.target_function
-            logging.info('Received a trigger for schedule %s, function %s.' %
-                    (trigger.id, fname))
+            #logging.info('Received a trigger for schedule %s, function %s Trigger source is %s.' %
+            #        (trigger.id, fname, trigger.source))
 
             key = (trigger.id, fname)
-            if trigger.id not in received_triggers:
+            if key not in received_triggers:
                 received_triggers[key] = {}
 
             if (trigger.id, fname) not in receive_times:
@@ -190,6 +194,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             received_triggers[key][trigger.source] = trigger
             if fname in queue and trigger.id in queue[fname]:
                 schedule = queue[fname][trigger.id]
+                #logging.info('Already received %d triggers.' %
+                #    (len(received_triggers[key])))
                 if len(received_triggers[key]) == len(schedule.triggers):
                     exec_dag_function(pusher_cache, client,
                             received_triggers[key],
@@ -229,11 +235,11 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             sckt = pusher_cache.get(utils._get_util_report_address(mgmt_ip))
             sckt.send(status.SerializeToString())
 
-            logging.info('Total thread occupancy: %.6f%%' % (utilization))
+            #logging.info('Total thread occupancy: %.6f%%' % (utilization))
 
             for event in event_occupancy:
                 occ = event_occupancy[event]
-                logging.info('Event %s occupancy: %.6f%%' % (event, occ))
+                #logging.info('Event %s occupancy: %.6f%%' % (event, occ))
                 event_occupancy[event] = 0.0
 
             stats = ExecutorStatistics()
