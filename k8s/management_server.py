@@ -27,7 +27,7 @@ from kvs_pb2 import *
 from metadata_pb2 import *
 import util
 
-REPORT_PERIOD = 15
+REPORT_PERIOD = 5
 UTILIZATION_MAX = .30
 PINNED_COUNT_MAX = 15
 UTILIZATION_MIN = .10
@@ -41,7 +41,9 @@ grace_start = 0
 EXECUTOR_REPORT_PERIOD = 20
 
 NUM_EXEC_THREADS = 3
-EXECUTOR_INCREASE = 2 # the number of exec nodes to add at once
+EXECUTOR_INCREASE = 4 # the number of exec nodes to add at once
+
+ISOLATION = 'STRONG'
 
 logging.basicConfig(filename='log_management.txt', level=logging.INFO)
 
@@ -98,6 +100,9 @@ def run():
     function_frequencies = {}
     function_runtimes = {}
     latency_history = {}
+
+    if ISOLATION == 'STRONG':
+        PINNED_COUNT_MAX = .8
 
     start = time.time()
     while True:
@@ -252,12 +257,19 @@ def check_function_load(context, function_frequencies, function_runtimes,
                 ' thruput, %d replicas.') % (fname, call_count, avg_latency,
                     thruput, num_replicas))
 
-        if call_count > thruput * .8:
+        if call_count > thruput * .7:
+            increase = (math.ceil(call_count / (thruput * .7)) * num_replicas) -  num_replicas + 1
             logging.info(('Function %s: %d calls in recent period exceeds'
-                + ' threshold. Adding replicas.') % (fname, call_count))
-            increase = math.ceil(call_count / thruput) -  num_replicas + 1
+                + ' threshold. Adding %d replicas.') % (fname, call_count,
+                    increase))
             replicate_function(fname, context, increase, func_locations,
                     executors)
+        elif call_count < thruput * .1:
+            decrease = math.ceil((call_count / thruput) * num_replicas) + 1
+            logging.info(('Function %s: %d calls in recent period under ' +
+                'threshold. Reducing to %d replicas.') % (fname, call_count,
+                    decrease))
+            dereplicate_function(fname, context, decrease, func_locations)
         elif fname in latency_history:
             historical, count = latency_history[fname]
             logging.info('Function %s: %.4f historical latency.' %
@@ -265,10 +277,10 @@ def check_function_load(context, function_frequencies, function_runtimes,
 
             ratio = avg_latency / historical
             if ratio > LATENCY_RATIO:
-                logging.info(('Function %s: recent latency average (%.4f) is ' +
-                        '%.2f times the historical average. Adding replicas.')
-                        % (fname, avg_latency, ratio))
                 num_replicas = math.ceil(ratio) - len(func_locations[fname]) + 1
+                logging.info(('Function %s: recent latency average (%.4f) is ' +
+                        '%.2f times the historical average. Adding %d replicas.')
+                        % (fname, avg_latency, ratio, num_replicas))
                 replicate_function(fname, context, num_replicas, func_locations,
                         executors)
             else:
@@ -307,9 +319,24 @@ def replicate_function(fname, context, num_replicas, func_locations, executors):
 
         sckt = context.socket(zmq.PUSH)
         sckt.connect(util._get_executor_pin_address(ip, tid))
-        sckt.send_string(fname)
+        sckt.send_string('127.0.0.1:' + fname)
 
         func_locations[fname].add((ip, tid))
+
+def dereplicate_function(fname, context, num_replicas, func_locations):
+    if num_replicas < 2:
+        return
+
+    while len(func_locations[fname]) > num_replicas:
+        ip, tid = random.sample(func_locations[fname], 1)[0]
+        unpin_addr = util._get_executor_unpin_address(ip, tid)
+        sckt = context.socket(zmq.PUSH)
+        sckt.connect(unpin_addr)
+
+        sckt.send_string(fname)
+
+        func_locations[fname].discard((ip, tid))
+
 
 def check_executor_utilization(client, ctx, executor_statuses,
         departing_executors, add_push_socket):
@@ -338,11 +365,12 @@ def check_executor_utilization(client, ctx, executor_statuses,
 
         if avg_utilization > UTILIZATION_MAX or avg_pinned_count > \
                 PINNED_COUNT_MAX:
-            logging.info(('Average utilization is %.4f. Adding %d nodes to '
+            logging.info(('Average utilization is %.4f. Adding %d nodes to'
                  + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
 
-            msg = 'function:' + str(EXECUTOR_INCREASE)
-            add_push_socket.send_string(msg)
+            if (len(executor_statuses) / NUM_EXEC_THREADS) < 22:
+                msg = 'function:' + str(EXECUTOR_INCREASE)
+                add_push_socket.send_string(msg)
 
             # start the grace period after adding nodes
             grace_start = time.time()
@@ -352,7 +380,7 @@ def check_executor_utilization(client, ctx, executor_statuses,
         # that
         num_nodes = len(executor_statuses) / NUM_EXEC_THREADS
 
-        if avg_utilization < UTILIZATION_MIN and num_nodes > 15:
+        if avg_utilization < UTILIZATION_MIN and num_nodes > 10:
             ip = random.choice(list(executor_statuses.values())).ip
             logging.info(('Average utilization is %.4f, and there are %d '
                     + 'executors. Removing IP %s.') % (avg_utilization,

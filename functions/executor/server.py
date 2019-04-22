@@ -21,11 +21,11 @@ from anna.ipc_client import IpcAnnaClient
 from anna.zmq_util import SocketCache
 from .call import *
 from .pin import *
-from . import utils
 from include import server_utils as sutils
 from include.shared import *
+from . import utils
 
-REPORT_THRESH = 20
+REPORT_THRESH = 5
 
 def executor(ip, mgmt_ip, schedulers, thread_id):
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO, format='%(asctime)s %(message)s')
@@ -107,8 +107,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
-            pin(pin_socket, client, status, pinned_functions, runtimes,
-                    exec_counts)
+            pin(pin_socket, pusher_cache, client, status, pinned_functions,
+                    runtimes, exec_counts)
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -127,6 +127,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
             work_start = time.time()
             exec_function(exec_socket, client, status, ip, thread_id)
+            utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
             event_occupancy['func_exec'] += elapsed
@@ -181,7 +182,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     (trigger.id, fname))
 
             key = (trigger.id, fname)
-            if trigger.id not in received_triggers:
+            if key not in received_triggers:
                 received_triggers[key] = {}
 
             if (trigger.id, fname) not in receive_times:
@@ -193,7 +194,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 if len(received_triggers[key]) == len(schedule.triggers):
                     exec_dag_function(pusher_cache, client,
                             received_triggers[key],
-                            pinned_functions[fname], schedule)
+                            pinned_functions[fname], schedule, ip, thread_id)
                     del received_triggers[key]
                     del queue[fname][trigger.id]
 
@@ -223,17 +224,26 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         # periodically report function occupancy
         report_end = time.time()
         if report_end - report_start > REPORT_THRESH:
+            # periodically report my status to schedulers
+            utils._push_status(schedulers, pusher_cache, status)
+
             utilization = total_occupancy / (report_end - report_start)
             status.utilization = utilization
+
+            if utilization > 0.5:
+                msg = ip + ':' + str(thread_id)
+                for scheduler in schedulers:
+                    sckt = pusher_cache.get(sutils._get_backoff_addresss(scheduler))
+                    sckt.send_string(msg)
 
             sckt = pusher_cache.get(utils._get_util_report_address(mgmt_ip))
             sckt.send(status.SerializeToString())
 
-            logging.info('Total thread occupancy: %.6f%%' % (utilization))
+            logging.info('Total thread occupancy: %.6f' % (utilization))
 
             for event in event_occupancy:
-                occ = event_occupancy[event]
-                logging.info('Event %s occupancy: %.6f%%' % (event, occ))
+                occ = event_occupancy[event] / (report_end - report_start)
+                logging.info('Event %s occupancy: %.6f' % (event, occ))
                 event_occupancy[event] = 0.0
 
             stats = ExecutorStatistics()

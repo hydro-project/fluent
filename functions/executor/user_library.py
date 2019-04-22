@@ -18,6 +18,7 @@ import zmq
 
 from anna.zmq_util import SocketCache
 from include import server_utils
+from include import shared
 
 class AbstractFluentUserLibrary:
     # Stores a lattice value at ref.
@@ -58,6 +59,7 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
 
         # Thread for receiving messages into our inbox.
         self.recv_inbox_thread = threading.Thread(target=self._recv_inbox_listener)
+        self.recv_inbox_thread.do_run = True
         self.recv_inbox_thread.start()
 
     def put(self, ref, ltc):
@@ -65,6 +67,9 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
 
     def get(self, ref):
         return self.client.get(ref)[ref]
+
+    def getid(self):
+        return (self.executor_ip, self.executor_tid)
 
     # dest is currently (IP string, thread id int) of destination executor.
     def send(self, dest, bytestr):
@@ -75,11 +80,15 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
         socket = self.send_socket_cache.get(dest_addr)
         socket.send_pyobj((sender, bytestr))
 
+    def close(self):
+        self.recv_inbox_thread.do_run = False
+        self.recv_inbox_thread.join()
+
     def recv(self):
         res = []
         while True:
             try:
-                (sender, msg) = self.recv_inbox.get()
+                (sender, msg) = self.recv_inbox.get(block=False)
                 res.append((sender, msg))
             except queue.Empty:
                 break
@@ -92,7 +101,16 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
         # Socket for receiving send() messages from other nodes.
         recv_inbox_socket = self.ctx.socket(zmq.PULL)
         recv_inbox_socket.bind(server_utils.BIND_ADDR_TEMPLATE % (server_utils.RECV_INBOX_PORT + self.executor_tid))
+        t = threading.currentThread()
 
-        while True:
-            (sender, msg) = recv_inbox_socket.recv_pyobj(0)  # Blocking.
-            self.recv_inbox.put((sender, msg))
+        while t.do_run:
+            try:
+                (sender, msg) = recv_inbox_socket.recv_pyobj(zmq.NOBLOCK)
+                self.recv_inbox.put((sender, msg))
+            except zmq.ZMQError as e:
+                if e.errno == zmq.EAGAIN:
+                    continue
+                else:
+                    raise e
+
+        recv_inbox_socket.close()

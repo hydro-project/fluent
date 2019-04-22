@@ -101,9 +101,8 @@ def _get_ip_set(request_ip, socket_cache, exec_threads=True):
         return set(ips.keys)
 
 
-def _update_key_maps(kc_map, key_ip_map, executors, kvs):
+def _update_key_maps(key_ip_map, executors, kvs):
     exec_ips = set(map(lambda e: e[0], executors))
-    for ip in set(kc_map.keys()).difference(exec_ips): del kc_map[ip]
 
     key_ip_map.clear()
     for ip in exec_ips:
@@ -117,8 +116,6 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
 
         ks = KeySet()
         ks.ParseFromString(l.reveal()[1])
-
-        kc_map[ip] = set(ks.keys)
 
         for key in ks.keys:
             if key not in key_ip_map:

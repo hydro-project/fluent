@@ -13,19 +13,28 @@
 #  limitations under the License.
 
 import logging
+import os
 
 from . import utils
 from include.functions_pb2 import *
 from include import server_utils as sutils
 
-def pin(pin_socket, client, status, pinned_functions, runtimes, exec_counts):
-    name = pin_socket.recv_string()
-    logging.info('Adding function %s to my local pinned functions.' % (name))
+def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
+        exec_counts):
+    msg = pin_socket.recv_string()
+    splits = msg.split(':')
 
-    if not status.running:
-        sutils.error.error = INVALID_TARGET
-        pin_sockt.send(sutils.error.SerializeToString())
-        return
+    resp_ip, name = splits[0], splits[1]
+    sckt = pusher_cache.get(sutils._get_pin_accept_port(resp_ip))
+
+    if (sutils.ISOLATION == 'STRONG' and len(pinned_functions) > 0) or not \
+            status.running:
+            resp = sutils.error.SerializeToString()
+            sckt.send(sutils.error.SerializeToString())
+            return
+
+    logging.info('Adding function %s to my local pinned functions.' % (name))
+    sckt.send(sutils.ok_resp)
 
     func = utils._retrieve_function(name, client)
 
@@ -44,6 +53,11 @@ def unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts):
     name = unpin_socket.recv_string() # the name of the func to unpin
     logging.info('Removing function %s from my local pinned functions.' %
             (name))
+
+    # we restart the container to clear all global state
+    if sutils.ISOLATION == 'STRONG':
+        logging.info('Restarting to clear global state.')
+        os._exit(0)
 
     # we don't have the function pinned, we can just ignore this
     if name not in status.functions:

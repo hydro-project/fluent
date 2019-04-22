@@ -22,12 +22,14 @@ from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
 from include import server_utils as sutils
-from . import user_library, utils
+from . import user_library
+from . import utils
 
 def _process_args(arg_list):
     return [get_serializer(arg.type).load(arg.body) for arg in arg_list]
 
 def exec_function(exec_socket, kvs, status, ip, tid):
+    user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
     logging.info('Received call for ' + call.name)
@@ -42,29 +44,31 @@ def exec_function(exec_socket, kvs, status, ip, tid):
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-            user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
             result = _exec_func_normal(kvs, f, fargs, user_lib)
             result = serialize_val(result)
         except Exception as e:
-            logging.info('Unexpected error %s while executing function.' %
+            logging.exception('Unexpected error %s while executing function.' %
                     (str(e)))
             sutils.error.error = EXEC_ERROR
             result = serialize_val(('ERROR: ' + str(e),
                     sutils.error.SerializeToString()))
 
-    result_lattice = LWWPairLattice(generate_timestamp(0), result)
-    kvs.put(call.resp_id, result_lattice)
+
+    user_lib.close()
+    kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
     user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
-    if (schedule.consistency == NORMAL):
+    if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
                                   triggers, function, schedule, user_lib)
     else:
         # XXX TODO do we need separate user lib for causal functions?
         _exec_dag_function_causal(pusher_cache, kvs,
                                   triggers, function, schedule)
+
+    user_lib.close()
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, user_lib):
     fname = schedule.target_function
@@ -101,18 +105,24 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, u
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
-    logging.info('Finished executing function %s for DAG %s (ID %s): started at %.6f.' %
+    logging.info('Finished executing function %s for DAG %s (ID %s): ended at %.6f.' %
             (schedule.dag.name, fname, trigger.id, time.time()))
     if is_sink:
         logging.info('DAG %s (ID %s) completed; result at %s.' %
                 (schedule.dag.name, trigger.id, schedule.id))
-        l = LWWPairLattice(generate_timestamp(0), serialize_val(result))
-        kvs.put(schedule.id, l)
+        result = serialize_val(result)
+        if schedule.HasField('response_address'):
+            sckt = pusher_cache.get(schedule.response_address)
+            sckt.send(result)
+        else:
+            l = LWWPairLattice(generate_timestamp(0), result)
+            kvs.put(schedule.id, l)
 
 def _exec_func_normal(kvs, func, args, user_lib):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
     if refs:
         refs = _resolve_ref_normal(refs, kvs)
+    end = time.time()
 
     func_args = (user_lib,)
     for arg in args:
@@ -122,14 +132,16 @@ def _exec_func_normal(kvs, func, args, user_lib):
             func_args += (arg,)
 
     # execute the function
-    return func(*func_args)
+    res = func(*func_args)
+    return res
 
 def _resolve_ref_normal(refs, kvs):
     keys = [ref.key for ref in refs]
     kv_pairs = kvs.get(keys)
 
     # when chaining function executions, we must wait
-    while not kv_pairs:
+    num_nulls = len(list(filter(lambda a: not a, kv_pairs.values())))
+    while num_nulls > 0:
         kv_pairs = kvs.get(keys)
 
     for ref in refs:
