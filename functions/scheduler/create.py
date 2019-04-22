@@ -44,7 +44,7 @@ def create_func(func_create_socket, kvs):
 
 
 def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
-        pin_accept_socket, func_locations, call_frequency, num_replicas=1):
+        pin_accept_socket, func_locations, call_frequency, num_replicas=21):
     serialized = dag_create_socket.recv()
 
     dag = Dag()

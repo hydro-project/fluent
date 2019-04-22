@@ -269,7 +269,7 @@ def check_function_load(context, function_frequencies, function_runtimes,
             logging.info(('Function %s: %d calls in recent period under ' +
                 'threshold. Reducing to %d replicas.') % (fname, call_count,
                     decrease))
-            dereplicate_function(fname, context, decrease, func_locations)
+            # dereplicate_function(fname, context, decrease, func_locations)
         elif fname in latency_history:
             historical, count = latency_history[fname]
             logging.info('Function %s: %.4f historical latency.' %
@@ -368,9 +368,9 @@ def check_executor_utilization(client, ctx, executor_statuses,
             logging.info(('Average utilization is %.4f. Adding %d nodes to'
                  + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
 
-            if (len(executor_statuses) / NUM_EXEC_THREADS) < 22:
-                msg = 'function:' + str(EXECUTOR_INCREASE)
-                add_push_socket.send_string(msg)
+            # if (len(executor_statuses) / NUM_EXEC_THREADS) < 22:
+            #     msg = 'function:' + str(EXECUTOR_INCREASE)
+            #     add_push_socket.send_string(msg)
 
             # start the grace period after adding nodes
             grace_start = time.time()

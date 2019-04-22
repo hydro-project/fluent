@@ -316,6 +316,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       if (response.has_error() &&
           response.error() == ResponseErrorType::TIMEOUT) {
+        log->info("Request for key {} timed out.", key);
         if (response.type() == RequestType::GET) {
           client->get_async(key);
         } else {
@@ -341,6 +342,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             update_cache(key, response.tuples(0).lattice_type(),
                          response.tuples(0).payload(), local_lww_cache,
                          local_set_cache, local_ordered_set_cache, log);
+          } else {
+            log->info("Key {} does not exist!", key);
           }
 
           // notify clients

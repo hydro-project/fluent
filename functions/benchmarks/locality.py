@@ -14,7 +14,7 @@ from include.shared import *
 from . import utils
 
 sys_random = random.SystemRandom()
-OSIZE = 10
+OSIZE = 1000000
 
 def run(flconn, kvs, num_requests, create, sckt):
     dag_name = 'locality'
@@ -69,23 +69,38 @@ def run(flconn, kvs, num_requests, create, sckt):
         success, error = flconn.register_dag(dag_name, functions, connections)
 
         if not success:
-            rint('Failed to register DAG: %s' % (ErrorType.Name(error)))
+            print('Failed to register DAG: %s' % (ErrorType.Name(error)))
             sys.exit(1)
+
+        # for the hot version
+        oid = str(uuid.uuid4())
+        arr = np.random.randn(OSIZE)
+        kvs.put(oid, LWWPairLattice(0, serialize_val(arr)))
+        kvs.put('LOCALITY_OIDS', LWWPairLattice(0, serialize_val([oid,])))
+
+        return [], [], [], 0
 
     else:
         ### RUN DAG ###
 
-        num_data_objects = num_requests * 10 # for the cold version
-        # num_data_objects = 1 # for the hot version
+        # num_data_objects = num_requests * 10 # for the cold version
 
-        oids = []
-        for i in range(num_data_objects):
-            array = np.random.rand(OSIZE)
-            oid = str(uuid.uuid4())
-            val = LWWPairLattice(0, serialize_val(array))
+        # oids = []
+        # for i in range(num_data_objects):
+        #     if i % 100 == 0:
+        #         logging.info('On object %d.' % (i))
 
-            kvs.put(oid, val)
-            oids.append(oid)
+        #     array = np.random.rand(OSIZE)
+        #     oid = str(uuid.uuid4())
+        #     val = LWWPairLattice(0, serialize_val(array))
+
+        #     kvs.put(oid, val)
+        #     oids.append(oid)
+
+        # logging.info('Finished creating data!')
+
+        # for the hot version
+        oids = deserialize_val(kvs.get('LOCALITY_OIDS').reveal()[1])
 
         total_time = []
         scheduler_time = []
@@ -100,10 +115,10 @@ def run(flconn, kvs, num_requests, create, sckt):
 
         for i in range(num_requests):
             refs = []
-            for ref in oids[(i * 10):(i * 10) + 10]: # for the cold version
-                refs.append(FluentReference(ref, True, LWW))
-            # for _ in range(10): # for the hot version
-            #     refs.appends(oids[0])
+            # for ref in oids[(i * 10):(i * 10) + 10]: # for the cold version
+            #     refs.append(FluentReference(ref, True, LWW))
+            for _ in range(10): # for the hot version
+                refs.append(FluentReference(oids[0], True, LWW))
 
             start = time.time()
             arg_map = { 'dot' : refs }

@@ -76,10 +76,8 @@ class AnnaClient():
 
         if tup.error == 0:
             return self._deserialize(tup)
-        elif tup.error == 1:
-            return None # key does not exist
         else:
-            return self.get(tup.key) # re-issue the request
+            return None # key does not exist
 
     def get_all(self, key):
         worker_addresses = self._get_worker_address(key, False)

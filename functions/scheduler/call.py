@@ -15,6 +15,7 @@
 import logging
 import random
 import uuid
+import time
 import zmq
 
 from include.functions_pb2 import *
@@ -26,7 +27,7 @@ from . import utils
 sys_random = random.SystemRandom()
 
 def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
-        running_counts, backoff):
+        executor_status_map, running_counts, backoff):
     call = FunctionCall()
     call.ParseFromString(func_call_socket.recv())
 
@@ -43,6 +44,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
     sckt.send(call.SerializeToString())
 
     executors.discard((ip, tid))
+    executor_status_map[(ip, tid)] = time.time()
 
     r = GenericResponse()
     r.success = True
@@ -62,8 +64,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     if call.HasField('response_address'):
         schedule.response_address = call.response_address
 
-    logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
-
     for fname in dag.functions:
         locations = func_locations[fname]
         args = call.function_args[fname].args
@@ -77,8 +77,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
-
-    logging.info('Sending to %s' %(schedule.locations['sleep']))
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
@@ -94,6 +92,8 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
 
         sckt = pusher_cache.get(ip)
         sckt.send(schedule.SerializeToString())
+
+    logging.info('Calling DAG locality (%s) at %s.' % (schedule.id, schedule.locations['dot']))
 
     for source in sources:
         trigger = DagTrigger()

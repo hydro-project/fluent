@@ -72,6 +72,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     status.ip = ip
     status.tid = thread_id
     status.running = True
+    status.type = PERIODIC
     utils._push_status(schedulers, pusher_cache, status)
 
     departing = False
@@ -109,6 +110,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             work_start = time.time()
             pin(pin_socket, pusher_cache, client, status, pinned_functions,
                     runtimes, exec_counts)
+            status.type = POST_REQUEST
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -118,6 +120,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
             work_start = time.time()
             unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts)
+            status.type = POST_REQUEST
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -127,6 +130,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
             work_start = time.time()
             exec_function(exec_socket, client, status, ip, thread_id)
+            status.type = POST_REQUEST
             utils._push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -217,6 +221,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             status.ClearField('functions')
             status.running = False
+            status.type = PERIODIC
             utils._push_status(schedulers, pusher_cache, status)
 
             departing = True
@@ -225,6 +230,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         report_end = time.time()
         if report_end - report_start > REPORT_THRESH:
             # periodically report my status to schedulers
+            status.type = PERIODIC
             utils._push_status(schedulers, pusher_cache, status)
 
             utilization = total_occupancy / (report_end - report_start)

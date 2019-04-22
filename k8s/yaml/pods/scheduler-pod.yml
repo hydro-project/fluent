@@ -33,6 +33,10 @@ spec:
       value: MGMT_IP_DUMMY
     - name: SYSTEM_FUNC
       value: scheduler
+    - name: REPO_ORG
+      value: vsreekanti
+    - name: REPO_BRANCH
+      value: summa
   nodeSelector:
     role: scheduler
     podid: scheduler-NUM_DUMMY

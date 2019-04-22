@@ -14,6 +14,7 @@
 
 import queue
 import threading
+import time
 import zmq
 
 from anna.zmq_util import SocketCache
@@ -66,6 +67,9 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
         return self.client.put(ref, ltc)
 
     def get(self, ref):
+        if type(ref) == list:
+            return self.client.get(ref)
+
         return self.client.get(ref)[ref]
 
     def getid(self):
@@ -112,5 +116,6 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
                     continue
                 else:
                     raise e
+            time.sleep(.010)
 
         recv_inbox_socket.close()
