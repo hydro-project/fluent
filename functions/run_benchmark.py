@@ -5,6 +5,7 @@ import sys
 
 from benchmarks import composition
 from benchmarks import locality
+from benchmarks import user_library_test
 from benchmarks import utils
 import client as flclient
 
@@ -35,6 +36,8 @@ elif bname == 'locality':
     locality.run(flconn, kvs, num_requests, True, None)
     total, scheduler, kvs, retries = locality.run(flconn, kvs, num_requests,
             False, None)
+elif bname == 'user_library_test':
+    user_library_test.run(flconn, kvs, num_requests)
 else:
     print('Unknown benchmark type: %s!' % (bname))
 

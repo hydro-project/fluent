@@ -31,7 +31,7 @@ def _retrieve_function(name, kvs):
         logging.info("retrying get for function %s" % kvs_name)
         result = kvs.causal_get([kvs_name], set(), {}, SINGLE, 0)
 
-    return serializer.function_ser.load(result[1][kvs_name][1])
+    return serializer.function_ser.load(result[1][kvs_name][1][0])
 
 
 def _push_status(schedulers, pusher_cache, status):

@@ -1,11 +1,11 @@
 #  Copyright 2018 U.C. Berkeley RISE Lab
-# 
+#
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-# 
+#
 #      http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,14 +16,14 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: benchmark-pod-NUM_DUMMY
-  labels: 
+  labels:
     role: benchmark
 spec:
   restartPolicy: Never
   containers:
   - name: benchmark-1
     image: fluentproject/executor
-    env: 
+    env:
     - name: SYSTEM_FUNC
       value: benchmark
     - name: FUNCTION_ADDR
@@ -33,12 +33,12 @@ spec:
     - name: MGMT_IP
       value: ""
     - name: REPO_ORG
-      value: "cw75"
+      value: "xyclin"
     - name: REPO_BRANCH
-      value: "causal_test"
+      value: "dag-fix"
   - name: benchmark-2
     image: fluentproject/executor
-    env: 
+    env:
     - name: SYSTEM_FUNC
       value: benchmark
     - name: FUNCTION_ADDR
@@ -48,12 +48,12 @@ spec:
     - name: MGMT_IP
       value: ""
     - name: REPO_ORG
-      value: "cw75"
+      value: "xyclin"
     - name: REPO_BRANCH
-      value: "causal_test"
+      value: "dag-fix"
   - name: benchmark-3
     image: fluentproject/executor
-    env: 
+    env:
     - name: SYSTEM_FUNC
       value: benchmark
     - name: FUNCTION_ADDR
@@ -63,12 +63,12 @@ spec:
     - name: MGMT_IP
       value: ""
     - name: REPO_ORG
-      value: "cw75"
+      value: "xyclin"
     - name: REPO_BRANCH
-      value: "causal_test"
+      value: "dag-fix"
   - name: benchmark-4
     image: fluentproject/executor
-    env: 
+    env:
     - name: SYSTEM_FUNC
       value: benchmark
     - name: FUNCTION_ADDR
@@ -78,9 +78,9 @@ spec:
     - name: MGMT_IP
       value: ""
     - name: REPO_ORG
-      value: "cw75"
+      value: "xyclin"
     - name: REPO_BRANCH
-      value: "causal_test"
+      value: "dag-fix"
   nodeSelector:
     role: benchmark
     podid: benchmark-NUM_DUMMY

@@ -14,8 +14,11 @@
 
 import queue
 import threading
+import uuid
 import zmq
 
+from anna.functions_pb2 import *
+# from anna.kvs_pb2 import *
 from anna.zmq_util import SocketCache
 from include import server_utils
 
@@ -60,11 +63,27 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
         self.recv_inbox_thread = threading.Thread(target=self._recv_inbox_listener)
         self.recv_inbox_thread.start()
 
-    def put(self, ref, ltc):
-        return self.client.put(ref, ltc)
+    # We no longer support lattice types in put;
+    # everything is append to a set.
+    def put(self, ref, values):
+        client_id = str(int(uuid.uuid4()))
+        vector_clock = {client_id: 1}
+        dependency = {}
+        return self.causal_put(ref, vector_clock, dependency, values, client_id)
+
+    def causal_put(self, key, vector_clock, dependency, values, client_id):
+        return self.client.causal_put(key, vector_clock, dependency, values, client_id)
 
     def get(self, ref):
-        return self.client.get(ref)[ref]
+        vc, values = self.causal_get(ref, str(int(uuid.uuid4())))
+        return values
+
+    # User library interface to causal_get.
+    def causal_get(self, ref, client_id):
+        _, results = self.client.causal_get(
+            ref, set(), {}, CROSS, client_id)
+        vc, values = results[ref]
+        return vc, values
 
     # dest is currently (IP string, thread id int) of destination executor.
     def send(self, dest, bytestr):

@@ -80,7 +80,7 @@ class IpcAnnaClient:
             for tp in resp.tuples:
 
                 if tp.error == 1 or tp.lattice_type == NO:
-                    #logging.info('Key %s does not exist!' % (key))
+                    logging.info('Key %s does not exist!' % (key))
                     kv_pairs[tp.key] = None
 
                 elif tp.lattice_type == LWW:
@@ -116,7 +116,7 @@ class IpcAnnaClient:
     def causal_get(self, keys, future_read_set,
                    versioned_key_locations, consistency, client_id, dependencies={}):
         if type(keys) != list:
-            keys = list(keys)
+            keys = [keys]
 
         request = CausalRequest()
 
@@ -144,8 +144,8 @@ class IpcAnnaClient:
 
         self.get_request_socket.send(request.SerializeToString())
 
-        #for key in keys:
-        #    logging.info('sent GET request for key %s' % (key))
+        for key in keys:
+           logging.info('sent GET request for key %s' % (key))
 
         try:
             msg = self.get_response_socket.recv()
@@ -158,13 +158,13 @@ class IpcAnnaClient:
             return None
 
         else:
-            #logging.info('Received response from KVS')
+            logging.info('Received response from KVS')
             kv_pairs = {}
             resp = CausalResponse()
             resp.ParseFromString(msg)
 
             for tp in resp.tuples:
-                #logging.info('response key is %s' % tp.key)
+                logging.info('response key is %s' % tp.key)
                 if tp.error == 1:
                     logging.info('Key %s does not exist!' % (key))
                     return None
@@ -179,8 +179,7 @@ class IpcAnnaClient:
                 #    else:
                 #        dependencies[dep.key] = dep.vector_clock
 
-                # for now, we just take the first value in the setlattice
-                kv_pairs[tp.key] = (val.vector_clock, val.values[0])
+                kv_pairs[tp.key] = (val.vector_clock, val.values)
             if len(resp.versioned_keys) != 0:
                 return ((resp.versioned_key_query_addr,
                         resp.versioned_keys), kv_pairs)
@@ -238,7 +237,9 @@ class IpcAnnaClient:
 
             return resp.tuples[0].error == 0
 
-    def causal_put(self, key, vector_clock, dependency, value, client_id):
+    def causal_put(self, key, vector_clock, dependency, values, client_id):
+        if type(values) is not list:
+            values = [values]
         request = CausalRequest()
         request.consistency = CROSS
         request.id = str(client_id)
@@ -254,7 +255,7 @@ class IpcAnnaClient:
             dep.key = key
             dep.vector_clock.update(dependency[key])
 
-        cross_causal_value.values.extend([value])
+        cross_causal_value.values.extend(values)
 
         tp.payload = cross_causal_value.SerializeToString()
 
