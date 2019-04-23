@@ -55,7 +55,7 @@ elif 'run' in msg:
 end_recv = 0
 
 latency = {}
-latency[5] = []
+latency[4] = []
 
 while end_recv < sent_msgs:
 	payload = recv_socket.recv()
