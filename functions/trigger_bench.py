@@ -68,9 +68,8 @@ while end_recv < sent_msgs:
 		latency['normalized'] += bench_latency['normalized']
 
 if 'run' in msg:
-	logging.info("unnormalized latency")
-	utils.print_latency_stats(latency['unnormalized'], 'Causal', True)
-	logging.info("normalized latency")
-	utils.print_latency_stats(latency['normalized'], 'Causal', True)
+	for length in latency:
+		logging.info("length %d" % length)
+		utils.print_latency_stats(latency[length], 'Causal', True)
 
 logging.info("benchmark done")

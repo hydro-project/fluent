@@ -160,8 +160,11 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
     elif mode == 'run':
 
-        latency['unnormalized'] = []
-        latency['normalized'] = []
+        latency[1] = []
+        latency[2] = []
+        latency[3] = []
+        latency[4] = []
+        latency[5] = []
 
         total_num_keys = 1000000
 
@@ -218,8 +221,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
                 res = kvs.get(rid)
             end = time.time()
 
-            latency['unnormalized'].append(end - start)
-            latency['normalized'].append((end - start)/length)
+            latency[length].append(end - start)
 
             #logging.info("size of vector clock is %d" % len(res.vector_clock))
             if len(res.vector_clock) > max_vc_length:
