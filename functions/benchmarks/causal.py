@@ -209,6 +209,8 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
                 res = kvs.get(rid)
             while cid not in res.vector_clock:
                 logging.info("client id %s not in key %s VC" % (cid, rid))
+                for k in res.vector_clock:
+                    logging.info("has %s" % k)
                 res = kvs.get(rid)
             end = time.time()
 
