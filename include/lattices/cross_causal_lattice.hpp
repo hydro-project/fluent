@@ -15,6 +15,8 @@
 #ifndef SRC_INCLUDE_KVS_CROSS_CAUSAL_LATTICE_HPP_
 #define SRC_INCLUDE_KVS_CROSS_CAUSAL_LATTICE_HPP_
 
+#include <iostream>
+#include <fstream>
 #include "core_lattices.hpp"
 
 using VectorClock = MapLattice<string, MaxLattice<unsigned>>;
@@ -68,6 +70,11 @@ class CrossCausalLattice : public Lattice<CrossCausalPayload<T>> {
       this->element.value.assign(p.value);
     } else if (!(this->element.vector_clock == prev)) {
       // versions are concurrent
+      std::ofstream myfile ("inconsistency.txt");
+      if (myfile.is_open()) {
+        myfile << "inconsistent!\n";
+        myfile.close();
+      }
       this->element.dependency.merge(p.dependency);
       this->element.value.merge(p.value);
     }
