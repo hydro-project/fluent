@@ -142,7 +142,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
             dag_names.append(dag_name)
             func_list = ['strmnp1', 'strmnp2', 'strmnp3', 'strmnp4', 'strmnp5']
 
-            functions, connections, length = generate_dag_by_length(func_list, 4)
+            functions, connections, length = generate_dag_by_length(func_list, 1 + (dag_id % 4))
 
             success, error = flconn.register_dag(dag_name, functions, connections)
 
@@ -160,6 +160,9 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
     elif mode == 'run':
 
+        latency[1] = []
+        latency[2] = []
+        latency[3] = []
         latency[4] = []
 
         total_num_keys = 1000000
