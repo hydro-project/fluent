@@ -106,10 +106,10 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
     elif mode == 'warmup':
         ### POPULATE DATA###
-        val = '00000'
-        ccv = CrossCausalValue()
-        ccv.vector_clock['base'] = 1
-        ccv.values.extend([serialize_val(val)])
+        #val = '00000'
+        #ccv = CrossCausalValue()
+        #ccv.vector_clock['base'] = 1
+        #ccv.values.extend([serialize_val(val)])
 
         total_num_keys = 1000000
         bin_size = int(total_num_keys / 8)
@@ -118,6 +118,10 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
         for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
             k = str(i).zfill(len(str(total_num_keys)))
+            ccv = CrossCausalValue()
+            ccv.vector_clock['base'] = 1
+            ccv.values.extend([serialize_val(k)])
+
             if i % 1000 == 0:
                 logging.info('key is %s' % k)
             kvs.put(k, ccv)
@@ -222,8 +226,8 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
                 max_vc_length = len(res.vector_clock)
             res = deserialize_val(res.values[0])
 
-            if not res == '00000':
-                logging.info("error, res is %s" % res)
+            #if not res == '00000':
+            #    logging.info("error, res is %s" % res)
 
         logging.info("max vector clock length is %d" % max_vc_length)
 
