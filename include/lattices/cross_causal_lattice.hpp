@@ -68,7 +68,7 @@ class CrossCausalLattice : public Lattice<CrossCausalPayload<T>> {
       this->element.value.assign(p.value);
     } else if (!(this->element.vector_clock == prev)) {
       // versions are concurrent
-      std::cout << "inconsistency\n";
+      std::cout << "inconsistency\n" << std::flush;
       this->element.dependency.merge(p.dependency);
       this->element.value.merge(p.value);
     }
