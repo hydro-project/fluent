@@ -144,6 +144,9 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
             functions, connections, length = generate_dag(func_list)
 
+            while not length == 5:
+                functions, connections, length = generate_dag(func_list)
+
             success, error = flconn.register_dag(dag_name, functions, connections)
 
             if not success:
@@ -160,10 +163,6 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
     elif mode == 'run':
 
-        latency[1] = []
-        latency[2] = []
-        latency[3] = []
-        latency[4] = []
         latency[5] = []
 
         total_num_keys = 1000000

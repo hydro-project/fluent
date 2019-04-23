@@ -55,10 +55,6 @@ elif 'run' in msg:
 end_recv = 0
 
 latency = {}
-latency[1] = []
-latency[2] = []
-latency[3] = []
-latency[4] = []
 latency[5] = []
 
 while end_recv < sent_msgs:
