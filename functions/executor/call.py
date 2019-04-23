@@ -277,11 +277,11 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             vector_clock = {schedule.client_id : 1}
 
         succeed = kvs.causal_put(schedule.output_key,
-                                 vector_clock, {},
+                                 vector_clock, dependencies,
                                  serialize_val(result), schedule.client_id)
         while not succeed:
             kvs.causal_put(schedule.output_key, vector_clock,
-                           {}, serialize_val(result), schedule.client_id)
+                           dependencies, serialize_val(result), schedule.client_id)
 
         # issue requests to GC the version store
         for cache_addr in versioned_key_locations:
@@ -326,12 +326,12 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations, 
     #for k in future_read_set:
     #    logging.info('future read set has key %s' % (k))
     keys = [ref.key for ref in refs]
-    result = kvs.causal_get(keys, set(),
+    result = kvs.causal_get(keys, future_read_set,
                             versioned_key_locations,
                             schedule.consistency, schedule.client_id, dependencies)
 
     while not result:
-        result = kvs.causal_get(keys, set(),
+        result = kvs.causal_get(keys, future_read_set,
                                 versioned_key_locations,
                                 schedule.consistency, schedule.client_id, dependencies)
 

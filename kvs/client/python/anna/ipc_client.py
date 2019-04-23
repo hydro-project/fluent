@@ -167,8 +167,6 @@ class IpcAnnaClient:
                 #        dependencies[dep.key] = dep.vector_clock
 
                 # for now, we just take the first value in the setlattice
-                if len(val.values) > 1:
-                    logging.info('Inconsistency')
                 kv_pairs[tp.key] = (val.vector_clock, val.values[0])
             if len(resp.versioned_keys) != 0:
                 return ((resp.versioned_key_query_addr,
