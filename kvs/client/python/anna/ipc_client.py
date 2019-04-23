@@ -167,7 +167,8 @@ class IpcAnnaClient:
                 logging.info('response key is %s' % tp.key)
                 if tp.error == 1:
                     logging.info('Key %s does not exist!' % (key))
-                    return None
+                    kv_pairs[tp.key] = None
+                    continue
 
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)

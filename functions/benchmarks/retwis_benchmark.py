@@ -20,16 +20,16 @@ def run(flconn, kvs):
 
         # Checking for existence of arbitrary keys.
         def exists(self, key):
-            lat_or_none = self._fluent_lib.get(key)
-            return lat_or_none is not None
+            value_or_none = self._fluent_lib.get(key)
+            return value_or_none is not None
 
         ## Single value storage.
 
         # Retrieving arbitrary values that were stored by set().
         def get(self, key):
             if self.exists(key):
-                lat = self._fluent_lib.get(key)
-                ts, value = lat.reveal()
+                values = self._fluent_lib.get(key)
+                value = values[0]
                 value = pickle.loads(value)
                 return value
             else:
@@ -37,10 +37,8 @@ def run(flconn, kvs):
 
         # Storing arbitary values that can be retrieved by get().
         def set(self, key, value):
-            ts = int(time.time())  # this is seconds; is that okay, or do we want milliseconds?
             value = pickle.dumps(value)
-            lat = LWWPairLattice(timestamp=ts, value=value)
-            self._fluent_lib.put(key, lat)
+            self._fluent_lib.put(key, value)
 
         ## Counter storage.
 
@@ -56,40 +54,28 @@ def run(flconn, kvs):
 
         # Add an item to the set at this key.
         def sadd(self, key, value):
-            value = str(pickle.dumps(value))
-            lat = SetLattice({value,})
-            self._fluent_lib.put(key, lat)
+            value = pickle.dumps(value)
+            self._fluent_lib.put(key, value)
 
         # Remove an item from the set at this key.
         def srem(self, key, value):
-            pass  # No removals in experiments rn; implement tombstones later if you need it.
+            raise NotImplementedError  # No removals in experiments rn; implement tombstones later if you need it.
 
         # Set contents.
         def smembers(self, key):
             if self.exists(key):
-                lat = self._fluent_lib.get(key)
-                assert type(lat) == SetLattice
-                return set((pickle.loads(eval(val)) for val in lat.reveal()))
+                values = self._fluent_lib.get(key)
+                return set((pickle.loads(val) for val in values))
             else:
                 return set()
 
         # Set membership.
         def sismember(self, key):
-            if self.exists(key):
-                lat = self._fluent_lib.get(key)
-                assert type(lat) == SetLattice
-                return key in lat.reveal()
-            else:
-                return False  # As per treating nonexistent set as empty set.
+            return key in self.smembers(key)
 
         # Set size.
         def scard(self, key):
-            if self.exists(key):
-                lat = self._fluent_lib.get(key)
-                assert type(lat) == SetLattice
-                return len(lat.reveal())
-            else:
-                return 0
+            return len(self.smembers(key))
 
 
         ## Append-only lists.
@@ -100,20 +86,17 @@ def run(flconn, kvs):
             # This value will be 16 digits long for the foreseeable future.
             ts = int(time.time() * 1000000)
             value = pickle.dumps(value)
-            value = ('{}:{}'.format(ts, value))
-            oset = ListBasedOrderedSet([value])
-            lat = OrderedSetLattice(oset)
-            self._fluent_lib.put(key, lat)
+            value = ('{}:{}'.format(ts, value)).encode()
+            self._fluent_lib.put(key, value)
 
         # Slice.
         def lrange(self, key, begin, end):
             if self.exists(key):
-                lat = self._fluent_lib.get(key)
-                assert type(lat) == OrderedSetLattice
-                oset = lat.reveal()
+                values = self._fluent_lib.get(key)
+                oset = ListBasedOrderedSet(values)
                 values = [
                     # trim off timestamp + delimiter, and deserialize the rest.
-                    pickle.loads(eval(item[17:]))
+                    pickle.loads(eval(item.decode()[17:]))
                     for item in oset.lst[begin:end]
                 ]
                 return values
@@ -123,9 +106,8 @@ def run(flconn, kvs):
         # Size.
         def llen(self, key):
             if self.exists(key):
-                lat = self._fluent_lib.get(key)
-                assert type(lat) == OrderedSetLattice
-                return len(lat.reveal().lst)
+                values = self._fluent_lib.get(key)
+                return len(list(values))
             else:
                 return 0
 
@@ -314,6 +296,38 @@ def run(flconn, kvs):
 
 
 
+    def aaa_redis_exists(fluent, key):
+        redis = FluentRedisShim(fluent)
+        return str(redis.exists(key))
+    def aaa_redis_get(fluent, key):
+        redis = FluentRedisShim(fluent)
+        return str(redis.get(key))
+    def aaa_redis_set(fluent, key, value):
+        redis = FluentRedisShim(fluent)
+        redis.set(key, value)
+        return 'success'
+    def aaa_redis_incr(fluent, key):
+        redis = FluentRedisShim(fluent)
+        return str(redis.incr(key))
+    def aaa_redis_sadd(fluent, key, value):
+        redis = FluentRedisShim(fluent)
+        redis.sadd(key, value)
+        return 'success'
+    def aaa_redis_smembers(fluent, key):
+        redis = FluentRedisShim(fluent)
+        return str(redis.smembers(key))
+    def aaa_redis_lpush(fluent, key, value):
+        redis = FluentRedisShim(fluent)
+        redis.lpush(key, value)
+        return 'success'
+    def aaa_redis_lrange(fluent, key, begin, end):
+        redis = FluentRedisShim(fluent)
+        return str(redis.lrange(key, begin, end))
+    def aaa_redis_llen(fluent, key):
+        redis = FluentRedisShim(fluent)
+        return str(redis.llen(key))
+
+
 
 
     # def aaa_global_timeline(fluent_lib, page):
@@ -352,7 +366,16 @@ def run(flconn, kvs):
     # ['user_timeline_pids', 'post_create_with_dep']
 
 
-    function_list = {
+    fns = {
+        'aaa_redis_exists': aaa_redis_exists,
+        'aaa_redis_get': aaa_redis_get,
+        'aaa_redis_set': aaa_redis_set,
+        'aaa_redis_incr': aaa_redis_incr,
+        'aaa_redis_sadd': aaa_redis_sadd,
+        'aaa_redis_smembers': aaa_redis_smembers,
+        'aaa_redis_lpush': aaa_redis_lpush,
+        'aaa_redis_lrange': aaa_redis_lrange,
+        'aaa_redis_llen': aaa_redis_llen,
         # 'aaa_global_timeline': aaa_global_timeline,
         'aaa_user_create': aaa_user_create,
         'aaa_user_timeline': aaa_user_timeline,
@@ -361,20 +384,38 @@ def run(flconn, kvs):
         'aaa_post_create': aaa_post_create,
     }
 
-    cloud_functions = {
+    cfns = {
         fname: flconn.register(f, fname)
         for fname, f
-        in function_list.items()
+        in fns.items()
     }
 
-    for fname, f in cloud_functions.items():
-        if f:
+    for fname, cf in cfns.items():
+        if cf:
             print ("Successfully registered {}.".format(fname))
 
+    def callfn(fname, *args):
+        r = cfns[fname](*args).get()
+        print("%s(%s) -> %s" % (fname, args, r))
+
+    # Redis shim tests (not retwis related).
+    callfn('aaa_redis_exists', 'aaa_foo')
+    callfn('aaa_redis_set', 'aaa_foo', b'3')
+    callfn('aaa_redis_get', 'aaa_foo')
+    callfn('aaa_redis_incr', 'aaa_cntr')
+    callfn('aaa_redis_sadd', 'aaa_sxt', b'4')
+    callfn('aaa_redis_smembers', 'aaa_sxt')
+    callfn('aaa_redis_lpush', 'aaa_lxt', b'5')
+    callfn('aaa_redis_lrange', 'aaa_lxt', 0, 10)
+    callfn('aaa_redis_llen', 'aaa_lxt')
+    callfn('aaa_redis_lpush', 'aaa_lxt', b'6')
+    callfn('aaa_redis_lpush', 'aaa_lxt', b'4')
+    callfn('aaa_redis_lrange', 'aaa_lxt', 0, 10)
+
     # Experiment parameters.
-    num_users = 100
-    max_degree = 10
-    num_pretweets = 1000
+    num_users = 10
+    max_degree = 3
+    num_pretweets = 100
     num_ops = 100  # 80% reads, 20% writes
     usernames = [str(i + 1) for i in range(num_users)]
 
@@ -400,7 +441,7 @@ def run(flconn, kvs):
     print ("Making users...")
     # Make all the users.
     for username in usernames:
-        res = cloud_functions['aaa_user_create'](username).get()
+        res = cfns['aaa_user_create'](username).get()
         if res != 'success':
             print("aaa_user_create(%s) -> %s" % (username, str(res)))
             sys.exit(1)
@@ -413,7 +454,7 @@ def run(flconn, kvs):
     for username in usernames:
         targets = get_n_zipf_users(max_degree)
         for target in targets:
-            res = cloud_functions['aaa_user_follow'](username, target).get()
+            res = cfns['aaa_user_follow'](username, target).get()
             if res != 'success':
                 print("aaa_user_follow(%s, %s) -> %s" % (username, target, str(res)))
                 sys.exit(1)
@@ -423,7 +464,7 @@ def run(flconn, kvs):
     for _ in range(num_pretweets):
         username = get_random_user()
         post = "{} says: I love fluent!".format(username)
-        res = cloud_functions['aaa_post_create'](username, post).get()
+        res = cfns['aaa_post_create'](username, post).get()
 
     # Execute workload.
     rtimes = []
@@ -437,14 +478,14 @@ def run(flconn, kvs):
         # 80% reads.
         if t < 0.8:
             r_start = time.time()
-            res = cloud_functions['aaa_user_timeline'](username, 1).get()
+            res = cfns['aaa_user_timeline'](username, 1).get()
             rtimes.append(time.time() - r_start)
 
         # 20% writes.
         else:
             w_start = time.time()
             post = "{} says: I LOVE fluent!".format(username)
-            res = cloud_functions['aaa_post_create'](username, post).get()
+            res = cfns['aaa_post_create'](username, post).get()
             wtimes.append(time.time() - w_start)
 
     end = time.time()
@@ -452,28 +493,28 @@ def run(flconn, kvs):
 
 
     # Sanity check: print timeline of most and least popular user.
-    res = cloud_functions['aaa_user_timeline']('1', 1).get()
+    res = cfns['aaa_user_timeline']('1', 1).get()
     print("aaa_user_timeline('1', 1) -> %s" % (str(res)))
-    res = cloud_functions['aaa_user_timeline'](str(num_users), 1).get()
+    res = cfns['aaa_user_timeline'](str(num_users), 1).get()
     print("aaa_user_timeline(%s, 1) -> %s" % (str(num_users), str(res)))
 
 
 
 
 
-    # res = cloud_functions['aaa_user_create']('bobaaa_').get()
+    # res = cfns['aaa_user_create']('bobaaa_').get()
     # print("aaa_user_create('bobaaa_') -> %s" % (str(res)))
-    # res = cloud_functions['aaa_user_create']('emilyaaa_').get()
+    # res = cfns['aaa_user_create']('emilyaaa_').get()
     # print("aaa_user_create('emilyaaa_') -> %s" % (str(res)))
-    # res = cloud_functions['aaa_user_follow']('emilyaaa_', 'bobaaa_').get()
+    # res = cfns['aaa_user_follow']('emilyaaa_', 'bobaaa_').get()
     # print("aaa_user_follow('emilyaaa_', 'bobaaa_') -> %s" % (str(res)))
-    # res = cloud_functions['aaa_post_create']('bobaaa_', 'im bob lol').get()
+    # res = cfns['aaa_post_create']('bobaaa_', 'im bob lol').get()
     # print("aaa_post_create('bobaaa_', 'im bob lol') -> %s" % (str(res)))
-    # res = cloud_functions['aaa_post_create']('emilyaaa_', 'im emily lol').get()
+    # res = cfns['aaa_post_create']('emilyaaa_', 'im emily lol').get()
     # print("aaa_post_create('emilyaaa_', 'im emily lol') -> %s" % (str(res)))
-    # res = cloud_functions['aaa_user_timeline']('bobaaa_', 1).get()
+    # res = cfns['aaa_user_timeline']('bobaaa_', 1).get()
     # print("aaa_user_timeline('bobaaa_', 1) -> %s" % (str(res)))
-    # res = cloud_functions['aaa_user_timeline']('emilyaaa_', 1).get()
+    # res = cfns['aaa_user_timeline']('emilyaaa_', 1).get()
     # print("aaa_user_timeline('emilyaaa_', 1) -> %s" % (str(res)))
 
 

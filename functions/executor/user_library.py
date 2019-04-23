@@ -74,16 +74,20 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
     def causal_put(self, key, vector_clock, dependency, values, client_id):
         return self.client.causal_put(key, vector_clock, dependency, values, client_id)
 
+    # All gets are lists of values now t.t
     def get(self, ref):
-        vc, values = self.causal_get(ref, str(int(uuid.uuid4())))
-        return values
+        res = self.causal_get(ref, str(int(uuid.uuid4())))
+        if res is None:
+            return None, None
+        else:
+            vc, values = res
+            return vc, values
 
     # User library interface to causal_get.
     def causal_get(self, ref, client_id):
         _, results = self.client.causal_get(
             ref, set(), {}, CROSS, client_id)
-        vc, values = results[ref]
-        return vc, values
+        return results[ref]  # (vc, values) or None
 
     # dest is currently (IP string, thread id int) of destination executor.
     def send(self, dest, bytestr):
