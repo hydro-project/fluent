@@ -111,7 +111,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         ccv.vector_clock['base'] = 1
         ccv.values.extend([serialize_val(val)])
 
-        total_num_keys = 100000
+        total_num_keys = 1000000
         bin_size = int(total_num_keys / 8)
 
         start = time.time()
@@ -159,7 +159,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         latency['unnormalized'] = []
         latency['normalized'] = []
 
-        total_num_keys = 100000
+        total_num_keys = 1000000
 
 
         ### CREATE ZIPF TABLE###
@@ -205,12 +205,12 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
             res = kvs.get(rid)
             while not res:
-                logging.info("key %s does not exist" % rid)
+                #logging.info("key %s does not exist" % rid)
                 res = kvs.get(rid)
             while cid not in res.vector_clock:
-                logging.info("client id %s not in key %s VC" % (cid, rid))
-                for k in res.vector_clock:
-                    logging.info("has %s" % k)
+                #logging.info("client id %s not in key %s VC" % (cid, rid))
+                #for k in res.vector_clock:
+                #    logging.info("has %s" % k)
                 res = kvs.get(rid)
             end = time.time()
 
