@@ -10,50 +10,31 @@ from include.shared import *
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-def generate_dag(function_list):
+def generate_dag(function_list, length):
     available_functions = function_list.copy()
     functions = []
     connections = []
 
-    to_generate = []
 
     end_func = random.choice(available_functions)
     functions.append(end_func)
-    to_generate.append(end_func)
     available_functions.remove(end_func)
 
-    while not len(to_generate) == 0:
-        sink = to_generate.pop()
-        for _ in range(2):
-            if random.random() <= 0.4 and len(available_functions) > 0:
-                # pick a function
-                source = random.choice(available_functions)
-                functions.append(source)
-                to_generate.append(source)
-                available_functions.remove(source)
-                # populate connection
-                connections.append((source, sink))
+    current_length = 1
 
-    length = {}
-    for conn in connections:
-        func_source = conn[0]
-        length[func_source] = 1
-        sink = conn[1]
-        has_conn = True
-        while has_conn:
-            has_conn = False
-            for conn in connections:
-                if sink == conn[0]:
-                    has_conn = True
-                    length[func_source] += 1
-                    sink = conn[1]
+    sink = end_func
 
-    max_length = 1
-    for f in length:
-        if length[f] > max_length:
-            max_length = length[f]
+    while not current_length == length:
+        # pick a function
+        source = random.choice(available_functions)
+        functions.append(source)
+        available_functions.remove(source)
+        # populate connection
+        connections.append((source, sink))
+        current_length += 1
+        sink = source
 
-    return (functions, connections, max_length)
+    return (functions, connections, length)
 
 def generate_arg_map(functions, connections, key_space):
     arg_map = {}
@@ -85,7 +66,7 @@ def generate_arg_map(functions, connections, key_space):
 
 func_list = ['f1', 'f2', 'f3', 'f4', 'f5']
 
-functions, connections, length = generate_dag(func_list)
+functions, connections, length = generate_dag(func_list, 1)
 
 logging.info("DAG contains %d functions" % len(functions))
 

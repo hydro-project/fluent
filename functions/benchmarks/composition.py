@@ -44,6 +44,9 @@ def run(flconn, kvs, num_requests, sckt):
     connections = [('incr', 'square')]
     success, error = flconn.register_dag(dag_name, functions, connections)
 
+    if success:
+        print("registered DAG")
+
     if not success:
         print('Failed to register DAG: %s' % (ErrorType.Name(error)))
         sys.exit(1)
@@ -57,9 +60,9 @@ def run(flconn, kvs, num_requests, sckt):
 
     retries = 0
 
-    for _ in range(num_requests):
+    for i in range(num_requests):
         start = time.time()
-        rid = flconn.call_dag(dag_name, arg_map)
+        rid = flconn.call_dag(dag_name, arg_map, consistency=CROSS, output_key=str(i), client_id=str(i))
         end = time.time()
 
         stime = end - start
@@ -70,7 +73,7 @@ def run(flconn, kvs, num_requests, sckt):
             retries += 1
             res = kvs.get(rid)
 
-        res = deserialize_val(res.reveal()[1])
+        res = deserialize_val(res.values[0])
         end = time.time()
 
         ktime = end - start

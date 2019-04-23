@@ -20,6 +20,7 @@ metadata:
     role: routing
 spec:
   hostNetwork: true
+  restartPolicy: Never
   containers:
   - name: routing-container
     image: fluentproject/annakvs
