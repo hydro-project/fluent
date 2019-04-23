@@ -111,7 +111,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         ccv.vector_clock['base'] = 1
         ccv.values.extend([serialize_val(val)])
 
-        total_num_keys = 1000000
+        total_num_keys = 100000
         bin_size = int(total_num_keys / 8)
 
         start = time.time()
@@ -159,7 +159,7 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
         latency['unnormalized'] = []
         latency['normalized'] = []
 
-        total_num_keys = 1000000
+        total_num_keys = 100000
 
 
         ### CREATE ZIPF TABLE###
@@ -179,8 +179,9 @@ def run(mode, segment, flconn, kvs, dags, dag_names):
 
         for i in range(segment*bin_size + 1, (segment + 1)*bin_size + 1):
             cid = 'client_' + str(i)
-            if i % 100 == 0:
-                logging.info("running client %s" % cid)
+            #if i % 100 == 0:
+            #    logging.info("running client %s" % cid)
+            logging.info("running client %s" % cid)
 
             # randomly pick a dag
             dag_name = random.choice(dag_names)
