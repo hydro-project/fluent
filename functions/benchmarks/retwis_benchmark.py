@@ -19,7 +19,7 @@ def run(flconn, kvs):
 
         # Checking for existence of arbitrary keys.
         def exists(self, key):
-            value_or_none = self._fluent_lib.get(key)
+            vc, value_or_none = self._fluent_lib.get(key)
             return value_or_none is not None
 
         ## Single value storage.
@@ -176,12 +176,12 @@ def run(flconn, kvs):
       @staticmethod
       def create(r, user, password):
         user_id = r.incr("user:uid")
-        # if not r.get("user:user:%s" % user):  # XXX existence checking not implemented rn
-        r.set("user:id:%s:user" % user_id, user)
-        r.set("user:user:%s" % user, user_id)
+        if not r.get("user:user:%s" % user):
+          r.set("user:id:%s:user" % user_id, user)
+          r.set("user:user:%s" % user, user_id)
 
-        r.set("user:id:%s:password" % user_id, password)
-        r.lpush("users", user_id)
+          r.set("user:id:%s:password" % user_id, password)
+          r.lpush("users", user_id)
         # return User(user_id)
         # return None
 
@@ -205,6 +205,40 @@ def run(flconn, kvs):
           # inserting the actual tweets is just a quick operation for application-semantics correctness.
           return [(int(post_id), Post(r, int(post_id)).content) for post_id in timeline]
         return []
+
+      @staticmethod
+      def timeline_anomalies(r, user):
+        userid = User.find_by_user(r, user)
+        timeline_len = r.llen("user:id:%s:timeline" % userid)
+        _from, _to = 0, timeline_len
+        timeline = r.lrange("user:id:%s:timeline" % userid, _from, _to)
+        if timeline:
+
+          # XXX waiting on causal consistency is always done upon retrieving post contents,
+          # but this says nothing about the state of the timeline, which can have missing postids.
+          # Here, we get the list of parent tweets of any replies in the timeline
+          # and make sure they're in the timeline too.
+          tl_set = set(int(pid) for pid in timeline)
+          parents_of_replies = []
+          tl_posts = []
+          missing_posts = []
+          for post_id in timeline:
+            post = Post(r, int(post_id))
+            tl_posts.append((int(post_id), post.content))
+            try:
+                post_parent_id = post.parent
+                print(post_parent_id)
+                parents_of_replies.append(int(post_parent_id))
+            except AttributeError:
+                pass
+
+          # See how many anomalies we got.
+          for parent_pid in parents_of_replies:
+            if parent_pid not in tl_set:
+              missing_posts.append((int(parent_pid), Post(r, int(parent_pid)).content))
+
+          return tl_posts, missing_posts
+        return [], []
 
       def mentions(self,page=1):
         _from, _to = (page-1)*10, page*10
@@ -385,6 +419,10 @@ def run(flconn, kvs):
         f_redis = FluentRedisShim(fluent_lib)
         return User.timeline(f_redis, user, page)
 
+    def xxx_user_timeline_anomalies(fluent, user):
+        f_redis = FluentRedisShim(fluent)
+        return User.timeline_anomalies(f_redis, user)
+
     def xxx_user_profile(fluent_lib, user, page):
         pass
 
@@ -424,6 +462,7 @@ def run(flconn, kvs):
         # 'xxx_global_timeline': xxx_global_timeline,
         'xxx_user_create': xxx_user_create,
         'xxx_user_timeline': xxx_user_timeline,
+        'xxx_user_timeline_anomalies': xxx_user_timeline_anomalies,
         'xxx_user_profile': xxx_user_profile,
         'xxx_user_follow': xxx_user_follow,
         'xxx_post_create': xxx_post_create,
@@ -467,22 +506,31 @@ def run(flconn, kvs):
     callfn('xxx_user_follow', 'xxx_alice', 'xxx_obama')
     callfn('xxx_user_follow', 'xxx_alice', 'xxx_bob')
     callfn('xxx_user_follow', 'xxx_bob', 'xxx_obama')
+    # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
+    # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
+    # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
+    # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
     callfn('xxx_post_create', 'xxx_obama', 'hello world!')
+    # print("sleeping for gossip interval...")
+    # time.sleep(20)
     r = callfn('xxx_user_timeline', 'xxx_bob', 1)
-    obamas_tweet = r[-1]
-    obamas_tweet_cid = obamas_tweet[0]
-    callfn('xxx_reply_create', 'xxx_bob', 'hi obama!', obamas_tweet_cid)
+    # obamas_tweet = r[-1]
+    # obamas_tweet_cid = obamas_tweet[0]
+    # callfn('xxx_reply_create', 'xxx_bob', 'hi obama!', obamas_tweet_cid)
+    callfn('xxx_user_timeline_anomalies', 'xxx_alice')
     callfn('xxx_user_timeline', 'xxx_alice', 1)
     # return
 
 
 
     # Experiment parameters.
+    # ######################
     num_users = 100
     max_degree = 10
     num_pretweets = 1000
     num_ops = 100  # 80% reads, 20% writes
     usernames = [str(i + 1) for i in range(num_users)]
+    count_anomalies = True
 
     # -> str
 
@@ -552,6 +600,8 @@ def run(flconn, kvs):
     rtimes = []
     wtimes = []
     start = time.time()
+    tl_lengths = []
+    anomaly_counts = []
     print ("Executing workload...")
     for numop in range(num_ops):
         t = random.random()
@@ -560,7 +610,12 @@ def run(flconn, kvs):
         # 80% reads.
         if t < 0.8:
             r_start = time.time()
-            res = cfns['xxx_user_timeline'](username, 1).get()
+            if count_anomalies:
+                res, anomalies = cfns['xxx_user_timeline_anomalies'](username).get()
+                anomaly_counts.append(len(anomalies))
+                tl_lengths.append(len(res))
+            else:
+                res = cfns['xxx_user_timeline'](username, 1).get()
             rtimes.append(time.time() - r_start)
 
         # 20% writes.
@@ -585,8 +640,13 @@ def run(flconn, kvs):
     res = cfns['xxx_user_timeline'](str(num_users), 1).get()
     print("xxx_user_timeline(%s, 1) -> %s" % (str(num_users), str(res)))
 
-
-
+    if anomaly_counts:
+        avg_anomaly = sum(x for x in anomaly_counts) / len(anomaly_counts)
+        max_anomaly = max(anomaly_counts)
+        min_anomaly = min(anomaly_counts)
+        avg_tl_length = sum(x for x in tl_lengths) / len(tl_lengths)
+        print("Anomalies (min/avg/max): %s/%s/%s" % (min_anomaly, avg_anomaly, max_anomaly))
+        print("Average tl length: ", avg_tl_length)
 
 
     # res = cfns['xxx_user_create']('bobxxx_').get()
