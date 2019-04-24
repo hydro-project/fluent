@@ -79,6 +79,7 @@ class FluentConnection():
 
         flist = FunctionList()
         flist.ParseFromString(self.list_sock.recv())
+        flist = flist.names
         return flist
 
     def exec_func(self, name, args):

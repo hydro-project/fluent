@@ -4,6 +4,7 @@ import time
 import uuid
 import sys
 
+import cloudpickle as cp
 import numpy
 
 # import executor.redis_shim
@@ -11,7 +12,7 @@ import numpy
 
 from anna.lattices import *
 
-def run(flconn, kvs):
+def run(flconn, kvs, create, num_requests, count_anomalies, sckt, reply_frac=0.2):
 
     class FluentRedisShim:
         def __init__(self, fluent_user_library):
@@ -469,71 +470,23 @@ def run(flconn, kvs):
         'xxx_reply_create': xxx_reply_create,
     }
 
-    cfns = {
-        fname: flconn.register(f, fname)
-        for fname, f
-        in fns.items()
-    }
-
-    for fname, cf in cfns.items():
-        if cf:
-            print ("Successfully registered {}.".format(fname))
+    cfns = {}  # populate separately in create/noncreate modes
 
     def callfn(fname, *args):
         r = cfns[fname](*args).get()
         print("%s(%s) -> %s" % (fname, args, r))
         return r
 
-    # Redis shim tests (not retwis related).
-    callfn('xxx_redis_exists', 'xxx_foo')
-    callfn('xxx_redis_set', 'xxx_foo', b'3')
-    callfn('xxx_redis_get', 'xxx_foo')
-    callfn('xxx_redis_incr', 'xxx_cntr')
-    callfn('xxx_redis_sadd', 'xxx_sxt', b'4')
-    callfn('xxx_redis_smembers', 'xxx_sxt')
-    callfn('xxx_redis_lpush', 'xxx_lxt', b'5')
-    callfn('xxx_redis_lrange', 'xxx_lxt', 0, 10)
-    callfn('xxx_redis_llen', 'xxx_lxt')
-    callfn('xxx_redis_lpush', 'xxx_lxt', b'6')
-    callfn('xxx_redis_lpush', 'xxx_lxt', b'4')
-    callfn('xxx_redis_lrange', 'xxx_lxt', 0, 10)
-
-
-    # Retwis tests (not benchmark related).
-    callfn('xxx_user_create', 'xxx_alice')
-    callfn('xxx_user_create', 'xxx_bob')
-    callfn('xxx_user_create', 'xxx_obama')
-    callfn('xxx_user_follow', 'xxx_alice', 'xxx_obama')
-    callfn('xxx_user_follow', 'xxx_alice', 'xxx_bob')
-    callfn('xxx_user_follow', 'xxx_bob', 'xxx_obama')
-    # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
-    # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
-    # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
-    # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
-    callfn('xxx_post_create', 'xxx_obama', 'hello world!')
-    # print("sleeping for gossip interval...")
-    # time.sleep(20)
-    r = callfn('xxx_user_timeline', 'xxx_bob', 1)
-    # obamas_tweet = r[-1]
-    # obamas_tweet_cid = obamas_tweet[0]
-    # callfn('xxx_reply_create', 'xxx_bob', 'hi obama!', obamas_tweet_cid)
-    callfn('xxx_user_timeline_anomalies', 'xxx_alice')
-    callfn('xxx_user_timeline', 'xxx_alice', 1)
-    # return
-
-
-
     # Experiment parameters.
     # ######################
-    num_users = 100
-    max_degree = 10
-    num_pretweets = 1000
-    num_ops = 100  # 80% reads, 20% writes
+    num_users = 1000
+    max_degree = 50
+    num_pretweets = num_requests
+    num_ops = num_requests  # 80% reads, 20% writes
     usernames = [str(i + 1) for i in range(num_users)]
-    count_anomalies = True
+    count_anomalies = count_anomalies
 
     # -> str
-
     def get_random_user():
         return str(int(random.random() * num_users) + 1)
 
@@ -550,28 +503,6 @@ def run(flconn, kvs):
             users.add(get_zipf_user())
         return users
 
-
-    print ("Making users...")
-    # Make all the users.
-    for username in usernames:
-        res = cfns['xxx_user_create'](username).get()
-        if res != 'success':
-            print("xxx_user_create(%s) -> %s" % (username, str(res)))
-            sys.exit(1)
-
-    # Make all the user connections.
-    # Every user calls follow max_degree times.
-    # The people they follow are zipfian-distributed.
-
-    print ("Making user connections...")
-    for username in usernames:
-        targets = get_n_zipf_users(max_degree)
-        for target in targets:
-            res = cfns['xxx_user_follow'](username, target).get()
-            if res != 'success':
-                print("xxx_user_follow(%s, %s) -> %s" % (username, target, str(res)))
-                sys.exit(1)
-
     # Posts a reply to the most recent tweet in the user's timeline, if available.
     # Does nothing if there are no tweets in the timeline to reply to!
     def post_random_reply(username):
@@ -583,88 +514,179 @@ def run(flconn, kvs):
         return True
 
 
-    # Prepopulating tweets, so our read and write times are more realistic.
-    print ("Prepopulating tweets...")
-    for _ in range(num_pretweets):
-        username = get_random_user()
-        post = "{} says: I love fluent!".format(username)
-        # Let's make some of these tweets be replies to other tweets.
-        t = random.random()
-        tweeted = False
-        if t < 0.2: # Reply attempt factor.
-            tweeted = post_random_reply(username)
-        if not tweeted:
-            cfns['xxx_post_create'](username, post).get()
 
-    # Execute workload.
-    rtimes = []
-    wtimes = []
-    start = time.time()
-    tl_lengths = []
-    anomaly_counts = []
-    print ("Executing workload...")
-    for numop in range(num_ops):
-        t = random.random()
-        # Pick a user at uniform.
-        username = get_random_user()
-        # 80% reads.
-        if t < 0.8:
-            r_start = time.time()
-            if count_anomalies:
-                res, anomalies = cfns['xxx_user_timeline_anomalies'](username).get()
-                anomaly_counts.append(len(anomalies))
-                tl_lengths.append(len(res))
-            else:
-                res = cfns['xxx_user_timeline'](username, 1).get()
-            rtimes.append(time.time() - r_start)
+    if create:
+        if num_ops == 0:
+            # DEFINE AND REGISTER FUNCTIONS
+            cfns = {
+                fname: flconn.register(f, fname)
+                for fname, f
+                in fns.items()
+            }
 
-        # 20% writes.
+            for fname, cf in cfns.items():
+                if cf:
+                    print ("Successfully registered {}.".format(fname))
+
+            print ("Making %s users..." % num_users)
+            # Make all the users.
+            for username in usernames:
+                res = cfns['xxx_user_create'](username).get()
+                if res != 'success':
+                    print("xxx_user_create(%s) -> %s" % (username, str(res)))
+                    sys.exit(1)
+
+            # Make all the user connections.
+            # Every user calls follow max_degree times.
+            # The people they follow are zipfian-distributed.
+
+            print ("Doing %s follows per user..." % max_degree)
+            for username in usernames:
+                targets = get_n_zipf_users(max_degree)
+                for target in targets:
+                    res = cfns['xxx_user_follow'](username, target).get()
+                    if res != 'success':
+                        print("xxx_user_follow(%s, %s) -> %s" % (username, target, str(res)))
+                        sys.exit(1)
+
         else:
-            w_start = time.time()
-            tweeted = False
-            reply_roll = random.random()
-            if reply_roll < 0.2:
-                tweeted = post_random_reply(username)
-            if not tweeted:
-                post = "{} says: I LOVE fluent!".format(username)
-                res = cfns['xxx_post_create'](username, post).get()
-            wtimes.append(time.time() - w_start)
-
-    end = time.time()
-    elapsed = end - start
-
-
-    # Sanity check: print timeline of most and least popular user.
-    res = cfns['xxx_user_timeline']('1', 1).get()
-    print("xxx_user_timeline('1', 1) -> %s" % (str(res)))
-    res = cfns['xxx_user_timeline'](str(num_users), 1).get()
-    print("xxx_user_timeline(%s, 1) -> %s" % (str(num_users), str(res)))
-
-    if anomaly_counts:
-        avg_anomaly = sum(x for x in anomaly_counts) / len(anomaly_counts)
-        max_anomaly = max(anomaly_counts)
-        min_anomaly = min(anomaly_counts)
-        avg_tl_length = sum(x for x in tl_lengths) / len(tl_lengths)
-        print("Anomalies (min/avg/max): %s/%s/%s" % (min_anomaly, avg_anomaly, max_anomaly))
-        print("Average tl length: ", avg_tl_length)
-
-
-    # res = cfns['xxx_user_create']('bobxxx_').get()
-    # print("xxx_user_create('bobxxx_') -> %s" % (str(res)))
-    # res = cfns['xxx_user_create']('emilyxxx_').get()
-    # print("xxx_user_create('emilyxxx_') -> %s" % (str(res)))
-    # res = cfns['xxx_user_follow']('emilyxxx_', 'bobxxx_').get()
-    # print("xxx_user_follow('emilyxxx_', 'bobxxx_') -> %s" % (str(res)))
-    # res = cfns['xxx_post_create']('bobxxx_', 'im bob lol').get()
-    # print("xxx_post_create('bobxxx_', 'im bob lol') -> %s" % (str(res)))
-    # res = cfns['xxx_post_create']('emilyxxx_', 'im emily lol').get()
-    # print("xxx_post_create('emilyxxx_', 'im emily lol') -> %s" % (str(res)))
-    # res = cfns['xxx_user_timeline']('bobxxx_', 1).get()
-    # print("xxx_user_timeline('bobxxx_', 1) -> %s" % (str(res)))
-    # res = cfns['xxx_user_timeline']('emilyxxx_', 1).get()
-    # print("xxx_user_timeline('emilyxxx_', 1) -> %s" % (str(res)))
+            # PREPOPULATE TWEETS
+            cfns = {
+                fname: flconn.get(fname)
+                for fname, f
+                in fns.items()
+            }
+            wtimes = []
+            epoch_wtimes = []
+            log_start = time.time()
+            # Prepopulating tweets, so our read and write times are more realistic.
+            print ("Prepopulating %s tweets total..." % num_pretweets)
+            for i in range(num_pretweets):
+                username = get_random_user()
+                post = "{} says: I love fluent!".format(username)
+                # Let's make some of these tweets be replies to other tweets.
+                t = random.random()
+                start = time.time()
+                tweeted = False
+                if t < reply_frac: # Reply attempt factor.
+                    tweeted = post_random_reply(username)
+                if not tweeted:
+                    cfns['xxx_post_create'](username, post).get()
+                elapsed = time.time() - start
+                wtimes.append(elapsed)
+                epoch_wtimes.append(elapsed)
+                if time.time() - log_start > 5:
+                    print("%s tweets populated." % i)
+                    # if sckt:
+                    #     sckt.send(cp.dumps(epoch_wtimes))
+                    epoch_wtimes.clear()
+                    log_start = time.time()
 
 
+    else:
+        cfns = {
+            fname: flconn.get(fname)
+            for fname, f
+            in fns.items()
+        }
+
+        # Execute workload.
+        rtimes = []
+        wtimes = []
+        start = time.time()
+        tl_lengths = []
+        anomaly_counts = []
+        print ("Executing %s ops workload..." % num_ops)
+        for numop in range(num_ops):
+            t = random.random()
+            # Pick a user at uniform.
+            username = get_random_user()
+            # 80% reads.
+            if t < 0.8:
+                r_start = time.time()
+                if count_anomalies:
+                    res, anomalies = cfns['xxx_user_timeline_anomalies'](username).get()
+                    anomaly_counts.append(len(anomalies))
+                    tl_lengths.append(len(res))
+                else:
+                    res = cfns['xxx_user_timeline'](username, 1).get()
+                rtimes.append(time.time() - r_start)
+
+            # 20% writes.
+            else:
+                w_start = time.time()
+                tweeted = False
+                reply_roll = random.random()
+                if reply_roll < reply_frac:
+                    tweeted = post_random_reply(username)
+                if not tweeted:
+                    post = "{} says: I LOVE fluent!".format(username)
+                    res = cfns['xxx_post_create'](username, post).get()
+                wtimes.append(time.time() - w_start)
+
+        end = time.time()
+        elapsed = end - start
 
 
-    return [elapsed], rtimes, wtimes, 0
+        # Sanity check: print timeline of most and least popular user.
+        res = cfns['xxx_user_timeline']('1', 1).get()
+        print("xxx_user_timeline('1', 1) -> %s" % (str(res)))
+        res = cfns['xxx_user_timeline'](str(num_users), 1).get()
+        print("xxx_user_timeline(%s, 1) -> %s" % (str(num_users), str(res)))
+
+        if anomaly_counts:
+            avg_anomaly = sum(x for x in anomaly_counts) / len(anomaly_counts)
+            max_anomaly = max(anomaly_counts)
+            min_anomaly = min(anomaly_counts)
+            avg_tl_length = sum(x for x in tl_lengths) / len(tl_lengths)
+            print("Anomalies (min/avg/max): %s/%s/%s" % (min_anomaly, avg_anomaly, max_anomaly))
+            print("Average tl length: ", avg_tl_length)
+
+        if sckt:
+            sckt.send(cp.dumps((rtimes, wtimes)))
+
+        return [elapsed], rtimes, wtimes, 0
+
+
+    # # Redis shim tests (not retwis related).
+    # callfn('xxx_redis_exists', 'xxx_foo')
+    # callfn('xxx_redis_set', 'xxx_foo', b'3')
+    # callfn('xxx_redis_get', 'xxx_foo')
+    # callfn('xxx_redis_incr', 'xxx_cntr')
+    # callfn('xxx_redis_sadd', 'xxx_sxt', b'4')
+    # callfn('xxx_redis_smembers', 'xxx_sxt')
+    # callfn('xxx_redis_lpush', 'xxx_lxt', b'5')
+    # callfn('xxx_redis_lrange', 'xxx_lxt', 0, 10)
+    # callfn('xxx_redis_llen', 'xxx_lxt')
+    # callfn('xxx_redis_lpush', 'xxx_lxt', b'6')
+    # callfn('xxx_redis_lpush', 'xxx_lxt', b'4')
+    # callfn('xxx_redis_lrange', 'xxx_lxt', 0, 10)
+
+
+    # # Retwis tests (not benchmark related).
+    # callfn('xxx_user_create', 'xxx_alice')
+    # callfn('xxx_user_create', 'xxx_bob')
+    # callfn('xxx_user_create', 'xxx_obama')
+    # callfn('xxx_user_follow', 'xxx_alice', 'xxx_obama')
+    # callfn('xxx_user_follow', 'xxx_alice', 'xxx_bob')
+    # callfn('xxx_user_follow', 'xxx_bob', 'xxx_obama')
+    # # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
+    # # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
+    # # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
+    # # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
+    # callfn('xxx_post_create', 'xxx_obama', 'hello world!')
+    # # print("sleeping for gossip interval...")
+    # # time.sleep(20)
+    # r = callfn('xxx_user_timeline', 'xxx_bob', 1)
+    # # obamas_tweet = r[-1]
+    # # obamas_tweet_cid = obamas_tweet[0]
+    # # callfn('xxx_reply_create', 'xxx_bob', 'hi obama!', obamas_tweet_cid)
+    # callfn('xxx_user_timeline_anomalies', 'xxx_alice')
+    # callfn('xxx_user_timeline', 'xxx_alice', 1)
+    # # return
+
+
+
+
+
+

@@ -16,9 +16,6 @@ with open('bench_ips.txt', 'r') as f:
         ips.append(l.strip())
         l = f.readline()
 
-for ip in ips:
-	print(ip)
-
 msg = sys.argv[1]
 ctx = zmq.Context(1)
 
@@ -33,44 +30,38 @@ if 'create' in msg:
 
     sckt.send_string(msg)
     sent_msgs += 1
-elif 'warmup' in msg:
-	index = 0
-	for ip in ips:
-		for tid in range(NUM_THREADS):
-			sckt = ctx.socket(zmq.PUSH)
-			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
-			sckt.send_string(msg + ':' + str(index))
-			sent_msgs += 1
-			index += 1
-elif 'run' in msg:
-	index = 0
-	for ip in ips:
-		for tid in range(NUM_THREADS):
-			sckt = ctx.socket(zmq.PUSH)
-			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
-			sckt.send_string(msg + ':' + str(index))
-			sent_msgs += 1
-			index += 1
+else:
+    for ip in ips:
+        for tid in range(NUM_THREADS):
+            sckt = ctx.socket(zmq.PUSH)
+            sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
 
+            sckt.send_string(msg)
+            sent_msgs += 1
+
+reads = []
+writes = []
 end_recv = 0
 
-latency = {}
-latency['unnormalized'] = []
-latency['normalized'] = []
-
+epoch_recv = 0
+epoch = 1
 while end_recv < sent_msgs:
-	payload = recv_socket.recv()
-	logging.info("received response")
-	end_recv += 1
-	if 'run' in msg:
-		bench_latency = cp.loads(payload)
-		latency['unnormalized'] += bench_latency['unnormalized']
-		latency['normalized'] += bench_latency['normalized']
+    msg = recv_socket.recv()
 
-if 'run' in msg:
-	logging.info("unnormalized latency")
-	utils.print_latency_stats(latency['unnormalized'], 'Causal', True)
-	logging.info("normalized latency")
-	utils.print_latency_stats(latency['normalized'], 'Causal', True)
+    if b'END' in msg:
+        end_recv += 1
+    else:
+        new_reads, new_writes = cp.loads(msg)
+        reads += new_reads
+        writes += new_writes
+        epoch_recv += 1
 
-logging.info("benchmark done")
+        if epoch_recv == sent_msgs:
+            logging.info('\n\n*** EPOCH %d ***' % (epoch))
+            utils.print_latency_stats(reads, 'reads', True)
+            utils.print_latency_stats(writes, 'writes', True)
+
+            epoch_recv = 0
+            reads.clear()
+            writes.clear()
+            epoch += 1

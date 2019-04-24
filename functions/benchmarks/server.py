@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.6
-import cloudpickle as cp
+
 import logging
 import sys
 import zmq
@@ -7,55 +7,91 @@ import zmq
 from . import composition
 from . import locality
 from . import lambda_locality
-from . import causal
+from . import retwis_benchmark
 from . import utils
 
 BENCHMARK_START_PORT = 3000
 
 def benchmark(flconn, tid):
-    logging.info('start benchmark thread')
+    logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO, format='%(asctime)s %(message)s')
+
     ctx = zmq.Context(1)
 
     benchmark_start_socket = ctx.socket(zmq.PULL)
     benchmark_start_socket.bind('tcp://*:' + str(BENCHMARK_START_PORT + tid))
     kvs = flconn.kvs_client
 
-    dags = {}
-    dag_names = []
-
     while True:
         msg = benchmark_start_socket.recv_string()
-        logging.info('receive benchmark request')
         splits = msg.split(':')
 
         resp_addr = splits[0]
         bname = splits[1]
-        mode = splits[2]
-        segment = None
+        num_requests = int(splits[2])
         if len(splits) > 3:
-            segment = int(splits[3])
+            create = bool(splits[3])
+        else:
+            create = False
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + resp_addr + ':3000')
-        run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names)
+        run_bench(bname, num_requests, flconn, kvs, sckt, create)
 
-def run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names):
-    logging.info('Running benchmark %s.' % (bname))
+def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
+    logging.info('Running benchmark %s, %d requests.' % (bname, num_requests))
 
-    latency = None
+    if bname == 'composition':
+        total, scheduler, kvs, retries = composition.run(flconn, kvs,
+                num_requests, sckt)
+    elif bname == 'locality':
+        total, scheduler, kvs, retries = locality.run(flconn, kvs,
+                num_requests, create, sckt)
+    elif bname == 'redis' or bname == 's3':
+        total, scheduler, kvs, retries = lambda_locality.run(bname, kvs,
+                num_requests, sckt)
+    elif bname == 'retwis':
+        total, scheduler, kvs, retries = retwis_benchmark.run(
+            flconn, kvs, create=False, num_requests=num_requests, count_anomalies=False, sckt=sckt, reply_frac=0.5)
+    elif bname == 'retwis-noreply':
+        total, scheduler, kvs, retries = retwis_benchmark.run(
+            flconn, kvs, create=False, num_requests=num_requests, count_anomalies=False, sckt=sckt, reply_frac=0.0)
+    elif bname == 'retwis-anom':
+        total, scheduler, kvs, retries = retwis_benchmark.run(
+            flconn, kvs, create=False, num_requests=num_requests, count_anomalies=True, sckt=sckt)
+    elif bname == 'retwis-create':
+        total, scheduler, kvs, retries = retwis_benchmark.run(
+            flconn, kvs, create=True, num_requests=0, count_anomalies=False, sckt=sckt)
+    elif bname == 'retwis-populate':
+        retwis_benchmark.run(
+            flconn, kvs, create=True, num_requests=num_requests, count_anomalies=False, sckt=sckt, reply_frac=0.5)
+        sckt.send(b'END')
+        return
+    elif bname == 'retwis-populate-noreply':
+        retwis_benchmark.run(
+            flconn, kvs, create=True, num_requests=num_requests, count_anomalies=False, sckt=sckt, reply_frac=0.0)
+        sckt.send(b'END')
+        return
 
-    if bname == 'causal':
-        latency = causal.run(mode, segment, flconn, kvs, dags, dag_names)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')
         return
 
     # some benchmark modes return no results
-    sckt.send(cp.dumps(latency))
-    logging.info('*** Benchmark %s finished. ***' % (bname))
+    if not total:
+        sckt.send(b'END')
+        logging.info('*** Benchmark %s finished. It returned no results. ***' %
+                (bname))
+        return
+    else:
+        sckt.send(b'END')
+        logging.info('*** Benchmark %s finished. ***' % (bname))
 
-    if mode == 'warmup':
-        logging.info('Warmup latency is %.6f' % (latency['warmup']))
-    #if mode == 'run':
-    #    utils.print_latency_stats(latency, 'Causal', True)
+    logging.info('Total computation time: %.4f' % (sum(total)))
+    if len(total) > 0:
+        utils.print_latency_stats(total, 'E2E', True)
+    if len(scheduler) > 0:
+        utils.print_latency_stats(scheduler, 'SCHEDULER', True)
+    if len(kvs) > 0:
+        utils.print_latency_stats(kvs, 'KVS', True)
+    logging.info('Number of KVS get retries: %d' % (retries))

@@ -40,7 +40,17 @@ elif bname == 'locality':
 elif bname == 'user_library_test':
     user_library_test.run(flconn, kvs, num_requests)
 elif bname == 'retwis':
-    total, scheduler, kvs, retries = retwis_benchmark.run(flconn, kvs)
+    total, scheduler, kvs, retries = retwis_benchmark.run(flconn, kvs, create=False, num_requests=num_requests, count_anomalies=False, sckt=None, reply_frac=0.5)
+elif bname == 'retwis-noreply':
+    total, scheduler, kvs, retries = retwis_benchmark.run(flconn, kvs, create=False, num_requests=num_requests, count_anomalies=False, sckt=None, reply_frac=0.0)
+elif bname == 'retwis-anom':
+    total, scheduler, kvs, retries = retwis_benchmark.run(flconn, kvs, create=False, num_requests=num_requests, count_anomalies=True, sckt=None)
+elif bname == 'retwis-create':
+    total, scheduler, kvs, retries = retwis_benchmark.run(flconn, kvs, create=True, num_requests=0, count_anomalies=False, sckt=None)
+elif bname == 'retwis-populate':
+    total, scheduler, kvs, retries = retwis_benchmark.run(flconn, kvs, create=True, num_requests=num_requests, count_anomalies=False, sckt=None, reply_frac=0.5)
+elif bname == 'retwis-populate-noreply':
+    total, scheduler, kvs, retries = retwis_benchmark.run(flconn, kvs, create=True, num_requests=num_requests, count_anomalies=False, sckt=None, reply_frac=0.0)
 else:
     print('Unknown benchmark type: %s!' % (bname))
 
