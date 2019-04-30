@@ -297,8 +297,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             case LatticeType::ORDERED_SET:
               local_ordered_set_cache.erase(key);
               break;
-            default:
-              break;  // this can never happen
+            default: break;  // this can never happen
           }
 
           key_type_map[key] = tuple.lattice_type();
