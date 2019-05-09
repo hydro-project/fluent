@@ -47,6 +47,7 @@ ISOLATION = 'STRONG'
 
 logging.basicConfig(filename='log_management.txt', level=logging.INFO)
 
+
 def run():
     context = zmq.Context(1)
 
@@ -137,7 +138,7 @@ def run():
         if list_executors_socket in socks and socks[list_executors_socket] == \
                 zmq.POLLIN:
             # it doesn't matter what is in this message
-            msg = list_executors_socket.recv()
+            list_executors_socket.recv()
 
             ks = KeySet()
             for ip in util.get_pod_ips(client, 'role=function'):
@@ -160,8 +161,8 @@ def run():
 
             executor_statuses[key] = status
             logging.info(('Received thread status update from %s:%d: %.4f ' +
-                    'occupancy, %d functions pinned') % (status.ip, status.tid,
-                        status.utilization, len(status.functions)))
+                          'occupancy, %d functions pinned') % (status.ip, status.tid,
+                                                               status.utilization, len(status.functions)))
 
         if list_schedulers_socket in socks and socks[list_schedulers_socket] == \
                 zmq.POLLIN:
@@ -203,7 +204,7 @@ def run():
                 if fstats.HasField('runtime'):
                     old_latency = function_runtimes[fname]
                     function_runtimes[fname] = (old_latency[0] + fstats.runtime,
-                            old_latency[1] + fstats.call_count)
+                                                old_latency[1] + fstats.call_count)
                 else:
                     function_frequencies[fname] += fstats.call_count
 
@@ -215,18 +216,19 @@ def run():
             logging.info('Checking for extra nodes...')
             check_unused_nodes(client, add_push_socket)
 
-            check_executor_utilization(client, context, executor_statuses,
-                    departing_executors, add_push_socket)
+            check_executor_utilization(context, executor_statuses,
+                                       departing_executors, add_push_socket)
 
             check_function_load(context, function_frequencies, function_runtimes,
-                    executor_statuses, latency_history)
+                                executor_statuses, latency_history)
 
             function_runtimes.clear()
             function_frequencies.clear()
             start = time.time()
 
+
 def check_function_load(context, function_frequencies, function_runtimes,
-        executor_statuses, latency_history):
+                        executor_statuses, latency_history):
 
     # construct a reverse index that tracks where each function is currently
     # replicated
@@ -254,44 +256,44 @@ def check_function_load(context, function_frequencies, function_runtimes,
         thruput = float(num_replicas * EXECUTOR_REPORT_PERIOD) * (1 / avg_latency)
 
         logging.info(('Function %s: %d calls, %.4f average latency, %.2f' +
-                ' thruput, %d replicas.') % (fname, call_count, avg_latency,
-                    thruput, num_replicas))
+                      ' thruput, %d replicas.') % (fname, call_count, avg_latency,
+                                                   thruput, num_replicas))
 
         if call_count > thruput * .7:
             increase = (math.ceil(call_count / (thruput * .7)) * num_replicas) -  num_replicas + 1
             logging.info(('Function %s: %d calls in recent period exceeds'
-                + ' threshold. Adding %d replicas.') % (fname, call_count,
-                    increase))
+                          + ' threshold. Adding %d replicas.') % (fname, call_count,
+                                                                  increase))
             replicate_function(fname, context, increase, func_locations,
-                    executors)
+                               executors)
         elif call_count < thruput * .1:
             decrease = math.ceil((call_count / thruput) * num_replicas) + 1
             logging.info(('Function %s: %d calls in recent period under ' +
-                'threshold. Reducing to %d replicas.') % (fname, call_count,
-                    decrease))
+                          'threshold. Reducing to %d replicas.') % (fname, call_count,
+                                                                    decrease))
             dereplicate_function(fname, context, decrease, func_locations)
         elif fname in latency_history:
             historical, count = latency_history[fname]
             logging.info('Function %s: %.4f historical latency.' %
-                    (fname, historical))
+                         (fname, historical))
 
             ratio = avg_latency / historical
             if ratio > LATENCY_RATIO:
                 num_replicas = math.ceil(ratio) - len(func_locations[fname]) + 1
                 logging.info(('Function %s: recent latency average (%.4f) is ' +
-                        '%.2f times the historical average. Adding %d replicas.')
-                        % (fname, avg_latency, ratio, num_replicas))
+                              '%.2f times the historical average. Adding %d replicas.')
+                             % (fname, avg_latency, ratio, num_replicas))
                 replicate_function(fname, context, num_replicas, func_locations,
-                        executors)
+                                   executors)
             else:
                 for status in executor_statuses.values():
                     if status.utilization > .9:
                         logging.info(('Node %s:%d has over 90%% utilization.'
-                            + ' Replicating its functions.') % (status.ip,
-                                status.tid))
+                                      + ' Replicating its functions.') % (status.ip,
+                                                                          status.tid))
                         for fname in status.functions:
                             replicate_function(fname, context, 2,
-                                    func_locations, executors)
+                                               func_locations, executors)
 
             # update these variables based on history, so we can insert them
             # into the history tracker
@@ -303,6 +305,7 @@ def check_function_load(context, function_frequencies, function_runtimes,
         latency_history[fname] = (avg_latency, runtime[1])
         function_frequencies[fname] = 0
         function_runtimes[fname] = 0.0
+
 
 def replicate_function(fname, context, num_replicas, func_locations, executors):
     if num_replicas < 0:
@@ -317,11 +320,12 @@ def replicate_function(fname, context, num_replicas, func_locations, executors):
 
         ip, tid = random.sample(candiate_nodes, 1)[0]
 
-        sckt = context.socket(zmq.PUSH)
-        sckt.connect(util._get_executor_pin_address(ip, tid))
-        sckt.send_string('127.0.0.1:' + fname)
+        socket = context.socket(zmq.PUSH)
+        socket.connect(util._get_executor_pin_address(ip, tid))
+        socket.send_string('127.0.0.1:' + fname)
 
         func_locations[fname].add((ip, tid))
+
 
 def dereplicate_function(fname, context, num_replicas, func_locations):
     if num_replicas < 2:
@@ -329,17 +333,17 @@ def dereplicate_function(fname, context, num_replicas, func_locations):
 
     while len(func_locations[fname]) > num_replicas:
         ip, tid = random.sample(func_locations[fname], 1)[0]
-        unpin_addr = util._get_executor_unpin_address(ip, tid)
-        sckt = context.socket(zmq.PUSH)
-        sckt.connect(unpin_addr)
+        unpin_address = util._get_executor_unpin_address(ip, tid)
+        socket = context.socket(zmq.PUSH)
+        socket.connect(unpin_address)
 
-        sckt.send_string(fname)
+        socket.send_string(fname)
 
         func_locations[fname].discard((ip, tid))
 
 
-def check_executor_utilization(client, ctx, executor_statuses,
-        departing_executors, add_push_socket):
+def check_executor_utilization(ctx, executor_statuses,
+                               departing_executors, add_push_socket):
     global grace_start
 
     utilization_sum = 0.0
@@ -355,8 +359,8 @@ def check_executor_utilization(client, ctx, executor_statuses,
 
     avg_utilization = utilization_sum / len(executor_statuses)
     avg_pinned_count = pinned_function_count / len(executor_statuses)
-    logging.info('Average executor utilization: %.4f' % (avg_utilization))
-    logging.info('Average pinned function count: %.2f' % (avg_pinned_count))
+    logging.info('Average executor utilization: %.4f' % avg_utilization)
+    logging.info('Average pinned function count: %.2f' % avg_pinned_count)
 
     # we check to see if the grace period has ended; we only check to implement
     # some of the elasticity decisions if that is the case
@@ -366,7 +370,7 @@ def check_executor_utilization(client, ctx, executor_statuses,
         if avg_utilization > UTILIZATION_MAX or avg_pinned_count > \
                 PINNED_COUNT_MAX:
             logging.info(('Average utilization is %.4f. Adding %d nodes to'
-                 + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
+                          + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
 
             if (len(executor_statuses) / NUM_EXEC_THREADS) < 22:
                 msg = 'function:' + str(EXECUTOR_INCREASE)
@@ -383,8 +387,8 @@ def check_executor_utilization(client, ctx, executor_statuses,
         if avg_utilization < UTILIZATION_MIN and num_nodes > 10:
             ip = random.choice(list(executor_statuses.values())).ip
             logging.info(('Average utilization is %.4f, and there are %d '
-                    + 'executors. Removing IP %s.') % (avg_utilization,
-                        len(executor_statuses), ip))
+                          + 'executors. Removing IP %s.') % (avg_utilization,
+                                                             len(executor_statuses), ip))
 
             for tid in range(NUM_EXEC_THREADS):
                 sckt = ctx.socket(zmq.PUSH)
@@ -431,7 +435,7 @@ def check_hash_ring(client, context):
         return
     elif len(tier_data) > 1:
         mem_tier, ebs_tier = tier_data[0], tier_data[1] if tier_data[0].tier_id \
-                == 1 else tier_data[1], tier_data[0]
+                                                           == 1 else tier_data[1], tier_data[0]
     else:
         mem_tier, ebs_tier = tier_data[0], None
 
@@ -457,7 +461,7 @@ def check_hash_ring(client, context):
     logging.info('Found %d departed nodes.' % (len(departed)))
     for pair in departed:
         logging.info('Informing cluster that node %s/%s has departed.' %
-                (pair[1].public_ip, pair[1].private_ip))
+                     (pair[1].public_ip, pair[1].private_ip))
         msg = pair[0] + ':' + pair[1].public_ip + ':' + pair[1].private_ip
         for ip in storage_ips:
             send_msg(msg, context, ip, storage_depart_port)
@@ -469,10 +473,12 @@ def check_hash_ring(client, context):
         for ip in mon_ips:
             send_msg(msg, context, ip, mon_depart_port)
 
+
 def send_msg(msg, context, ip, port):
-    sckt = context.socket(zmq.PUSH)
-    sckt.connect('tcp://' + ip + ':' + str(port))
-    sckt.send_string(msg)
+    socket = context.socket(zmq.PUSH)
+    socket.connect('tcp://' + ip + ':' + str(port))
+    socket.send_string(msg)
+
 
 def check_unused_nodes(client, add_push_socket):
     kinds = ['ebs', 'memory']
@@ -483,7 +489,7 @@ def check_unused_nodes(client, add_push_socket):
         nodes = {}
         for node in client.list_node(label_selector=selector).items:
             ip = list(filter(lambda address: address.type == 'InternalIP',
-                    node.status.addresses))[0].address
+                             node.status.addresses))[0].address
             nodes[ip] = node
 
         node_ips = nodes.keys()
@@ -495,11 +501,12 @@ def check_unused_nodes(client, add_push_socket):
         route_ips = util.get_pod_ips(client, 'role=routing')
 
         logging.info('Found %d unallocated %s nodes.' % (len(unallocated),
-            kind))
+                                                         kind))
 
         if len(unallocated) > 0:
             msg = kind + ':' + str(len(unallocated))
             add_push_socket.send_string(msg)
+
 
 if __name__ == '__main__':
     # wait for this file to appear before starting
