@@ -5,14 +5,13 @@ import uuid
 import sys
 
 import cloudpickle as cp
+import redis
 import numpy
-
-# import executor.redis_shim
-# import retwis.retwis_lib
 
 from anna.lattices import *
 
 def run(flconn, kvs, create, num_requests, count_anomalies, sckt, reply_frac=0.2):
+
 
     class FluentRedisShim:
         def __init__(self, fluent_user_library):
@@ -124,6 +123,143 @@ def run(flconn, kvs, create, num_requests, count_anomalies, sckt, reply_frac=0.2
                 return len(list(values))
             else:
                 return 0
+
+
+    class RealRedisShim:
+        def __init__(self, fluent_user_library):
+            self.r = redis.Redis(host='3.89.194.39', port=6379, db=0)
+
+        def exists(self, key):
+            res = self.r.exists(key)
+            return res
+
+        def get(self, key):
+            res = self.r.get(key)
+            return res
+
+        def set(self, key, value):
+            res = self.r.set(key, value)
+            return res
+
+        def incr(self, key):
+            res = self.r.incr(key)
+            return res
+
+        def sadd(self, key, value):
+            res = self.r.sadd(key, value)
+            return res
+
+        def smembers(self, key):
+            res = self.r.smembers(key)
+            return res
+
+        def sismember(self, key, value):
+            res = self.r.sismember(key, value)
+            return res
+
+        def scard(self, key):
+            res = self.r.scard(key)
+            return res
+
+        def lpush(self, key, value):
+            res = self.r.lpush(key, value)
+            return res
+
+        def lrange(self, key, begin, end):
+            res = self.r.lrange(key, begin, end)
+            return res
+
+        def llen(self, key):
+            res = self.r.llen(key)
+            return res
+
+
+    class TimedRedisShim:
+        REDIS_SHIM_TO_USE = FluentRedisShim
+        def __init__(self, fluent_user_library):
+            self.r = REDIS_SHIM_TO_USE(fluent_user_library)
+            self.times = {
+                'exists': [],
+                'get': [],
+                'set': [],
+                'incr': [],
+                'sadd': [],
+                'smembers': [],
+                'sismember': [],
+                'scard': [],
+                'lpush': [],
+                'lrange': [],
+                'llen': [],
+            }
+
+        def exists(self, key):
+            start = time.time()
+            res = self.r.exists(key)
+            self.times['exists'].append(time.time() - start)
+            return res
+
+        def get(self, key):
+            start = time.time()
+            res = self.r.get(key)
+            self.times['get'].append(time.time() - start)
+            return res
+
+        def set(self, key, value):
+            start = time.time()
+            res = self.r.set(key, value)
+            self.times['set'].append(time.time() - start)
+            return res
+
+        def incr(self, key):
+            start = time.time()
+            res = self.r.incr(key)
+            self.times['incr'].append(time.time() - start)
+            return res
+
+        def sadd(self, key, value):
+            start = time.time()
+            res = self.r.sadd(key, value)
+            self.times['sadd'].append(time.time() - start)
+            return res
+
+        def smembers(self, key):
+            start = time.time()
+            res = self.r.smembers(key)
+            self.times['smembers'].append(time.time() - start)
+            return res
+
+        def sismember(self, key, value):
+            start = time.time()
+            res = self.r.sismember(key, value)
+            self.times['sismember'].append(time.time() - start)
+            return res
+
+        def scard(self, key):
+            start = time.time()
+            res = self.r.scard(key)
+            self.times['scard'].append(time.time() - start)
+            return res
+
+        def lpush(self, key, value):
+            start = time.time()
+            res = self.r.lpush(key, value)
+            self.times['lpush'].append(time.time() - start)
+            return res
+
+        def lrange(self, key, begin, end):
+            start = time.time()
+            res = self.r.lrange(key, begin, end)
+            self.times['lrange'].append(time.time() - start)
+            return res
+
+        def llen(self, key):
+            start = time.time()
+            res = self.r.llen(key)
+            self.times['llen'].append(time.time() - start)
+            return res
+
+
+
 
     class Timeline:
       @staticmethod
