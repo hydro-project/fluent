@@ -39,7 +39,6 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
             call.args)))
 
     ip, tid = _pick_node(executors, key_ip_map, refs, running_counts, backoff)
-    logging.info('Calling %s at %s:%d.' % (call.name, ip, tid))
     sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
 
@@ -93,8 +92,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         sckt = pusher_cache.get(ip)
         sckt.send(schedule.SerializeToString())
 
-    logging.info('Calling DAG locality (%s) at %s.' % (schedule.id, schedule.locations['dot']))
-
     for source in sources:
         trigger = DagTrigger()
         trigger.id = schedule.id
@@ -113,7 +110,6 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     # relevant arguments they have cached. For the time begin, we will
     # just pick the machine that has the most number of keys cached.
     arg_map = {}
-    reason = ''
 
     executors = set(valid_executors)
     for executor in backoff:
@@ -153,7 +149,6 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     if max_ip:
         candidates = list(filter(lambda e: e[0] == max_ip, executors))
         max_ip = sys_random.choice(candidates)
-        reason = 'locality'
 
     # This only happens if max_ip is never set, and that means that
     # there were no machines with any of the keys cached. In this case,
@@ -161,7 +156,6 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     # most recently.
     if not max_ip or sys_random.random() < 0.20:
         max_ip = sys_random.sample(executors, 1)[0]
-        reason = 'random'
 
     if max_ip not in running_counts:
         running_counts[max_ip] = set()

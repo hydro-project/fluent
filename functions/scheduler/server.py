@@ -243,7 +243,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             splits = msg.split(':')
             node, tid = splits[0], int(splits[1])
 
-            # backoff[(node, tid)] = time.time()
+            backoff[(node, tid)] = time.time()
 
         # periodically clean up the running counts map
         for executor in running_counts:

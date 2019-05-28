@@ -27,9 +27,5 @@ spec:
       value: mn
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
-    - name: REPO_ORG
-      value: vsreekanti
-    - name: REPO_BRANCH
-      value: summa
   nodeSelector:
     role: general

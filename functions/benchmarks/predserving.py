@@ -49,7 +49,7 @@ def run(flconn, kvs, num_requests, sckt):
 
     sqnet_test1 = cloud_sqnet1(prep_test).get()
     if type(prep_test) != np.ndarray:
-        print('Unexpected result from squeezenet2(arr): %s' % (str(sqnet_test)))
+        print('Unexpected result from squeezenet1(arr): %s' % (str(sqnet_test)))
         sys.exit(1)
 
     sqnet_test2 = cloud_sqnet2(prep_test).get()

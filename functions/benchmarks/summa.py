@@ -205,7 +205,6 @@ def run(flconn, kvs, num_requests, sckt):
             lstart = time.time()
             res = rids[key].get()
             lend = time.time()
-            print('1 get took %.6f seconds.' % (lend - lstart))
             get_times.append(res[1])
             send_times.append(res[2])
             comp_times.append(res[3])
@@ -217,13 +216,6 @@ def run(flconn, kvs, num_requests, sckt):
             result[(r * bsize):((r + 1) * bsize), (c * bsize):((c + 1) * bsize)] = res
 
         end = time.time()
-        print('GET:' + str(get_times))
-        print('SEND:' + str(send_times))
-        print('COMP:' + str(comp_times))
-        print('TOTAL:' + str(total_times))
-        print(end - start)
-        print()
-        print()
         latencies.append(end -start)
 
         if False in np.isclose(result, np.matmul(inp1, inp2)):

@@ -120,7 +120,7 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip, pusher_cach
     try:
         resp.ParseFromString(pin_accept_socket.recv())
     except zmq.ZMQError as e:
-        logging.info('Pin operation to %s:%d timed out. Retrying.' % (node, tid))
+        logging.error('Pin operation to %s:%d timed out. Retrying.' % (node, tid))
         # request timed out, try again
         return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
                 pusher_cache)
@@ -128,7 +128,7 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip, pusher_cach
     if resp.success:
         return node, tid
     else: # the pin operation was rejected, remove node and try again
-        logging.info('Node %s:%d rejected pin operation. Retrying.' % (node, tid))
+        logging.error('Node %s:%d rejected pin operation. Retrying.' % (node, tid))
         candidates.discard((node, tid))
         return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
                 pusher_cache)
