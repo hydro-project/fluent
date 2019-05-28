@@ -28,6 +28,7 @@ sys_random = random.SystemRandom()
 
 def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
         executor_status_map, running_counts, backoff):
+
     call = FunctionCall()
     call.ParseFromString(func_call_socket.recv())
 
@@ -39,6 +40,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
             call.args)))
 
     ip, tid = _pick_node(executors, key_ip_map, refs, running_counts, backoff)
+
     sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
 
@@ -77,6 +79,8 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
 
+    logging.info('Sending to %s' %(schedule.locations['sleep']))
+
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
         ip = utils._get_queue_address(loc[0], loc[1])
@@ -110,6 +114,18 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     # relevant arguments they have cached. For the time begin, we will
     # just pick the machine that has the most number of keys cached.
     arg_map = {}
+    reason = ''
+
+    executors = set(valid_executors)
+    for executor in backoff:
+        if len(executors) > 1:
+            executors.discard(executor)
+
+    keys = list(running_counts.keys())
+    sys_random.shuffle(keys)
+    for key in keys:
+        if len(running_counts[key]) > 1000 and len(executors) > 1:
+            executors.discard(key)
 
     executors = set(valid_executors)
     for executor in backoff:

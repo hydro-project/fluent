@@ -19,7 +19,7 @@ metadata:
   labels: 
     role: function
 spec:
-  restartPolicy: Never
+  restartPolicy: Always
   volumes:
   - name: ipc
     hostPath:

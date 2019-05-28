@@ -122,6 +122,7 @@ def _exec_func_normal(kvs, func, args, user_lib):
 
     if refs:
         refs = _resolve_ref_normal(refs, kvs)
+    end = time.time()
 
     func_args = (user_lib,)
     for arg in args:

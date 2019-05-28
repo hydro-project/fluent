@@ -78,7 +78,7 @@ inline Key get_key_from_user_metadata(Key metadata_key) {
   n_id = metadata_key.find(kMetadataDelimiter);
   // Find the second delimiter; this skips over the metadata type.
   n_type = metadata_key.find(kMetadataDelimiter, n_id + 1);
-  string metadata_type = metadata_key.substr(n_id + 1, n_type);
+  string metadata_type = metadata_key.substr(n_id + 1, n_type - (n_id + 1));
   if (metadata_type == kMetadataTypeCacheIP) {
     return metadata_key.substr(n_type + 1);
   }

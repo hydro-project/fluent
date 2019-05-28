@@ -44,7 +44,7 @@ def create_func(func_create_socket, kvs):
 
 
 def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
-        pin_accept_socket, func_locations, call_frequency, num_replicas=21):
+        pin_accept_socket, func_locations, call_frequency, num_replicas=1):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -129,6 +129,7 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip, pusher_cach
         return node, tid
     else: # the pin operation was rejected, remove node and try again
         logging.error('Node %s:%d rejected pin operation. Retrying.' % (node, tid))
+
         candidates.discard((node, tid))
         return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
                 pusher_cache)

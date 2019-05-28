@@ -30,7 +30,7 @@ def _get_func_list(client, prefix, fullname=False):
     if not funcs:
         return []
 
-    funcs = default_ser.load(funcs.reveal()[1])
+    funcs = funcs.reveal()
 
     prefix = FUNC_PREFIX + prefix
     result = list(filter(lambda fn: fn.startswith(prefix), funcs))
@@ -43,9 +43,9 @@ def _get_func_list(client, prefix, fullname=False):
 
 def _put_func_list(client, funclist):
     # remove duplicates
-    funclist = list(set(funclist))
+    funclist = set(funclist)
 
-    l = LWWPairLattice(generate_timestamp(0), default_ser.dump(funclist))
+    l = SetLattice(funclist)
     client.put(FUNCOBJ, l)
 
 

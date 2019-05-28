@@ -24,7 +24,7 @@ def run(flconn, kvs, num_requests, sckt):
 
         myid = fluent.getid()
         key = '%s: (%d, %d)' %  (uid, rid, cid)
-        logging.info('I am %s' % (str(key)))
+
         fluent.put(key, LWWPairLattice(0, cp.dumps(myid)))
 
         start = time.time()

@@ -188,9 +188,9 @@ class AnnaClient():
             s = SetValue()
             s.ParseFromString(tup.payload)
 
-            result = {}
-            for k in s.keys:
-                result.insert(k)
+            result = set()
+            for k in s.values:
+                result.add(k)
 
             return SetLattice(result)
 
@@ -202,7 +202,7 @@ class AnnaClient():
             return lww.SerializeToString(), LWW
         elif isinstance(val, SetLattice):
             s = SetValue()
-            for o in val:
+            for o in val.reveal():
                 s.values.append(o)
 
             return s.SerializeToString(), SET

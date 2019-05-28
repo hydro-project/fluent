@@ -43,6 +43,8 @@ elif bname == 'pred_serving':
             num_requests, None)
 elif bname == 'avg':
     total, scheduler, kvs, retries = dist_avg.run(flconn, kvs, num_requests, None)
+elif bname == 'summa':
+    total, scheduler, kvs, retries = summa.run(flconn, kvs, num_requests, None)
 elif bname == 'scaling':
     total, scheduler, kvs, retries = scaling.run(flconn, kvs, num_requests, None)
 else:
