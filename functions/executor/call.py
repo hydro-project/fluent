@@ -82,7 +82,6 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, u
             (schedule.dag.name, fname, trigger.id, time.time()))
 
     fargs = _process_args(fargs)
-
     result = _exec_func_normal(kvs, function, fargs, user_lib)
 
     is_sink = True
@@ -120,6 +119,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, u
 
 def _exec_func_normal(kvs, func, args, user_lib):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
+
     if refs:
         refs = _resolve_ref_normal(refs, kvs)
     end = time.time()
@@ -136,7 +136,9 @@ def _exec_func_normal(kvs, func, args, user_lib):
     return res
 
 def _resolve_ref_normal(refs, kvs):
+    start = time.time()
     keys = [ref.key for ref in refs]
+    keys = list(set(keys))
     kv_pairs = kvs.get(keys)
 
     # when chaining function executions, we must wait
@@ -148,6 +150,7 @@ def _resolve_ref_normal(refs, kvs):
         if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
             kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])
 
+    end = time.time()
     return kv_pairs
 
 def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
@@ -181,7 +184,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     fargs = _process_args(fargs)
 
     kv_pairs = {}
-
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
                                schedule, versioned_key_locations)
 

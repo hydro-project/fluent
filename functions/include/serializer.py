@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import cloudpickle as cp
+import pyarrow as pa
 import codecs
 from io import BytesIO
 import numpy as np
@@ -76,13 +77,10 @@ class NumpySerializer(DefaultSerializer):
         pass
 
     def dump(self, msg):
-        body = BytesIO()
-
-        np.save(body, msg)
-        return body.getvalue()
+        return pa.serialize(msg).to_buffer().to_pybytes()
 
     def load(self, msg):
-        return np.load(BytesIO(msg))
+        return pa.deserialize(msg)
 
 numpy_ser = NumpySerializer()
 default_ser = DefaultSerializer()

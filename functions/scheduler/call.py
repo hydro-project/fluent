@@ -15,6 +15,7 @@
 import logging
 import random
 import uuid
+import time
 import zmq
 
 from include.functions_pb2 import *
@@ -26,7 +27,8 @@ from . import utils
 sys_random = random.SystemRandom()
 
 def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
-        running_counts, backoff):
+        executor_status_map, running_counts, backoff):
+
     call = FunctionCall()
     call.ParseFromString(func_call_socket.recv())
 
@@ -38,11 +40,12 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
             call.args)))
 
     ip, tid = _pick_node(executors, key_ip_map, refs, running_counts, backoff)
-    logging.info('Calling %s at %s:%d.' % (call.name, ip, tid))
+
     sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
 
     executors.discard((ip, tid))
+    executor_status_map[(ip, tid)] = time.time()
 
     r = GenericResponse()
     r.success = True
@@ -61,8 +64,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     schedule.consistency = NORMAL
     if call.HasField('response_address'):
         schedule.response_address = call.response_address
-
-    logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 
     for fname in dag.functions:
         locations = func_locations[fname]
@@ -126,6 +127,17 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
         if len(running_counts[key]) > 1000 and len(executors) > 1:
             executors.discard(key)
 
+    executors = set(valid_executors)
+    for executor in backoff:
+        if len(executors) > 1:
+            executors.discard(executor)
+
+    keys = list(running_counts.keys())
+    sys_random.shuffle(keys)
+    for key in keys:
+        if len(running_counts[key]) > 1000 and len(executors) > 1:
+            executors.discard(key)
+
     executor_ips = [e[0] for e in executors]
 
     for ref in refs:
@@ -153,7 +165,6 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     if max_ip:
         candidates = list(filter(lambda e: e[0] == max_ip, executors))
         max_ip = sys_random.choice(candidates)
-        reason = 'locality'
 
     # This only happens if max_ip is never set, and that means that
     # there were no machines with any of the keys cached. In this case,
@@ -161,7 +172,6 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     # most recently.
     if not max_ip or sys_random.random() < 0.20:
         max_ip = sys_random.sample(executors, 1)[0]
-        reason = 'random'
 
     if max_ip not in running_counts:
         running_counts[max_ip] = set()

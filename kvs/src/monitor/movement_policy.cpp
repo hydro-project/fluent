@@ -123,7 +123,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
     }
   }
 
-  requests.clear();
+  //requests.clear();
   total_rep_to_change = 0;
 
   // reduce the replication factor of some keys that are not so hot anymore

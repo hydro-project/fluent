@@ -40,6 +40,11 @@ enum ConsistencyType {
   CROSS = 2;
 }
 
+enum UpdateType {
+  PERIODIC = 0;
+  POST_REQUEST = 1;
+}
+
 message Value {
   required bytes body = 1;
   optional SerializerType type = 2;
@@ -88,7 +93,8 @@ message ThreadStatus {
   required uint32 tid = 2;
   repeated string functions = 3;
   optional double utilization = 4;
-  required bool running = 5 [default = true];
+  required UpdateType type = 5;
+  required bool running = 6 [default = true];
 }
 
 message DagSchedule {
