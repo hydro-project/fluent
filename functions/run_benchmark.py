@@ -3,6 +3,7 @@
 import logging
 import sys
 from benchmarks import composition
+from benchmarks import dist_avg
 from benchmarks import locality
 from benchmarks import predserving
 from benchmarks import scaling
@@ -40,6 +41,8 @@ elif bname == 'locality':
 elif bname == 'pred_serving':
     total, scheduler, kvs, retries = predserving.run(flconn, kvs,
             num_requests, None)
+elif bname == 'avg':
+    total, scheduler, kvs, retries = dist_avg.run(flconn, kvs, num_requests, None)
 elif bname == 'summa':
     total, scheduler, kvs, retries = summa.run(flconn, kvs, num_requests, None)
 elif bname == 'scaling':

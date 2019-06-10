@@ -16,6 +16,7 @@
 #define INCLUDE_COMMON_HPP_
 
 #include <algorithm>
+#include <sstream>
 
 #include "kvs.pb.h"
 #include "lattices/cross_causal_lattice.hpp"

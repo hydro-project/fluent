@@ -4,78 +4,97 @@ import sys
 import time
 import uuid
 
+from anna.lattices import LWWPairLattice
 from include.functions_pb2 import *
+from include.kvs_pb2 import *
 from include.serializer import *
+from include.shared import *
 
 def run(flconn, kvs, num_requests, sckt):
     ### DEFINE AND REGISTER FUNCTIONS ###
     def summa(fluent, uid, lblock, rblock, rid, cid, numrows, numcols):
         import cloudpickle as cp
         from anna.lattices import LWWPairLattice
+        import time
+        gstart = time.time()
 
         bsize = lblock.shape[0]
+        ssize = 100
         res = np.zeros((bsize, bsize))
 
         myid = fluent.getid()
         key = '%s: (%d, %d)' %  (uid, rid, cid)
+
         fluent.put(key, LWWPairLattice(0, cp.dumps(myid)))
 
+        start = time.time()
         proc_locs = {}
+        keyset = []
+        idset = {}
         for i in range(numrows):
             if i == rid:
                 continue
+
             key = '%s: (%d, %d)' % (uid, i, cid)
-            loc = fluent.get(key)
-
-            while loc is None:
-                loc = fluent.get(key)
-
-            proc_locs[(i, cid)] = cp.loads(loc.reveal()[1])
+            keyset.append(key)
+            idset[key] = (i, cid)
 
         for j in range(numcols):
             if j == cid:
                 continue
 
             key = '%s: (%d, %d)' % (uid, rid, j)
-            loc = fluent.get(key)
+            keyset.append(key)
+            idset[key] = (rid, j)
 
-            while loc is None:
-                loc = fluent.get(key)
 
-            proc_locs[(rid, j)] = cp.loads(loc.reveal()[1])
+        locs = fluent.get(keyset)
+        while None in locs.values():
+            locs = fluent.get(keyset)
 
+        for key in locs:
+            loc = idset[key]
+            proc_locs[loc] = cp.loads(locs[key].reveal()[1])
+
+        end = time.time()
+        gtime = end - gstart
+
+        start = time.time()
         for c in range(numcols):
             if c == cid:
                 continue
 
-            for k in range(bsize):
-                dest = proc_locs[rid, c]
+            for k in range(int(bsize / ssize)):
+                dest = proc_locs[(rid, c)]
                 send_id = ('l', k + (bsize * cid))
 
-                msg = cp.dumps((send_id, lblock[:,k]))
+                msg = cp.dumps((send_id, lblock[:,(k * ssize):((k+1) * ssize)]))
                 fluent.send(dest, msg)
 
         for r in range(numrows):
             if r == rid:
                 continue
 
-            for k in range(bsize):
-                dest = proc_locs[r, cid]
+            for k in range(int(bsize / ssize)):
+                dest = proc_locs[(r, cid)]
                 send_id = ('r', k + (bsize * rid))
 
-                msg = cp.dumps((send_id, rblock[k,:]))
+                msg = cp.dumps((send_id, rblock[(k * ssize):((k+1) * ssize),:]))
                 fluent.send(dest, msg)
+        end = time.time()
+        stime = end - start
 
-        num_recvs = (numrows - 1) * bsize  + (numcols - 1) * bsize
+        num_recvs = (((numrows - 1) * bsize) / ssize) * 2
         recv_count = 0
         left_recvs = {}
         right_recvs = {}
 
-        for l in range(bsize):
-            left_recvs[l + (bsize * cid)] = lblock[:,l]
+        start = time.time()
+        for l in range(int(bsize / ssize)):
+            left_recvs[l + (bsize * cid)] = lblock[:,(l * ssize):((l+1) * ssize)]
 
-        for r in range(bsize):
-            right_recvs[r + (bsize * rid)] = rblock[r,:]
+        for r in range(int(bsize / ssize)):
+            right_recvs[r + (bsize * rid)] = rblock[(r * ssize):((r+1) * ssize),:]
 
         while recv_count < num_recvs:
             msgs = fluent.recv()
@@ -93,7 +112,7 @@ def run(flconn, kvs, num_requests, sckt):
 
                     if key in right_recvs:
                         match_vec = right_recvs[key]
-                        res = np.add(np.outer(col, match_vec), res)
+                        res = np.add(np.matmul(col, match_vec), res)
 
                         del right_recvs[key]
                         del left_recvs[key]
@@ -105,7 +124,7 @@ def run(flconn, kvs, num_requests, sckt):
 
                     if key in left_recvs:
                         match_vec = left_recvs[key]
-                        res = np.add(np.outer(match_vec, row), res)
+                        res = np.add(np.matmul(match_vec, row), res)
 
                         del right_recvs[key]
                         del left_recvs[key]
@@ -113,10 +132,13 @@ def run(flconn, kvs, num_requests, sckt):
         for key in left_recvs:
             left = left_recvs[key]
             right = right_recvs[key]
+            logging.info(left.shape)
+            logging.info(right.shape)
 
-            res = np.add(res, np.outer(left, right))
-
-        return res
+            res = np.add(res, np.matmul(left, right))
+        end = time.time()
+        ctime = end - start
+        return res, gtime, stime, ctime, (end - gstart)
 
     cloud_summa = flconn.register(summa, 'summa')
 
@@ -126,10 +148,10 @@ def run(flconn, kvs, num_requests, sckt):
         sys.exit(1)
 
     ### TEST REGISTERED FUNCTIONS ###
-    n = 1000
+    n = 10000
     inp1 = np.random.randn(n, n)
     inp2 = np.random.randn(n, n)
-    nt = 4
+    nt = 5
     nr = nt
     nc = nt
     bsize = int(n / nr)
@@ -148,23 +170,52 @@ def run(flconn, kvs, num_requests, sckt):
         uid = str(uuid.uuid4())
         rids = {}
 
-        start = time.time()
+        left_id_map = {}
+        right_id_map = {}
         for r in range(nr):
             for c in range(nc):
                 lblock = get_block(inp1, r, c, bsize)
                 rblock = get_block(inp2, r, c, bsize)
+                id1 = str(uuid.uuid4())
+                id2 = str(uuid.uuid4())
 
-                rids[(r, c)] = cloud_summa(uid, lblock, rblock, r, c, nr, nc)
+                kvs.put(id1, LWWPairLattice(0, serialize_val(lblock)))
+                kvs.put(id2, LWWPairLattice(0, serialize_val(rblock)))
+
+                left_id_map[(r, c)] = id1
+                right_id_map[(r, c)] = id2
+
+        start = time.time()
+        for r in range(nr):
+            for c in range(nc):
+                r1 = FluentReference(left_id_map[(r, c)], LWW, True)
+                r2 = FluentReference(right_id_map[(r, c)], LWW, True)
+
+                rids[(r, c)] = cloud_summa(uid, r1, r2, r, c, nr, nc)
+        end = time.time()
+        print('Scheduling to %.6f seconds.' % (end - start))
 
         result = np.zeros((n, n))
+        get_times = []
+        send_times = []
+        comp_times = []
+        total_times = []
+
         for key in rids:
+            lstart = time.time()
             res = rids[key].get()
+            lend = time.time()
+            get_times.append(res[1])
+            send_times.append(res[2])
+            comp_times.append(res[3])
+            total_times.append(res[4])
+
+            res = res[0]
             r = key[0]
             c = key[1]
             result[(r * bsize):((r + 1) * bsize), (c * bsize):((c + 1) * bsize)] = res
 
         end = time.time()
-        print(end - start)
         latencies.append(end -start)
 
         if False in np.isclose(result, np.matmul(inp1, inp2)):

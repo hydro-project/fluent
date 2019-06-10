@@ -342,7 +342,7 @@ def dereplicate_function(fname, context, num_replicas, func_locations):
         func_locations[fname].discard((ip, tid))
 
 
-def check_executor_utilization(ctx, executor_statuses,
+def check_executor_utilization(client, ctx, executor_statuses,
                                departing_executors, add_push_socket):
     global grace_start
 

@@ -94,9 +94,9 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(backoff_socket, zmq.POLLIN)
 
     executors = set()
-    departed_executors = set()
+    executor_status_map = {}
     schedulers = _update_cluster_state(requestor_cache, mgmt_ip, executors,
-            departed_executors, key_ip_map, kvs)
+            key_ip_map, kvs)
 
     # track how often each DAG function is called
     call_frequency = {}
@@ -115,7 +115,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
             call_function(func_call_socket, pusher_cache, executors,
-                    key_ip_map, running_counts, backoff)
+                    key_ip_map, executor_status_map, running_counts, backoff)
 
         if dag_create_socket in socks and socks[dag_create_socket] == zmq.POLLIN:
             create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
@@ -166,6 +166,15 @@ def scheduler(ip, mgmt_ip, route_addr):
             logging.info('Received status update from executor %s:%d.' %
                     (key[0], int(key[1])))
 
+            if key in executor_status_map:
+                if status.type == PERIODIC:
+                    if executor_status_map[key] - time.time() > 5:
+                        del executor_status_map[key]
+                    else:
+                        continue
+                elif status.type == POST_REQUEST:
+                    del executor_status_map[key]
+
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking
             if not status.running:
@@ -178,8 +187,6 @@ def scheduler(ip, mgmt_ip, route_addr):
                             old_status.tid))
 
                 executors.discard(key)
-                departed_executors.add((status.ip, status.tid))
-
                 continue
 
             if key not in executors:
@@ -239,7 +246,7 @@ def scheduler(ip, mgmt_ip, route_addr):
             splits = msg.split(':')
             node, tid = splits[0], int(splits[1])
 
-            # backoff[(node, tid)] = time.time()
+            backoff[(node, tid)] = time.time()
 
         # periodically clean up the running counts map
         for executor in running_counts:
@@ -262,7 +269,7 @@ def scheduler(ip, mgmt_ip, route_addr):
         end = time.time()
         if end - start > THRESHOLD:
             schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
-                    executors, departed_executors, key_ip_map, kvs)
+                    executors, key_ip_map, kvs)
 
             status = SchedulerStatus()
             for name in dags.keys():
@@ -298,8 +305,8 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             start = time.time()
 
-def _update_cluster_state(requestor_cache, mgmt_ip, executors,
-        departed_executors, key_ip_map, kvs):
+def _update_cluster_state(requestor_cache, mgmt_ip, executors, key_ip_map,
+        kvs):
     # update our local key-cache mapping information
     utils._update_key_maps(key_ip_map, executors, kvs)
 
