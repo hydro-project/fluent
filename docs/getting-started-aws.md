@@ -20,7 +20,7 @@ We assume you have Python3 installed (preferably Python3.6 or later -- we haven'
 
 ### Step 3: Odds and ends
 
-* Our cluster creation scripts depend on two environment variables `NAME` and `KOPS_STATE_STORE`. Set the `NAME` variable to the name of the Route53 domain that you're using (see Footnote 2 if you are not using a Route53 domain -- you will need to modify the cluster creation scripts). Set the `KOPS_STATE_STORE` variable to the S3 URL of S3 bucket you created in Step 2 (e.g., `s3://fluent-kops-state-store`). 
+* Our cluster creation scripts depend on two environment variables `FLUENT_CLUSTER_NAME` and `FLUENT_STATE_STORE`. Set the `FLUENT_CLUSTER_NAME` variable to the name of the Route53 domain that you're using (see Footnote 2 if you are not using a Route53 domain -- you will need to modify the cluster creation scripts). Set the `KOPS_STATE_STORE` variable to the S3 URL of S3 bucket you created in Step 2 (e.g., `s3://fluent-kops-state-store`). 
 * As described in Footnote 1, make sure that your `$PATH` variable includes the path to the `aws` CLI tool. You can check if its on your path by running `which aws` -- if you see a valid path, then you're set.
 * As descried in Step 2, make sure you have run `aws configure` and set your region (by default, we use `us-east-1`) and the access key parameters for the kops user created in Step 2.
 
@@ -30,4 +30,4 @@ You're now ready to create your first cluster. To start off, we'll create a tiny
 
 <sup>1</sup> By default, the AWS CLI tool installs in `~/.local/bin` on Ubuntu. You will have to add this directory to your `$PATH`.
 
-<sup>2</sup> You can also run in local mode, where you set the `NAME` environment variable to `{clustername}.k8s.local`. This setting doesn't require a domain name -- however, this mode limits cluster size because it only runs in mesh networking mode (which only allows up to 64 nodes, from what we can tell), and requires modifying our existing cluster creation scripts. We don't have documentation written up for this as its not a use case we intend to support, but you can either [open an issue](https://github.com/fluent-project/fluent/issues/new) or send us an [email](mailto:vikrams@cs.berkeley.edu) if you're interested in this.
+<sup>2</sup> You can also run in local mode, where you set the `FLUENT_CLUSTER_NAME` environment variable to `{clustername}.k8s.local`. This setting doesn't require a domain name -- however, this mode limits cluster size because it only runs in mesh networking mode (which only allows up to 64 nodes, from what we can tell), and requires modifying our existing cluster creation scripts. We don't have documentation written up for this as its not a use case we intend to support, but you can either [open an issue](https://github.com/fluent-project/fluent/issues/new) or send us an [email](mailto:vikrams@cs.berkeley.edu) if you're interested in this.

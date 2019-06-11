@@ -42,8 +42,8 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
 
     replace_yaml_val(env, 'AWS_ACCESS_KEY_ID', aws_key_id)
     replace_yaml_val(env, 'AWS_SECRET_ACCESS_KEY', aws_key)
-    replace_yaml_val(env, 'KOPS_STATE_STORE', kops_bucket)
-    replace_yaml_val(env, 'NAME', cluster_name)
+    replace_yaml_val(env, 'FLUENT_STATE_STORE', kops_bucket)
+    replace_yaml_val(env, 'FLUENT_CLUSTER_NAME', cluster_name)
 
     client.create_namespaced_pod(namespace=NAMESPACE, body=kops_spec)
 
@@ -182,8 +182,8 @@ if __name__ == '__main__':
 
     mem, ebs, func, sched, route, bench = parse_args(sys.argv[1:], 6, int)
 
-    cluster_name = check_or_get_env_arg('NAME')
-    kops_bucket = check_or_get_env_arg('KOPS_STATE_STORE')
+    cluster_name = check_or_get_env_arg('FLUENT_CLUSTER_NAME')
+    kops_bucket = check_or_get_env_arg('FLUENT_STATE_STORE')
     aws_key_id = check_or_get_env_arg('AWS_ACCESS_KEY_ID')
     aws_key = check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
 

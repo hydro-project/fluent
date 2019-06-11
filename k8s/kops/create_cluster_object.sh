@@ -42,16 +42,16 @@ if [[ -z "$AWS_ACCESS_KEY_ID" ]] || [[ -z "$AWS_SECRET_ACCESS_KEY" ]]; then
   exit 1
 fi
 
-NAME=$1
+FLUSTER_CLUSTER_NAME=$1
 KOPS_STATE_STORE=$2
 
 echo "Creating cluster object..."
-kops create cluster --master-size c4.large --zones us-east-1a --ssh-public-key ${SSH_KEY}.pub ${NAME} --networking kube-router > /dev/null 2>&1
+kops create cluster --master-size c4.large --zones us-east-1a --ssh-public-key ${SSH_KEY}.pub ${FLUENT_CLUSTER_NAME} --networking kube-router > /dev/null 2>&1
 # delete default instance group that we won't use
-kops delete ig nodes --name ${NAME} --yes > /dev/null 2>&1
+kops delete ig nodes --name ${FLUENT_CLUSTER_NAME} --yes > /dev/null 2>&1
 
 echo "Adding general instance group"
-sed "s|CLUSTER_NAME|$NAME|g" yaml/igs/general-ig.yml > tmp.yml
+sed "s|CLUSTER_NAME|$FLUENT_CLUSTER_NAME|g" yaml/igs/general-ig.yml > tmp.yml
 kops create -f tmp.yml > /dev/null 2>&1
 rm tmp.yml
 

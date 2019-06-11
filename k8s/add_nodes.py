@@ -29,7 +29,7 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
         assert len(kinds) == len(counts), ('Must have same number of kinds and '
                                            + 'counts.')
 
-    cluster_name = check_or_get_env_arg('NAME')
+    cluster_name = check_or_get_env_arg('FLUENT_CLUSTER_NAME')
 
     prev_counts = []
     for i in range(len(kinds)):
