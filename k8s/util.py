@@ -50,7 +50,8 @@ def load_yaml(filename):
     except Error as e:
         print(f'''Unexpected error while loading YAML file:')
         {e.stderr}
-        'Make sure to clean up the cluster object and state store before recreating the cluster.
+        'Make sure to clean up the cluster object and state store before
+        recreating the cluster.
         '''
               )
         sys.exit(1)
@@ -70,8 +71,8 @@ def run_process(command):
 
 def check_or_get_env_arg(arg_name):
     if arg_name not in os.environ:
-        print(f'''Required argument {arg_name} not found as an environment variable.
-Please specify before re-running.''')
+        print(f'''Required argument {arg_name} not found as an environment
+        variable. Please specify before re-running.''')
         sys.exit(1)
 
     return os.environ[arg_name]
@@ -90,7 +91,8 @@ def get_pod_ips(client, selector, is_running=False):
         pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
 
         if is_running:
-            pod_statuses = list(filter(lambda pod: pod.status.phase != 'Running', pod_list))
+            pod_statuses = list(filter(
+                  lambda pod: pod.status.phase != 'Running', pod_list))
             running = len(pod_statuses) == 0
         else:
             running = True
@@ -135,7 +137,9 @@ def get_service_address(client, svc_name):
     return service.status.load_balancer.ingress[0].hostname
 
 
-# from https://github.com/aogier/k8s-client-python/blob/12f1443895e80ee24d689c419b5642de96c58cc8/examples/exec.py#L101
+# from https://github.com/aogier/k8s-client-python/
+# commmit: 12f1443895e80ee24d689c419b5642de96c58cc8/
+# file: examples/exec.py line 101
 def copy_file_to_pod(client, file_path, pod_name, pod_path, container):
     exec_command = ['tar', 'xmvf', '-', '-C', pod_path]
     resp = stream(client.connect_get_namespaced_pod_exec, pod_name, NAMESPACE,

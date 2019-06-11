@@ -41,7 +41,7 @@ grace_start = 0
 EXECUTOR_REPORT_PERIOD = 20
 
 NUM_EXEC_THREADS = 3
-EXECUTOR_INCREASE = 4 # the number of exec nodes to add at once
+EXECUTOR_INCREASE = 4  # the number of exec nodes to add at once
 
 ISOLATION = 'STRONG'
 
@@ -161,11 +161,12 @@ def run():
 
             executor_statuses[key] = status
             logging.info(('Received thread status update from %s:%d: %.4f ' +
-                          'occupancy, %d functions pinned') % (status.ip, status.tid,
-                                                               status.utilization, len(status.functions)))
+                          'occupancy, %d functions pinned') %
+                         (status.ip, status.tid, status.utilization,
+                          len(status.functions)))
 
-        if list_schedulers_socket in socks and socks[list_schedulers_socket] == \
-                zmq.POLLIN:
+        if (list_schedulers_socket in socks and
+                socks[list_schedulers_socket] == zmq.POLLIN):
             # It doesn't matter what is in this message
             msg = list_schedulers_socket.recv_string()
 
@@ -203,8 +204,9 @@ def run():
 
                 if fstats.HasField('runtime'):
                     old_latency = function_runtimes[fname]
-                    function_runtimes[fname] = (old_latency[0] + fstats.runtime,
-                                                old_latency[1] + fstats.call_count)
+                    function_runtimes[fname] = (
+                          old_latency[0] + fstats.runtime,
+                          old_latency[1] + fstats.call_count)
                 else:
                     function_frequencies[fname] += fstats.call_count
 
@@ -219,8 +221,9 @@ def run():
             check_executor_utilization(context, executor_statuses,
                                        departing_executors, add_push_socket)
 
-            check_function_load(context, function_frequencies, function_runtimes,
-                                executor_statuses, latency_history)
+            check_function_load(context, function_frequencies,
+                                function_runtimes, executor_statuses,
+                                latency_history)
 
             function_runtimes.clear()
             function_frequencies.clear()
@@ -253,23 +256,28 @@ def check_function_load(context, function_frequencies, function_runtimes,
         avg_latency = runtime[0] / runtime[1]
 
         num_replicas = len(func_locations[fname])
-        thruput = float(num_replicas * EXECUTOR_REPORT_PERIOD) * (1 / avg_latency)
+        thruput = (float(num_replicas * EXECUTOR_REPORT_PERIOD)
+                   * (1 / avg_latency))
 
         logging.info(('Function %s: %d calls, %.4f average latency, %.2f' +
-                      ' thruput, %d replicas.') % (fname, call_count, avg_latency,
-                                                   thruput, num_replicas))
+                      ' thruput, %d replicas.') % (fname, call_count,
+                                                   avg_latency, thruput,
+                                                   num_replicas))
 
         if call_count > thruput * .7:
-            increase = (math.ceil(call_count / (thruput * .7)) * num_replicas) -  num_replicas + 1
+            increase = ((math.ceil(call_count / (thruput * .7)) * num_replicas)
+                        - num_replicas + 1)
             logging.info(('Function %s: %d calls in recent period exceeds'
-                          + ' threshold. Adding %d replicas.') % (fname, call_count,
+                          + ' threshold. Adding %d replicas.') % (fname,
+                                                                  call_count,
                                                                   increase))
             replicate_function(fname, context, increase, func_locations,
                                executors)
         elif call_count < thruput * .1:
             decrease = math.ceil((call_count / thruput) * num_replicas) + 1
             logging.info(('Function %s: %d calls in recent period under ' +
-                          'threshold. Reducing to %d replicas.') % (fname, call_count,
+                          'threshold. Reducing to %d replicas.') % (fname,
+                                                                    call_count,
                                                                     decrease))
             dereplicate_function(fname, context, decrease, func_locations)
         elif fname in latency_history:
@@ -279,18 +287,20 @@ def check_function_load(context, function_frequencies, function_runtimes,
 
             ratio = avg_latency / historical
             if ratio > LATENCY_RATIO:
-                num_replicas = math.ceil(ratio) - len(func_locations[fname]) + 1
-                logging.info(('Function %s: recent latency average (%.4f) is ' +
-                              '%.2f times the historical average. Adding %d replicas.')
+                num_replicas = (math.ceil(ratio) - len(func_locations[fname])
+                                + 1)
+                logging.info(('Function %s: recent latency average (%.4f) ' +
+                              'is %.2f times the historical average. Adding' +
+                              '%d replicas.')
                              % (fname, avg_latency, ratio, num_replicas))
-                replicate_function(fname, context, num_replicas, func_locations,
-                                   executors)
+                replicate_function(fname, context, num_replicas,
+                                   func_locations, executors)
             else:
                 for status in executor_statuses.values():
                     if status.utilization > .9:
                         logging.info(('Node %s:%d has over 90%% utilization.'
-                                      + ' Replicating its functions.') % (status.ip,
-                                                                          status.tid))
+                                      + ' Replicating its functions.') %
+                                     (status.ip, status.tid))
                         for fname in status.functions:
                             replicate_function(fname, context, 2,
                                                func_locations, executors)
@@ -307,7 +317,8 @@ def check_function_load(context, function_frequencies, function_runtimes,
         function_runtimes[fname] = 0.0
 
 
-def replicate_function(fname, context, num_replicas, func_locations, executors):
+def replicate_function(fname, context, num_replicas, func_locations,
+                       executors):
     if num_replicas < 0:
         return
 
@@ -370,7 +381,8 @@ def check_executor_utilization(client, ctx, executor_statuses,
         if avg_utilization > UTILIZATION_MAX or avg_pinned_count > \
                 PINNED_COUNT_MAX:
             logging.info(('Average utilization is %.4f. Adding %d nodes to'
-                          + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
+                          + ' cluster.') %
+                         (avg_utilization, EXECUTOR_INCREASE))
 
             if (len(executor_statuses) / NUM_EXEC_THREADS) < 22:
                 msg = 'function:' + str(EXECUTOR_INCREASE)
@@ -387,8 +399,8 @@ def check_executor_utilization(client, ctx, executor_statuses,
         if avg_utilization < UTILIZATION_MIN and num_nodes > 10:
             ip = random.choice(list(executor_statuses.values())).ip
             logging.info(('Average utilization is %.4f, and there are %d '
-                          + 'executors. Removing IP %s.') % (avg_utilization,
-                                                             len(executor_statuses), ip))
+                          + 'executors. Removing IP %s.') %
+                         (avg_utilization, len(executor_statuses), ip))
 
             for tid in range(NUM_EXEC_THREADS):
                 sckt = ctx.socket(zmq.PUSH)
@@ -434,8 +446,9 @@ def check_hash_ring(client, context):
     if len(tier_data) == 0:
         return
     elif len(tier_data) > 1:
-        mem_tier, ebs_tier = tier_data[0], tier_data[1] if tier_data[0].tier_id \
-                                                           == 1 else tier_data[1], tier_data[0]
+        mem_tier, ebs_tier = (tier_data[0], tier_data[1]
+                              if tier_data[0].tier_id == 1
+                              else tier_data[1], tier_data[0])
     else:
         mem_tier, ebs_tier = tier_data[0], None
 

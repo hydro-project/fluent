@@ -22,12 +22,12 @@ import sys
 import time
 from util import *
 
-ec2_client = boto3.client('ec2', 'us-east-1')
+ec2_client = boto3.client('ec2', os.getenv('AWS_REGION', 'us-east-1'))
 
 
 def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
-                   bench_count, cfile, ssh_key, cluster_name, kops_bucket, aws_key_id,
-                   aws_key):
+                   bench_count, cfile, ssh_key, cluster_name, kops_bucket,
+                   aws_key_id, aws_key):
 
     # create the cluster object with kops
     run_process(['./create_cluster_object.sh', cluster_name, kops_bucket,
@@ -51,8 +51,9 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
     kops_pod = client.list_namespaced_pod(namespace=NAMESPACE,
                                           label_selector='role=kops').items[0]
     while kops_pod.status.phase != 'Running':
-        kops_pod = client.list_namespaced_pod(namespace=NAMESPACE,
-                                              label_selector='role=kops').items[0]
+        kops_pod = client.list_namespaced_pod(
+              namespace=NAMESPACE,
+              label_selector='role=kops').items[0]
 
     kops_ip = kops_pod.status.pod_ip
 
@@ -65,7 +66,8 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
     copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
                      '/root/.ssh/', kcname)
     os.system('cp %s kvs-config.yml' % cfile)
-    copy_file_to_pod(client, 'kvs-config.yml', kops_podname, '/fluent/conf/', kcname)
+    copy_file_to_pod(client, 'kvs-config.yml', kops_podname, '/fluent/conf/',
+                     kcname)
 
     # start the monitoring pod
     mon_spec = load_yaml('yaml/pods/monitoring-pod.yml')
@@ -78,9 +80,9 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
     # copy config file into monitoring pod -- wait till we create routing pods,
     # so we're sure that the monitoring nodes are up and running
     copy_file_to_pod(client, 'kvs-config.yml', mon_spec['metadata']['name'],
-                     '/fluent/conf/', mon_spec['spec']['containers'][0]['name'])
+                     '/fluent/conf/',
+                     mon_spec['spec']['containers'][0]['name'])
     os.system('rm kvs-config.yml')
-
 
     print('Creating %d routing nodes...' % (route_count))
     add_nodes(client, cfile, ['routing'], [route_count], mon_ips)
@@ -126,8 +128,9 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
     os.system('rm setup_complete')
 
     sg_name = 'nodes.' + cluster_name
-    sg = ec2_client.describe_security_groups(Filters=[{'Name': 'group-name',
-                                                       'Values': [sg_name]}])['SecurityGroups'][0]
+    sg = ec2_client.describe_security_groups(
+          Filters=[{'Name': 'group-name',
+                    'Values': [sg_name]}])['SecurityGroups'][0]
 
     permissions = []
     for i in range(4):
@@ -158,7 +161,7 @@ def parse_args(args, length, typ):
     for arg in args[:length]:
         try:
             result.append(typ(arg))
-        except:
+        except ValueError:
             print('Unrecognized command-line argument %s. Could not convert \
                     to integer.' % (arg))
             sys.exit(1)
