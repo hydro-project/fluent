@@ -26,5 +26,17 @@ if [[ $MODIFIED -gt 0 ]]; then
   exit 1
 else
   echo "clang-format check succeeded!"
+fi
+
+ERRORS=`find */*py | grep -v pb2 | xargs pycodestyle`
+MODIFIED=`find */*py | grep -v pb2 | xargs pycodestyle | wc -l`
+
+if [[ $MODIFIED -gt 0 ]]; then
+  echo -e "pycodestyle check failed. These were the issues reported:\n"
+  echo -e $ERRORs
+
+  exit 1
+else
+  echo "pycodestyle check succeeded!"
   exit 0
 fi
