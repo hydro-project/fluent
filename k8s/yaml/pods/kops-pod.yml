@@ -28,9 +28,9 @@ spec:
       value: ACCESS_KEY_ID_DUMMY
     - name: AWS_SECRET_ACCESS_KEY
       value: SECRET_KEY_DUMMY
-    - name: KOPS_STATE_STORE
+    - name: FLUENT_STATE_STORE
       value: KOPS_BUCKET_DUMMY
-    - name: NAME
+    - name: FLUENT_CLUSTER_NAME
       value: CLUSTER_NAME
   nodeSelector:
     role: general

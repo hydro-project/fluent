@@ -14,13 +14,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from functools import reduce
 import logging
-import math
 import os
-import random
-import subprocess
-import time
 import zmq
 
 from add_nodes import add_nodes
@@ -28,6 +23,7 @@ from remove_node import remove_node
 import util
 
 logging.basicConfig(filename='log_k8s.txt',level=logging.INFO)
+
 
 def run():
     context = zmq.Context(1)
@@ -62,7 +58,7 @@ def run():
             route_addr = util.get_service_address(client, 'routing-service')
 
             add_nodes(client, cfile, [ntype], [num], mon_ips, route_ips=route_ips,
-                    route_addr=route_addr, scheduler_ips=scheduler_ips)
+                      route_addr=route_addr, scheduler_ips=scheduler_ips)
             logging.info('Successfully added %d %s node(s).' % (num, ntype))
 
         if node_remove_socket in socks and socks[node_remove_socket] == \
@@ -75,6 +71,7 @@ def run():
 
             remove_node(ip, ntype)
             logging.info('Successfully removed node %s.' % (ip))
+
 
 if __name__ == '__main__':
     # wait for this file to appear before starting
