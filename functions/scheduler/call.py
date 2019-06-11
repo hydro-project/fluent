@@ -26,8 +26,9 @@ from . import utils
 
 sys_random = random.SystemRandom()
 
+
 def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
-        executor_status_map, running_counts, backoff):
+                  executor_status_map, running_counts, backoff):
 
     call = FunctionCall()
     call.ParseFromString(func_call_socket.recv())
@@ -36,8 +37,8 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
         call.resp_id = str(uuid.uuid4())
 
     refs = list(filter(lambda arg: type(arg) == FluentReference,
-        map(lambda arg: get_serializer(arg.type).load(arg.body),
-            call.args)))
+                       map(lambda arg: get_serializer(arg.type).load(arg.body),
+                           call.args)))
 
     ip, tid = _pick_node(executors, key_ip_map, refs, running_counts, backoff)
 
@@ -55,7 +56,7 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
 
 
 def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
-        running_counts, backoff):
+             running_counts, backoff):
     dag, sources = dags[call.name]
 
     schedule = DagSchedule()
@@ -70,16 +71,14 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         args = call.function_args[fname].args
 
         refs = list(filter(lambda arg: type(arg) == FluentReference,
-            map(lambda arg: get_serializer(arg.type).load(arg.body),
-                args)))
+                    map(lambda arg: get_serializer(arg.type).load(arg.body),
+                        args)))
         loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
         # copy over arguments into the dag schedule
         arg_list = schedule.arguments[fname]
         arg_list.args.extend(args)
-
-    logging.info('Sending to %s' %(schedule.locations['sleep']))
 
     for func in schedule.locations:
         loc = schedule.locations[func].split(':')
@@ -179,4 +178,3 @@ def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     running_counts[max_ip].add(time.time())
 
     return max_ip
-

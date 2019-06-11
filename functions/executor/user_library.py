@@ -21,6 +21,7 @@ from anna.zmq_util import SocketCache
 from include import server_utils
 from include import shared
 
+
 class AbstractFluentUserLibrary:
     # Stores a lattice value at ref.
     def put(self, ref, ltc):
@@ -36,9 +37,11 @@ class AbstractFluentUserLibrary:
         raise NotImplementedError
 
     # Receives messages sent by send() to this function.
-    # Receives all outstanding messages as a list [(sender id, bytestring message), ...]
+    # Receives all outstanding messages as a list [(sender id,
+    # bytestring message), ...]
     def recv(self):
         raise NotImplementedError
+
 
 class FluentUserLibrary(AbstractFluentUserLibrary):
 
@@ -59,7 +62,8 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
         self.recv_inbox = queue.Queue()
 
         # Thread for receiving messages into our inbox.
-        self.recv_inbox_thread = threading.Thread(target=self._recv_inbox_listener)
+        self.recv_inbox_thread = threading.Thread(
+              target=self._recv_inbox_listener)
         self.recv_inbox_thread.do_run = True
         self.recv_inbox_thread.start()
 
@@ -98,13 +102,14 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
                 break
         return res
 
-
     # Function that continuously listens for send()s sent by other nodes,
     # and stores the messages in an inbox.
     def _recv_inbox_listener(self):
         # Socket for receiving send() messages from other nodes.
         recv_inbox_socket = self.ctx.socket(zmq.PULL)
-        recv_inbox_socket.bind(server_utils.BIND_ADDR_TEMPLATE % (server_utils.RECV_INBOX_PORT + self.executor_tid))
+        recv_inbox_socket.bind(server_utils.BIND_ADDR_TEMPLATE %
+                               (server_utils.RECV_INBOX_PORT +
+                                self.executor_tid))
         t = threading.currentThread()
 
         while t.do_run:

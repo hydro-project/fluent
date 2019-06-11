@@ -23,6 +23,7 @@ from . import shared
 
 SER_FORMAT = 'raw_unicode_escape'
 
+
 class Serializer():
     def __init__(self):
         raise NotImplementedError('Cannot instantiate abstract class.')
@@ -38,6 +39,7 @@ class Serializer():
 
     def load(self, msg):
         pass
+
 
 class DefaultSerializer(Serializer):
     def __init__(self):
@@ -55,6 +57,7 @@ class DefaultSerializer(Serializer):
     def load(self, msg):
         return cp.loads(msg)
 
+
 class StringSerializer(Serializer):
     def __init__(self):
         pass
@@ -71,6 +74,7 @@ class StringSerializer(Serializer):
     def load(self, msg):
         return cp.loads(self._deserialize(msg))
 
+
 # TODO: how can we make serializers pluggable?
 class NumpySerializer(DefaultSerializer):
     def __init__(self):
@@ -82,11 +86,13 @@ class NumpySerializer(DefaultSerializer):
     def load(self, msg):
         return pa.deserialize(msg)
 
+
 numpy_ser = NumpySerializer()
 default_ser = DefaultSerializer()
 string_ser = StringSerializer()
 
 function_ser = default_ser
+
 
 def get_serializer(kind):
     global numpy_ser, default_ser, string_ser
@@ -100,13 +106,14 @@ def get_serializer(kind):
     else:
         return default_ser
 
+
 def serialize_val(val, valobj=None, serialize=True):
     if not valobj:
         valobj = Value()
 
     if isinstance(val, shared.FluentFuture):
         valobj.body = default_ser.dump(shared.FluentReference(val.obj_id,
-            True, LWW))
+                                       True, LWW))
     elif isinstance(val, np.ndarray):
         valobj.body = numpy_ser.dump(val)
         valobj.type = NUMPY
@@ -117,6 +124,7 @@ def serialize_val(val, valobj=None, serialize=True):
         return valobj
 
     return valobj.SerializeToString()
+
 
 def deserialize_val(val):
     v = Value()

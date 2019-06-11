@@ -29,10 +29,12 @@ from .create import *
 from .call import *
 from . import utils
 
-THRESHOLD = 5 # how often metadata is updated
+THRESHOLD = 5  # how often metadata is updated
+
 
 def scheduler(ip, mgmt_ip, route_addr):
-    logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO,
+                        format='%(asctime)s %(message)s')
 
     kvs = AnnaClient(route_addr, ip)
 
@@ -69,7 +71,8 @@ def scheduler(ip, mgmt_ip, route_addr):
     exec_status_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.STATUS_PORT))
 
     sched_update_socket = ctx.socket(zmq.PULL)
-    sched_update_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.SCHED_UPDATE_PORT))
+    sched_update_socket.bind(sutils.BIND_ADDR_TEMPLATE %
+                             (sutils.SCHED_UPDATE_PORT))
 
     backoff_socket = ctx.socket(zmq.PULL)
     backoff_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.BACKOFF_PORT))
@@ -77,7 +80,7 @@ def scheduler(ip, mgmt_ip, route_addr):
     pin_accept_socket = ctx.socket(zmq.PULL)
     pin_accept_socket.setsockopt(zmq.RCVTIMEO, 500)
     pin_accept_socket.bind(sutils.BIND_ADDR_TEMPLATE %
-            (sutils.PIN_ACCEPT_PORT))
+                           (sutils.PIN_ACCEPT_PORT))
 
     requestor_cache = SocketCache(ctx, zmq.REQ)
     pusher_cache = SocketCache(ctx, zmq.PUSH)
@@ -96,7 +99,7 @@ def scheduler(ip, mgmt_ip, route_addr):
     executors = set()
     executor_status_map = {}
     schedulers = _update_cluster_state(requestor_cache, mgmt_ip, executors,
-            key_ip_map, kvs)
+                                       key_ip_map, kvs)
 
     # track how often each DAG function is called
     call_frequency = {}
@@ -110,16 +113,19 @@ def scheduler(ip, mgmt_ip, route_addr):
             msg = connect_socket.recv_string()
             connect_socket.send_string(route_addr)
 
-        if func_create_socket in socks and socks[func_create_socket] == zmq.POLLIN:
+        if (func_create_socket in socks and
+                socks[func_create_socket] == zmq.POLLIN):
             create_func(func_create_socket, kvs)
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
             call_function(func_call_socket, pusher_cache, executors,
-                    key_ip_map, executor_status_map, running_counts, backoff)
+                          key_ip_map, executor_status_map, running_counts,
+                          backoff)
 
-        if dag_create_socket in socks and socks[dag_create_socket] == zmq.POLLIN:
+        if (dag_create_socket in socks and socks[dag_create_socket]
+                == zmq.POLLIN):
             create_dag(dag_create_socket, pusher_cache, kvs, executors, dags,
-                    ip, pin_accept_socket, func_locations, call_frequency)
+                       ip, pin_accept_socket, func_locations, call_frequency)
 
         if dag_call_socket in socks and socks[dag_call_socket] == zmq.POLLIN:
             call = DagCall()
@@ -139,8 +145,8 @@ def scheduler(ip, mgmt_ip, route_addr):
             for fname in dag[0].functions:
                 call_frequency[fname] += 1
 
-            rid = call_dag(call, pusher_cache, dags,
-                    func_locations, key_ip_map, running_counts, backoff)
+            rid = call_dag(call, pusher_cache, dags, func_locations,
+                           key_ip_map, running_counts, backoff)
 
             resp = GenericResponse()
             resp.success = True
@@ -164,7 +170,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             key = (status.ip, status.tid)
             logging.info('Received status update from executor %s:%d.' %
-                    (key[0], int(key[1])))
+                         (key[0], int(key[1])))
 
             if key in executor_status_map:
                 if status.type == PERIODIC:
@@ -184,7 +190,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
                     for fname in old_status.functions:
                         func_locations[fname].discard((old_status.ip,
-                            old_status.tid))
+                                                       old_status.tid))
 
                 executors.discard(key)
                 continue
@@ -269,7 +275,7 @@ def scheduler(ip, mgmt_ip, route_addr):
         end = time.time()
         if end - start > THRESHOLD:
             schedulers = _update_cluster_state(requestor_cache, mgmt_ip,
-                    executors, key_ip_map, kvs)
+                                               executors, key_ip_map, kvs)
 
             status = SchedulerStatus()
             for name in dags.keys():
@@ -286,7 +292,8 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             for sched_ip in schedulers:
                 if sched_ip != ip:
-                    sckt = pusher_cache.get(utils._get_scheduler_update_address(sched_ip))
+                    sckt = pusher_cache.get(utils._get_scheduler_update_address
+                                            (sched_ip))
                     sckt.send(msg)
 
             stats = ExecutorStatistics()
@@ -295,22 +302,23 @@ def scheduler(ip, mgmt_ip, route_addr):
                 fstats.fname = fname
                 fstats.call_count = call_frequency[fname]
                 logging.info('Reporting %d calls for function %s.' %
-                        (call_frequency[fname], fname))
+                             (call_frequency[fname], fname))
 
                 call_frequency[fname] = 0
 
-            sckt = pusher_cache.get(sutils._get_statistics_report_address \
-                    (mgmt_ip))
+            sckt = pusher_cache.get(sutils._get_statistics_report_address
+                                    (mgmt_ip))
             sckt.send(stats.SerializeToString())
 
             start = time.time()
 
+
 def _update_cluster_state(requestor_cache, mgmt_ip, executors, key_ip_map,
-        kvs):
+                          kvs):
     # update our local key-cache mapping information
     utils._update_key_maps(key_ip_map, executors, kvs)
 
     schedulers = utils._get_ip_set(utils._get_scheduler_list_address(mgmt_ip),
-            requestor_cache, False)
+                                   requestor_cache, False)
 
     return schedulers

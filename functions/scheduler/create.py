@@ -26,6 +26,7 @@ from . import utils
 
 sys_random = random.SystemRandom()
 
+
 def create_func(func_create_socket, kvs):
     func = Function()
     func.ParseFromString(func_create_socket.recv())
@@ -44,7 +45,8 @@ def create_func(func_create_socket, kvs):
 
 
 def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
-        pin_accept_socket, func_locations, call_frequency, num_replicas=1):
+               pin_accept_socket, func_locations, call_frequency,
+               num_replicas=1):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -80,7 +82,7 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
                 return
 
             node, tid, = _pin_func(fname, func_locations, candidates,
-                    pin_accept_socket, ip, pusher_cache)
+                                   pin_accept_socket, ip, pusher_cache)
 
             if fname not in call_frequency:
                 call_frequency[fname] = 0
@@ -95,7 +97,9 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
     dags[dag.name] = (dag, utils._find_dag_source(dag))
     dag_create_socket.send(sutils.ok_resp)
 
-def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip, pusher_cache):
+
+def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
+              pusher_cache):
     # pick the node with the fewest functions pinned
 
     min_count = 1000000
@@ -120,19 +124,22 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip, pusher_cach
     try:
         resp.ParseFromString(pin_accept_socket.recv())
     except zmq.ZMQError as e:
-        logging.error('Pin operation to %s:%d timed out. Retrying.' % (node, tid))
+        logging.error('Pin operation to %s:%d timed out. Retrying.' %
+                      (node, tid))
         # request timed out, try again
         return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
-                pusher_cache)
+                         pusher_cache)
 
     if resp.success:
         return node, tid
-    else: # the pin operation was rejected, remove node and try again
-        logging.error('Node %s:%d rejected pin operation. Retrying.' % (node, tid))
+    else:  # the pin operation was rejected, remove node and try again
+        logging.error('Node %s:%d rejected pin operation. Retrying.'
+                      % (node, tid))
 
         candidates.discard((node, tid))
         return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
-                pusher_cache)
+                         pusher_cache)
+
 
 def _unpin_func(fname, loc, pusher_cache):
     ip, tid = loc
