@@ -1,0 +1,71 @@
+#  Copyright 2018 U.C. Berkeley RISE Lab
+# 
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+# 
+#      http://www.apache.org/licenses/LICENSE-2.0
+# 
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: benchmark-nodes
+  labels: 
+    role: benchmark
+spec:
+  selector:
+    matchLabels:
+      role: benchmark
+  template:
+    restartPolicy: Never
+    containers:
+    - name: benchmark-1
+      image: fluentproject/executor
+      env: 
+      - name: SYSTEM_FUNC
+        value: benchmark
+      - name: FUNCTION_ADDR
+        value: FUNCTION_ADDR_DUMMY
+      - name: THREAD_ID
+        value: "0"
+      - name: MGMT_IP
+        value: ""
+    - name: benchmark-2
+      image: fluentproject/executor
+      env: 
+      - name: SYSTEM_FUNC
+        value: benchmark
+      - name: FUNCTION_ADDR
+        value: FUNCTION_ADDR_DUMMY
+      - name: THREAD_ID
+        value: "1"
+      - name: MGMT_IP
+        value: ""
+    - name: benchmark-3
+      image: fluentproject/executor
+      env: 
+      - name: SYSTEM_FUNC
+        value: benchmark
+      - name: FUNCTION_ADDR
+        value: FUNCTION_ADDR_DUMMY
+      - name: THREAD_ID
+        value: "2"
+      - name: MGMT_IP
+        value: ""
+    - name: benchmark-4
+      image: fluentproject/executor
+      env: 
+      - name: SYSTEM_FUNC
+        value: benchmark
+      - name: FUNCTION_ADDR
+        value: FUNCTION_ADDR_DUMMY
+      - name: THREAD_ID
+        value: "3"
+      - name: MGMT_IP
+        value: ""

@@ -40,7 +40,9 @@ def init_k8s():
     cfg = k8s.config
     cfg.load_kube_config()
     client = k8s.client.CoreV1Api()
-    return client
+    apps_client = k8s.client.AppsV1Api()
+
+    return client, apps_client
 
 
 def load_yaml(filename):

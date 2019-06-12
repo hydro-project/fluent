@@ -12,27 +12,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: DaemonSet
 metadata:
-  name: scheduler-pod-NUM_DUMMY
+  name: routing-nodes
   labels: 
-    role: scheduler
+    role: routing
 spec:
-  restartPolicy: Never
-  hostNetwork: true
-  hostIPC: true
-  containers:
-  - name: scheduler-container
-    image: fluentproject/executor
-    imagePullPolicy: Always
-    env: 
-    - name: ROUTE_ADDR
-      value: ROUTE_ADDR_DUMMY
-    - name: MGMT_IP
-      value: MGMT_IP_DUMMY
-    - name: SYSTEM_FUNC
-      value: scheduler
-  nodeSelector:
-    role: scheduler
-    podid: scheduler-NUM_DUMMY
+  selector:
+    matchLabels:
+      role: routing
+  template:
+    hostNetwork: true
+    containers:
+    - name: routing-container
+      image: fluentproject/annakvs
+      env: 
+      - name: SERVER_TYPE
+        value: r
+      - name: MON_IPS
+        value: MON_IPS_DUMMY

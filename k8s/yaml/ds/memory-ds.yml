@@ -12,30 +12,31 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: DaemonSet
 metadata:
-  name: memory-pod-NUM_DUMMY
+  name: memory-nodes
   labels: 
     role: memory
 spec:
-  hostNetwork: true
-  restartPolicy: Never
-  containers:
-  - name: memory-container
-    image: fluentproject/annakvs
-    imagePullPolicy: Always
-    env: 
-    - name: SERVER_TYPE
-      value: "memory"
-    - name: ROUTING_IPS
-      value: ROUTING_IPS_DUMMY
-    - name: MGMT_IP
-      value: MGMT_IP_DUMMY
-    - name: SEED_IP
-      value: SEED_IP_DUMMY
-    - name: MON_IPS
-      value: MON_IPS_DUMMY
-  nodeSelector:
-    role: memory
-    podid: memory-NUM_DUMMY
+  selector:
+    matchLabels:
+      role: memory
+  template:
+    hostNetwork: true
+    restartPolicy: Never
+    containers:
+    - name: memory-container
+      image: fluentproject/annakvs
+      imagePullPolicy: Always
+      env: 
+      - name: SERVER_TYPE
+        value: "memory"
+      - name: ROUTING_IPS
+        value: ROUTING_IPS_DUMMY
+      - name: MGMT_IP
+        value: MGMT_IP_DUMMY
+      - name: SEED_IP
+        value: SEED_IP_DUMMY
+      - name: MON_IPS
+        value: MON_IPS_DUMMY

@@ -27,7 +27,7 @@ logging.basicConfig(filename='log_k8s.txt', level=logging.INFO)
 
 def run():
     context = zmq.Context(1)
-    client = util.init_k8s()
+    client, apps_client = util.init_k8s()
 
     node_add_socket = context.socket(zmq.PULL)
     node_add_socket.bind('ipc:///tmp/node_add')
@@ -57,9 +57,7 @@ def run():
             scheduler_ips = util.get_pod_ips(client, 'role=scheduler')
             route_addr = util.get_service_address(client, 'routing-service')
 
-            add_nodes(client, cfile, [ntype], [num], mon_ips,
-                      route_ips=route_ips, route_addr=route_addr,
-                      scheduler_ips=scheduler_ips)
+            add_nodes(client, apps_client, cfile, [ntype], [num])
             logging.info('Successfully added %d %s node(s).' % (num, ntype))
 
         if node_remove_socket in socks and socks[node_remove_socket] == \

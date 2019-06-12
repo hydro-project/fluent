@@ -14,13 +14,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from add_nodes import add_nodes
 import boto3
-import json
-import kubernetes as k8s
+import os
 import sys
-import time
-from util import *
+
+from add_nodes import add_nodes
+import util
 
 ec2_client = boto3.client('ec2', os.getenv('AWS_REGION', 'us-east-1'))
 
@@ -30,101 +29,88 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
                    aws_key_id, aws_key):
 
     # create the cluster object with kops
-    run_process(['./create_cluster_object.sh', cluster_name, kops_bucket,
-                 ssh_key])
+    util.run_process(['./create_cluster_object.sh', cluster_name, kops_bucket,
+                      ssh_key])
 
-    client = init_k8s()
+    client, apps_client = util.init_k8s()
 
     # create the kops pod
     print('Creating management pods...')
-    kops_spec = load_yaml('yaml/pods/kops-pod.yml')
+    kops_spec = util.load_yaml('yaml/pods/kops-pod.yml')
     env = kops_spec['spec']['containers'][0]['env']
 
-    replace_yaml_val(env, 'AWS_ACCESS_KEY_ID', aws_key_id)
-    replace_yaml_val(env, 'AWS_SECRET_ACCESS_KEY', aws_key)
-    replace_yaml_val(env, 'FLUENT_STATE_STORE', kops_bucket)
-    replace_yaml_val(env, 'FLUENT_CLUSTER_NAME', cluster_name)
+    util.replace_yaml_val(env, 'AWS_ACCESS_KEY_ID', aws_key_id)
+    util.replace_yaml_val(env, 'AWS_SECRET_ACCESS_KEY', aws_key)
+    util.replace_yaml_val(env, 'FLUENT_STATE_STORE', kops_bucket)
+    util.replace_yaml_val(env, 'FLUENT_CLUSTER_NAME', cluster_name)
 
-    client.create_namespaced_pod(namespace=NAMESPACE, body=kops_spec)
+    client.create_namespaced_pod(namespace=util.NAMESPACE, body=kops_spec)
 
     # wait for the kops pod to start
-    kops_pod = client.list_namespaced_pod(namespace=NAMESPACE,
-                                          label_selector='role=kops').items[0]
-    while kops_pod.status.phase != 'Running':
-        kops_pod = client.list_namespaced_pod(
-              namespace=NAMESPACE,
-              label_selector='role=kops').items[0]
-
-    kops_ip = kops_pod.status.pod_ip
+    kops_ip = util.get_pod_ips(client, role='kops', isRunning=True)[0]
 
     # copy kube config file to kops pod, so it can execute kubectl commands
     kops_podname = kops_spec['metadata']['name']
     kcname = kops_spec['spec']['containers'][0]['name']
-    copy_file_to_pod(client, '/home/ubuntu/.kube/config', kops_podname,
-                     '/root/.kube/', kcname)
-    copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/', kcname)
-    copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
-                     '/root/.ssh/', kcname)
+
     os.system('cp %s kvs-config.yml' % cfile)
-    copy_file_to_pod(client, 'kvs-config.yml', kops_podname, '/fluent/conf/',
-                     kcname)
+    util.copy_file_to_pod(client, '/home/ubuntu/.kube/config', kops_podname,
+                          '/root/.kube/', kcname)
+    util.copy_file_to_pod(client, ssh_key, kops_podname, '/root/.ssh/', kcname)
+    util.copy_file_to_pod(client, ssh_key + '.pub', kops_podname,
+                          '/root/.ssh/', kcname)
+    util.copy_file_to_pod(client, 'kvs-config.yml', kops_podname,
+                          '/fluent/conf/', kcname)
 
     # start the monitoring pod
-    mon_spec = load_yaml('yaml/pods/monitoring-pod.yml')
-    replace_yaml_val(mon_spec['spec']['containers'][0]['env'], 'MGMT_IP',
-                     kops_ip)
-    client.create_namespaced_pod(namespace=NAMESPACE, body=mon_spec)
+    mon_spec = util.load_yaml('yaml/pods/monitoring-pod.yml')
+    util.replace_yaml_val(mon_spec['spec']['containers'][0]['env'], 'MGMT_IP',
+                          kops_ip)
+    client.create_namespaced_pod(namespace=util.NAMESPACE, body=mon_spec)
 
-    mon_ips = get_pod_ips(client, 'role=monitoring')
+    util.get_pod_ips(client, 'role=monitoring')
 
     # copy config file into monitoring pod -- wait till we create routing pods,
     # so we're sure that the monitoring nodes are up and running
-    copy_file_to_pod(client, 'kvs-config.yml', mon_spec['metadata']['name'],
-                     '/fluent/conf/',
-                     mon_spec['spec']['containers'][0]['name'])
+    util.copy_file_to_pod(client, 'kvs-config.yml',
+                          mon_spec['metadata']['name'],
+                          '/fluent/conf/',
+                          mon_spec['spec']['containers'][0]['name'])
     os.system('rm kvs-config.yml')
 
     print('Creating %d routing nodes...' % (route_count))
-    add_nodes(client, cfile, ['routing'], [route_count], mon_ips)
-    route_ips = get_pod_ips(client, 'role=routing')
+    add_nodes(client, apps_client, cfile, ['routing'], [route_count], True)
+    util.get_pod_ips(client, 'role=routing')
 
     print('Creating %d memory, %d ebs node(s)...' %
           (mem_count, ebs_count))
-    add_nodes(client, cfile, ['memory', 'ebs'],
-              [mem_count, ebs_count], mon_ips, route_ips)
+    add_nodes(client, apps_client, cfile, ['memory', 'ebs'],
+              [mem_count, ebs_count], True)
 
     print('Creating routing service...')
-    service_spec = load_yaml('yaml/services/routing.yml')
-    client.create_namespaced_service(namespace=NAMESPACE,
+    service_spec = util.load_yaml('yaml/services/routing.yml')
+    client.create_namespaced_service(namespace=util.NAMESPACE,
                                      body=service_spec)
-
-    routing_svc = service_spec['metadata']['name']
-    routing_svc_addr = get_service_address(client, routing_svc)
 
     print('Adding %d scheduler nodes...' % (sched_count))
-    add_nodes(client, cfile, ['scheduler'], [sched_count], mon_ips,
-              route_addr=routing_svc_addr)
-    sched_ips = get_pod_ips(client, 'role=scheduler')
+    add_nodes(client, apps_client, cfile, ['scheduler'], [sched_count], True)
+    util.get_pod_ips(client, 'role=scheduler')
 
     print('Adding %d function serving nodes...' % (func_count))
-    add_nodes(client, cfile, ['function'], [func_count], mon_ips,
-              route_addr=routing_svc_addr, scheduler_ips=sched_ips)
+    add_nodes(client, apps_client, cfile, ['function'], [func_count], True)
 
     print('Creating function service...')
-    service_spec = load_yaml('yaml/services/function.yml')
-    client.create_namespaced_service(namespace=NAMESPACE,
+    service_spec = util.load_yaml('yaml/services/function.yml')
+    client.create_namespaced_service(namespace=util.NAMESPACE,
                                      body=service_spec)
 
-    function_svc = service_spec['metadata']['name']
-    function_svc_addr = get_service_address(client, function_svc)
-
     print('Adding %d benchmark nodes...' % (bench_count))
-    add_nodes(client, cfile, ['benchmark'], [bench_count], mon_ips,
-              route_addr=routing_svc_addr, function_addr=function_svc_addr)
+    add_nodes(client, apps_client, cfile, ['benchmark'], [bench_count], True)
 
     print('Finished creating all pods...')
     os.system('touch setup_complete')
-    copy_file_to_pod(client, 'setup_complete', kops_podname, '/fluent', kcname)
+    util.copy_file_to_pod(client, 'setup_complete', kops_podname, '/fluent',
+                          kcname)
     os.system('rm setup_complete')
 
     sg_name = 'nodes.' + cluster_name
@@ -132,23 +118,21 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
           Filters=[{'Name': 'group-name',
                     'Values': [sg_name]}])['SecurityGroups'][0]
 
-    permissions = []
-    for i in range(4):
-        port = 6200 + i
-        permission = {
-            'FromPort': port,
-            'IpProtocol': 'tcp',
-            'ToPort': port,
-            'IpRanges': [{
-                'CidrIp': '0.0.0.0/0'
-            }]
-        }
-        permissions.append(permission)
-
     print('Authorizing ports for routing service...')
-    ec2_client.authorize_security_group_ingress(GroupId=sg['GroupId'],
-                                                IpPermissions=permissions)
 
+    permission = {
+        'FromPort': 6200,
+        'IpProtocol': 'tcp',
+        'ToPort': 6203,
+        'IpRanges': [{
+            'CidrIp': '0.0.0.0/0'
+        }]
+    }
+    ec2_client.authorize_security_group_ingress(GroupId=sg['GroupId'],
+                                                IpPermissions=permission)
+
+    routing_svc_addr = util.get_service_address('routing-service')
+    function_svc_addr = util.get_service_address('function-service')
     print('The routing service can be accessed here: \n\t%s' %
           (routing_svc_addr))
     print('The function service can be accessed here: \n\t%s' %
@@ -185,10 +169,10 @@ if __name__ == '__main__':
 
     mem, ebs, func, sched, route, bench = parse_args(sys.argv[1:], 6, int)
 
-    cluster_name = check_or_get_env_arg('FLUENT_CLUSTER_NAME')
-    kops_bucket = check_or_get_env_arg('FLUENT_STATE_STORE')
-    aws_key_id = check_or_get_env_arg('AWS_ACCESS_KEY_ID')
-    aws_key = check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
+    cluster_name = util.check_or_get_env_arg('FLUENT_CLUSTER_NAME')
+    kops_bucket = util.check_or_get_env_arg('FLUENT_STATE_STORE')
+    aws_key_id = util.check_or_get_env_arg('AWS_ACCESS_KEY_ID')
+    aws_key = util.check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
 
     conf_file = '../conf/kvs-base.yml' if len(sys.argv) <= 7 else sys.argv[7]
 
