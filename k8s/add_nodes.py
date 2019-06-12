@@ -18,22 +18,24 @@ import boto3
 import random
 from util import *
 
-ec2_client = boto3.client('ec2', 'us-east-1')
+ec2_client = boto3.client('ec2', os.getenv('AWS_REGION', 'us-east-1'))
+
 
 def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
               route_addr=None, scheduler_ips=[], function_addr=None):
     if node_ips:
-        assert len(kinds) == len(counts) == len(node_ips), ('Must have same ' +
-                                                            'number of kinds and counts and node_ips.')
+        assert (len(kinds) == len(counts) == len(node_ips),
+                ('Must have same number of kinds and counts and node_ips.'))
     else:
-        assert len(kinds) == len(counts), ('Must have same number of kinds and '
-                                           + 'counts.')
+        assert (len(kinds) == len(counts),
+                ('Must have same number of kinds and counts.'))
 
     cluster_name = check_or_get_env_arg('FLUENT_CLUSTER_NAME')
 
     prev_counts = []
     for i in range(len(kinds)):
-        print('Adding %d %s server node(s) to cluster...' % (counts[i], kinds[i]))
+        print('Adding %d %s server node(s) to cluster...' %
+              (counts[i], kinds[i]))
         # get the previous number of nodes of type kind that are running
         prev_count = get_previous_count(client, kinds[i])
         prev_counts.append(prev_count)
@@ -41,7 +43,8 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
         # we only add new nodes if we didn't pass in a node IP
         if not node_ips:
             # run kops script to add servers to the cluster
-            run_process(['./modify_ig.sh', kinds[i], str(counts[i] + prev_count)])
+            run_process(['./modify_ig.sh', kinds[i],
+                         str(counts[i] + prev_count)])
 
     run_process(['./validate_cluster.sh'])
 
@@ -60,25 +63,24 @@ def add_nodes(client, cfile, kinds, counts, mon_ips, route_ips=[], node_ips=[],
             new_nodes = client.list_node(label_selector=role_selector).items
             new_nodes.sort(key=lambda node: node.metadata.creation_timestamp,
                            reverse=True)
-        else: # otherwise just use the nodes we have
+        else:  # otherwise just use the nodes we have
             new_nodes = node_ips[i]
 
         if prev_counts[i] > 0:
             role_selector = 'role=%s' % kind
-            max_id = max(list(map(lambda pod:
-                                  int(pod.spec.node_selector['podid'].split('-')[-1]),
-                                  client.list_namespaced_pod(namespace=NAMESPACE,
-                                                             label_selector=role_selector).items)
-                              )
-                         )
+            pod_list = client.list_namespaced_pod(
+                  namespace=NAMESPACE,
+                  label_selector=role_selector).items
+            max_id = max(list(map(lambda pod: int(
+                  pod.spec.node_selector['podid'].split('-')[-1]), pod_list)))
         else:
             max_id = 0
 
         index = 0
         for j in range(max_id + 1, max_id + counts[i] + 1):
             podid = '%s-%d' % (kind, j)
-            client.patch_node(new_nodes[index].metadata.name, body={'metadata': {'labels':
-                                                                                     {'podid': podid}}})
+            client.patch_node(new_nodes[index].metadata.name,
+                              body={'metadata': {'labels': {'podid': podid}}})
             index += 1
 
         created_pods = []

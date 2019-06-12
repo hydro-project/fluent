@@ -27,8 +27,10 @@ from . import utils
 
 REPORT_THRESH = 5
 
+
 def executor(ip, mgmt_ip, schedulers, thread_id):
-    logging.basicConfig(filename='log_executor.txt', level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.basicConfig(filename='log_executor.txt', level=logging.INFO,
+                        format='%(asctime)s %(message)s')
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()
@@ -38,23 +40,23 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
     unpin_socket = ctx.socket(zmq.PULL)
     unpin_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.UNPIN_PORT +
-        thread_id))
+                                                   thread_id))
 
     exec_socket = ctx.socket(zmq.PULL)
     exec_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.FUNC_EXEC_PORT +
-        thread_id))
+                                                  thread_id))
 
     dag_queue_socket = ctx.socket(zmq.PULL)
     dag_queue_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_QUEUE_PORT
-        + thread_id))
+                                                       + thread_id))
 
     dag_exec_socket = ctx.socket(zmq.PULL)
     dag_exec_socket.bind(sutils.BIND_ADDR_TEMPLATE % (sutils.DAG_EXEC_PORT
-        + thread_id))
+                                                      + thread_id))
 
     self_depart_socket = ctx.socket(zmq.PULL)
     self_depart_socket.bind(sutils.BIND_ADDR_TEMPLATE %
-            (sutils.SELF_DEPART_PORT + thread_id))
+                            (sutils.SELF_DEPART_PORT + thread_id))
 
     pusher_cache = SocketCache(ctx, zmq.PUSH)
 
@@ -99,8 +101,11 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
     # metadata to track thread utilization
     report_start = time.time()
-    event_occupancy = { 'pin': 0.0, 'unpin': 0.0, 'func_exec': 0.0,
-            'dag_queue': 0.0, 'dag_exec': 0.0 }
+    event_occupancy = {'pin': 0.0,
+                       'unpin': 0.0,
+                       'func_exec': 0.0,
+                       'dag_queue': 0.0,
+                       'dag_exec': 0.0}
     total_occupancy = 0.0
 
     while True:
@@ -109,7 +114,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
             pin(pin_socket, pusher_cache, client, status, pinned_functions,
-                    runtimes, exec_counts)
+                runtimes, exec_counts)
             status.type = POST_REQUEST
             utils._push_status(schedulers, pusher_cache, status)
 
@@ -119,7 +124,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
             work_start = time.time()
-            unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts)
+            unpin(unpin_socket, status, pinned_functions, runtimes,
+                  exec_counts)
             status.type = POST_REQUEST
             utils._push_status(schedulers, pusher_cache, status)
 
@@ -146,7 +152,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             fname = schedule.target_function
 
             logging.info('Received a schedule for DAG %s (%s), function %s.' %
-                    (schedule.dag.name, schedule.id, fname))
+                         (schedule.dag.name, schedule.id, fname))
 
             if fname not in queue:
                 queue[fname] = {}
@@ -159,12 +165,12 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             # in case we receive the trigger before we receive the schedule, we
             # can trigger from this operation as well
             trkey = (schedule.id, fname)
-            if trkey in received_triggers and \
-                    len(received_triggers[trkey]) == \
-                            len(schedule.triggers):
+            if (trkey in received_triggers and (len(received_triggers[trkey])
+                                                == len(schedule.triggers))):
                 exec_dag_function(pusher_cache, client,
-                    received_triggers[trkey], pinned_functions[fname],
-                    schedule, ip, thread_id)
+                                  received_triggers[trkey],
+                                  pinned_functions[fname], schedule, ip,
+                                  thread_id)
                 del received_triggers[trkey]
                 del queue[fname][schedule.id]
 
@@ -184,7 +190,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             fname = trigger.target_function
             logging.info('Received a trigger for schedule %s, function %s.' %
-                    (trigger.id, fname))
+                         (trigger.id, fname))
 
             key = (trigger.id, fname)
             if key not in received_triggers:
@@ -198,8 +204,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 schedule = queue[fname][trigger.id]
                 if len(received_triggers[key]) == len(schedule.triggers):
                     exec_dag_function(pusher_cache, client,
-                            received_triggers[key],
-                            pinned_functions[fname], schedule, ip, thread_id)
+                                      received_triggers[key],
+                                      pinned_functions[fname], schedule, ip,
+                                      thread_id)
                     del received_triggers[key]
                     del queue[fname][trigger.id]
 
@@ -218,7 +225,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             msg = self_depart_socket.recv()
 
             logging.info('Preparing to depart. No longer accepting requests ' +
-                    'and clearing all queues.')
+                         'and clearing all queues.')
 
             status.ClearField('functions')
             status.running = False
@@ -240,7 +247,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             if utilization > 0.5:
                 msg = ip + ':' + str(thread_id)
                 for scheduler in schedulers:
-                    sckt = pusher_cache.get(sutils._get_backoff_addresss(scheduler))
+                    sckt = pusher_cache.get(sutils._get_backoff_addresss
+                                            (scheduler))
                     sckt.send_string(msg)
 
             sckt = pusher_cache.get(utils._get_util_report_address(mgmt_ip))
@@ -264,8 +272,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 runtimes[fname] = 0.0
                 exec_counts[fname] = 0
 
-            sckt = pusher_cache.get(sutils._get_statistics_report_address \
-                    (mgmt_ip))
+            sckt = pusher_cache.get(sutils._get_statistics_report_address
+                                    (mgmt_ip))
             sckt.send(stats.SerializeToString())
 
             report_start = time.time()
@@ -287,4 +295,3 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 sckt.send_string(ip)
 
                 return 0
-

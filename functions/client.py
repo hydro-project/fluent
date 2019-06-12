@@ -22,9 +22,10 @@ from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
 
+
 class FluentConnection():
     def __init__(self, func_addr, ip, tid=0):
-        self.service_addr = 'tcp://'+  func_addr + ':%d'
+        self.service_addr = 'tcp://' + func_addr + ':%d'
         self.context = zmq.Context(1)
         kvs_addr = self._connect()
         self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
@@ -111,14 +112,14 @@ class FluentConnection():
             return FluentFunction(name, self, self.kvs_client)
         else:
             print('Unexpected error while registering function: \n\t%s.'
-                    % (resp))
+                  % (resp))
 
     def register_dag(self, name, functions, connections):
         flist = self._get_func_list()
         for fname in functions:
             if fname not in flist.names:
                 print(('Function %s not registered. Please register before'
-                        + 'including it in a DAG.') % (fname))
+                      + 'including it in a DAG.') % (fname))
                 return False, None
 
         dag = Dag()

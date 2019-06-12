@@ -24,6 +24,7 @@ LIST_PORT = 5003
 DAG_CREATE_PORT = 5004
 DAG_CALL_PORT = 5005
 
+
 def generate_timestamp(tid=1):
     t = time.time()
 
@@ -32,6 +33,7 @@ def generate_timestamp(tid=1):
         p *= 10
 
     return int(t * p + tid)
+
 
 class FluentFuture():
     def __init__(self, obj_id, kvs_client):
@@ -46,6 +48,7 @@ class FluentFuture():
 
         return serializer.deserialize_val(obj.reveal()[1])
 
+
 class FluentFunction():
     def __init__(self, name, conn, kvs_client):
         self.name = name
@@ -55,6 +58,7 @@ class FluentFunction():
     def __call__(self, *args):
         obj_id = self._conn.exec_func(self.name, args)
         return FluentFuture(obj_id, self._kvs_client)
+
 
 class FluentReference():
     def __init__(self, key, deserialize, obj_type):

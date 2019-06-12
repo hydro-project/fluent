@@ -10,8 +10,9 @@ from include.kvs_pb2 import *
 from include.serializer import *
 from include.shared import *
 
+
 def run(flconn, kvs, num_requests, sckt):
-    ### DEFINE AND REGISTER FUNCTIONS ###
+    ''' DEFINE AND REGISTER FUNCTIONS '''
     def summa(fluent, uid, lblock, rblock, rid, cid, numrows, numcols):
         import cloudpickle as cp
         from anna.lattices import LWWPairLattice
@@ -23,7 +24,7 @@ def run(flconn, kvs, num_requests, sckt):
         res = np.zeros((bsize, bsize))
 
         myid = fluent.getid()
-        key = '%s: (%d, %d)' %  (uid, rid, cid)
+        key = '%s: (%d, %d)' % (uid, rid, cid)
 
         fluent.put(key, LWWPairLattice(0, cp.dumps(myid)))
 
@@ -47,7 +48,6 @@ def run(flconn, kvs, num_requests, sckt):
             keyset.append(key)
             idset[key] = (rid, j)
 
-
         locs = fluent.get(keyset)
         while None in locs.values():
             locs = fluent.get(keyset)
@@ -68,7 +68,8 @@ def run(flconn, kvs, num_requests, sckt):
                 dest = proc_locs[(rid, c)]
                 send_id = ('l', k + (bsize * cid))
 
-                msg = cp.dumps((send_id, lblock[:,(k * ssize):((k+1) * ssize)]))
+                msg = cp.dumps((send_id, lblock[:, (k * ssize):
+                                                ((k+1) * ssize)]))
                 fluent.send(dest, msg)
 
         for r in range(numrows):
@@ -79,7 +80,8 @@ def run(flconn, kvs, num_requests, sckt):
                 dest = proc_locs[(r, cid)]
                 send_id = ('r', k + (bsize * rid))
 
-                msg = cp.dumps((send_id, rblock[(k * ssize):((k+1) * ssize),:]))
+                msg = cp.dumps((send_id, rblock[(k * ssize):((k+1) * ssize),
+                                                :]))
                 fluent.send(dest, msg)
         end = time.time()
         stime = end - start
@@ -91,10 +93,12 @@ def run(flconn, kvs, num_requests, sckt):
 
         start = time.time()
         for l in range(int(bsize / ssize)):
-            left_recvs[l + (bsize * cid)] = lblock[:,(l * ssize):((l+1) * ssize)]
+            left_recvs[l + (bsize * cid)] = lblock[:,
+                                                   (l * ssize):((l+1) * ssize)]
 
         for r in range(int(bsize / ssize)):
-            right_recvs[r + (bsize * rid)] = rblock[(r * ssize):((r+1) * ssize),:]
+            right_recvs[r + (bsize * rid)] = rblock[(r * ssize):
+                                                    ((r+1) * ssize), :]
 
         while recv_count < num_recvs:
             msgs = fluent.recv()
@@ -147,7 +151,7 @@ def run(flconn, kvs, num_requests, sckt):
     else:
         sys.exit(1)
 
-    ### TEST REGISTERED FUNCTIONS ###
+    ''' TEST REGISTERED FUNCTIONS '''
     n = 10000
     inp1 = np.random.randn(n, n)
     inp2 = np.random.randn(n, n)
@@ -213,10 +217,11 @@ def run(flconn, kvs, num_requests, sckt):
             res = res[0]
             r = key[0]
             c = key[1]
-            result[(r * bsize):((r + 1) * bsize), (c * bsize):((c + 1) * bsize)] = res
+            result[(r * bsize):((r + 1) * bsize),
+                   (c * bsize):((c + 1) * bsize)] = res
 
         end = time.time()
-        latencies.append(end -start)
+        latencies.append(end - start)
 
         if False in np.isclose(result, np.matmul(inp1, inp2)):
             print('Failure!')

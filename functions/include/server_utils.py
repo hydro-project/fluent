@@ -46,21 +46,27 @@ ok = GenericResponse()
 ok.success = True
 ok_resp = ok.SerializeToString()
 
+
 def _get_func_kvs_name(fname):
     return FUNC_PREFIX + fname
+
 
 def _get_dag_trigger_address(ip_tid):
     ip, tid = ip_tid.split(':')
     return 'tcp://' + ip + ':' + str(int(tid) + DAG_EXEC_PORT)
 
+
 def _get_statistics_report_address(mgmt_ip):
     return 'tcp://' + mgmt_ip + ':' + str(STATISTICS_REPORT_PORT)
+
 
 def _get_backoff_addresss(ip):
     return 'tcp://' + ip + ':' + str(BACKOFF_PORT)
 
+
 def _get_pin_accept_port(ip):
     return 'tcp://' + ip + ':' + str(PIN_ACCEPT_PORT)
+
 
 def _get_dag_predecessors(dag, fname):
     result = []
@@ -70,6 +76,7 @@ def _get_dag_predecessors(dag, fname):
             result.append(connection.source)
 
     return result
+
 
 def _get_user_msg_inbox_addr(ip, tid):
     return 'tcp://' + ip + ':' + str(int(tid) + RECV_INBOX_PORT)

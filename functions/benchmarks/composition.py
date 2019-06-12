@@ -6,9 +6,9 @@ import time
 from include.functions_pb2 import *
 from include.serializer import *
 
-def run(flconn, kvs, num_requests, sckt):
-    ### DEFINE AND REGISTER FUNCTIONS ###
 
+def run(flconn, kvs, num_requests, sckt):
+    ''' DEFINE AND REGISTER FUNCTIONS '''
     def incr(fluent, x):
         return x + 1
 
@@ -23,7 +23,7 @@ def run(flconn, kvs, num_requests, sckt):
     else:
         sys.exit(1)
 
-    ### TEST REGISTERED FUNCTIONS ###
+    ''' TEST REGISTERED FUNCTIONS '''
     incr_test = cloud_incr(2).get()
     if incr_test != 3:
         print('Unexpected result from incr(2): %s' % (str(incr_test)))
@@ -36,8 +36,7 @@ def run(flconn, kvs, num_requests, sckt):
 
     print('Successfully tested functions!')
 
-    ### CREATE DAG ###
-
+    ''' CREATE DAG '''
     dag_name = 'composition'
 
     functions = ['incr', 'square']
@@ -47,9 +46,9 @@ def run(flconn, kvs, num_requests, sckt):
     if not success:
         print('Failed to register DAG: %s' % (ErrorType.Name(error)))
         sys.exit(1)
-    ### RUN DAG ###
 
-    arg_map = { 'incr' : [1] }
+    ''' RUN DAG '''
+    arg_map = {'incr': [1]}
 
     total_time = []
     scheduler_time = []
@@ -82,4 +81,3 @@ def run(flconn, kvs, num_requests, sckt):
     if sckt:
         sckt.send(cp.dumps(total_time))
     return total_time, scheduler_time, kvs_time, retries
-

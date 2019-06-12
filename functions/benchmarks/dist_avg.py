@@ -10,8 +10,9 @@ from include.kvs_pb2 import *
 from include.serializer import *
 from include.shared import *
 
+
 def run(flconn, kvs, num_requests, sckt):
-    ### DEFINE AND REGISTER FUNCTIONS ###
+    ''' DEFINE AND REGISTER FUNCTIONS '''
     def avg(fluent, uid, eid, num_execs, val):
         from anna.lattices import LWWPairLattice
         import cloudpickle as cp
@@ -21,7 +22,7 @@ def run(flconn, kvs, num_requests, sckt):
         gstart = time.time()
 
         myid = fluent.getid()
-        key = '%s:%d' %  (uid, eid)
+        key = '%s:%d' % (uid, eid)
         fluent.put(key, LWWPairLattice(0, cp.dumps(myid)))
 
         procs = set()
@@ -40,7 +41,6 @@ def run(flconn, kvs, num_requests, sckt):
 
         for key in locs:
             procs.add(cp.loads(locs[key].reveal()[1]))
-
 
         curr_val = val
         curr_weight = 1
@@ -86,7 +86,7 @@ def run(flconn, kvs, num_requests, sckt):
     else:
         sys.exit(1)
 
-    ### TEST REGISTERED FUNCTIONS ###
+    ''' TEST REGISTERED FUNCTIONS '''
     n = 10
 
     latencies = []
@@ -111,7 +111,7 @@ def run(flconn, kvs, num_requests, sckt):
             results.append(res)
 
         end = time.time()
-        latencies.append(end -start)
+        latencies.append(end - start)
 
         m = np.mean(vals)
         r = np.mean(results)

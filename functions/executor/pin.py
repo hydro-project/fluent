@@ -19,6 +19,7 @@ from . import utils
 from include.functions_pb2 import *
 from include import server_utils as sutils
 
+
 def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
         exec_counts):
     msg = pin_socket.recv_string()
@@ -27,11 +28,11 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
     resp_ip, name = splits[0], splits[1]
     sckt = pusher_cache.get(sutils._get_pin_accept_port(resp_ip))
 
-    if (sutils.ISOLATION == 'STRONG' and len(pinned_functions) > 0) or not \
-            status.running:
-            resp = sutils.error.SerializeToString()
-            sckt.send(sutils.error.SerializeToString())
-            return
+    if ((sutils.ISOLATION == 'STRONG' and len(pinned_functions) > 0) or not
+            status.running):
+        resp = sutils.error.SerializeToString()
+        sckt.send(sutils.error.SerializeToString())
+        return
 
     logging.info('Adding function %s to my local pinned functions.' % (name))
     sckt.send(sutils.ok_resp)
@@ -49,10 +50,11 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
     runtimes[name] = 0.0
     exec_counts[name] = 0
 
+
 def unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts):
-    name = unpin_socket.recv_string() # the name of the func to unpin
+    name = unpin_socket.recv_string()  # the name of the func to unpin
     logging.info('Removing function %s from my local pinned functions.' %
-            (name))
+                 (name))
 
     # we restart the container to clear all global state
     if sutils.ISOLATION == 'STRONG':

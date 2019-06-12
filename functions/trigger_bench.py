@@ -6,16 +6,17 @@ import zmq
 
 from benchmarks import utils
 
-logging.basicConfig(filename='log_trigger.txt', level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(filename='log_trigger.txt', level=logging.INFO,
+                    format='%(asctime)s %(message)s')
 
 NUM_THREADS = 4
 
 ips = []
 with open('bench_ips.txt', 'r') as f:
-    l = f.readline()
-    while l:
-        ips.append(l.strip())
-        l = f.readline()
+    line = f.readline()
+    while line:
+        ips.append(line.strip())
+        line = f.readline()
 
 msg = sys.argv[1]
 ctx = zmq.Context(1)

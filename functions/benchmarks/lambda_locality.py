@@ -9,6 +9,8 @@ import uuid
 from . import utils
 
 sys_random = random.SystemRandom()
+
+
 def run(name, kvs, num_requests, sckt):
     name = 'locality-' + name
     oids = cp.loads(kvs.get(name).reveal()[1])
@@ -29,7 +31,8 @@ def run(name, kvs, num_requests, sckt):
 
         start = time.time()
         loc = str(uuid.uuid4())
-        body = { 'args': args, 'loc': loc }
+        body = {'args': args, 'loc': loc}
+
         res = lambd.invoke(FunctionName=name, Payload=json.dumps(body))
         res = json.loads(res['Payload'].read())
         kvs, comp = res
@@ -47,11 +50,11 @@ def run(name, kvs, num_requests, sckt):
         if (epoch_end - epoch_start) > 10:
             sckt.send(cp.dumps(epoch_latencies))
             utils.print_latency_stats(epoch_latencies, 'EPOCH %d E2E' %
-                    (epoch), True)
+                                      (epoch), True)
             utils.print_latency_stats(epoch_comp, 'EPOCH %d COMP' %
-                    (epoch), True)
+                                      (epoch), True)
             utils.print_latency_stats(epoch_kvs, 'EPOCH %d KVS' %
-                    (epoch), True)
+                                      (epoch), True)
             epoch += 1
 
             epoch_latencies.clear()

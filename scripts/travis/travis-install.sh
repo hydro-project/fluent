@@ -47,7 +47,7 @@ install_lcov() {
 
 sudo apt-get update
 sudo apt-get install -y build-essential autoconf automake libtool curl make unzip pkg-config wget
-sudo apt-get install -y libc++-dev libc++abi-dev awscli jq
+sudo apt-get install -y libc++-dev libc++abi-dev awscli jq python3-pip
 
 sudo ln -s $(which clang) /usr/bin/clang
 sudo ln -s $(which clang++) /usr/bin/clang++
@@ -65,3 +65,5 @@ cd $HOME
 
 download_lcov
 install_lcov
+
+sudo pip3 install pycodestyle

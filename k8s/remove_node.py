@@ -42,15 +42,16 @@ def remove_node(ip, ntype):
 
     if ntype == 'ebs':
         vol_ids = list(map(lambda vol: vol.volume_id,
-                           filter(lambda vol: vol != None,
-                                  map(lambda vol: vol.aws_elastic_block_store, pod.spec.volumes))))
+                           filter(lambda vol: vol is not None,
+                                  map(lambda vol: vol.aws_elastic_block_store,
+                                      pod.spec.volumes))))
 
         for vid in vol_ids:
             vol = ec2_client.describe_volumes(VolumeIds=[vid])['Volumes'][0]
 
             # wait for volume to no longer be in use
             while vol['State'] == 'in-use':
-                vol = ec2_client.describe_volumes(VolumeIds=[vid])['Volumes'][0]
+                vol = ec2_client.describe_volumes(
+                      VolumeIds=[vid])['Volumes'][0]
 
             ec2_client.delete_volume(VolumeId=vid)
-

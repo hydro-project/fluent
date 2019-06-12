@@ -25,6 +25,7 @@ from scheduler.server import *
 REPORT_THRESH = 30
 global_util = 0.0
 
+
 def run():
     mgmt_ip = os.environ['MGMT_IP']
     ip = os.environ['MY_IP']
@@ -43,6 +44,7 @@ def run():
         schedulers = os.environ['SCHED_IPS'].split(' ')
         thread_id = int(os.environ['THREAD_ID'])
         executor(ip, mgmt_ip, schedulers, thread_id)
+
 
 if __name__ == '__main__':
     run()

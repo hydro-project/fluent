@@ -25,6 +25,7 @@ NUM_EXEC_THREADS = 3
 EXECUTORS_PORT = 7002
 SCHEDULERS_PORT = 7004
 
+
 def _get_func_list(client, prefix, fullname=False):
     funcs = client.get(FUNCOBJ)
     if not funcs:
@@ -45,8 +46,8 @@ def _put_func_list(client, funclist):
     # remove duplicates
     funclist = set(funclist)
 
-    l = SetLattice(funclist)
-    client.put(FUNCOBJ, l)
+    lattice = SetLattice(funclist)
+    client.put(FUNCOBJ, lattice)
 
 
 def _get_cache_ip_key(ip):
@@ -110,8 +111,8 @@ def _update_key_maps(key_ip_map, executors, kvs):
 
         # this is of type LWWPairLattice, which has a KeySet protobuf packed
         # into it; we want the keys in that KeySet protobuf
-        l = kvs.get(key)
-        if l is None: # this executor is still joining
+        lattice = kvs.get(key)
+        if lattice is None:  # this executor is still joining
             continue
 
         ks = KeySet()
@@ -122,6 +123,7 @@ def _update_key_maps(key_ip_map, executors, kvs):
                 key_ip_map[key] = []
 
             key_ip_map[key].append(ip)
+
 
 def _find_dag_source(dag):
     sinks = set()
