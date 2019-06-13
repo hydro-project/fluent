@@ -52,11 +52,6 @@ def run():
             num = int(args[1])
             logging.info('Adding %d new %s node(s)...' % (num, ntype))
 
-            mon_ips = util.get_pod_ips(client, 'role=monitoring')
-            route_ips = util.get_pod_ips(client, 'role=routing')
-            scheduler_ips = util.get_pod_ips(client, 'role=scheduler')
-            route_addr = util.get_service_address(client, 'routing-service')
-
             add_nodes(client, apps_client, cfile, [ntype], [num])
             logging.info('Successfully added %d %s node(s).' % (num, ntype))
 

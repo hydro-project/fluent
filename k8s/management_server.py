@@ -14,7 +14,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from functools import reduce
 import logging
 import math
 import os
@@ -22,9 +21,9 @@ import random
 import time
 import zmq
 
-from functions_pb2 import *
-from kvs_pb2 import *
-from metadata_pb2 import *
+from functions_pb2 import ThreadStatus, ExecutorStatistics
+from kvs_pb2 import KeySet
+from metadata_pb2 import TierMembership
 import util
 
 REPORT_PERIOD = 5
@@ -93,7 +92,7 @@ def run():
     while not os.path.isfile('/root/.kube/config'):
         pass
 
-    client = util.init_k8s()
+    client, _ = util.init_k8s()
 
     # track the self-reported status of each function execution thread
     executor_statuses = {}
@@ -101,9 +100,6 @@ def run():
     function_frequencies = {}
     function_runtimes = {}
     latency_history = {}
-
-    if ISOLATION == 'STRONG':
-        PINNED_COUNT_MAX = .8
 
     start = time.time()
     while True:
@@ -350,7 +346,7 @@ def dereplicate_function(fname, context, num_replicas, func_locations):
         func_locations[fname].discard((ip, tid))
 
 
-def check_executor_utilization(client, ctx, executor_statuses,
+def check_executor_utilization(ctx, executor_statuses,
                                departing_executors, add_push_socket):
     global grace_start
 
@@ -463,7 +459,7 @@ def check_hash_ring(client, context):
         ebs_ips = util.get_pod_ips(client, 'role=ebs')
         for node in ebs_tier.servers:
             if node.private_ip not in ebs_ips:
-                ebs_departed.append(('1', node))
+                departed.append(('1', node))
 
     mon_ips = util.get_pod_ips(client, 'role=monitoring')
     storage_ips = mem_ips + ebs_ips
@@ -488,6 +484,7 @@ def send_msg(msg, context, ip, port):
     socket = context.socket(zmq.PUSH)
     socket.connect('tcp://' + ip + ':' + str(port))
     socket.send_string(msg)
+
 
 if __name__ == '__main__':
     # wait for this file to appear before starting

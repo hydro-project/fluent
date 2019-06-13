@@ -30,19 +30,32 @@ spec:
   subnets:
     - us-east-1a
   volumes:
-    - device: /ebs/ebs_0
-      encrypted: true
+    - device: /dev/xvdb
+      encrypted: false
       size: 64
       type: gp2
-    - device: /ebs/ebs_1
-      encrypted: true
+    - device: /dev/xvdc
+      encrypted: false
       size: 64
       type: gp2
-    - device: /ebs/ebs_2
-      encrypted: true
+    - device: /dev/xvdd
+      encrypted: false
       size: 64
       type: gp2
-    - device: /ebs/ebs_3
-      encrypted: true
+    - device: /dev/xvde
+      encrypted: false
       size: 64
       type: gp2
+  volumeMounts:
+    - device: /dev/xvdb
+      filesystem: ext4
+      path: /ebs/ebs_0
+    - device: /dev/xvdc
+      filesystem: ext4
+      path: /ebs/ebs_1
+    - device: /dev/xvdd
+      filesystem: ext4
+      path: /ebs/ebs_2
+    - device: /dev/xvde
+      filesystem: ext4
+      path: /ebs/ebs_3

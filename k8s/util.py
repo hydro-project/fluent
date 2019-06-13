@@ -49,7 +49,7 @@ def load_yaml(filename):
     try:
         with open(filename, 'r') as f:
             return yaml.load(f.read())
-    except Error as e:
+    except yaml.YAMLError as e:
         print(f'''Unexpected error while loading YAML file:')
         {e.stderr}
         'Make sure to clean up the cluster object and state store before

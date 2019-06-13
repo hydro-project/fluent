@@ -17,7 +17,6 @@
 import boto3
 import random
 import os
-import time
 
 import util
 

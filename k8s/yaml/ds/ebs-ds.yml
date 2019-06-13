@@ -55,18 +55,18 @@ spec:
             name: ebs3
       volumes:
       - name: ebs0
-        awsElasticBlockStore:
-          volumeID: VOLUME_DUMMY_0
-          fsType: ext4
+        hostPath:
+          path: /ebs/ebs_0
+          type: Directory
       - name: ebs1
-        awsElasticBlockStore:
-          volumeID: VOLUME_DUMMY_1
-          fsType: ext4
+        hostPath:
+          path: /ebs/ebs_1
+          type: Directory
       - name: ebs2
-        awsElasticBlockStore:
-          volumeID: VOLUME_DUMMY_2
-          fsType: ext4
+        hostPath:
+          path: /ebs/ebs_2
+          type: Directory
       - name: ebs3
-        awsElasticBlockStore:
-          volumeID: VOLUME_DUMMY_3
-          fsType: ext4
+        hostPath:
+          path: /ebs/ebs_3
+          type: Directory
