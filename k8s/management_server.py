@@ -215,9 +215,6 @@ def run():
             logging.info('Checking hash ring...')
             check_hash_ring(client, context)
 
-            logging.info('Checking for extra nodes...')
-            check_unused_nodes(client, add_push_socket)
-
             check_executor_utilization(context, executor_statuses,
                                        departing_executors, add_push_socket)
 
@@ -491,35 +488,6 @@ def send_msg(msg, context, ip, port):
     socket = context.socket(zmq.PUSH)
     socket.connect('tcp://' + ip + ':' + str(port))
     socket.send_string(msg)
-
-
-def check_unused_nodes(client, add_push_socket):
-    kinds = ['ebs', 'memory']
-
-    for kind in kinds:
-        selector = 'role=' + kind
-
-        nodes = {}
-        for node in client.list_node(label_selector=selector).items:
-            ip = list(filter(lambda address: address.type == 'InternalIP',
-                             node.status.addresses))[0].address
-            nodes[ip] = node
-
-        node_ips = nodes.keys()
-
-        pod_ips = util.get_pod_ips(client, selector)
-        unallocated = set(node_ips) - set(pod_ips)
-
-        mon_ips = util.get_pod_ips(client, 'role=monitoring')
-        route_ips = util.get_pod_ips(client, 'role=routing')
-
-        logging.info('Found %d unallocated %s nodes.' % (len(unallocated),
-                                                         kind))
-
-        if len(unallocated) > 0:
-            msg = kind + ':' + str(len(unallocated))
-            add_push_socket.send_string(msg)
-
 
 if __name__ == '__main__':
     # wait for this file to appear before starting
