@@ -85,11 +85,11 @@ def get_pod_ips(client, selector, is_running=False):
                                           label_selector=selector).items
 
     pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
-
     running = False
     while None in pod_ips or not running:
         pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
                                               label_selector=selector).items
+
         pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
 
         if is_running:
@@ -128,8 +128,11 @@ def get_pod_from_ip(client, ip):
 
 
 def get_service_address(client, svc_name):
-    service = client.read_namespaced_service(namespace=NAMESPACE,
-                                             name=svc_name)
+    try:
+        service = client.read_namespaced_service(namespace=NAMESPACE,
+                                                 name=svc_name)
+    except k8s.client.rest.ApiException:
+        return None
 
     while service.status.load_balancer.ingress is None or \
             service.status.load_balancer.ingress[0].hostname is None:

@@ -23,73 +23,91 @@ spec:
     matchLabels:
       role: function
   template:
-    restartPolicy: Always
-    volumes:
-    - name: ipc
-      hostPath:
-        path: /tmp
-    hostNetwork: true
-    hostIPC: true
-    containers:
-    - name: function-1
-      image: fluentproject/executor
-      imagePullPolicy: Always
-      env: 
-      - name: ROUTE_ADDR
-        value: ROUTE_ADDR_DUMMY
-      - name: MGMT_IP
-        value: MGMT_IP_DUMMY
-      - name: SCHED_IPS
-        value: SCHED_IPS_DUMMY
-      - name: THREAD_ID
-        value: "0"
-      - name: SYSTEM_FUNC
-        value: none
-      volumeMounts:
-      - mountPath: /requests
-        name: ipc
-    - name: function-2
-      image: fluentproject/executor
-      imagePullPolicy: Always
-      env: 
-      - name: ROUTE_ADDR
-        value: ROUTE_ADDR_DUMMY
-      - name: MGMT_IP
-        value: MGMT_IP_DUMMY
-      - name: SCHED_IPS
-        value: SCHED_IPS_DUMMY
-      - name: THREAD_ID
-        value: "1"
-      - name: SYSTEM_FUNC
-        value: none
-      volumeMounts:
-      - mountPath: /requests
-        name: ipc
-    - name: function-3
-      image: fluentproject/executor
-      imagePullPolicy: Always
-      env: 
-      - name: ROUTE_ADDR
-        value: ROUTE_ADDR_DUMMY
-      - name: MGMT_IP
-        value: MGMT_IP_DUMMY
-      - name: SCHED_IPS
-        value: SCHED_IPS_DUMMY
-      - name: THREAD_ID
-        value: "2"
-      - name: SYSTEM_FUNC
-        value: none
-      volumeMounts:
-      - mountPath: /requests
-        name: ipc
-    - name: cache-container
-      image: fluentproject/cache
-      imagePullPolicy: Always
-      env:
-      - name: ROUTE_ADDR
-        value: ROUTE_ADDR_DUMMY
-      - name: MGMT_IP
-        value: MGMT_IP_DUMMY
-      volumeMounts:
-      - mountPath: /requests
-        name: ipc
+    metadata:
+      labels:
+        role: function
+    spec:
+      nodeSelector:
+        role: function
+      restartPolicy: Always
+      volumes:
+      - name: ipc
+        hostPath:
+          path: /tmp
+      hostNetwork: true
+      hostIPC: true
+      containers:
+      - name: function-1
+        image: fluentproject/executor
+        imagePullPolicy: Always
+        env: 
+        - name: ROUTE_ADDR
+          value: ROUTE_ADDR_DUMMY
+        - name: MGMT_IP
+          value: MGMT_IP_DUMMY
+        - name: SCHED_IPS
+          value: SCHED_IPS_DUMMY
+        - name: THREAD_ID
+          value: "0"
+        - name: SYSTEM_FUNC
+          value: none
+        - name: REPO_ORG
+          value: vsreekanti
+        - name: REPO_BRANCH
+          value: k8s-ds
+        volumeMounts:
+        - mountPath: /requests
+          name: ipc
+      - name: function-2
+        image: fluentproject/executor
+        imagePullPolicy: Always
+        env: 
+        - name: ROUTE_ADDR
+          value: ROUTE_ADDR_DUMMY
+        - name: MGMT_IP
+          value: MGMT_IP_DUMMY
+        - name: SCHED_IPS
+          value: SCHED_IPS_DUMMY
+        - name: THREAD_ID
+          value: "1"
+        - name: SYSTEM_FUNC
+          value: none
+        - name: REPO_ORG
+          value: vsreekanti
+        - name: REPO_BRANCH
+          value: k8s-ds
+        volumeMounts:
+        - mountPath: /requests
+          name: ipc
+      - name: function-3
+        image: fluentproject/executor
+        imagePullPolicy: Always
+        env: 
+        - name: ROUTE_ADDR
+          value: ROUTE_ADDR_DUMMY
+        - name: MGMT_IP
+          value: MGMT_IP_DUMMY
+        - name: SCHED_IPS
+          value: SCHED_IPS_DUMMY
+        - name: THREAD_ID
+          value: "2"
+        - name: SYSTEM_FUNC
+          value: none
+        - name: REPO_ORG
+          value: vsreekanti
+        - name: REPO_BRANCH
+          value: k8s-ds
+        volumeMounts:
+        - mountPath: /requests
+          name: ipc
+      - name: cache-container
+        image: fluentproject/cache
+        imagePullPolicy: Always
+        env:
+        - name: ROUTE_ADDR
+          value: ROUTE_ADDR_DUMMY
+        - name: MGMT_IP
+          value: MGMT_IP_DUMMY
+        volumeMounts:
+        - mountPath: /requests
+          name: ipc

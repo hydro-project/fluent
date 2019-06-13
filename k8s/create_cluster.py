@@ -41,13 +41,13 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
 
     util.replace_yaml_val(env, 'AWS_ACCESS_KEY_ID', aws_key_id)
     util.replace_yaml_val(env, 'AWS_SECRET_ACCESS_KEY', aws_key)
-    util.replace_yaml_val(env, 'FLUENT_STATE_STORE', kops_bucket)
+    util.replace_yaml_val(env, 'KOPE_STATE_STORE', kops_bucket)
     util.replace_yaml_val(env, 'FLUENT_CLUSTER_NAME', cluster_name)
 
     client.create_namespaced_pod(namespace=util.NAMESPACE, body=kops_spec)
 
     # wait for the kops pod to start
-    kops_ip = util.get_pod_ips(client, role='kops', isRunning=True)[0]
+    kops_ip = util.get_pod_ips(client, 'role=kops', is_running=True)[0]
 
     # copy kube config file to kops pod, so it can execute kubectl commands
     kops_podname = kops_spec['metadata']['name']
@@ -120,19 +120,19 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
 
     print('Authorizing ports for routing service...')
 
-    permission = {
+    permission = [{
         'FromPort': 6200,
         'IpProtocol': 'tcp',
         'ToPort': 6203,
         'IpRanges': [{
             'CidrIp': '0.0.0.0/0'
         }]
-    }
+    }]
     ec2_client.authorize_security_group_ingress(GroupId=sg['GroupId'],
                                                 IpPermissions=permission)
 
-    routing_svc_addr = util.get_service_address('routing-service')
-    function_svc_addr = util.get_service_address('function-service')
+    routing_svc_addr = util.get_service_address(client, 'routing-service')
+    function_svc_addr = util.get_service_address(client, 'function-service')
     print('The routing service can be accessed here: \n\t%s' %
           (routing_svc_addr))
     print('The function service can be accessed here: \n\t%s' %
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     mem, ebs, func, sched, route, bench = parse_args(sys.argv[1:], 6, int)
 
     cluster_name = util.check_or_get_env_arg('FLUENT_CLUSTER_NAME')
-    kops_bucket = util.check_or_get_env_arg('FLUENT_STATE_STORE')
+    kops_bucket = util.check_or_get_env_arg('KOPS_STATE_STORE')
     aws_key_id = util.check_or_get_env_arg('AWS_ACCESS_KEY_ID')
     aws_key = util.check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
 

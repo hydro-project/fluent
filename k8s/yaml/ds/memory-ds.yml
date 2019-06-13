@@ -23,20 +23,25 @@ spec:
     matchLabels:
       role: memory
   template:
-    hostNetwork: true
-    restartPolicy: Never
-    containers:
-    - name: memory-container
-      image: fluentproject/annakvs
-      imagePullPolicy: Always
-      env: 
-      - name: SERVER_TYPE
-        value: "memory"
-      - name: ROUTING_IPS
-        value: ROUTING_IPS_DUMMY
-      - name: MGMT_IP
-        value: MGMT_IP_DUMMY
-      - name: SEED_IP
-        value: SEED_IP_DUMMY
-      - name: MON_IPS
-        value: MON_IPS_DUMMY
+    metadata:
+      labels:
+        role: memory
+    spec:
+      nodeSelector:
+        role: memory
+      hostNetwork: true
+      containers:
+      - name: memory-container
+        image: fluentproject/annakvs
+        imagePullPolicy: Always
+        env: 
+        - name: SERVER_TYPE
+          value: "memory"
+        - name: ROUTING_IPS
+          value: ROUTING_IPS_DUMMY
+        - name: MGMT_IP
+          value: MGMT_IP_DUMMY
+        - name: SEED_IP
+          value: SEED_IP_DUMMY
+        - name: MON_IPS
+          value: MON_IPS_DUMMY

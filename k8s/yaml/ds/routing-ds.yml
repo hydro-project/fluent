@@ -23,12 +23,18 @@ spec:
     matchLabels:
       role: routing
   template:
-    hostNetwork: true
-    containers:
-    - name: routing-container
-      image: fluentproject/annakvs
-      env: 
-      - name: SERVER_TYPE
-        value: r
-      - name: MON_IPS
-        value: MON_IPS_DUMMY
+    metadata:
+      labels:
+        role: routing
+    spec:
+      nodeSelector:
+        role: routing
+      hostNetwork: true
+      containers:
+      - name: routing-container
+        image: fluentproject/annakvs
+        env: 
+        - name: SERVER_TYPE
+          value: r
+        - name: MON_IPS
+          value: MON_IPS_DUMMY

@@ -17,16 +17,14 @@
 import boto3
 import random
 import os
+import time
 
 import util
 
 ec2_client = boto3.client('ec2', os.getenv('AWS_REGION', 'us-east-1'))
 
 
-def update_ds(client, apps_client, client, kinds, counts, create=False):
-    assert (len(kinds) == len(counts),
-            'Must have same number of kinds and counts.')
-
+def add_nodes(client, apps_client, cfile, kinds, counts, create=False):
     for i in range(len(kinds)):
         print('Adding %d %s server node(s) to cluster...' %
               (counts[i], kinds[i]))
@@ -42,7 +40,10 @@ def update_ds(client, apps_client, client, kinds, counts, create=False):
 
     kops_ip = util.get_pod_ips(client, 'role=kops')[0]
     route_ips = util.get_pod_ips(client, 'role=routing')
-    seed_ip = random.choice(route_ips)
+    if len(route_ips) > 0:
+        seed_ip = random.choice(route_ips)
+    else:
+        seed_ip = ''
 
     mon_str = ' '.join(util.get_pod_ips(client, 'role=monitoring'))
     route_str = ' '.join(route_ips)
@@ -54,33 +55,38 @@ def update_ds(client, apps_client, client, kinds, counts, create=False):
     # create should only be true when the DaemonSet is being created for the
     # first time -- i.e., when this is called from create_cluster
     if create:
-        for kind in kinds:
+        for i in range(len(kinds)):
+            kind = kinds[i]
+
             fname = 'yaml/ds/%s-ds.yml' % kind
             yml = util.load_yaml(fname)
 
-            env = yml['spec']['template']['env']
+            for container in yml['spec']['template']['spec']['containers']:
+                env = container['env']
 
-            util.replace_yaml_val(env, 'ROUTING_IPS', route_str)
-            util.replace_yaml_val(env, 'ROUTE_ADDR', route_addr)
-            util.replace_yaml_val(env, 'SCHED_IPS', sched_str)
-            util.replace_yaml_val(env, 'FUNCTION_ADDR', function_addr)
-            util.replace_yaml_val(env, 'MON_IPS', mon_str)
-            util.replace_yaml_val(env, 'MGMT_IP', kops_ip)
-            util.replace_yaml_val(env, 'SEED_IP', seed_ip)
+                util.replace_yaml_val(env, 'ROUTING_IPS', route_str)
+                util.replace_yaml_val(env, 'ROUTE_ADDR', route_addr)
+                util.replace_yaml_val(env, 'SCHED_IPS', sched_str)
+                util.replace_yaml_val(env, 'FUNCTION_ADDR', function_addr)
+                util.replace_yaml_val(env, 'MON_IPS', mon_str)
+                util.replace_yaml_val(env, 'MGMT_IP', kops_ip)
+                util.replace_yaml_val(env, 'SEED_IP', seed_ip)
 
             apps_client.create_namespaced_daemon_set(namespace=util.NAMESPACE,
                                                      body=yml)
 
             # wait until all pods of this kind are running
-            util.get_pod_ips(client, 'role='+kind, isRunning=True)
+            res = []
+            while len(res) != counts[i]:
+                res = util.get_pod_ips(client, 'role='+kind, is_running=True)
 
             created_pods = []
-            pods = client.list_namespaced_pods(namespace=util.NAMESPACE,
-                                               label_selector='role=' +
-                                               kind).items
+            pods = client.list_namespaced_pod(namespace=util.NAMESPACE,
+                                              label_selector='role=' +
+                                              kind).items
             for pod in pods:
                 pname = pod.metadata.name
-                for container in pod.containers:
+                for container in pod.spec.containers:
                     cname = container.name
                     created_pods.append((pname, cname))
 

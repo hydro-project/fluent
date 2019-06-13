@@ -23,44 +23,50 @@ spec:
     matchLabels:
       role: ebs
   template:
-    hostNetwork: true
-    containers:
-      - name: ebs-container
-        image: fluentproject/annakvs
-        env: 
-        - name: SERVER_TYPE
-          value: "ebs"
-        - name: ROUTING_IPS
-          value: ROUTING_IPS_DUMMY
-        - name: SEED_IP
-          value: SEED_IP_DUMMY
-        - name: MGMT_IP
-          value: MGMT_IP_DUMMY
-        - name: MON_IPS
-          value: MON_IPS_DUMMY
-        volumeMounts:
-        - mountPath: /ebs/ebs_0
-          name: ebs0
-        - mountPath: /ebs/ebs_1
-          name: ebs1
-        - mountPath: /ebs/ebs_2
-          name: ebs2
-        - mountPath: /ebs/ebs_3
-          name: ebs3
-    volumes:
-    - name: ebs0
-      awsElasticBlockStore:
-        volumeID: VOLUME_DUMMY_0
-        fsType: ext4
-    - name: ebs1
-      awsElasticBlockStore:
-        volumeID: VOLUME_DUMMY_1
-        fsType: ext4
-    - name: ebs2
-      awsElasticBlockStore:
-        volumeID: VOLUME_DUMMY_2
-        fsType: ext4
-    - name: ebs3
-      awsElasticBlockStore:
-        volumeID: VOLUME_DUMMY_3
-        fsType: ext4
+    metadata:
+      labels:
+        role: ebs
+    spec:
+      nodeSelector:
+        role: ebs
+      hostNetwork: true
+      containers:
+        - name: ebs-container
+          image: fluentproject/annakvs
+          env: 
+          - name: SERVER_TYPE
+            value: "ebs"
+          - name: ROUTING_IPS
+            value: ROUTING_IPS_DUMMY
+          - name: SEED_IP
+            value: SEED_IP_DUMMY
+          - name: MGMT_IP
+            value: MGMT_IP_DUMMY
+          - name: MON_IPS
+            value: MON_IPS_DUMMY
+          volumeMounts:
+          - mountPath: /ebs/ebs_0
+            name: ebs0
+          - mountPath: /ebs/ebs_1
+            name: ebs1
+          - mountPath: /ebs/ebs_2
+            name: ebs2
+          - mountPath: /ebs/ebs_3
+            name: ebs3
+      volumes:
+      - name: ebs0
+        awsElasticBlockStore:
+          volumeID: VOLUME_DUMMY_0
+          fsType: ext4
+      - name: ebs1
+        awsElasticBlockStore:
+          volumeID: VOLUME_DUMMY_1
+          fsType: ext4
+      - name: ebs2
+        awsElasticBlockStore:
+          volumeID: VOLUME_DUMMY_2
+          fsType: ext4
+      - name: ebs3
+        awsElasticBlockStore:
+          volumeID: VOLUME_DUMMY_3
+          fsType: ext4
