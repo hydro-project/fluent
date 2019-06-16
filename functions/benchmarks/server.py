@@ -7,12 +7,16 @@ import zmq
 from . import composition
 from . import locality
 from . import lambda_locality
+from . import predserving
+from . import scaling
 from . import utils
 
 BENCHMARK_START_PORT = 3000
 
+
 def benchmark(flconn, tid):
-    logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO,
+                        format='%(asctime)s %(message)s')
 
     ctx = zmq.Context(1)
 
@@ -36,18 +40,28 @@ def benchmark(flconn, tid):
         sckt.connect('tcp://' + resp_addr + ':3000')
         run_bench(bname, num_requests, flconn, kvs, sckt, create)
 
+
 def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
     logging.info('Running benchmark %s, %d requests.' % (bname, num_requests))
 
     if bname == 'composition':
         total, scheduler, kvs, retries = composition.run(flconn, kvs,
-                num_requests, sckt)
+                                                         num_requests, sckt)
     elif bname == 'locality':
         total, scheduler, kvs, retries = locality.run(flconn, kvs,
-                num_requests, create, sckt)
+                                                      num_requests, create,
+                                                      sckt)
     elif bname == 'redis' or bname == 's3':
         total, scheduler, kvs, retries = lambda_locality.run(bname, kvs,
-                num_requests, sckt)
+                                                             num_requests,
+                                                             sckt)
+    elif bname == 'predserving':
+        total, scheduler, kvs, retries = predserving.run(flconn, kvs,
+                                                         num_requests, sckt)
+    elif bname == 'scaling':
+        total, scheduler, kvs, retries = scaling.run(flconn, kvs,
+                                                     num_requests, sckt,
+                                                     create)
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')
@@ -56,8 +70,8 @@ def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
     # some benchmark modes return no results
     if not total:
         sckt.send(b'END')
-        logging.info('*** Benchmark %s finished. It returned no results. ***' %
-                (bname))
+        logging.info('*** Benchmark %s finished. It returned no results. ***'
+                     % (bname))
         return
     else:
         sckt.send(b'END')

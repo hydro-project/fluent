@@ -76,10 +76,8 @@ class AnnaClient():
 
         if tup.error == 0:
             return self._deserialize(tup)
-        elif tup.error == 1:
-            return None # key does not exist
         else:
-            return self.get(tup.key) # re-issue the request
+            return None # key does not exist
 
     def get_all(self, key):
         worker_addresses = self._get_worker_address(key, False)
@@ -190,9 +188,9 @@ class AnnaClient():
             s = SetValue()
             s.ParseFromString(tup.payload)
 
-            result = {}
-            for k in s.keys:
-                result.insert(k)
+            result = set()
+            for k in s.values:
+                result.add(k)
 
             return SetLattice(result)
 
@@ -204,7 +202,7 @@ class AnnaClient():
             return lww.SerializeToString(), LWW
         elif isinstance(val, SetLattice):
             s = SetValue()
-            for o in val:
+            for o in val.reveal():
                 s.values.append(o)
 
             return s.SerializeToString(), SET

@@ -5,9 +5,9 @@
 * [Getting Started Locally](getting-started.md)
 * [Getting Started on AWS](getting-started-aws.md)
 
-## FaaS Docs
+## Function Execution Docs
 
-* [API](function-api.md)
+* [API](function-execution .md)
 
 ## KVS Docs
 

@@ -164,6 +164,9 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
   auto report_start = std::chrono::system_clock::now();
   auto report_end = std::chrono::system_clock::now();
 
+  std::list<Key> access_order;
+  map<Key, std::list<Key>::iterator> iterator_cache;
+
   while (true) {
     kZmqUtil->poll(0, &pollitems);
 
@@ -187,7 +190,12 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           to_retrieve.insert(key);
           key_requestor_map[key].insert(request.response_address());
           client->get_async(key);
+        } else {
+          access_order.erase(iterator_cache[key]);
         }
+
+        access_order.push_front(key);
+        iterator_cache[key] = access_order.begin();
       }
 
       if (covered) {
@@ -240,6 +248,14 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           update_cache(key, tuple.lattice_type(), tuple.payload(),
                        local_lww_cache, local_set_cache,
                        local_ordered_set_cache, log);
+
+          if (iterator_cache.find(key) != iterator_cache.end()) {
+            access_order.erase(iterator_cache[key]);
+          }
+
+          access_order.push_front(key);
+          iterator_cache[key] = access_order.begin();
+
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
           request_address_map[req_id] = request.response_address();
@@ -300,6 +316,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       if (response.has_error() &&
           response.error() == ResponseErrorType::TIMEOUT) {
+        log->info("Request for key {} timed out.", key);
         if (response.type() == RequestType::GET) {
           client->get_async(key);
         } else {
@@ -325,6 +342,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
             update_cache(key, response.tuples(0).lattice_type(),
                          response.tuples(0).payload(), local_lww_cache,
                          local_set_cache, local_ordered_set_cache, log);
+          } else {
+            log->info("Key {} does not exist!", key);
           }
 
           // notify clients
@@ -366,7 +385,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(
                         report_end - report_start)
                         .count();
-
     // update KVS with information about which keys this node is currently
     // caching; we only do this periodically because we are okay with receiving
     // potentially stale updates
@@ -387,7 +405,25 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       report_start = std::chrono::system_clock::now();
     }
 
-    // TODO: check if cache size is exceeding (threshold x capacity) and evict.
+    if (key_type_map.size() > 1000) {
+      // drop the 10 least recently accessed keys
+      for (int i = 0; i < 10; i++) {
+        Key key = access_order.back();
+        access_order.pop_back();
+        iterator_cache.erase(key);
+
+        LatticeType type = key_type_map[key];
+        key_type_map.erase(key);
+
+        if (type == LWW) {
+          local_lww_cache.erase(key);
+        } else if (type == SET) {
+          local_set_cache.erase(key);
+        } else if (type == ORDERED_SET) {
+          local_ordered_set_cache.erase(key);
+        }
+      }
+    }
   }
 }
 

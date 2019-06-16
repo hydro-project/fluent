@@ -22,12 +22,16 @@ from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
 from include import server_utils as sutils
-from . import user_library, utils
+from . import user_library
+from . import utils
+
 
 def _process_args(arg_list):
     return [get_serializer(arg.type).load(arg.body) for arg in arg_list]
 
+
 def exec_function(exec_socket, kvs, status, ip, tid):
+    user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
     logging.info('Received call for ' + call.name)
@@ -37,28 +41,28 @@ def exec_function(exec_socket, kvs, status, ip, tid):
     f = utils._retrieve_function(call.name, kvs)
     if not f:
         logging.info('Function %s not found! Putting an error.' %
-                (call.name))
+                     (call.name))
         sutils.error.error = FUNC_NOT_FOUND
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-            user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
             result = _exec_func_normal(kvs, f, fargs, user_lib)
             result = serialize_val(result)
         except Exception as e:
-            logging.info('Unexpected error %s while executing function.' %
-                    (str(e)))
+            logging.exception('Unexpected error %s while executing function.' %
+                              (str(e)))
             sutils.error.error = EXEC_ERROR
             result = serialize_val(('ERROR: ' + str(e),
-                    sutils.error.SerializeToString()))
+                                   sutils.error.SerializeToString()))
 
-    result_lattice = LWWPairLattice(generate_timestamp(0), result)
-    kvs.put(call.resp_id, result_lattice)
+    user_lib.close()
+    kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
 
 
-def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
+def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
+                      tid):
     user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
-    if (schedule.consistency == NORMAL):
+    if schedule.consistency == NORMAL:
         _exec_dag_function_normal(pusher_cache, kvs,
                                   triggers, function, schedule, user_lib)
     else:
@@ -66,7 +70,11 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip, tid):
         _exec_dag_function_causal(pusher_cache, kvs,
                                   triggers, function, schedule)
 
-def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, user_lib):
+    user_lib.close()
+
+
+def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
+                              user_lib):
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].args)
 
@@ -74,11 +82,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, u
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
 
-    logging.info('Executing function %s for DAG %s (ID %s): started at %.6f.' %
-            (schedule.dag.name, fname, trigger.id, time.time()))
-
     fargs = _process_args(fargs)
-
     result = _exec_func_normal(kvs, function, fargs, user_lib)
 
     is_sink = True
@@ -95,24 +99,30 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule, u
 
             al = new_trigger.arguments
             al.args.extend(list(map(lambda v: serialize_val(v, None, False),
-                result)))
+                                    result)))
 
             dest_ip = schedule.locations[conn.sink]
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
-    logging.info('Finished executing function %s for DAG %s (ID %s): started at %.6f.' %
-            (schedule.dag.name, fname, trigger.id, time.time()))
     if is_sink:
         logging.info('DAG %s (ID %s) completed; result at %s.' %
-                (schedule.dag.name, trigger.id, schedule.id))
-        l = LWWPairLattice(generate_timestamp(0), serialize_val(result))
-        kvs.put(schedule.id, l)
+                     (schedule.dag.name, trigger.id, schedule.id))
+        result = serialize_val(result)
+        if schedule.HasField('response_address'):
+            sckt = pusher_cache.get(schedule.response_address)
+            sckt.send(result)
+        else:
+            lattice = LWWPairLattice(generate_timestamp(0), result)
+            kvs.put(schedule.id, lattice)
+
 
 def _exec_func_normal(kvs, func, args, user_lib):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
+
     if refs:
         refs = _resolve_ref_normal(refs, kvs)
+    end = time.time()
 
     func_args = (user_lib,)
     for arg in args:
@@ -122,21 +132,28 @@ def _exec_func_normal(kvs, func, args, user_lib):
             func_args += (arg,)
 
     # execute the function
-    return func(*func_args)
+    res = func(*func_args)
+    return res
+
 
 def _resolve_ref_normal(refs, kvs):
+    start = time.time()
     keys = [ref.key for ref in refs]
+    keys = list(set(keys))
     kv_pairs = kvs.get(keys)
 
     # when chaining function executions, we must wait
-    while not kv_pairs:
+    num_nulls = len(list(filter(lambda a: not a, kv_pairs.values())))
+    while num_nulls > 0:
         kv_pairs = kvs.get(keys)
 
     for ref in refs:
         if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
             kv_pairs[ref.key] = deserialize_val(kv_pairs[ref.key].reveal()[1])
 
+    end = time.time()
     return kv_pairs
+
 
 def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
     fname = schedule.target_function
@@ -158,18 +175,14 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
         # combine dependencies from previous func
         for dep in trigger.dependencies:
             if dep.key in dependencies:
-                dependencies[dep.key] = \
-                _merge_vector_clock(dependencies[dep.key], dep.vector_clock)
+                dependencies[dep.key] = _merge_vector_clock(
+                      dependencies[dep.key], dep.vector_clock)
             else:
                 dependencies[dep.key] = dep.vector_clock
-
-    logging.info('Executing function %s for DAG %s (ID %d) in ' +
-        'causal consistency.' % (schedule.dag.name, fname, trigger.id))
 
     fargs = _process_args(fargs)
 
     kv_pairs = {}
-
     result = _exec_func_causal(kvs, function, fargs, kv_pairs,
                                schedule, versioned_key_locations)
 
@@ -194,7 +207,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
 
             al = new_trigger.arguments
             al.args.extend(list(map(lambda v: serialize_val(v, None, False),
-                result)))
+                                    result)))
 
             new_trigger.versioned_key_locations = versioned_key_locations
 
@@ -208,9 +221,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
-        logging.info('DAG %s (ID %d) completed in causal mode; result at %s.' %
-                (schedule.dag.name, trigger.id, schedule.response_id))
-
         vector_clock = {}
         if schedule.response_id in dependencies:
             if schedule.id in dependencies[schedule.response_id]:
@@ -220,7 +230,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             vector_clock = dependencies[schedule.response_id][schedule.id]
             del dependencies[schedule.response_id]
         else:
-            vector_clock = {schedule.id : 1}
+            vector_clock = {schedule.id: 1}
 
         succeed = kvs.causal_put(schedule.response_id,
                                  vector_clock, dependencies,
@@ -228,7 +238,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
         while not succeed:
             kvs.causal_put(schedule.response_id, vector_clock,
                            dependencies, serialize_val(result), schedule.id)
-
 
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
@@ -260,7 +269,9 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
     # execute the function
     return func(*func_args)
 
-def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
+
+def _resolve_ref_causal(refs, kvs, kv_pairs, schedule,
+                        versioned_key_locations):
     future_read_set = _compute_children_read_set(schedule)
     keys = [ref.key for ref in refs]
     result = kvs.causal_get(keys, future_read_set,
@@ -277,6 +288,7 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations):
 
     kv_pairs = result[1]
 
+
 def _compute_children_read_set(schedule):
     future_read_set = set()
     fname = schedule.target_function
@@ -286,7 +298,7 @@ def _compute_children_read_set(schedule):
     while not len(delta) == 0:
         new_delta = set()
         for conn in schedule.dag.connections:
-            if conn.source in delta and not conn.sink in children:
+            if conn.source in delta and conn.sink not in children:
                 children.add(conn.sink)
                 new_delta.add(conn.sink)
         delta = new_delta
@@ -294,11 +306,12 @@ def _compute_children_read_set(schedule):
     for child in children:
         fargs = list(schedule.arguments[child].args)
         refs = list(filter(lambda arg: type(arg) == FluentReference,
-            map(lambda arg: get_serializer(arg.type).load(arg.body),
-                fargs)))
+                    map(lambda arg: get_serializer(arg.type).load(arg.body),
+                        fargs)))
         (future_read_set.add(ref.key) for ref in refs)
 
     return future_read_set
+
 
 def _merge_vector_clock(lhs, rhs):
     result = lhs

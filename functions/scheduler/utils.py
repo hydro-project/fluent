@@ -25,12 +25,13 @@ NUM_EXEC_THREADS = 3
 EXECUTORS_PORT = 7002
 SCHEDULERS_PORT = 7004
 
+
 def _get_func_list(client, prefix, fullname=False):
     funcs = client.get(FUNCOBJ)
     if not funcs:
         return []
 
-    funcs = default_ser.load(funcs.reveal()[1])
+    funcs = funcs.reveal()
 
     prefix = FUNC_PREFIX + prefix
     result = list(filter(lambda fn: fn.startswith(prefix), funcs))
@@ -43,10 +44,10 @@ def _get_func_list(client, prefix, fullname=False):
 
 def _put_func_list(client, funclist):
     # remove duplicates
-    funclist = list(set(funclist))
+    funclist = set(funclist)
 
-    l = LWWPairLattice(generate_timestamp(0), default_ser.dump(funclist))
-    client.put(FUNCOBJ, l)
+    lattice = SetLattice(funclist)
+    client.put(FUNCOBJ, lattice)
 
 
 def _get_cache_ip_key(ip):
@@ -101,9 +102,8 @@ def _get_ip_set(request_ip, socket_cache, exec_threads=True):
         return set(ips.keys)
 
 
-def _update_key_maps(kc_map, key_ip_map, executors, kvs):
+def _update_key_maps(key_ip_map, executors, kvs):
     exec_ips = set(map(lambda e: e[0], executors))
-    for ip in set(kc_map.keys()).difference(exec_ips): del kc_map[ip]
 
     key_ip_map.clear()
     for ip in exec_ips:
@@ -111,20 +111,19 @@ def _update_key_maps(kc_map, key_ip_map, executors, kvs):
 
         # this is of type LWWPairLattice, which has a KeySet protobuf packed
         # into it; we want the keys in that KeySet protobuf
-        l = kvs.get(key)
-        if l is None: # this executor is still joining
+        lattice = kvs.get(key)
+        if lattice is None:  # this executor is still joining
             continue
 
         ks = KeySet()
         ks.ParseFromString(l.reveal()[1])
-
-        kc_map[ip] = set(ks.keys)
 
         for key in ks.keys:
             if key not in key_ip_map:
                 key_ip_map[key] = []
 
             key_ip_map[key].append(ip)
+
 
 def _find_dag_source(dag):
     sinks = set()

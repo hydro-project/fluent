@@ -30,12 +30,19 @@ enum ErrorType {
   NOT_PINNED = 2;
   INVALID_TARGET = 3;
   EXEC_ERROR = 4;
+  NO_SUCH_DAG = 5;
+  NO_RESOURCES = 6;
 }
 
 enum ConsistencyType {
   NORMAL = 0;
   SINGLE = 1;
   CROSS = 2;
+}
+
+enum UpdateType {
+  PERIODIC = 0;
+  POST_REQUEST = 1;
 }
 
 message Value {
@@ -72,6 +79,7 @@ message ArgList {
 message DagCall {
   required string name = 1;
   map<string, ArgList> function_args = 2;
+  optional string response_address = 3;
 }
 
 message GenericResponse {
@@ -85,7 +93,8 @@ message ThreadStatus {
   required uint32 tid = 2;
   repeated string functions = 3;
   optional double utilization = 4;
-  required bool running = 5 [default = true];
+  required UpdateType type = 5;
+  required bool running = 6 [default = true];
 }
 
 message DagSchedule {
@@ -97,6 +106,7 @@ message DagSchedule {
   map<string, string> locations = 6; // which functions should be executed where
   // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
   map<string, ArgList> arguments = 7; 
+  optional string response_address = 8;
 }
 
 message VersionedKey {

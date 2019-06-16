@@ -15,6 +15,7 @@
 import logging
 import random
 import uuid
+import time
 import zmq
 
 from include.functions_pb2 import *
@@ -23,22 +24,29 @@ from include import server_utils as sutils
 from include.shared import *
 from . import utils
 
-def call_function(func_call_socket, pusher_cache, executors, key_ip_map):
+sys_random = random.SystemRandom()
+
+
+def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
+                  executor_status_map, running_counts, backoff):
+
     call = FunctionCall()
     call.ParseFromString(func_call_socket.recv())
 
     if not call.HasField('resp_id'):
         call.resp_id = str(uuid.uuid4())
 
-    logging.info('Calling function %s.' % (call.name))
-
     refs = list(filter(lambda arg: type(arg) == FluentReference,
-        map(lambda arg: get_serializer(arg.type).load(arg.body),
-            call.args)))
+                       map(lambda arg: get_serializer(arg.type).load(arg.body),
+                           call.args)))
 
-    ip, tid = _pick_node(executors, key_ip_map, refs)
+    ip, tid = _pick_node(executors, key_ip_map, refs, running_counts, backoff)
+
     sckt = pusher_cache.get(utils._get_exec_address(ip, tid))
     sckt.send(call.SerializeToString())
+
+    executors.discard((ip, tid))
+    executor_status_map[(ip, tid)] = time.time()
 
     r = GenericResponse()
     r.success = True
@@ -47,24 +55,25 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map):
     func_call_socket.send(r.SerializeToString())
 
 
-def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
+def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
+             running_counts, backoff):
     dag, sources = dags[call.name]
 
     schedule = DagSchedule()
     schedule.id = str(uuid.uuid4())
     schedule.dag.CopyFrom(dag)
     schedule.consistency = NORMAL
-
-    logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
+    if call.HasField('response_address'):
+        schedule.response_address = call.response_address
 
     for fname in dag.functions:
         locations = func_locations[fname]
         args = call.function_args[fname].args
 
         refs = list(filter(lambda arg: type(arg) == FluentReference,
-            map(lambda arg: get_serializer(arg.type).load(arg.body),
-                args)))
-        loc = _pick_node(locations, key_ip_map, refs)
+                    map(lambda arg: get_serializer(arg.type).load(arg.body),
+                        args)))
+        loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
         # copy over arguments into the dag schedule
@@ -99,11 +108,34 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map):
     return schedule.id
 
 
-def _pick_node(executors, key_ip_map, refs):
+def _pick_node(valid_executors, key_ip_map, refs, running_counts, backoff):
     # Construct a map which maps from IP addresses to the number of
     # relevant arguments they have cached. For the time begin, we will
     # just pick the machine that has the most number of keys cached.
     arg_map = {}
+    reason = ''
+
+    executors = set(valid_executors)
+    for executor in backoff:
+        if len(executors) > 1:
+            executors.discard(executor)
+
+    keys = list(running_counts.keys())
+    sys_random.shuffle(keys)
+    for key in keys:
+        if len(running_counts[key]) > 1000 and len(executors) > 1:
+            executors.discard(key)
+
+    executors = set(valid_executors)
+    for executor in backoff:
+        if len(executors) > 1:
+            executors.discard(executor)
+
+    keys = list(running_counts.keys())
+    sys_random.shuffle(keys)
+    for key in keys:
+        if len(running_counts[key]) > 1000 and len(executors) > 1:
+            executors.discard(key)
 
     executor_ips = [e[0] for e in executors]
 
@@ -131,14 +163,18 @@ def _pick_node(executors, key_ip_map, refs):
     # address; we also route some requests to a random valid node
     if max_ip:
         candidates = list(filter(lambda e: e[0] == max_ip, executors))
-        max_ip = random.choice(candidates)
+        max_ip = sys_random.choice(candidates)
 
     # This only happens if max_ip is never set, and that means that
     # there were no machines with any of the keys cached. In this case,
     # we pick a random IP that was in the set of IPs that was running
     # most recently.
-    if not max_ip or random.random() < 0.20:
-        max_ip = random.sample(executors, 1)[0]
+    if not max_ip or sys_random.random() < 0.20:
+        max_ip = sys_random.sample(executors, 1)[0]
+
+    if max_ip not in running_counts:
+        running_counts[max_ip] = set()
+
+    running_counts[max_ip].add(time.time())
 
     return max_ip
-

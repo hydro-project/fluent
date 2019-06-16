@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import cloudpickle as cp
+import pyarrow as pa
 import codecs
 from io import BytesIO
 import numpy as np
@@ -21,6 +22,7 @@ from .functions_pb2 import *
 from . import shared
 
 SER_FORMAT = 'raw_unicode_escape'
+
 
 class Serializer():
     def __init__(self):
@@ -38,6 +40,7 @@ class Serializer():
     def load(self, msg):
         pass
 
+
 class DefaultSerializer(Serializer):
     def __init__(self):
         pass
@@ -53,6 +56,7 @@ class DefaultSerializer(Serializer):
 
     def load(self, msg):
         return cp.loads(msg)
+
 
 class StringSerializer(Serializer):
     def __init__(self):
@@ -70,25 +74,25 @@ class StringSerializer(Serializer):
     def load(self, msg):
         return cp.loads(self._deserialize(msg))
 
+
 # TODO: how can we make serializers pluggable?
 class NumpySerializer(DefaultSerializer):
     def __init__(self):
         pass
 
     def dump(self, msg):
-        body = BytesIO()
-
-        np.save(body, msg)
-        return body.getvalue()
+        return pa.serialize(msg).to_buffer().to_pybytes()
 
     def load(self, msg):
-        return np.load(BytesIO(msg))
+        return pa.deserialize(msg)
+
 
 numpy_ser = NumpySerializer()
 default_ser = DefaultSerializer()
 string_ser = StringSerializer()
 
 function_ser = default_ser
+
 
 def get_serializer(kind):
     global numpy_ser, default_ser, string_ser
@@ -102,13 +106,14 @@ def get_serializer(kind):
     else:
         return default_ser
 
+
 def serialize_val(val, valobj=None, serialize=True):
     if not valobj:
         valobj = Value()
 
     if isinstance(val, shared.FluentFuture):
         valobj.body = default_ser.dump(shared.FluentReference(val.obj_id,
-            True, LWW))
+                                       True, LWW))
     elif isinstance(val, np.ndarray):
         valobj.body = numpy_ser.dump(val)
         valobj.type = NUMPY
@@ -119,6 +124,7 @@ def serialize_val(val, valobj=None, serialize=True):
         return valobj
 
     return valobj.SerializeToString()
+
 
 def deserialize_val(val):
     v = Value()

@@ -22,16 +22,13 @@ from include.functions_pb2 import *
 from include.shared import *
 from include.serializer import *
 
+
 class FluentConnection():
-    def __init__(self, func_addr, ip=None, tid=0):
-        self.service_addr = 'tcp://'+  func_addr + ':%d'
+    def __init__(self, func_addr, ip, tid=0):
+        self.service_addr = 'tcp://' + func_addr + ':%d'
         self.context = zmq.Context(1)
         kvs_addr = self._connect()
-
-        if ip:
-            self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
-        else:
-            self.kvs_client = AnnaClient(kvs_addr, offset=tid)
+        self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
 
         self.func_create_sock = self.context.socket(zmq.REQ)
         self.func_create_sock.connect(self.service_addr % FUNC_CREATE_PORT)
@@ -47,6 +44,13 @@ class FluentConnection():
 
         self.dag_call_sock = self.context.socket(zmq.REQ)
         self.dag_call_sock.connect(self.service_addr % DAG_CALL_PORT)
+
+        self.response_sock = self.context.socket(zmq.PULL)
+        response_port = 9000 + tid
+        self.response_sock.setsockopt(zmq.RCVTIMEO, 1000)
+        self.response_sock.bind('tcp://*:' + str(response_port))
+
+        self.response_address = 'tcp://' + ip + ':' + str(response_port)
 
         self.rid = 0
 
@@ -108,14 +112,14 @@ class FluentConnection():
             return FluentFunction(name, self, self.kvs_client)
         else:
             print('Unexpected error while registering function: \n\t%s.'
-                    % (resp))
+                  % (resp))
 
     def register_dag(self, name, functions, connections):
         flist = self._get_func_list()
         for fname in functions:
             if fname not in flist.names:
                 print(('Function %s not registered. Please register before'
-                        + 'including it in a DAG.') % (fname))
+                      + 'including it in a DAG.') % (fname))
                 return False, None
 
         dag = Dag()
@@ -133,7 +137,7 @@ class FluentConnection():
 
         return r.success, r.error
 
-    def call_dag(self, dname, arg_map):
+    def call_dag(self, dname, arg_map, direct_response=False):
         dc = DagCall()
         dc.name = dname
 
@@ -143,12 +147,26 @@ class FluentConnection():
             al = dc.function_args[fname]
             al.args.extend(args)
 
+        if direct_response:
+            dc.response_address = self.response_address
+
         self.dag_call_sock.send(dc.SerializeToString())
 
         r = GenericResponse()
         r.ParseFromString(self.dag_call_sock.recv())
 
-        if r.success:
-            return r.response_id
+        if direct_response:
+            try:
+                result = self.response_sock.recv()
+                return deserialize_val(result)
+            except zmq.ZMQError as e:
+                if e.errno == zmq.EAGAIN:
+                    return None
+                    print('Timeout')
+                else:
+                    raise e
         else:
-            return None
+            if r.success:
+                return r.response_id
+            else:
+                return None

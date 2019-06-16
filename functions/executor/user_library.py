@@ -14,10 +14,13 @@
 
 import queue
 import threading
+import time
 import zmq
 
 from anna.zmq_util import SocketCache
 from include import server_utils
+from include import shared
+
 
 class AbstractFluentUserLibrary:
     # Stores a lattice value at ref.
@@ -34,9 +37,11 @@ class AbstractFluentUserLibrary:
         raise NotImplementedError
 
     # Receives messages sent by send() to this function.
-    # Receives all outstanding messages as a list [(sender id, bytestring message), ...]
+    # Receives all outstanding messages as a list [(sender id,
+    # bytestring message), ...]
     def recv(self):
         raise NotImplementedError
+
 
 class FluentUserLibrary(AbstractFluentUserLibrary):
 
@@ -57,14 +62,22 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
         self.recv_inbox = queue.Queue()
 
         # Thread for receiving messages into our inbox.
-        self.recv_inbox_thread = threading.Thread(target=self._recv_inbox_listener)
+        self.recv_inbox_thread = threading.Thread(
+              target=self._recv_inbox_listener)
+        self.recv_inbox_thread.do_run = True
         self.recv_inbox_thread.start()
 
     def put(self, ref, ltc):
         return self.client.put(ref, ltc)
 
     def get(self, ref):
+        if type(ref) == list:
+            return self.client.get(ref)
+
         return self.client.get(ref)[ref]
+
+    def getid(self):
+        return (self.executor_ip, self.executor_tid)
 
     # dest is currently (IP string, thread id int) of destination executor.
     def send(self, dest, bytestr):
@@ -75,24 +88,39 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
         socket = self.send_socket_cache.get(dest_addr)
         socket.send_pyobj((sender, bytestr))
 
+    def close(self):
+        self.recv_inbox_thread.do_run = False
+        self.recv_inbox_thread.join()
+
     def recv(self):
         res = []
         while True:
             try:
-                (sender, msg) = self.recv_inbox.get()
+                (sender, msg) = self.recv_inbox.get(block=False)
                 res.append((sender, msg))
             except queue.Empty:
                 break
         return res
-
 
     # Function that continuously listens for send()s sent by other nodes,
     # and stores the messages in an inbox.
     def _recv_inbox_listener(self):
         # Socket for receiving send() messages from other nodes.
         recv_inbox_socket = self.ctx.socket(zmq.PULL)
-        recv_inbox_socket.bind(server_utils.BIND_ADDR_TEMPLATE % (server_utils.RECV_INBOX_PORT + self.executor_tid))
+        recv_inbox_socket.bind(server_utils.BIND_ADDR_TEMPLATE %
+                               (server_utils.RECV_INBOX_PORT +
+                                self.executor_tid))
+        t = threading.currentThread()
 
-        while True:
-            (sender, msg) = recv_inbox_socket.recv_pyobj(0)  # Blocking.
-            self.recv_inbox.put((sender, msg))
+        while t.do_run:
+            try:
+                (sender, msg) = recv_inbox_socket.recv_pyobj(zmq.NOBLOCK)
+                self.recv_inbox.put((sender, msg))
+            except zmq.ZMQError as e:
+                if e.errno == zmq.EAGAIN:
+                    continue
+                else:
+                    raise e
+            time.sleep(.010)
+
+        recv_inbox_socket.close()

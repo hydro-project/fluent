@@ -23,14 +23,17 @@ import zmq
 UTILIZATION_REPORT_PORT = 7003
 EXECUTOR_DEPART_PORT = 7005
 
+
 def _retrieve_function(name, kvs):
     kvs_name = server_utils._get_func_kvs_name(name)
-    latt = kvs.get(kvs_name)[kvs_name]
+    result = kvs.get(kvs_name)
 
-    if latt:
-        return serializer.function_ser.load(latt.reveal()[1])
-    else:
-        return None
+    while not result:
+        logging.info("retrying get for function %s" % kvs_name)
+        result = kvs.get(kvs_name)
+    latt = result[kvs_name]
+
+    return serializer.function_ser.load(latt.reveal()[1])
 
 
 def _push_status(schedulers, pusher_cache, status):
@@ -41,11 +44,14 @@ def _push_status(schedulers, pusher_cache, status):
         sckt = pusher_cache.get(_get_status_address(sched))
         sckt.send(msg)
 
+
 def _get_status_address(ip):
     return 'tcp://' + ip + ':' + str(server_utils.STATUS_PORT)
 
+
 def _get_util_report_address(mgmt_ip):
     return 'tcp://' + mgmt_ip + ':' + str(UTILIZATION_REPORT_PORT)
+
 
 def _get_depart_done_addr(mgmt_ip):
     return 'tcp://' + mgmt_ip + ':' + str(EXECUTOR_DEPART_PORT)
