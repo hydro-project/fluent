@@ -23,7 +23,7 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
   request.ParseFromString(serialized);
   for (CausalTuple tuple : request.tuples()) {
     Key key = tuple.key();
-    //log->info("PUT key {}.", key);
+    // log->info("PUT key {}.", key);
     auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>(
         to_cross_causal_payload(deserialize_cross_causal(tuple.payload())));
     // first, update unmerged store

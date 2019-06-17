@@ -80,7 +80,7 @@ void user_request_handler(
           if (stored_key_map.find(key) == stored_key_map.end() ||
               stored_key_map[key].type_ == LatticeType::NO) {
             tp->set_error(1);
-            //log->error("Key {} doesn't exist.", key);
+            // log->error("Key {} doesn't exist.", key);
           } else {
             auto res = process_get(key, serializers[stored_key_map[key].type_]);
             tp->set_lattice_type(stored_key_map[key].type_);
@@ -88,7 +88,7 @@ void user_request_handler(
             tp->set_error(res.second);
           }
         } else if (request_type == RequestType::PUT) {
-          //log->error("PUT for key {}.", key);
+          // log->error("PUT for key {}.", key);
           if (tuple.lattice_type() == LatticeType::NO) {
             log->error("PUT request missing lattice type.");
           } else if (stored_key_map.find(key) != stored_key_map.end() &&

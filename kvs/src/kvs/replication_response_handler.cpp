@@ -143,7 +143,7 @@ void replication_response_handler(
             if (stored_key_map.find(key) == stored_key_map.end() ||
                 stored_key_map[key].type_ == LatticeType::NO) {
               tp->set_error(1);
-              //log->error("Key {} doesn't exist.", key);
+              // log->error("Key {} doesn't exist.", key);
             } else {
               auto res =
                   process_get(key, serializers[stored_key_map[key].type_]);

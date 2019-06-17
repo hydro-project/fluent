@@ -32,7 +32,7 @@ void versioned_key_request_handler(const string& serialized,
             "store.",
             key, request.id());
       } else {
-        //log->info("assembling payload for key {}", key);
+        // log->info("assembling payload for key {}", key);
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);
         tp->set_payload(serialize(*(version_store[request.id()][key])));
@@ -59,7 +59,6 @@ void versioned_key_response_handler(
 
   if (client_id_to_address_map.find(response.id()) !=
       client_id_to_address_map.end()) {
-
     set<Address> address_to_gc;
 
     for (const Address& addr : client_id_to_address_map[response.id()]) {
@@ -75,7 +74,7 @@ void versioned_key_response_handler(
 
         if (pending_cross_metadata[addr].remote_read_set_.size() == 0) {
           // all remote read finished
-          //log->info("all remote read finished for addr {}", addr);
+          // log->info("all remote read finished for addr {}", addr);
           CausalResponse response;
 
           for (const auto& pair :
