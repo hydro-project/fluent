@@ -80,14 +80,9 @@ message DagCall {
   required string name = 1;
   map<string, ArgList> function_args = 2;
   required ConsistencyType consistency = 3 [default = NORMAL];
-<<<<<<< HEAD
   optional string response_address = 4;
   optional string output_key = 5;
   optional string client_id = 6;
-=======
-  optional string output_key = 4;
-  optional string client_id = 5;
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 }
 
 message GenericResponse {
@@ -113,16 +108,10 @@ message DagSchedule {
   repeated string triggers = 5;
   map<string, string> locations = 6; // which functions should be executed where
   // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
-<<<<<<< HEAD
   map<string, ArgList> arguments = 7; 
   optional string response_address = 8;
   optional string output_key = 9;
   optional string client_id = 10;
-=======
-  map<string, ArgList> arguments = 7;
-  optional string output_key = 8;
-  optional string client_id = 9;
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 }
 
 message VersionedKey {

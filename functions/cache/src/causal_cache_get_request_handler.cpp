@@ -140,11 +140,7 @@ void get_request_handler(
               // all dependency met
               merge_into_causal_cut(key, causal_cut_store, in_preparation,
                                     version_store, pending_cross_metadata,
-<<<<<<< HEAD
-                                    pushers, cct, client_id_to_address_map, log);
-=======
                                     pushers, cct, client_id_to_address_map, log, unmerged_store);
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
               to_fetch_map.erase(key);
             } else {
               in_preparation[key].first.insert(request.response_address());
@@ -160,11 +156,7 @@ void get_request_handler(
               // all dependency met
               merge_into_causal_cut(key, causal_cut_store, in_preparation,
                                     version_store, pending_cross_metadata,
-<<<<<<< HEAD
-                                    pushers, cct, client_id_to_address_map, log);
-=======
                                     pushers, cct, client_id_to_address_map, log, unmerged_store);
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
               to_fetch_map.erase(key);
             } else {
               in_preparation[key].first.insert(request.response_address());

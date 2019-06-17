@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.6
-import cloudpickle as cp
+
 import logging
 import sys
 import zmq
@@ -7,54 +7,39 @@ import zmq
 from . import composition
 from . import locality
 from . import lambda_locality
-<<<<<<< HEAD
 from . import predserving
 from . import scaling
-=======
-from . import causal
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 from . import utils
 
 BENCHMARK_START_PORT = 3000
 
 
 def benchmark(flconn, tid):
-<<<<<<< HEAD
     logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')
 
-=======
-    logging.info('start benchmark thread')
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     ctx = zmq.Context(1)
 
     benchmark_start_socket = ctx.socket(zmq.PULL)
     benchmark_start_socket.bind('tcp://*:' + str(BENCHMARK_START_PORT + tid))
     kvs = flconn.kvs_client
 
-    dags = {}
-    dag_names = []
-
     while True:
         msg = benchmark_start_socket.recv_string()
-        logging.info('receive benchmark request')
         splits = msg.split(':')
 
         resp_addr = splits[0]
         bname = splits[1]
-        mode = splits[2]
-        segment = None
+        num_requests = int(splits[2])
         if len(splits) > 3:
-            segment = int(splits[3])
+            create = bool(splits[3])
+        else:
+            create = False
 
         sckt = ctx.socket(zmq.PUSH)
         sckt.connect('tcp://' + resp_addr + ':3000')
-        run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names)
+        run_bench(bname, num_requests, flconn, kvs, sckt, create)
 
-def run_bench(bname, mode, segment, flconn, kvs, sckt, dags, dag_names):
-    logging.info('Running benchmark %s.' % (bname))
-
-<<<<<<< HEAD
 
 def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
     logging.info('Running benchmark %s, %d requests.' % (bname, num_requests))
@@ -77,19 +62,12 @@ def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
         total, scheduler, kvs, retries = scaling.run(flconn, kvs,
                                                      num_requests, sckt,
                                                      create)
-=======
-    latency = None
-
-    if bname == 'causal':
-        latency = causal.run(mode, segment, flconn, kvs, dags, dag_names)
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     else:
         logging.info('Unknown benchmark type: %s!' % (bname))
         sckt.send(b'END')
         return
 
     # some benchmark modes return no results
-<<<<<<< HEAD
     if not total:
         sckt.send(b'END')
         logging.info('*** Benchmark %s finished. It returned no results. ***'
@@ -107,12 +85,3 @@ def run_bench(bname, num_requests, flconn, kvs, sckt, create=False):
     if len(kvs) > 0:
         utils.print_latency_stats(kvs, 'KVS', True)
     logging.info('Number of KVS get retries: %d' % (retries))
-=======
-    sckt.send(cp.dumps(latency))
-    logging.info('*** Benchmark %s finished. ***' % (bname))
-
-    if mode == 'warmup':
-        logging.info('Warmup latency is %.6f' % (latency['warmup']))
-    #if mode == 'run':
-    #    utils.print_latency_stats(latency, 'Causal', True)
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47

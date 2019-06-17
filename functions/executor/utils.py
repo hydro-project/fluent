@@ -26,7 +26,6 @@ EXECUTOR_DEPART_PORT = 7005
 
 def _retrieve_function(name, kvs, consistency=NORMAL):
     kvs_name = server_utils._get_func_kvs_name(name)
-<<<<<<< HEAD
 
     if consistency == NORMAL:
         result = kvs.get(kvs_name)
@@ -41,15 +40,6 @@ def _retrieve_function(name, kvs, consistency=NORMAL):
             return serializer.function_ser.load(result[1][kvs_name][1])
         else:
             return None
-=======
-    result = kvs.causal_get([kvs_name], set(), {}, SINGLE, 0)
-
-    while not result:
-        logging.info("retrying get for function %s" % kvs_name)
-        result = kvs.causal_get([kvs_name], set(), {}, SINGLE, 0)
-
-    return serializer.function_ser.load(result[1][kvs_name][1])
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
 
 def _push_status(schedulers, pusher_cache, status):

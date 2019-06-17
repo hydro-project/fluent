@@ -46,13 +46,8 @@ def _put_func_list(client, funclist):
     # remove duplicates
     funclist = set(funclist)
 
-<<<<<<< HEAD
     lattice = SetLattice(funclist)
     client.put(FUNCOBJ, lattice)
-=======
-    l = SetLattice(funclist)
-    client.put(FUNCOBJ, l)
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
 
 def _get_cache_ip_key(ip):
@@ -107,21 +102,12 @@ def _get_ip_set(request_ip, socket_cache, exec_threads=True):
         return set(ips.keys)
 
 
-<<<<<<< HEAD
 def _update_key_maps(key_ip_map, executors, kvs):
-=======
-def _update_key_maps(kc_map, key_ip_map, executors, kvs, logging):
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     exec_ips = set(map(lambda e: e[0], executors))
 
     key_ip_map.clear()
     for ip in exec_ips:
-        logging.info('getting cached key for ip %s.' %
-                    (ip))
         key = _get_cache_ip_key(ip)
-
-        logging.info('metadata key is %s.' %
-                    (key))
 
         # this is of type LWWPairLattice, which has a KeySet protobuf packed
         # into it; we want the keys in that KeySet protobuf

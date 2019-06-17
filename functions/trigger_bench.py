@@ -18,9 +18,6 @@ with open('bench_ips.txt', 'r') as f:
         ips.append(line.strip())
         line = f.readline()
 
-for ip in ips:
-	print(ip)
-
 msg = sys.argv[1]
 ctx = zmq.Context(1)
 
@@ -35,26 +32,15 @@ if 'create' in msg:
 
     sckt.send_string(msg)
     sent_msgs += 1
-elif 'warmup' in msg:
-	index = 0
-	for ip in ips:
-		for tid in range(NUM_THREADS):
-			sckt = ctx.socket(zmq.PUSH)
-			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
-			sckt.send_string(msg + ':' + str(index))
-			sent_msgs += 1
-			index += 1
-elif 'run' in msg:
-	index = 0
-	for ip in ips:
-		for tid in range(NUM_THREADS):
-			sckt = ctx.socket(zmq.PUSH)
-			sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
-			sckt.send_string(msg + ':' + str(index))
-			sent_msgs += 1
-			index += 1
+else:
+    for ip in ips:
+        for tid in range(NUM_THREADS):
+            sckt = ctx.socket(zmq.PUSH)
+            sckt.connect('tcp://' + ip + ':' + str(3000 + tid))
 
-<<<<<<< HEAD
+            sckt.send_string(msg)
+            sent_msgs += 1
+
 epoch_total = []
 total = []
 end_recv = 0
@@ -101,28 +87,3 @@ logging.info('*** END ***')
 
 if len(total) > 0:
     utils.print_latency_stats(total, 'E2E', True)
-=======
-end_recv = 0
-
-latency = {}
-latency[1] = []
-latency[2] = []
-latency[3] = []
-latency[4] = []
-
-while end_recv < sent_msgs:
-	payload = recv_socket.recv()
-	logging.info("received response")
-	end_recv += 1
-	if 'run' in msg:
-		bench_latency = cp.loads(payload)
-		for length in bench_latency:
-			latency[length] += bench_latency[length]
-
-if 'run' in msg:
-	for length in latency:
-		logging.info("length %d" % length)
-		utils.print_latency_stats(latency[length], 'Causal', True)
-
-logging.info("benchmark done")
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47

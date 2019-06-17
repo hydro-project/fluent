@@ -34,20 +34,11 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
     user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
-<<<<<<< HEAD
     #logging.info('Received call for ' + call.name)
 
     fargs = _process_args(call.args)
 
     f = utils._retrieve_function(call.name, kvs, consistency)
-=======
-    #logging.info('Received call for %s' % call.name)
-
-    fargs = _process_args(call.args)
-
-    f = utils._retrieve_function(call.name, kvs)
-    #logging.info('Retrieved function')
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     if not f:
         logging.info('Function %s not found! Putting an error.' %
                      (call.name))
@@ -55,14 +46,10 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
         result = serialize_val(('ERROR', sutils.error.SerializeToString()))
     else:
         try:
-<<<<<<< HEAD
             if consistency == NORMAL:
                 result = _exec_func_normal(kvs, f, fargs, user_lib)
             else:
                 result = _exec_single_func_causal(kvs, f, fargs)
-=======
-            result = _exec_single_func_causal(kvs, f, fargs)
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
             result = serialize_val(result)
         except Exception as e:
             logging.exception('Unexpected error %s while executing function.' %
@@ -71,15 +58,14 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
             result = serialize_val(('ERROR: ' + str(e),
                                    sutils.error.SerializeToString()))
 
-<<<<<<< HEAD
     user_lib.close()
-=======
-    #logging.info('Finish execution, putting result to key %s' % call.resp_id)
+    if consistency == NORMAL:
+        kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
+    else:
+        succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
 
-    succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
-
-    if not succeed:
-        logging.info('Put key %s unsuccessful' % call.resp_id)
+        if not succeed:
+            logging.info('Put key %s unsuccessful' % call.resp_id)
 
 def _exec_single_func_causal(kvs, func, args):
     #logging.info('Enter single function causal')
@@ -122,15 +108,6 @@ def _exec_single_func_causal(kvs, func, args):
 
     # execute the function
     return  func(*tuple(func_args))
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
-
-    if consistency == NORMAL:
-        kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
-    else:
-        succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
-
-        if not succeed:
-            logging.info('Put key %s unsuccessful' % call.resp_id)
 
 def _exec_single_func_causal(kvs, func, args):
     func_args = []
@@ -197,12 +174,6 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
         trigger = triggers[trname]
         fargs += list(trigger.arguments.args)
 
-<<<<<<< HEAD
-=======
-    #logging.info('Executing function %s for DAG %s (ID %s): started at %.6f.' %
-    #        (schedule.dag.name, fname, trigger.id, time.time()))
-
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     fargs = _process_args(fargs)
     result = _exec_func_normal(kvs, function, fargs, user_lib)
 
@@ -226,7 +197,6 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
             sckt = pusher_cache.get(sutils._get_dag_trigger_address(dest_ip))
             sckt.send(new_trigger.SerializeToString())
 
-<<<<<<< HEAD
     if is_sink:
         if schedule.HasField('output_key'):
             logging.info('DAG %s (ID %s) completed; result at %s.' %
@@ -246,18 +216,6 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
             else:
                 kvs.put(schedule.id, lattice)
 
-=======
-    #logging.info('Finished executing function %s for DAG %s (ID %s): started at %.6f.' %
-    #        (schedule.dag.name, fname, trigger.id, time.time()))
-    if is_sink:
-        #logging.info('DAG %s (ID %s) completed; result at %s.' %
-        #        (schedule.dag.name, trigger.id, schedule.id))
-        l = LWWPairLattice(generate_timestamp(0), serialize_val(result))
-        if schedule.HasField('output_key'):
-            kvs.put(schedule.output_key, l)
-        else:
-            kvs.put(schedule.id, l)
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
 def _exec_func_normal(kvs, func, args, user_lib):
     refs = list(filter(lambda a: isinstance(a, FluentReference), args))
@@ -388,17 +346,11 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             vector_clock = {schedule.client_id : 1}
 
         succeed = kvs.causal_put(schedule.output_key,
-<<<<<<< HEAD
-                                 vector_clock, {},
-=======
                                  vector_clock, dependencies,
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
                                  serialize_val(result), schedule.client_id)
         while not succeed:
             kvs.causal_put(schedule.output_key, vector_clock,
                            dependencies, serialize_val(result), schedule.client_id)
-<<<<<<< HEAD
-=======
 
         # issue requests to GC the version store
         for cache_addr in versioned_key_locations:
@@ -406,7 +358,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             #logging.info("cache GC addr is %s" % gc_addr)
             sckt = pusher_cache.get(gc_addr)
             sckt.send_string(schedule.client_id)
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
         # issue requests to GC the version store
         for cache_addr in versioned_key_locations:
@@ -416,11 +367,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
             sckt.send_string(schedule.client_id)
 
 def _exec_func_causal(kvs, func, args, kv_pairs,
-<<<<<<< HEAD
-                      schedule, versioned_key_locations):
-=======
                       schedule, versioned_key_locations, dependencies):
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     func_args = []
     to_resolve = []
     deserialize = {}
@@ -447,15 +394,8 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 
     # execute the function
     return  func(*tuple(func_args))
-<<<<<<< HEAD
-
-
-def _resolve_ref_causal(refs, kvs, kv_pairs, schedule,
-                        versioned_key_locations):
-=======
 
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations, dependencies):
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     future_read_set = _compute_children_read_set(schedule)
     #logging.info('future read set size for function %s is %d' % (schedule.target_function, len(future_read_set)))
     #for k in future_read_set:
@@ -463,34 +403,19 @@ def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations, 
     keys = [ref.key for ref in refs]
     result = kvs.causal_get(keys, set(),
                             versioned_key_locations,
-<<<<<<< HEAD
-                            schedule.consistency, schedule.client_id)
-
-    while not result:
-        result = kvs.causal_get(keys, set(),
-                                versioned_key_locations,
-                                schedule.consistency, schedule.client_id)
-=======
                             schedule.consistency, schedule.client_id, dependencies)
 
     while not result:
         result = kvs.causal_get(keys, future_read_set,
                                 versioned_key_locations,
                                 schedule.consistency, schedule.client_id, dependencies)
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
     if result[0] is not None:
         versioned_key_locations[result[0][0]].versioned_keys.extend(result[0][1])
 
     #logging.info('versioned key location has %d entry for this GET' % (len(versioned_key_locations)))
-<<<<<<< HEAD
 
     kv_pairs.update(result[1])
-
-=======
-
-    kv_pairs.update(result[1])
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
 def _compute_children_read_set(schedule):
     future_read_set = ()

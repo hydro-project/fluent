@@ -36,11 +36,6 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
     if not call.HasField('resp_id'):
         call.resp_id = str(uuid.uuid4())
 
-<<<<<<< HEAD
-=======
-    #logging.info('Calling function %s.' % (call.name))
-
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     refs = list(filter(lambda arg: type(arg) == FluentReference,
                        map(lambda arg: get_serializer(arg.type).load(arg.body),
                            call.args)))
@@ -68,7 +63,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     schedule.id = str(uuid.uuid4())
     schedule.dag.CopyFrom(dag)
     schedule.consistency = call.consistency
-<<<<<<< HEAD
 
     if call.HasField('response_address'):
         schedule.response_address = call.response_address
@@ -79,15 +73,6 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
     if call.HasField('client_id'):
         schedule.client_id = call.client_id
 
-=======
-
-    if call.HasField('output_key'):
-        schedule.output_key = call.output_key
-
-    if call.HasField('client_id'):
-        schedule.client_id = call.client_id
-
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
     #logging.info('Calling DAG %s (%s).' % (call.name, schedule.id))
 
@@ -99,22 +84,9 @@ def call_dag(call, pusher_cache, dags, func_locations, key_ip_map,
         args = call.function_args[fname].args
 
         refs = list(filter(lambda arg: type(arg) == FluentReference,
-<<<<<<< HEAD
                     map(lambda arg: get_serializer(arg.type).load(arg.body),
                         args)))
         loc = _pick_node(locations, key_ip_map, refs, running_counts, backoff)
-=======
-            map(lambda arg: get_serializer(arg.type).load(arg.body),
-                args)))
-        loc = _pick_node(locations, key_ip_map, refs)
-
-        # this force functions to be scheduled on different nodes
-        #while loc[0] in loc_ip:
-        #    loc = _pick_node(locations, key_ip_map, refs)
-
-        #loc_ip.append(loc[0])
-
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
         schedule.locations[fname] = loc[0] + ':' + str(loc[1])
 
         # copy over arguments into the dag schedule

@@ -25,25 +25,11 @@ from include.serializer import *
 
 
 class FluentConnection():
-<<<<<<< HEAD
     def __init__(self, func_addr, ip, tid=0):
         self.service_addr = 'tcp://' + func_addr + ':%d'
         self.context = zmq.Context(1)
         kvs_addr = self._connect()
         self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
-=======
-    def __init__(self, func_addr, ip=None, tid=0):
-        print(func_addr)
-        self.service_addr = 'tcp://'+  func_addr + ':%d'
-        self.context = zmq.Context(1)
-        kvs_addr = self._connect()
-        logging.info("connected")
-
-        if ip:
-            self.kvs_client = AnnaClient(kvs_addr, ip, offset=tid)
-        else:
-            self.kvs_client = AnnaClient(kvs_addr, offset=tid)
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
         self.func_create_sock = self.context.socket(zmq.REQ)
         self.func_create_sock.connect(self.service_addr % FUNC_CREATE_PORT)
@@ -152,11 +138,7 @@ class FluentConnection():
 
         return r.success, r.error
 
-<<<<<<< HEAD
     def call_dag(self, dname, arg_map, direct_response=False, consistency=NORMAL, output_key=None, client_id=None):
-=======
-    def call_dag(self, dname, arg_map, consistency=NORMAL, output_key=None, client_id=None):
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
         dc = DagCall()
         dc.name = dname
         dc.consistency = consistency

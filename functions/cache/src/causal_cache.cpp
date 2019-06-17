@@ -21,10 +21,6 @@ ZmqUtil zmq_util;
 ZmqUtilInterface* kZmqUtil = &zmq_util;
 
 void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
-<<<<<<< HEAD
-  inconsistency = 0;
-=======
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
   string log_file = "causal_cache_log_" + std::to_string(thread_id) + ".txt";
   string log_name = "causal_cache_log_" + std::to_string(thread_id);
@@ -222,10 +218,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
           client_id_to_address_map, log);
       migrate_start = std::chrono::system_clock::now();
       //log->info("end migration");
-<<<<<<< HEAD
-      log->info("number of inconsistency is {}", inconsistency);
-=======
->>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     }
 
     // TODO: check if cache size is exceeding (threshold x capacity) and evict.
