@@ -205,13 +205,21 @@ class AnnaClient():
     def _serialize(self, val):
         #print("entering serialize")
         if isinstance(val, LWWPairLattice):
+<<<<<<< HEAD
             print("lww")
+=======
+            #print("lww")
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
             lww = LWWValue()
             lww.timestamp = val.ts
             lww.value = val.val
             return lww.SerializeToString(), LWW
         elif isinstance(val, SetLattice):
+<<<<<<< HEAD
             print("set")
+=======
+            #print("set")
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
             s = SetValue()
             for o in val.reveal():
                 s.values.append(o)
@@ -221,7 +229,11 @@ class AnnaClient():
             return val.SerializeToString(), CROSSCAUSAL
         else:
             print("very bad")
+<<<<<<< HEAD
             print(type(val))
+=======
+            #print(type(val))
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
             return 123, 456
 
     def _prepare_data_request(self, key):

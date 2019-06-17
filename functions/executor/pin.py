@@ -47,6 +47,10 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
     if name not in pinned_functions:
         pinned_functions[name] = func
         status.functions.append(name)
+<<<<<<< HEAD
+=======
+
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     runtimes[name] = 0.0
     exec_counts[name] = 0
 

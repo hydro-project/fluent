@@ -29,8 +29,12 @@ from .create import *
 from .call import *
 from . import utils
 
+<<<<<<< HEAD
 THRESHOLD = 5  # how often metadata is updated
 
+=======
+THRESHOLD = 5 # how often metadata is updated
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
 def scheduler(ip, mgmt_ip, route_addr):
     logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO,
@@ -316,10 +320,14 @@ def scheduler(ip, mgmt_ip, route_addr):
             start = time.time()
 
 
+<<<<<<< HEAD
 def _update_cluster_state(requestor_cache, mgmt_ip, executors, key_ip_map,
                           kvs):
     # update our local key-cache mapping information
     utils._update_key_maps(key_ip_map, executors, kvs)
+=======
+    utils._update_key_maps(key_cache_map, key_ip_map, executors, kvs, logging)
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
     schedulers = utils._get_ip_set(utils._get_scheduler_list_address(mgmt_ip),
                                    requestor_cache, False)

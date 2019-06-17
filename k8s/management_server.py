@@ -378,6 +378,7 @@ def check_executor_utilization(client, ctx, executor_statuses,
     if time.time() > (grace_start + GRACE_PERIOD):
         grace_start = 0
 
+<<<<<<< HEAD
         if avg_utilization > UTILIZATION_MAX or avg_pinned_count > \
                 PINNED_COUNT_MAX:
             logging.info(('Average utilization is %.4f. Adding %d nodes to'
@@ -387,6 +388,15 @@ def check_executor_utilization(client, ctx, executor_statuses,
             if (len(executor_statuses) / NUM_EXEC_THREADS) < 22:
                 msg = 'function:' + str(EXECUTOR_INCREASE)
                 add_push_socket.send_string(msg)
+=======
+        #if avg_utilization > UTILIZATION_MAX or avg_pinned_count > \
+        #        PINNED_COUNT_MAX:
+        #    logging.info(('Average utilization is %.4f. Adding %d nodes to '
+        #         + ' cluster.') % (avg_utilization, EXECUTOR_INCREASE))
+
+        #    msg = 'function:' + str(EXECUTOR_INCREASE)
+        #    add_push_socket.send_string(msg)
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
             # start the grace period after adding nodes
         #    grace_start = time.time()

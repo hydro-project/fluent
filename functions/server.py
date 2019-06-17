@@ -35,6 +35,7 @@ def run():
         route_addr = os.environ['ROUTE_ADDR']
         scheduler(ip, mgmt_ip, route_addr)
     if sys_func == 'benchmark':
+        logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO, format='%(asctime)s %(message)s')
         function_addr = os.environ['FUNCTION_ADDR']
         thread_id = int(os.environ['THREAD_ID'])
 

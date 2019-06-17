@@ -52,7 +52,10 @@ class FluentFuture():
             return serializer.deserialize_val(obj.reveal()[1])
         elif type(obj).__name__ == 'CrossCausalValue':
             return serializer.deserialize_val(obj.values[0])
+<<<<<<< HEAD
 
+=======
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
 class FluentFunction():
     def __init__(self, name, conn, kvs_client):

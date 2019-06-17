@@ -362,4 +362,9 @@ def generate_arg_map(functions, connections, num_keys, base, sum_probs):
 
         arg_map[func] = refs
         
+<<<<<<< HEAD
     return arg_map, list(set(keys_read))
+=======
+    return arg_map, list(set(keys_read))
+
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47

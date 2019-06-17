@@ -78,7 +78,12 @@ class IpcAnnaClient:
             resp.ParseFromString(msg)
 
             for tp in resp.tuples:
+<<<<<<< HEAD
                 if tp.error == 1 or tp.lattice_type == NO:
+=======
+                if tp.error == 1:
+                    #logging.info('Key %s does not exist!' % (key))
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
                     kv_pairs[tp.key] = None
 
                 elif tp.lattice_type == LWW:
@@ -112,7 +117,7 @@ class IpcAnnaClient:
             return kv_pairs
 
     def causal_get(self, keys, future_read_set,
-                   versioned_key_locations, consistency, client_id):
+                   versioned_key_locations, consistency, client_id, dependencies={}):
         if type(keys) != list:
             keys = list(keys)
 
@@ -277,4 +282,8 @@ class IpcAnnaClient:
                 result[cid] = rhs[cid]
             else:
                 result[cid] = max(result[cid], rhs[cid])
+<<<<<<< HEAD
         return result
+=======
+        return result
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47

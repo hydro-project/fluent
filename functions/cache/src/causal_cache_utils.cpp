@@ -226,7 +226,10 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       }
       addr_request_map[remote_addr].add_keys(key);
       metadata.remote_read_set_.insert(key);
+<<<<<<< HEAD
       inconsistency += 1;
+=======
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
      // log->info("key {} need to be read from remote addr {} and doesn't exist locally", key, remote_addr);
     } else {
       Address remote_addr =
@@ -235,7 +238,10 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
       if (remote_addr != "") {
         // we need to read from remote
         remote_request = true;
+<<<<<<< HEAD
         inconsistency += 1;
+=======
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
         //log->info("key {} need to be read from remote addr {} because it is dominating local", key, remote_addr);
 
         if (addr_request_map.find(remote_addr) == addr_request_map.end()) {
@@ -272,7 +278,7 @@ void respond_to_client(
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     const Address& addr, const StoreType& causal_cut_store,
     const VersionStoreType& version_store, SocketCache& pushers,
-    const CausalCacheThread& cct) {
+    const CausalCacheThread& cct, const StoreType& unmerged_store) {
   CausalResponse response;
 
 
@@ -320,7 +326,11 @@ void merge_into_causal_cut(
     InPreparationType& in_preparation, VersionStoreType& version_store,
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
+<<<<<<< HEAD
     map<string, set<Address>>& client_id_to_address_map, logger log) {
+=======
+    map<string, set<Address>>& client_id_to_address_map, logger log, const StoreType& unmerged_store) {
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
   bool key_dne = false;
   // merge from in_preparation to causal_cut_store
   for (const auto& pair : in_preparation[key].second) {
@@ -362,7 +372,7 @@ void merge_into_causal_cut(
           // all local
           //log->info("all local read");
           respond_to_client(pending_cross_metadata, addr, causal_cut_store,
-                            version_store, pushers, cct);
+                            version_store, pushers, cct, unmerged_store);
         } else {
           //log->info("some reads have to be done remotely");
           client_id_to_address_map[pending_cross_metadata[addr].client_id_]
@@ -389,32 +399,54 @@ void process_response(
     SocketCache& pushers, KvsAsyncClientInterface* client, logger log,
     const CausalCacheThread& cct,
     map<string, set<Address>>& client_id_to_address_map) {
+<<<<<<< HEAD
   log->info("processing key {}", key);
   // first, update unmerged store
   if (unmerged_store.find(key) == unmerged_store.end()) {
     log->info("key {} not in unmerged store", key);
+=======
+  //log->info("processing key {}", key);
+  // first, update unmerged store
+  if (unmerged_store.find(key) == unmerged_store.end()) {
+    //log->info("key {} not in unmerged store", key);
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     // key doesn't exist in unmerged map
     unmerged_store[key] = lattice;
     // check call back addresses for single obj causal consistency
     if (single_callback_map.find(key) != single_callback_map.end()) {
+<<<<<<< HEAD
       log->info("key {} in single_callback_map", key);
       // notify clients
       for (const auto& addr : single_callback_map[key]) {
         log->info("client address is {}", addr);
+=======
+      //log->info("key {} in single_callback_map", key);
+      // notify clients
+      for (const auto& addr : single_callback_map[key]) {
+        //log->info("client address is {}", addr);
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
         // pending_single_metadata[addr].to_cover_set should have this
         // key, and we remove it
         pending_single_metadata[addr].to_cover_set_.erase(key);
         if (pending_single_metadata[addr].to_cover_set_.size() == 0) {
           CausalResponse response;
+
           for (const Key& key : pending_single_metadata[addr].read_set_) {
             CausalTuple* tp = response.add_tuples();
             tp->set_key(key);
             if (vector_clock_comparison(
                     VectorClock(), unmerged_store[key]->reveal().vector_clock) == kCausalGreaterOrEqual) {
+<<<<<<< HEAD
               log->info("key {} actually dne", key);
               tp->set_error(1);
             } else {
               log->info("key {} is good to respond", key);
+=======
+              //log->info("key {} actually dne", key);
+              tp->set_error(1);
+            } else {
+              //log->info("key {} is good to respond", key);
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
               tp->set_error(0);
               tp->set_payload(serialize(*(unmerged_store[key])));
             }
@@ -450,7 +482,11 @@ void process_response(
       // this key has no dependency
       merge_into_causal_cut(key, causal_cut_store, in_preparation,
                             version_store, pending_cross_metadata, pushers, cct,
+<<<<<<< HEAD
                             client_id_to_address_map, log);
+=======
+                            client_id_to_address_map, log, unmerged_store);
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
       to_fetch_map.erase(key);
     }
   }
@@ -500,7 +536,11 @@ void process_response(
           // all dependency is met
           merge_into_causal_cut(head_key, causal_cut_store, in_preparation,
                                 version_store, pending_cross_metadata, pushers,
+<<<<<<< HEAD
                                 cct, client_id_to_address_map, log);
+=======
+                                cct, client_id_to_address_map, log, unmerged_store);
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
           to_fetch_map.erase(head_key);
         }
       }
@@ -516,7 +556,11 @@ void process_response(
   // if the original response from KVS actually says key dne, remove it from unmerged map
   if (vector_clock_comparison(
           VectorClock(), unmerged_store[key]->reveal().vector_clock) == kCausalGreaterOrEqual) {
+<<<<<<< HEAD
     log->info("removing key {} from unmerged store", key);
+=======
+    //log->info("removing key {} from unmerged store", key);
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
     unmerged_store.erase(key);
   }
 }

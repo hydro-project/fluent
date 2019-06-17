@@ -29,8 +29,13 @@ REPORT_THRESH = 5
 
 
 def executor(ip, mgmt_ip, schedulers, thread_id):
+<<<<<<< HEAD
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')
+=======
+    logging.basicConfig(filename='log_executor.txt', level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.info("Starting executor")
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
     ctx = zmq.Context(1)
     poller = zmq.Poller()
@@ -151,8 +156,13 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             schedule.ParseFromString(dag_queue_socket.recv())
             fname = schedule.target_function
 
+<<<<<<< HEAD
             logging.info('Received a schedule for DAG %s (%s), function %s.' %
                          (schedule.dag.name, schedule.id, fname))
+=======
+            #logging.info('Received a schedule for DAG %s (%s), function %s.' %
+            #        (schedule.dag.name, schedule.id, fname))
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
 
             #logging.info('This schedule has %d triggers.' %
             #        (len(schedule.triggers)))
@@ -259,11 +269,19 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             sckt = pusher_cache.get(utils._get_util_report_address(mgmt_ip))
             sckt.send(status.SerializeToString())
 
+<<<<<<< HEAD
             logging.info('Total thread occupancy: %.6f' % (utilization))
 
             for event in event_occupancy:
                 occ = event_occupancy[event] / (report_end - report_start)
                 logging.info('Event %s occupancy: %.6f' % (event, occ))
+=======
+            #logging.info('Total thread occupancy: %.6f%%' % (utilization))
+
+            for event in event_occupancy:
+                occ = event_occupancy[event]
+                #logging.info('Event %s occupancy: %.6f%%' % (event, occ))
+>>>>>>> b7f4cf1c3dd1f700272799a787793bc1cc4ffc47
                 event_occupancy[event] = 0.0
 
             stats = ExecutorStatistics()
