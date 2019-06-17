@@ -32,10 +32,6 @@ spec:
       value: "0"
     - name: MGMT_IP
       value: ""
-    - name: REPO_ORG
-      value: "cw75"
-    - name: REPO_BRANCH
-      value: "causal_test"
   - name: benchmark-2
     image: fluentproject/executor
     env: 
@@ -47,10 +43,6 @@ spec:
       value: "1"
     - name: MGMT_IP
       value: ""
-    - name: REPO_ORG
-      value: "cw75"
-    - name: REPO_BRANCH
-      value: "causal_test"
   - name: benchmark-3
     image: fluentproject/executor
     env: 
@@ -62,10 +54,6 @@ spec:
       value: "2"
     - name: MGMT_IP
       value: ""
-    - name: REPO_ORG
-      value: "cw75"
-    - name: REPO_BRANCH
-      value: "causal_test"
   - name: benchmark-4
     image: fluentproject/executor
     env: 
@@ -77,10 +65,6 @@ spec:
       value: "3"
     - name: MGMT_IP
       value: ""
-    - name: REPO_ORG
-      value: "cw75"
-    - name: REPO_BRANCH
-      value: "causal_test"
   nodeSelector:
     role: benchmark
     podid: benchmark-NUM_DUMMY

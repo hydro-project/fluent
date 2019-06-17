@@ -38,11 +38,9 @@ class IpcAnnaClient:
         self.put_request_socket.connect(PUT_REQUEST_ADDR)
 
         self.get_response_socket = self.context.socket(zmq.PULL)
-        #self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.get_response_socket.bind(self.get_response_address)
 
         self.put_response_socket = self.context.socket(zmq.PULL)
-        #self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.put_response_socket.bind(self.put_response_address)
 
     def get(self, keys):
@@ -142,8 +140,6 @@ class IpcAnnaClient:
 
         self.get_request_socket.send(request.SerializeToString())
 
-        #for key in keys:
-        #    logging.info('sent GET request for key %s' % (key))
 
         try:
             msg = self.get_response_socket.recv()

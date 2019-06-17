@@ -42,10 +42,6 @@ spec:
       value: "0"
     - name: SYSTEM_FUNC
       value: none
-    - name: REPO_ORG
-      value: "cw75"
-    - name: REPO_BRANCH
-      value: "causal_test"
     volumeMounts:
     - mountPath: /requests
       name: ipc
@@ -64,10 +60,6 @@ spec:
       value: "1"
     - name: SYSTEM_FUNC
       value: none
-    - name: REPO_ORG
-      value: "cw75"
-    - name: REPO_BRANCH
-      value: "causal_test"
     volumeMounts:
     - mountPath: /requests
       name: ipc
@@ -86,10 +78,6 @@ spec:
       value: "2"
     - name: SYSTEM_FUNC
       value: none
-    - name: REPO_ORG
-      value: "cw75"
-    - name: REPO_BRANCH
-      value: "causal_test"
     volumeMounts:
     - mountPath: /requests
       name: ipc
@@ -102,10 +90,6 @@ spec:
       value: ROUTE_ADDR_DUMMY
     - name: MGMT_IP
       value: MGMT_IP_DUMMY
-    - name: REPO_ORG
-      value: "cw75"
-    - name: REPO_BRANCH
-      value: "causal_test"
     volumeMounts:
     - mountPath: /requests
       name: ipc
