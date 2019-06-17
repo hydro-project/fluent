@@ -58,22 +58,17 @@ def exec_function(exec_socket, kvs, status, ip, tid, consistency=NORMAL):
             result = serialize_val(('ERROR: ' + str(e),
                                    sutils.error.SerializeToString()))
 
-<<<<<<< HEAD
     user_lib.close()
-=======
-    #logging.info('Finish execution, putting result to key %s' % call.resp_id)
->>>>>>> remove debug print
 
     if consistency == NORMAL:
         kvs.put(call.resp_id, LWWPairLattice(generate_timestamp(0), result))
     else:
-        kvs.causal_put(call.resp_id, {}, {}, result, '0')
+        succeed = kvs.causal_put(call.resp_id, {'base' : 1}, {}, result, '0')
+
+        if not succeed:
+            logging.info('Put key %s unsuccessful' % call.resp_id)
 
 def _exec_single_func_causal(kvs, func, args):
-<<<<<<< HEAD
-=======
-    #logging.info('Enter single function causal')
->>>>>>> remove debug print
     func_args = []
     to_resolve = []
     deserialize = {}
