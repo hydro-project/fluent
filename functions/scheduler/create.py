@@ -28,18 +28,21 @@ from . import utils
 sys_random = random.SystemRandom()
 
 
-def create_func(func_create_socket, kvs):
+def create_func(func_create_socket, kvs, consistency=NORMAL):
     func = Function()
     func.ParseFromString(func_create_socket.recv())
 
     name = sutils._get_func_kvs_name(func.name)
     logging.info('Creating function %s.' % (name))
 
-    ccv = CrossCausalValue()
-    ccv.vector_clock['base'] = 1
-    ccv.values.extend([func.body])
-
-    kvs.put(name, ccv)
+    if consistency == NORMAL:
+        body = LWWPairLattice(generate_timestamp(0), func.body)
+        kvs.put(name, body)
+    else:
+        ccv = CrossCausalValue()
+        ccv.vector_clock['base'] = 1
+        ccv.values.extend([func.body])
+        kvs.put(name, ccv)
 
     funcs = utils._get_func_list(kvs, '', fullname=True)
     funcs.append(name)

@@ -29,8 +29,6 @@ const unsigned kCausalGreaterOrEqual = 0;
 const unsigned kCausalLess = 1;
 const unsigned kCausalConcurrent = 2;
 
-extern unsigned inconsistency;
-
 using StoreType =
     map<Key, std::shared_ptr<CrossCausalLattice<SetLattice<string>>>>;
 using InPreparationType = map<

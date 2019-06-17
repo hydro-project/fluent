@@ -14,8 +14,6 @@
 
 #include "causal_cache_utils.hpp"
 
-unsigned inconsistency;
-
 unsigned causal_comparison(
     const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& lhs,
     const std::shared_ptr<CrossCausalLattice<SetLattice<string>>>& rhs) {

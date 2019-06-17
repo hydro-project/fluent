@@ -389,7 +389,7 @@ def check_executor_utilization(client, ctx, executor_statuses,
                 add_push_socket.send_string(msg)
 
             # start the grace period after adding nodes
-        #    grace_start = time.time()
+            grace_start = time.time()
 
         # we only decide to kill nodes if they are underutilized and if there
         # are at least 5 executors in the system -- we never scale down past

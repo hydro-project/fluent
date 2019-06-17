@@ -109,47 +109,6 @@ def _exec_single_func_causal(kvs, func, args):
     # execute the function
     return  func(*tuple(func_args))
 
-def _exec_single_func_causal(kvs, func, args):
-    func_args = []
-    to_resolve = []
-    deserialize = {}
-
-    # resolve any references to KVS objects
-    key_index_map = {}
-    for i, arg in enumerate(args):
-        if isinstance(arg, FluentReference):
-            to_resolve.append(arg)
-            key_index_map[arg.key] = i
-            deserialize[arg.key] = arg.deserialize
-        func_args += (arg,)
-
-    if len(to_resolve) > 0:
-        keys = [ref.key for ref in to_resolve]
-        result = kvs.causal_get(keys, set(),
-                                {},
-                                CROSS, 0)
-
-        while not result:
-            result = kvs.causal_get(keys, set(),
-                                {},
-                                CROSS, 0)
-
-        kv_pairs = result[1]
-
-        #logging.info('key value pair size is %d' % len(kv_pairs))
-
-        for key in kv_pairs:
-            if deserialize[key]:
-                #logging.info('deserializing key %s' % key)
-                func_args[key_index_map[key]] = \
-                                deserialize_val(kv_pairs[key][1])
-            else:
-                #logging.info('no deserialization for key %s' % key)
-                func_args[key_index_map[key]] = kv_pairs[key][1]
-
-    # execute the function
-    return  func(*tuple(func_args))
-
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule, ip,
                       tid):
@@ -351,13 +310,6 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule):
         while not succeed:
             kvs.causal_put(schedule.output_key, vector_clock,
                            dependencies, serialize_val(result), schedule.client_id)
-
-        # issue requests to GC the version store
-        for cache_addr in versioned_key_locations:
-            gc_addr = cache_addr[:-4] + str(int(cache_addr[-4:]) - 50)
-            #logging.info("cache GC addr is %s" % gc_addr)
-            sckt = pusher_cache.get(gc_addr)
-            sckt.send_string(schedule.client_id)
 
         # issue requests to GC the version store
         for cache_addr in versioned_key_locations:

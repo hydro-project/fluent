@@ -22,6 +22,14 @@ ADD_EXECUTABLE(flfunc-cache ${FUNC_CACHE_SOURCE})
 TARGET_LINK_LIBRARIES(flfunc-cache ${FUNC_DEPENDENCIES})
 ADD_DEPENDENCIES(flfunc-cache flzmq zeromq zeromqcpp)
 
+SET(FUNC_ASYNC_CACHE_SOURCE 
+	async_cache.cpp
+  )
+
+ADD_EXECUTABLE(flfunc-async-cache ${FUNC_ASYNC_CACHE_SOURCE})
+TARGET_LINK_LIBRARIES(flfunc-async-cache ${FUNC_DEPENDENCIES})
+ADD_DEPENDENCIES(flfunc-async-cache flzmq zeromq zeromqcpp)
+
 SET(FUNC_CAUSAL_CACHE_SOURCE 
 	causal_cache.cpp
 	causal_cache_utils.cpp
@@ -32,6 +40,6 @@ SET(FUNC_CAUSAL_CACHE_SOURCE
 	causal_cache_periodic_migration_handler.cpp
   )
 
-ADD_EXECUTABLE(flfunc-async-cache ${FUNC_CAUSAL_CACHE_SOURCE})
-TARGET_LINK_LIBRARIES(flfunc-async-cache ${FUNC_DEPENDENCIES})
-ADD_DEPENDENCIES(flfunc-async-cache flzmq zeromq zeromqcpp)
+ADD_EXECUTABLE(flfunc-causal-cache ${FUNC_CAUSAL_CACHE_SOURCE})
+TARGET_LINK_LIBRARIES(flfunc-causal-cache ${FUNC_DEPENDENCIES})
+ADD_DEPENDENCIES(flfunc-causal-cache flzmq zeromq zeromqcpp)
