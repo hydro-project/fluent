@@ -12,22 +12,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: DaemonSet
 metadata:
-  name: routing-pod-NUM_DUMMY
+  name: routing-nodes
   labels: 
     role: routing
 spec:
-  hostNetwork: true
-  containers:
-  - name: routing-container
-    image: fluentproject/annakvs
-    env: 
-    - name: SERVER_TYPE
-      value: r
-    - name: MON_IPS
-      value: MON_IPS_DUMMY
-  nodeSelector:
-    role: routing
-    podid: routing-NUM_DUMMY
+  selector:
+    matchLabels:
+      role: routing
+  template:
+    metadata:
+      labels:
+        role: routing
+    spec:
+      nodeSelector:
+        role: routing
+      hostNetwork: true
+      containers:
+      - name: routing-container
+        image: fluentproject/annakvs
+        env: 
+        - name: SERVER_TYPE
+          value: r
+        - name: MON_IPS
+          value: MON_IPS_DUMMY

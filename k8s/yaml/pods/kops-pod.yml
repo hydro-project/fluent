@@ -28,9 +28,13 @@ spec:
       value: ACCESS_KEY_ID_DUMMY
     - name: AWS_SECRET_ACCESS_KEY
       value: SECRET_KEY_DUMMY
-    - name: FLUENT_STATE_STORE
+    - name: KOPS_STATE_STORE
       value: KOPS_BUCKET_DUMMY
     - name: FLUENT_CLUSTER_NAME
       value: CLUSTER_NAME
+    - name: REPO_ORG
+      value: vsreekant
+    - name: REPO_BRANCH
+      value: k8s-ds
   nodeSelector:
     role: general
