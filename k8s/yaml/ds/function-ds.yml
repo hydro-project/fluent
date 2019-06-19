@@ -1,11 +1,11 @@
 #  Copyright 2018 U.C. Berkeley RISE Lab
-# 
+#
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-# 
+#
 #      http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: function-nodes
-  labels: 
+  labels:
     role: function
 spec:
   selector:
@@ -40,7 +40,7 @@ spec:
       - name: function-1
         image: fluentproject/executor
         imagePullPolicy: Always
-        env: 
+        env:
         - name: ROUTE_ADDR
           value: ROUTE_ADDR_DUMMY
         - name: MGMT_IP
@@ -51,17 +51,13 @@ spec:
           value: "0"
         - name: SYSTEM_FUNC
           value: none
-        - name: REPO_ORG
-          value: vsreekanti
-        - name: REPO_BRANCH
-          value: k8s-ds
         volumeMounts:
         - mountPath: /requests
           name: ipc
       - name: function-2
         image: fluentproject/executor
         imagePullPolicy: Always
-        env: 
+        env:
         - name: ROUTE_ADDR
           value: ROUTE_ADDR_DUMMY
         - name: MGMT_IP
@@ -72,17 +68,13 @@ spec:
           value: "1"
         - name: SYSTEM_FUNC
           value: none
-        - name: REPO_ORG
-          value: vsreekanti
-        - name: REPO_BRANCH
-          value: k8s-ds
         volumeMounts:
         - mountPath: /requests
           name: ipc
       - name: function-3
         image: fluentproject/executor
         imagePullPolicy: Always
-        env: 
+        env:
         - name: ROUTE_ADDR
           value: ROUTE_ADDR_DUMMY
         - name: MGMT_IP
@@ -93,10 +85,6 @@ spec:
           value: "2"
         - name: SYSTEM_FUNC
           value: none
-        - name: REPO_ORG
-          value: vsreekanti
-        - name: REPO_BRANCH
-          value: k8s-ds
         volumeMounts:
         - mountPath: /requests
           name: ipc
