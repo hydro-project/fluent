@@ -23,10 +23,11 @@ ARG build_branch=docker-build
 USER root
 
 # pipeline specific installs
-RUN pip3 install numpy sklearn scikit-image torch torchvision
+RUN pip3 install numpy sklearn pyarrow
 
 # check out to the appropriate branch and install the Python KVS client
 WORKDIR /fluent
+RUN git remote remove origin && git remote add origin https://github.com/$repo_org/fluent
 RUN git fetch -p origin && git checkout -b $build_branch origin/$source_branch
 RUN cd kvs/client/python && python3.6 setup.py install --prefix=$HOME/.local
 WORKDIR /
