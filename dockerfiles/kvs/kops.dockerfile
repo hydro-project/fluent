@@ -35,7 +35,10 @@ RUN mv ./kubectl /usr/local/bin/kubectl
 # need the user's AWS creds... should have a script to do this at runtime
 # eventually; for now, going to assume that the user is already set up or we
 # can just provide a script to this generally, independent of running it here
-RUN cd fluent && git fetch -p origin && git checkout -b $build_branch origin/$source_branch
+WORKDIR /fluent
+RUN git remote remove origin && git remote add origin https://github.com/$repo_org/fluent
+RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
+WORKDIR /
 
 # make kube root dir
 RUN mkdir /root/.kube
