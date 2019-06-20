@@ -4,9 +4,9 @@ capacities: # in GB
   ebs-cap: 256
 threads:
   memory: 4
-  ebs: 4
+  ebs: 1
   routing: 4
-  benchmark: 4
+  benchmark: 1
 replication:
   memory: 1
   ebs: 0
