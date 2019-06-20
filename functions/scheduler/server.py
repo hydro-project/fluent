@@ -64,6 +64,9 @@ def scheduler(ip, mgmt_ip, route_addr):
     dag_call_socket = ctx.socket(zmq.REP)
     dag_call_socket.bind(sutils.BIND_ADDR_TEMPLATE % (DAG_CALL_PORT))
 
+    dag_delete_socket = ctx.socket(zmq.REP)
+    dag_delete_socket.bind(sutils.BIND_ADDR_TEMPLATE % (DAG_DELETE_PORT))
+
     list_socket = ctx.socket(zmq.REP)
     list_socket.bind(sutils.BIND_ADDR_TEMPLATE % (LIST_PORT))
 
@@ -91,6 +94,7 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(func_call_socket, zmq.POLLIN)
     poller.register(dag_create_socket, zmq.POLLIN)
     poller.register(dag_call_socket, zmq.POLLIN)
+    poller.register(dag_delete_socket, zmq.POLLIN)
     poller.register(list_socket, zmq.POLLIN)
     poller.register(exec_status_socket, zmq.POLLIN)
     poller.register(sched_update_socket, zmq.POLLIN)
@@ -153,8 +157,12 @@ def scheduler(ip, mgmt_ip, route_addr):
             resp.response_id = rid
             dag_call_socket.send(resp.SerializeToString())
 
+        if (dag_delete_socket in socks and socks[dag_delete_socket] ==
+                zmq.POLLIN):
+            delete_dag(dag_delete_socket, pusher_cache, dags, func_locations,
+                       call_frequency)
+
         if list_socket in socks and socks[list_socket] == zmq.POLLIN:
-            logging.info('Received query for function list.')
             msg = list_socket.recv_string()
             prefix = msg if msg else ''
 
