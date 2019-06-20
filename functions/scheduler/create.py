@@ -73,6 +73,7 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
         for _ in range(num_replicas):
             if len(candidates) == 0:
                 sutils.error.error = NO_RESOURCES
+                logging.info('Error: Sending ' + str(sutils.error))
                 dag_create_socket.send(sutils.error.SerializeToString())
 
                 # unpin any previously pinned functions because the operation
@@ -95,6 +96,8 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
             pin_locations[(node, tid)] = fname
 
     dags[dag.name] = (dag, utils._find_dag_source(dag))
+    logging.info('Sending OK resp')
+    logging.info(GenericResponse().ParseFromString(sutils.ok_resp))
     dag_create_socket.send(sutils.ok_resp)
 
 
@@ -145,4 +148,4 @@ def _unpin_func(fname, loc, pusher_cache):
     ip, tid = loc
 
     sckt = pusher_cache.get(utils._get_unpin_address(ip, tid))
-    sckt.send(fname)
+    sckt.send_string(fname)
