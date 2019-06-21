@@ -15,6 +15,7 @@
 #ifndef KVS_INCLUDE_KVS_COMMON_HPP_
 #define KVS_INCLUDE_KVS_COMMON_HPP_
 
+#include "adaptive_heavy_hitters.hpp"
 #include "kvs_types.hpp"
 
 const unsigned kMetadataReplicationFactor = 1;

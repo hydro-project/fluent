@@ -23,6 +23,8 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                      Address management_ip,
                      map<Key, KeyReplication>& key_replication_map,
                      map<Key, unsigned>& key_access_summary,
+                     map<Key, unsigned>& hot_key_access_summary,
+                     map<Key, unsigned>& cold_key_access_summary,
                      map<Key, unsigned>& key_size, MonitoringThread& mt,
                      SocketCache& pushers, zmq::socket_t& response_puller,
                      vector<Address>& routing_ips, unsigned& rid) {
@@ -36,7 +38,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
        ss.total_memory_consumption);
   bool overflow = false;
 
-  for (const auto& key_access_pair : key_access_summary) {
+  for (const auto& key_access_pair : hot_key_access_summary) {
     Key key = key_access_pair.first;
     unsigned access_count = key_access_pair.second;
 
@@ -89,7 +91,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
        ss.total_ebs_consumption);
   overflow = false;
 
-  for (const auto& key_access_pair : key_access_summary) {
+  for (const auto& key_access_pair : cold_key_access_summary) {
     Key key = key_access_pair.first;
     unsigned access_count = key_access_pair.second;
 
@@ -129,14 +131,12 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
   // reduce the replication factor of some keys that are not so hot anymore
   KeyReplication minimum_rep =
       create_new_replication_vector(1, kMinimumReplicaNumber - 1, 1, 1);
-  for (const auto& key_access_pair : key_access_summary) {
+  for (const auto& key_access_pair : cold_key_access_summary) {
     Key key = key_access_pair.first;
     unsigned access_count = key_access_pair.second;
-
-    if (!is_metadata(key) && access_count <= ss.key_access_mean &&
-        !(key_replication_map[key] == minimum_rep)) {
+    if (!is_metadata(key) && !(key_replication_map[key] == minimum_rep)) {
       log->info("Key {} accessed {} times (threshold is {}).", key,
-                access_count, ss.key_access_mean);
+                access_count, ss.cold_key_access_mean + ss.cold_key_access_std);
       requests[key] =
           create_new_replication_vector(1, kMinimumReplicaNumber - 1, 1, 1);
       log->info("Dereplication for key {}. M: {}->{}. E: {}->{}", key,

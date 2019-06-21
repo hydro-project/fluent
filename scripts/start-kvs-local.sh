@@ -40,5 +40,5 @@ echo $RPID >> pids
 echo $SPID >> pids
 
 if [ "$2" = "y" ] || [ "$2" = "yes" ]; then
-  ./build/kvs/src/cli/flkvs-cli
+  ./build/kvs/client/cpp/flkvs-cli conf/kvs-config.yml
 fi
