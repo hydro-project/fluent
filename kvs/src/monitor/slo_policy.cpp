@@ -18,7 +18,7 @@
 void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 map<TierId, LocalHashRing>& local_hash_rings,
                 TimePoint& grace_start, SummaryStats& ss,
-                unsigned& memory_node_number, unsigned& adding_memory_node,
+                unsigned& memory_node_count, bool& adding_memory_node,
                 bool& removing_memory_node, Address management_ip,
                 map<Key, KeyReplication>& key_replication_map,
                 map<Key, unsigned>& key_access_summary, MonitoringThread& mt,
@@ -28,14 +28,14 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map) {
   // check latency to trigger elasticity or selective replication
   map<Key, KeyReplication> requests;
-  if (ss.avg_latency > kSloWorst && adding_memory_node == 0) {
+  if (ss.avg_latency > kSloWorst && !adding_memory_node) {
     log->info("Observed latency ({}) violates SLO({}).", ss.avg_latency,
               kSloWorst);
 
     // figure out if we should do hot key replication or add nodes
     if (ss.min_memory_occupancy > 0.15) {
       unsigned node_to_add =
-          ceil((ss.avg_latency / kSloWorst - 1) * memory_node_number);
+          ceil((ss.avg_latency / kSloWorst - 1) * memory_node_count);
 
       // trigger elasticity
       auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
@@ -69,9 +69,9 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
           unsigned current_mem_rep =
               key_replication_map[key].global_replication_[kMemoryTierId];
           if (target_rep_factor > current_mem_rep &&
-              current_mem_rep < memory_node_number) {
+              current_mem_rep < memory_node_count) {
             unsigned new_mem_rep =
-                std::min(memory_node_number, target_rep_factor);
+                std::min(memory_node_count, target_rep_factor);
             unsigned new_ebs_rep =
                 std::max(kMinimumReplicaNumber - new_mem_rep, (unsigned)0);
             requests[key] = create_new_replication_vector(
@@ -104,7 +104,7 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                                 response_puller, log, rid);
     }
   } else if (ss.min_memory_occupancy < 0.05 && !removing_memory_node &&
-             memory_node_number > std::max(ss.required_memory_node,
+             memory_node_count > std::max(ss.required_memory_node,
                                            (unsigned)kMinMemoryTierSize)) {
     log->info("Node {}/{} is severely underutilized.",
               ss.min_occupancy_memory_public_ip,

@@ -17,14 +17,14 @@
 
 void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                     TimePoint& grace_start, SummaryStats& ss,
-                    unsigned& memory_node_number, unsigned& ebs_node_number,
-                    unsigned& adding_memory_node, unsigned& adding_ebs_node,
+                    unsigned& memory_node_count, unsigned& ebs_node_count,
+                    bool& adding_memory_node, bool& adding_ebs_node,
                     bool& removing_ebs_node, Address management_ip,
                     MonitoringThread& mt,
                     map<Address, unsigned>& departing_node_map,
                     SocketCache& pushers) {
   // check storage consumption and trigger elasticity if necessary
-  if (adding_memory_node == 0 && ss.required_memory_node > memory_node_number) {
+  if (!adding_memory_node && ss.required_memory_node > memory_node_count) {
     auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                             std::chrono::system_clock::now() - grace_start)
                             .count();
@@ -34,7 +34,7 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
     }
   }
 
-  if (adding_ebs_node == 0 && ss.required_ebs_node > ebs_node_number) {
+  if (!adding_ebs_node && ss.required_ebs_node > ebs_node_count) {
     auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                             std::chrono::system_clock::now() - grace_start)
                             .count();
@@ -46,7 +46,7 @@ void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
 
   if (ss.avg_ebs_consumption_percentage < kMinEbsNodeConsumption &&
       !removing_ebs_node &&
-      ebs_node_number >
+      ebs_node_count >
           std::max(ss.required_ebs_node, (unsigned)kMinEbsTierSize)) {
     auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                             std::chrono::system_clock::now() - grace_start)
