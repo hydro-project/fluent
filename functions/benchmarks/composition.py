@@ -38,9 +38,6 @@ def run(flconn, kvs, num_requests, sckt):
 
     ''' CREATE DAG '''
     dag_name = 'composition'
-    s, e = flconn.delete_dag(composition)
-    print(s)
-    print(e)
 
     functions = ['incr', 'square']
     connections = [('incr', 'square')]

@@ -1,11 +1,11 @@
 ebs: ./
 capacities: # in GB
-  memory-cap: 45 
-  ebs-cap: 256
+  memory-cap: 2 
+  ebs-cap: 0
 threads:
-  memory: 4
+  memory: 1
   ebs: 1
-  routing: 4
+  routing: 1
   benchmark: 1
 replication:
   memory: 1

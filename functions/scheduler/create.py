@@ -89,8 +89,15 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
                                pin_accept_socket, ip, pusher_cache)
 
             if result is None:
-                print('Attempting to pin %s failed: continuing' % (fname))
-                continue
+                logging.info('Creating DAG %s failed.' % (dag.name))
+                sutils.error.error = NO_RESOURCES
+                dag_create_socket.send(sutils.error.SerializeToString())
+
+                # unpin any previously pinned functions because the operation
+                # failed
+                for loc in pin_locations:
+                    _unpin_func(pin_locations[loc], loc, pusher_cache)
+                return
 
             node, tid = result
 
@@ -109,7 +116,7 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
 
 
 def delete_dag(dag_delete_socket, pusher_cache, dags, func_locations,
-               call_frequency):
+               call_frequency, executors):
     dag_name = dag_delete_socket.recv_string()
 
     if dag_name not in dags:
@@ -123,12 +130,14 @@ def delete_dag(dag_delete_socket, pusher_cache, dags, func_locations,
         locs = func_locations[fname]
         for location in locs:
             _unpin_func(fname, location, pusher_cache)
+            executors.discard(location)
 
         del func_locations[fname]
         del call_frequency[fname]
 
     del dags[dag_name]
     dag_delete_socket.send(sutils.ok_resp)
+    logging.info('DAG %s deleted.' % (dag_name))
 
 
 def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
@@ -169,8 +178,8 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
     if resp.success:
         return node, tid
     else:  # the pin operation was rejected, remove node and try again
-        logging.error('Node %s:%d rejected pin operation. Retrying.'
-                      % (node, tid))
+        logging.error('Node %s:%d rejected pin operation for %s. Retrying.'
+                      % (node, tid, fname))
 
         candidates.discard((node, tid))
         return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,

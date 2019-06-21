@@ -28,8 +28,7 @@ def pin(pin_socket, pusher_cache, client, status, pinned_functions, runtimes,
     resp_ip, name = splits[0], splits[1]
     sckt = pusher_cache.get(sutils._get_pin_accept_port(resp_ip))
 
-    if ((sutils.ISOLATION == 'STRONG' and len(pinned_functions) > 0) or not
-            status.running):
+    if len(pinned_functions) > 0 or not status.running:
         resp = sutils.error.SerializeToString()
         sckt.send(sutils.error.SerializeToString())
         return
@@ -56,22 +55,4 @@ def unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts):
     logging.info('Removing function %s from my local pinned functions.' %
                  (name))
 
-    # we restart the container to clear all global state
-    if sutils.ISOLATION == 'STRONG':
-        logging.info('Restarting to clear global state.')
-        os._exit(0)
-
-    # we don't have the function pinned, we can just ignore this
-    if name not in status.functions:
-        return
-
-    func_queue = queue[name]
-    # if there are no currently pending requests, then we can simply
-    # unpin the existing function
-    if len(func_queue) == 0:
-        del pinned_functions[name]
-        del queue[name]
-        del runtimes[name]
-        del exec_counts[name]
-
-    status.functions.remove(name)
+    os._exit(0)
