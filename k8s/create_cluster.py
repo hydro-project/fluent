@@ -15,6 +15,7 @@
 #  limitations under the License.
 
 import boto3
+import argparse
 import os
 import sys
 
@@ -139,44 +140,52 @@ def create_cluster(mem_count, ebs_count, func_count, sched_count, route_count,
           (function_svc_addr))
 
 
-def parse_args(args, length, typ):
-    result = []
-
-    for arg in args[:length]:
-        try:
-            result.append(typ(arg))
-        except ValueError:
-            print('Unrecognized command-line argument %s. Could not convert \
-                    to integer.' % (arg))
-            sys.exit(1)
-
-    return tuple(result)
-
-
 if __name__ == '__main__':
-    if len(sys.argv) < 5:
-        print('Usage: ./create_cluster.py min_mem_instances min_ebs_instances'
-              + ' min_func_instances scheduler_instances routing_instance'
-              + ' benchmark_instances <path-to-conf-file> <path-to-ssh-key>')
-        print()
-        print('If no SSH key is specified, we will use the default SSH key ' +
-              '(/home/ubuntu/.ssh/id_rsa). The corresponding public key is'
-              + ' assumed to have the same path and end in .pub.')
-        print()
-        print('If no config file is specific, the default base config file in '
-              + '$FLUENT_HOME/conf/kvs-base.yml will be used.')
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='''Creates a Hydro cluster
+                                     using Kubernetes and kops. If no SSH key
+                                     is specified, we use the default SSH key
+                                     (~/.ssh/id_rsa), and we expect that the
+                                     correponding public key has the same path
+                                     and ends in .pub.
 
-    mem, ebs, func, sched, route, bench = parse_args(sys.argv[1:], 6, int)
+                                     If no configuration file base is
+                                     specified, we use the default
+                                     ($FLUENT_HOME/conf/kvs-base.yml).''')
+
+    parser.add_argument('-m', '--memory', nargs=1, type=int, metavar='M',
+                        help='The number of memory nodes to start with ' +
+                        '(required)', dest='memory', required=True)
+    parser.add_argument('-r', '--routing', nargs=1, type=int, metavar='R',
+                        help='The number of routing  nodes in the cluster ' +
+                        '(required)', dest='routing', required=True)
+    parser.add_argument('-f', '--function', nargs=1, type=int, metavar='F',
+                        help='The number of function nodes to start with ' +
+                        '(required)', dest='function', required=True)
+    parser.add_argument('-s', '--scheduler', nargs=1, type=int, metavar='S',
+                        help='The number of scheduler nodes to start with ' +
+                        '(required)', dest='scheduler', required=True)
+    parser.add_argument('-e', '--ebs', nargs='?', type=int, metavar='E',
+                        help='The number of EBS nodes to start with ' +
+                        '(optional)', dest='ebs', default=0)
+    parser.add_argument('-b', '--benchmark', nargs='?', type=int, metavar='B',
+                        help='The number of benchmark nodes in the cluster ' +
+                        '(optional)', dest='benchmark', default=0)
+    parser.add_argument('--conf', nargs='?', type=str,
+                        help='The configuration file to start the cluster with'
+                        + ' (optional)', dest='conf',
+                        default='../conf/kvs-base.yml')
+    parser.add_argument('--ssh-key', nargs='?', type=str,
+                        help='The SSH key used to configure and connect to ' +
+                        'each node (optional)', dest='sshkey',
+                        default='~/.ssh/id_rsa')
 
     cluster_name = util.check_or_get_env_arg('FLUENT_CLUSTER_NAME')
     kops_bucket = util.check_or_get_env_arg('KOPS_STATE_STORE')
     aws_key_id = util.check_or_get_env_arg('AWS_ACCESS_KEY_ID')
     aws_key = util.check_or_get_env_arg('AWS_SECRET_ACCESS_KEY')
 
-    conf_file = '../conf/kvs-base.yml' if len(sys.argv) <= 7 else sys.argv[7]
+    args = parser.parse_args()
 
-    ssh_key = '/home/ubuntu/.ssh/id_rsa' if len(sys.argv) <= 8 else sys.argv[8]
-
-    create_cluster(mem, ebs, func, sched, route, bench, conf_file, ssh_key,
+    create_cluster(args.memory, args.ebs, args.function, args.scheduler,
+                   args.routing, args.benchmark, args.conf, args.sshkey,
                    cluster_name, kops_bucket, aws_key_id, aws_key)
