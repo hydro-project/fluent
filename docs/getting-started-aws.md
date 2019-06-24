@@ -26,7 +26,7 @@ We assume you are running inside an EC2 linux VM on AWS, where you have Python3 
 
 ### Step 4: Creating your first cluster
 
-You're now ready to create your first cluster. To start off, we'll create a tiny cluster, with one memory tier node and one routing node. From the `k8s/` directory, run `./create_cluster.py 1 0 1 0`. This will take about 10-15 minutes to run. Once it's finished, you will see the URL of an AWS [ELB](https://aws.amazon.com/elasticloadbalancing/), which you can pass into our [Python client](https://github.com/fluent-project/fluent/tree/master/client/python) to interact with the KVS. 
+You're now ready to create your first cluster. To start off, we'll create a tiny cluster, with one memory tier node and one routing node. From the `k8s/` directory, run `./create_cluster.py 1 0 1 1 1 0`. This will take about 10-15 minutes to run. Once it's finished, you will see the URL of an AWS [ELB](https://aws.amazon.com/elasticloadbalancing/), which you can pass into our [Python client](https://github.com/fluent-project/fluent/tree/master/client/python) to interact with the KVS. 
 
 <sup>1</sup> By default, the AWS CLI tool installs in `~/.local/bin` on Ubuntu. You will have to add this directory to your `$PATH`.
 
