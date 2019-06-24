@@ -4,9 +4,9 @@ To run Fluent in cluster mode (i.e., on multiple nodes and with autoscaling enab
 
 ### Prerequisites
 
-We assume you have Python3 installed (preferably Python3.6 or later -- we haven't tested with previous versions). 
+We assume you are running inside an EC2 linux VM on AWS, where you have Python3 installed (preferably Python3.6 or later -- we haven't tested with previous versions). 
 
-### Step 1: Installing `kubectl`, `kops`, & friends
+### Step 1: Installing `kubectl`, `kops`, & friends on your VM
 
 * Install `kubectl` using the Kubernetes documentation, found [here](https://kubernetes.io/docs/tasks/tools/install-kubectl)
 * Install `kops` -- documentation found [here](https://github.com/kubernetes/kops/blob/master/docs/install.md)
