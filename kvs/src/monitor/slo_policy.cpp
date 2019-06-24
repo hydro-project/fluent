@@ -18,7 +18,7 @@
 void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 map<TierId, LocalHashRing>& local_hash_rings,
                 TimePoint& grace_start, SummaryStats& ss,
-                unsigned& memory_node_count, bool& adding_memory_node,
+                unsigned& memory_node_count, unsigned& new_memory_count,
                 bool& removing_memory_node, Address management_ip,
                 map<Key, KeyReplication>& key_replication_map,
                 map<Key, unsigned>& key_access_summary, MonitoringThread& mt,
@@ -28,12 +28,12 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 map<Key, std::pair<double, unsigned>>& latency_miss_ratio_map) {
   // check latency to trigger elasticity or selective replication
   map<Key, KeyReplication> requests;
-  if (ss.avg_latency > kSloWorst && !adding_memory_node) {
+  if (ss.avg_latency > kSloWorst && new_memory_count == 0) {
     log->info("Observed latency ({}) violates SLO({}).", ss.avg_latency,
               kSloWorst);
 
     // figure out if we should do hot key replication or add nodes
-    if (ss.min_memory_occupancy > 0.15) {
+    if (kEnableElasticity && ss.min_memory_occupancy > 0.15) {
       unsigned node_to_add =
           ceil((ss.avg_latency / kSloWorst - 1) * memory_node_count);
 
@@ -42,12 +42,10 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                               std::chrono::system_clock::now() - grace_start)
                               .count();
       if (time_elapsed > kGracePeriod) {
-        add_node(log, "memory", node_to_add, adding_memory_node, pushers,
+        add_node(log, "memory", node_to_add, new_memory_count, pushers,
                  management_ip);
       }
-    } else {  // hot key replication
-      // find hot keys
-      log->info("Classifying hot keys...");
+    } else if (kEnableSelectiveRep) {
       for (const auto& key_access_pair : key_access_summary) {
         Key key = key_access_pair.first;
         unsigned access_count = key_access_pair.second;
@@ -103,9 +101,10 @@ void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                                 routing_ips, key_replication_map, pushers, mt,
                                 response_puller, log, rid);
     }
-  } else if (ss.min_memory_occupancy < 0.05 && !removing_memory_node &&
+  } else if (kEnableElasticity && !removing_memory_node &&
+             ss.min_memory_occupancy < 0.05 &&
              memory_node_count > std::max(ss.required_memory_node,
-                                           (unsigned)kMinMemoryTierSize)) {
+                                          (unsigned)kMinMemoryTierSize)) {
     log->info("Node {}/{} is severely underutilized.",
               ss.min_occupancy_memory_public_ip,
               ss.min_occupancy_memory_private_ip);

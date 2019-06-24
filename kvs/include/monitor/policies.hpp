@@ -17,10 +17,14 @@
 
 #include "hash_ring.hpp"
 
+extern bool kEnableTiering;
+extern bool kEnableElasticity;
+extern bool kEnableSelectiveRep;
+
 void storage_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                     TimePoint& grace_start, SummaryStats& ss,
                     unsigned& memory_node_count, unsigned& ebs_node_count,
-                    bool& adding_memory_node, bool& adding_ebs_node,
+                    unsigned& new_memory_count, unsigned& new_ebs_count,
                     bool& removing_ebs_node, Address management_ip,
                     MonitoringThread& mt,
                     map<Address, unsigned>& departing_node_map,
@@ -30,7 +34,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                      map<TierId, LocalHashRing>& local_hash_rings,
                      TimePoint& grace_start, SummaryStats& ss,
                      unsigned& memory_node_count, unsigned& ebs_node_count,
-                     bool& adding_memory_node, bool& adding_ebs_node,
+                     unsigned& new_memory_count, unsigned& new_ebs_count,
                      Address management_ip,
                      map<Key, KeyReplication>& key_replication_map,
                      map<Key, unsigned>& key_access_summary,
@@ -41,7 +45,7 @@ void movement_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
 void slo_policy(logger log, map<TierId, GlobalHashRing>& global_hash_rings,
                 map<TierId, LocalHashRing>& local_hash_rings,
                 TimePoint& grace_start, SummaryStats& ss,
-                unsigned& memory_node_count, unsigned& adding_memory_node,
+                unsigned& memory_node_count, unsigned& new_memory_count,
                 bool& removing_memory_node, Address management_ip,
                 map<Key, KeyReplication>& key_replication_map,
                 map<Key, unsigned>& key_access_summary, MonitoringThread& mt,

@@ -28,6 +28,10 @@ unsigned kDefaultGlobalEbsReplication;
 unsigned kDefaultLocalReplication;
 unsigned kMinimumReplicaNumber;
 
+bool kEnableElasticity;
+bool kEnableTiering;
+bool kEnableSelectiveRep;
+
 // read-only per-tier metadata
 map<TierId, TierMetadata> kTierMetadata;
 
@@ -51,6 +55,15 @@ int main(int argc, char *argv[]) {
   YAML::Node monitoring = conf["monitoring"];
   Address ip = monitoring["ip"].as<Address>();
   Address management_ip = monitoring["mgmt_ip"].as<Address>();
+
+  YAML::Node policy = conf["policy"];
+  kEnableElasticity = policy["elasticity"].as<bool>();
+  kEnableSelectiveRep = policy["selective-rep"].as<bool>();
+  kEnableTiering = policy["tiering"].as<bool>();
+
+  log->info("Elasticity policy enabled: {}", kEnableElasticity);
+  log->info("Tiering policy enabled: {}", kEnableTiering);
+  log->info("Selective replication policy enabled: {}", kEnableSelectiveRep);
 
   YAML::Node threads = conf["threads"];
   kMemoryThreadCount = threads["memory"].as<unsigned>();
@@ -157,8 +170,8 @@ int main(int argc, char *argv[]) {
 
   auto grace_start = std::chrono::system_clock::now();
 
-  bool adding_memory_node = false;
-  bool adding_ebs_node = false;
+  unsigned new_memory_count = 0;
+  unsigned new_ebs_count = 0;
   bool removing_memory_node = false;
   bool removing_ebs_node = false;
 
@@ -171,8 +184,8 @@ int main(int argc, char *argv[]) {
 
     if (pollitems[0].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&notify_puller);
-      membership_handler(log, serialized, global_hash_rings, adding_memory_node,
-                         adding_ebs_node, grace_start, routing_ips,
+      membership_handler(log, serialized, global_hash_rings, new_memory_count,
+                         new_ebs_count, grace_start, routing_ips,
                          memory_storage, ebs_storage, memory_occupancy,
                          ebs_occupancy, key_access_frequency);
     }
@@ -199,8 +212,7 @@ int main(int argc, char *argv[]) {
 
       memory_node_count =
           global_hash_rings[kMemoryTierId].size() / kVirtualThreadNum;
-      ebs_node_count =
-          global_hash_rings[kEbsTierId].size() / kVirtualThreadNum;
+      ebs_node_count = global_hash_rings[kEbsTierId].size() / kVirtualThreadNum;
 
       key_access_frequency.clear();
       key_access_summary.clear();
@@ -238,19 +250,19 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      storage_policy(log, global_hash_rings, grace_start, ss,
-                     memory_node_count, ebs_node_count, adding_memory_node,
-                     adding_ebs_node, removing_ebs_node, management_ip, mt,
-                     departing_node_map, pushers);
+      storage_policy(log, global_hash_rings, grace_start, ss, memory_node_count,
+                     ebs_node_count, new_memory_count, new_ebs_count,
+                     removing_ebs_node, management_ip, mt, departing_node_map,
+                     pushers);
 
       movement_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
-                      memory_node_count, ebs_node_count, adding_memory_node,
-                      adding_ebs_node, management_ip, key_replication_map,
+                      memory_node_count, ebs_node_count, new_memory_count,
+                      new_ebs_count, management_ip, key_replication_map,
                       key_access_summary, key_size, mt, pushers,
                       response_puller, routing_ips, rid);
 
       slo_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
-                 memory_node_count, adding_memory_node, removing_memory_node,
+                 memory_node_count, new_memory_count, removing_memory_node,
                  management_ip, key_replication_map, key_access_summary, mt,
                  departing_node_map, pushers, response_puller, routing_ips, rid,
                  latency_miss_ratio_map);

@@ -14,7 +14,7 @@
 
 #include "monitor/monitoring_utils.hpp"
 
-void add_node(logger log, string tier, unsigned number, bool& adding,
+void add_node(logger log, string tier, unsigned number, unsigned& adding,
               SocketCache& pushers, const Address& management_ip) {
   log->info("Adding {} node(s) in tier {}.", std::to_string(number), tier);
 
@@ -22,11 +22,11 @@ void add_node(logger log, string tier, unsigned number, bool& adding,
   string message = "add:" + std::to_string(number) + ":" + tier;
 
   kZmqUtil->send_string(message, &pushers[mgmt_addr]);
-  adding = true;
+  adding = number;
 }
 
-void remove_node(logger log, ServerThread& node, string tier,
-                 bool& removing, SocketCache& pushers,
+void remove_node(logger log, ServerThread& node, string tier, bool& removing,
+                 SocketCache& pushers,
                  map<Address, unsigned>& departing_node_map,
                  MonitoringThread& mt) {
   auto connection_addr = node.self_depart_connect_address();
