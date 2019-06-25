@@ -64,6 +64,9 @@ def scheduler(ip, mgmt_ip, route_addr):
     dag_call_socket = ctx.socket(zmq.REP)
     dag_call_socket.bind(sutils.BIND_ADDR_TEMPLATE % (DAG_CALL_PORT))
 
+    dag_delete_socket = ctx.socket(zmq.REP)
+    dag_delete_socket.bind(sutils.BIND_ADDR_TEMPLATE % (DAG_DELETE_PORT))
+
     list_socket = ctx.socket(zmq.REP)
     list_socket.bind(sutils.BIND_ADDR_TEMPLATE % (LIST_PORT))
 
@@ -91,13 +94,13 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(func_call_socket, zmq.POLLIN)
     poller.register(dag_create_socket, zmq.POLLIN)
     poller.register(dag_call_socket, zmq.POLLIN)
+    poller.register(dag_delete_socket, zmq.POLLIN)
     poller.register(list_socket, zmq.POLLIN)
     poller.register(exec_status_socket, zmq.POLLIN)
     poller.register(sched_update_socket, zmq.POLLIN)
     poller.register(backoff_socket, zmq.POLLIN)
 
     executors = set()
-    executor_status_map = {}
     schedulers = _update_cluster_state(requestor_cache, mgmt_ip, executors,
                                        key_ip_map, kvs)
 
@@ -119,8 +122,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
         if func_call_socket in socks and socks[func_call_socket] == zmq.POLLIN:
             call_function(func_call_socket, pusher_cache, executors,
-                          key_ip_map, executor_status_map, running_counts,
-                          backoff)
+                          key_ip_map, running_counts, backoff)
 
         if (dag_create_socket in socks and socks[dag_create_socket]
                 == zmq.POLLIN):
@@ -153,8 +155,12 @@ def scheduler(ip, mgmt_ip, route_addr):
             resp.response_id = rid
             dag_call_socket.send(resp.SerializeToString())
 
+        if (dag_delete_socket in socks and socks[dag_delete_socket] ==
+                zmq.POLLIN):
+            delete_dag(dag_delete_socket, pusher_cache, dags, func_locations,
+                       call_frequency, executors)
+
         if list_socket in socks and socks[list_socket] == zmq.POLLIN:
-            logging.info('Received query for function list.')
             msg = list_socket.recv_string()
             prefix = msg if msg else ''
 
@@ -171,15 +177,6 @@ def scheduler(ip, mgmt_ip, route_addr):
             key = (status.ip, status.tid)
             logging.info('Received status update from executor %s:%d.' %
                          (key[0], int(key[1])))
-
-            if key in executor_status_map:
-                if status.type == PERIODIC:
-                    if executor_status_map[key] - time.time() > 5:
-                        del executor_status_map[key]
-                    else:
-                        continue
-                elif status.type == POST_REQUEST:
-                    del executor_status_map[key]
 
             # this means that this node is currently departing, so we remove it
             # from all of our metadata tracking

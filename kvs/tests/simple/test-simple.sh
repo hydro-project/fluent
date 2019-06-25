@@ -31,7 +31,7 @@ echo "Starting local server..."
 ./scripts/start-kvs-local.sh $BUILD n
 
 echo "Running tests..."
-./build/kvs/client/cpp/flkvs-cli conf/kvs-example.yml kvs/tests/simple/input > tmp.out
+./build/kvs/client/cpp/flkvs-cli conf/kvs-local.yml kvs/tests/simple/input > tmp.out
 
 DIFF=`diff tmp.out kvs/tests/simple/expected`
 

@@ -49,4 +49,7 @@ python3.6 setup.py install --prefix=$HOME/.local
 cd ../../..
 
 # start python server
-cd functions && export MY_IP=$IP && python3.6 server.py
+cd functions
+while true; do
+  export MY_IP=$IP && python3.6 server.py
+done
