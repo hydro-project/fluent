@@ -53,6 +53,11 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
     dag.ParseFromString(serialized)
     logging.info('Creating DAG %s.' % (dag.name))
 
+    if dag.name in dags:
+        sutils.error.error = DAG_ALREADY_EXISTS
+        dag_create_socket.send(sutils.error.SerializeToString())
+        return
+
     payload = LWWPairLattice(generate_timestamp(0), serialized)
     kvs.put(dag.name, payload)
 
@@ -66,9 +71,8 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
                     ip_func_map[loc] = set()
                 ip_func_map[loc].add(fn)
 
-        if sutils.ISOLATION == 'STRONG':
-            for thread in ip_func_map:
-                candidates.discard(thread)
+        for thread in ip_func_map:
+            candidates.discard(thread)
 
         for _ in range(num_replicas):
             if len(candidates) == 0:
@@ -81,8 +85,21 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
                     _unpin_func(pin_locations[loc], loc, pusher_cache)
                 return
 
-            node, tid, = _pin_func(fname, func_locations, candidates,
-                                   pin_accept_socket, ip, pusher_cache)
+            result = _pin_func(fname, func_locations, candidates,
+                               pin_accept_socket, ip, pusher_cache)
+
+            if result is None:
+                logging.info('Creating DAG %s failed.' % (dag.name))
+                sutils.error.error = NO_RESOURCES
+                dag_create_socket.send(sutils.error.SerializeToString())
+
+                # unpin any previously pinned functions because the operation
+                # failed
+                for loc in pin_locations:
+                    _unpin_func(pin_locations[loc], loc, pusher_cache)
+                return
+
+            node, tid = result
 
             if fname not in call_frequency:
                 call_frequency[fname] = 0
@@ -98,12 +115,40 @@ def create_dag(dag_create_socket, pusher_cache, kvs, executors, dags, ip,
     dag_create_socket.send(sutils.ok_resp)
 
 
+def delete_dag(dag_delete_socket, pusher_cache, dags, func_locations,
+               call_frequency, executors):
+    dag_name = dag_delete_socket.recv_string()
+
+    if dag_name not in dags:
+        sutils.error.error = NO_SUCH_DAG
+        dag_delete_socket.send(sutils.error.SerializeToString())
+        return
+
+    dag = dags[dag_name][0]
+
+    for fname in dag.functions:
+        locs = func_locations[fname]
+        for location in locs:
+            _unpin_func(fname, location, pusher_cache)
+            executors.discard(location)
+
+        del func_locations[fname]
+        del call_frequency[fname]
+
+    del dags[dag_name]
+    dag_delete_socket.send(sutils.ok_resp)
+    logging.info('DAG %s deleted.' % (dag_name))
+
+
 def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
               pusher_cache):
     # pick the node with the fewest functions pinned
-
     min_count = 1000000
     min_ip = None
+
+    if len(candidates) == 0:
+        return None
+
     for candidate in candidates:
         if candidate in ip_func_map:
             count = len(ip_func_map[candidate])
@@ -133,8 +178,8 @@ def _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
     if resp.success:
         return node, tid
     else:  # the pin operation was rejected, remove node and try again
-        logging.error('Node %s:%d rejected pin operation. Retrying.'
-                      % (node, tid))
+        logging.error('Node %s:%d rejected pin operation for %s. Retrying.'
+                      % (node, tid, fname))
 
         candidates.discard((node, tid))
         return _pin_func(fname, ip_func_map, candidates, pin_accept_socket, ip,
@@ -145,4 +190,4 @@ def _unpin_func(fname, loc, pusher_cache):
     ip, tid = loc
 
     sckt = pusher_cache.get(utils._get_unpin_address(ip, tid))
-    sckt.send(fname)
+    sckt.send_string(fname)

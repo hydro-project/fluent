@@ -45,6 +45,9 @@ class FluentConnection():
         self.dag_call_sock = self.context.socket(zmq.REQ)
         self.dag_call_sock.connect(self.service_addr % DAG_CALL_PORT)
 
+        self.dag_delete_sock = self.context.socket(zmq.REQ)
+        self.dag_delete_sock.connect(self.service_addr % DAG_DELETE_PORT)
+
         self.response_sock = self.context.socket(zmq.PULL)
         response_port = 9000 + tid
         self.response_sock.setsockopt(zmq.RCVTIMEO, 1000)
@@ -170,3 +173,11 @@ class FluentConnection():
                 return r.response_id
             else:
                 return None
+
+    def delete_dag(self, dname):
+        self.dag_delete_sock.send_string(dname)
+
+        r = GenericResponse()
+        r.ParseFromString(self.dag_delete_sock.recv())
+
+        return r.success, r.error
