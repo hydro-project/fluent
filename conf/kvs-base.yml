@@ -1,4 +1,4 @@
-ebs: ./
+ebs: /ebs
 capacities: # in GB
   memory-cap: 45 
   ebs-cap: 256
@@ -12,3 +12,7 @@ replication:
   ebs: 0
   minimum: 1
   local: 1
+policy:
+  elasticity: true
+  selective-rep: true
+  tiering: false

@@ -28,6 +28,10 @@ unsigned kDefaultGlobalEbsReplication;
 unsigned kDefaultLocalReplication;
 unsigned kMinimumReplicaNumber;
 
+bool kEnableElasticity;
+bool kEnableTiering;
+bool kEnableSelectiveRep;
+
 // read-only per-tier metadata
 map<TierId, TierMetadata> kTierMetadata;
 
@@ -51,6 +55,15 @@ int main(int argc, char *argv[]) {
   YAML::Node monitoring = conf["monitoring"];
   Address ip = monitoring["ip"].as<Address>();
   Address management_ip = monitoring["mgmt_ip"].as<Address>();
+
+  YAML::Node policy = conf["policy"];
+  kEnableElasticity = policy["elasticity"].as<bool>();
+  kEnableSelectiveRep = policy["selective-rep"].as<bool>();
+  kEnableTiering = policy["tiering"].as<bool>();
+
+  log->info("Elasticity policy enabled: {}", kEnableElasticity);
+  log->info("Tiering policy enabled: {}", kEnableTiering);
+  log->info("Selective replication policy enabled: {}", kEnableSelectiveRep);
 
   YAML::Node threads = conf["threads"];
   kMemoryThreadCount = threads["memory"].as<unsigned>();
@@ -88,33 +101,33 @@ int main(int argc, char *argv[]) {
   // keep track of the keys' replication info
   map<Key, KeyReplication> key_replication_map;
 
-  unsigned memory_node_number;
-  unsigned ebs_node_number;
-  // keep track of the keys' access by worker address
+  unsigned memory_node_count;
+  unsigned ebs_node_count;
+
   map<Key, map<Address, unsigned>> key_access_frequency;
-  // keep track of the keys' access summary
+
   map<Key, unsigned> key_access_summary;
-  // keep track of the size of each key-value pair
+
   map<Key, unsigned> key_size;
-  // keep track of memory tier storage consumption
+
   StorageStats memory_storage;
-  // keep track of ebs tier storage consumption
+
   StorageStats ebs_storage;
-  // keep track of memory tier thread occupancy
+
   OccupancyStats memory_occupancy;
-  // keep track of ebs tier thread occupancy
+
   OccupancyStats ebs_occupancy;
-  // keep track of memory tier hit
+
   AccessStats memory_accesses;
-  // keep track of ebs tier hit
+
   AccessStats ebs_accesses;
-  // keep track of some summary statistics
+
   SummaryStats ss;
-  // keep track of user latency info
+
   map<string, double> user_latency;
-  // keep track of user throughput info
+
   map<string, double> user_throughput;
-  // used for adjusting the replication factors based on feedback from the user
+
   map<Key, std::pair<double, unsigned>> latency_miss_ratio_map;
 
   vector<Address> routing_ips;
@@ -157,8 +170,8 @@ int main(int argc, char *argv[]) {
 
   auto grace_start = std::chrono::system_clock::now();
 
-  unsigned adding_memory_node = 0;
-  unsigned adding_ebs_node = 0;
+  unsigned new_memory_count = 0;
+  unsigned new_ebs_count = 0;
   bool removing_memory_node = false;
   bool removing_ebs_node = false;
 
@@ -167,19 +180,16 @@ int main(int argc, char *argv[]) {
   unsigned rid = 0;
 
   while (true) {
-    // listen for ZMQ events
     kZmqUtil->poll(0, &pollitems);
 
-    // handle a join or depart event
     if (pollitems[0].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&notify_puller);
-      membership_handler(log, serialized, global_hash_rings, adding_memory_node,
-                         adding_ebs_node, grace_start, routing_ips,
+      membership_handler(log, serialized, global_hash_rings, new_memory_count,
+                         new_ebs_count, grace_start, routing_ips,
                          memory_storage, ebs_storage, memory_occupancy,
                          ebs_occupancy, key_access_frequency);
     }
 
-    // handle a depart done notification
     if (pollitems[1].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&depart_done_puller);
       depart_done_handler(log, serialized, departing_node_map, management_ip,
@@ -200,11 +210,10 @@ int main(int argc, char *argv[]) {
             .count() >= kMonitoringThreshold) {
       server_monitoring_epoch += 1;
 
-      memory_node_number =
+      memory_node_count =
           global_hash_rings[kMemoryTierId].size() / kVirtualThreadNum;
-      ebs_node_number =
-          global_hash_rings[kEbsTierId].size() / kVirtualThreadNum;
-      // clear stats
+      ebs_node_count = global_hash_rings[kEbsTierId].size() / kVirtualThreadNum;
+
       key_access_frequency.clear();
       key_access_summary.clear();
 
@@ -220,19 +229,16 @@ int main(int argc, char *argv[]) {
       user_throughput.clear();
       latency_miss_ratio_map.clear();
 
-      // collect internal statistics
       collect_internal_stats(
           global_hash_rings, local_hash_rings, pushers, mt, response_puller,
           log, rid, key_access_frequency, key_size, memory_storage, ebs_storage,
           memory_occupancy, ebs_occupancy, memory_accesses, ebs_accesses);
 
-      // compute summary statistics
       compute_summary_stats(key_access_frequency, memory_storage, ebs_storage,
                             memory_occupancy, ebs_occupancy, memory_accesses,
                             ebs_accesses, key_access_summary, ss, log,
                             server_monitoring_epoch);
 
-      // collect external statistics
       collect_external_stats(user_latency, user_throughput, ss, log);
 
       // initialize replication factor for new keys
@@ -244,20 +250,19 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      // execute policies
-      storage_policy(log, global_hash_rings, grace_start, ss,
-                     memory_node_number, ebs_node_number, adding_memory_node,
-                     adding_ebs_node, removing_ebs_node, management_ip, mt,
-                     departing_node_map, pushers);
+      storage_policy(log, global_hash_rings, grace_start, ss, memory_node_count,
+                     ebs_node_count, new_memory_count, new_ebs_count,
+                     removing_ebs_node, management_ip, mt, departing_node_map,
+                     pushers);
 
       movement_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
-                      memory_node_number, ebs_node_number, adding_memory_node,
-                      adding_ebs_node, management_ip, key_replication_map,
+                      memory_node_count, ebs_node_count, new_memory_count,
+                      new_ebs_count, management_ip, key_replication_map,
                       key_access_summary, key_size, mt, pushers,
                       response_puller, routing_ips, rid);
 
       slo_policy(log, global_hash_rings, local_hash_rings, grace_start, ss,
-                 memory_node_number, adding_memory_node, removing_memory_node,
+                 memory_node_count, new_memory_count, removing_memory_node,
                  management_ip, key_replication_map, key_access_summary, mt,
                  departing_node_map, pushers, response_puller, routing_ips, rid,
                  latency_miss_ratio_map);

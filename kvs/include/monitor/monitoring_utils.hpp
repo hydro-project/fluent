@@ -71,6 +71,7 @@ struct SummaryStats {
     avg_latency = 0;
     total_throughput = 0;
   }
+
   SummaryStats() { clear(); }
   double key_access_mean;
   double key_access_std;
