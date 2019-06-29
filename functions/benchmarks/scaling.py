@@ -41,9 +41,8 @@ def run(flconn, kvs, num_requests, sckt, create):
             sys.exit(1)
 
         return [], [], [], 0
-
-    ''' RUN DAG '''
     else:
+        ''' RUN DAG '''
         arg_map = {'sleep': [1]}
 
         total_time = []

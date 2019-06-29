@@ -116,7 +116,7 @@ def _update_key_maps(key_ip_map, executors, kvs):
             continue
 
         ks = KeySet()
-        ks.ParseFromString(l.reveal()[1])
+        ks.ParseFromString(lattice.reveal()[1])
 
         for key in ks.keys:
             if key not in key_ip_map:

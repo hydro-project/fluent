@@ -25,8 +25,8 @@ void add_node(logger log, string tier, unsigned number, unsigned& adding,
   adding = number;
 }
 
-void remove_node(logger log, ServerThread& node, string tier,
-                 bool& removing_flag, SocketCache& pushers,
+void remove_node(logger log, ServerThread& node, string tier, bool& removing,
+                 SocketCache& pushers,
                  map<Address, unsigned>& departing_node_map,
                  MonitoringThread& mt) {
   auto connection_addr = node.self_depart_connect_address();
@@ -35,5 +35,5 @@ void remove_node(logger log, ServerThread& node, string tier,
   auto ack_addr = mt.depart_done_connect_address();
 
   kZmqUtil->send_string(ack_addr, &pushers[connection_addr]);
-  removing_flag = true;
+  removing = true;
 }

@@ -37,5 +37,8 @@ spec:
   - port: 5005
     targetPort: 5005
     name: dag-call
+  - port: 5006
+    targetPort: 5006
+    name: dag-delete
   selector:
     role: scheduler

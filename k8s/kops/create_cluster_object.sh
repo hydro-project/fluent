@@ -57,6 +57,6 @@ rm tmp.yml
 
 # create the cluster with just the routing instance group
 echo "Creating cluster on AWS..."
-kops update cluster --name ${NAME} --yes > /dev/null 2>&1
+kops update cluster --name ${FLUENT_CLUSTER_NAME} --yes > /dev/null 2>&1
 
 ./validate_cluster.sh

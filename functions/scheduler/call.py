@@ -28,7 +28,7 @@ sys_random = random.SystemRandom()
 
 
 def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
-                  executor_status_map, running_counts, backoff):
+                  running_counts, backoff):
 
     call = FunctionCall()
     call.ParseFromString(func_call_socket.recv())
@@ -46,7 +46,6 @@ def call_function(func_call_socket, pusher_cache, executors, key_ip_map,
     sckt.send(call.SerializeToString())
 
     executors.discard((ip, tid))
-    executor_status_map[(ip, tid)] = time.time()
 
     r = GenericResponse()
     r.success = True

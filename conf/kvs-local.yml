@@ -20,6 +20,10 @@ server:
   public_ip: 127.0.0.1
   private_ip: 127.0.0.1
   mgmt_ip: "NULL"
+policy:
+  elasticity: true
+  selective-rep: true
+  tiering: false
 ebs: ./
 capacities: # in GB
   memory-cap: 2 
