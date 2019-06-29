@@ -11,6 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import logging
 
 import boto3
 import cloudpickle as cp
@@ -70,8 +71,8 @@ class FluentConnection():
 
     def get(self, name):
         if name not in self._get_func_list():
-            print("No function found with name '" + name + "'.")
-            print("To view all functions, use the `list` method.")
+            logging.info("No function found with name %s. % name")
+            logging.info("To view all functions, use the `list` method.")
             return None
 
         return FluentFunction(name, self, self.kvs_client)
@@ -121,8 +122,7 @@ class FluentConnection():
         flist = self._get_func_list()
         for fname in functions:
             if fname not in flist.names:
-                print(('Function %s not registered. Please register before'
-                      + 'including it in a DAG.') % (fname))
+                logging.info('Function %s not registered. Please register before including it in a DAG.' % (fname))
                 return False, None
 
         dag = Dag()
@@ -140,9 +140,16 @@ class FluentConnection():
 
         return r.success, r.error
 
-    def call_dag(self, dname, arg_map, direct_response=False):
+    def call_dag(self, dname, arg_map, direct_response=False, consistency=NORMAL, output_key=None, client_id=None):
         dc = DagCall()
         dc.name = dname
+        dc.consistency = consistency
+
+        if output_key:
+            dc.output_key = output_key
+
+        if client_id:
+            dc.client_id = client_id
 
         for fname in arg_map:
             args = [serialize_val(arg, serialize=False) for arg in

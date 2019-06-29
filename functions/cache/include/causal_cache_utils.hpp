@@ -144,7 +144,7 @@ void recursive_dependency_check(
     const StoreType& unmerged_store, map<Key, set<Key>>& to_fetch_map,
     map<Key, std::unordered_map<VectorClock, set<Key>, VectorClockHash>>&
         cover_map,
-    KvsAsyncClientInterface* client);
+    KvsAsyncClientInterface* client, logger log);
 
 // check if the given vector clock is dominated by any vector clock in the
 // causal chain if so, return the address of the remote cache, else return empty
@@ -167,14 +167,14 @@ bool fire_remote_read_requests(PendingClientMetadata& metadata,
                                VersionStoreType& version_store,
                                const StoreType& causal_cut_store,
                                SocketCache& pushers,
-                               const CausalCacheThread& cct);
+                               const CausalCacheThread& cct, logger log);
 
 // respond to client with keys all from the local causal cache
 void respond_to_client(
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     const Address& addr, const StoreType& causal_cut_store,
     const VersionStoreType& version_store, SocketCache& pushers,
-    const CausalCacheThread& cct);
+    const CausalCacheThread& cct, const StoreType& unmerged_store);
 
 // merge a causal chain from in_preparation to causal cut store
 // also notify clients that are waiting for the head key of the chain
@@ -183,7 +183,8 @@ void merge_into_causal_cut(
     InPreparationType& in_preparation, VersionStoreType& version_store,
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     SocketCache& pushers, const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map);
+    map<string, set<Address>>& client_id_to_address_map, logger log,
+    const StoreType& unmerged_store);
 
 // process a GET response received from the KVS
 void process_response(

@@ -52,12 +52,14 @@ void versioned_key_response_handler(
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     map<string, set<Address>>& client_id_to_address_map,
     const CausalCacheThread& cct, SocketCache& pushers,
-    ZmqUtilInterface* kZmqUtil) {
+    ZmqUtilInterface* kZmqUtil, logger log) {
   VersionedKeyResponse response;
   response.ParseFromString(serialized);
 
   if (client_id_to_address_map.find(response.id()) !=
       client_id_to_address_map.end()) {
+    set<Address> address_to_gc;
+
     for (const Address& addr : client_id_to_address_map[response.id()]) {
       if (pending_cross_metadata.find(addr) != pending_cross_metadata.end()) {
         for (const CausalTuple& tp : response.tuples()) {
@@ -117,21 +119,17 @@ void versioned_key_response_handler(
           // GC
           pending_cross_metadata.erase(addr);
 
-          // GC
-          set<string> to_remove_id;
-          for (auto& pair : client_id_to_address_map) {
-            pair.second.erase(addr);
-
-            if (pair.second.size() == 0) {
-              to_remove_id.insert(pair.first);
-            }
-          }
-
-          for (const auto& id : to_remove_id) {
-            client_id_to_address_map.erase(id);
-          }
+          address_to_gc.insert(addr);
         }
       }
+    }
+    // GC
+    for (const Address& addr : address_to_gc) {
+      client_id_to_address_map[response.id()].erase(addr);
+    }
+
+    if (client_id_to_address_map[response.id()].size() == 0) {
+      client_id_to_address_map.erase(response.id());
     }
   }
 }

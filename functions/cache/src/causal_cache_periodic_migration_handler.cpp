@@ -23,23 +23,25 @@ void periodic_migration_handler(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map) {
+    map<string, set<Address>>& client_id_to_address_map, logger log) {
   for (const auto& pair : unmerged_store) {
     if ((causal_cut_store.find(pair.first) == causal_cut_store.end() ||
          causal_comparison(causal_cut_store[pair.first], pair.second) !=
              kCausalGreaterOrEqual) &&
         find_lattice_from_in_preparation(in_preparation, pair.first) ==
             nullptr) {
+      // log->info("start migrating key {}", pair.first);
       to_fetch_map[pair.first] = set<Key>();
       in_preparation[pair.first].second[pair.first] = pair.second;
       recursive_dependency_check(pair.first, pair.second, in_preparation,
                                  causal_cut_store, unmerged_store, to_fetch_map,
-                                 cover_map, client);
+                                 cover_map, client, log);
       if (to_fetch_map[pair.first].size() == 0) {
         // all dependency met
         merge_into_causal_cut(pair.first, causal_cut_store, in_preparation,
                               version_store, pending_cross_metadata, pushers,
-                              cct, client_id_to_address_map);
+                              cct, client_id_to_address_map, log,
+                              unmerged_store);
         to_fetch_map.erase(pair.first);
       }
     }

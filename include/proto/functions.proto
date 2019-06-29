@@ -80,7 +80,10 @@ message ArgList {
 message DagCall {
   required string name = 1;
   map<string, ArgList> function_args = 2;
-  optional string response_address = 3;
+  required ConsistencyType consistency = 3 [default = NORMAL];
+  optional string response_address = 4;
+  optional string output_key = 5;
+  optional string client_id = 6;
 }
 
 message GenericResponse {
@@ -108,6 +111,8 @@ message DagSchedule {
   // the pre-fixed arguments for each stage (i.e., the arguments that do not depend on the previous stage)
   map<string, ArgList> arguments = 7; 
   optional string response_address = 8;
+  optional string output_key = 9;
+  optional string client_id = 10;
 }
 
 message VersionedKey {

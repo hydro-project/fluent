@@ -31,7 +31,9 @@ void kvs_response_handler(
   Key key = response.tuples(0).key();
   // first, check if the request failed
   if (response.has_error() && response.error() == ResponseErrorType::TIMEOUT) {
+    // log->info("req timed out");
     if (response.type() == RequestType::GET) {
+      // log->info("retrying GET for key {}", key);
       client->get_async(key);
     } else {
       if (request_id_to_address_map.find(response.response_id()) !=
@@ -48,12 +50,16 @@ void kvs_response_handler(
     }
   } else {
     if (response.type() == RequestType::GET) {
+      // log->info("received KVS GET response for key {}", key);
       auto lattice = std::make_shared<CrossCausalLattice<SetLattice<string>>>();
       if (response.tuples(0).error() != 1) {
+        // log->info("key {} exists", key);
         // key exists
         *lattice =
             CrossCausalLattice<SetLattice<string>>(to_cross_causal_payload(
                 deserialize_cross_causal(response.tuples(0).payload())));
+      } else {
+        // log->info("key {} doesn't exist", key);
       }
       process_response(key, lattice, unmerged_store, in_preparation,
                        causal_cut_store, version_store, single_callback_map,
@@ -61,9 +67,15 @@ void kvs_response_handler(
                        to_fetch_map, cover_map, pushers, client, log, cct,
                        client_id_to_address_map);
     } else {
+      // log->info("received KVS PUT response for key {}", key);
       if (request_id_to_address_map.find(response.response_id()) ==
           request_id_to_address_map.end()) {
-        log->error("Missing request id - address entry for this PUT response");
+        if (response.tuples(0).lattice_type() != LatticeType::LWW) {
+          log->error(
+              "Missing request id - address entry for PUT response with non "
+              "LWW key {}",
+              response.tuples(0).key());
+        }
       } else {
         CausalResponse resp;
         CausalTuple* tp = resp.add_tuples();

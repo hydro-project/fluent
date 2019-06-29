@@ -209,7 +209,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     causal_serializer = new EBSCausalSerializer(thread_id);
     cross_causal_serializer = new EBSCrossCausalSerializer(thread_id);
   } else {
-    log->info("Invalid node type");
+    log->error("Invalid node type");
     exit(1);
   }
 

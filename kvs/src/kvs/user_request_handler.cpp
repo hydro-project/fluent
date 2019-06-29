@@ -54,6 +54,7 @@ void user_request_handler(
     if (succeed) {
       if (std::find(threads.begin(), threads.end(), wt) == threads.end()) {
         if (is_metadata(key)) {
+          log->error("Wrong address for metadata key {}.", key);
           // this means that this node is not responsible for this metadata key
           KeyTuple* tp = response.add_tuples();
 
@@ -102,6 +103,7 @@ void user_request_handler(
 
             local_changeset.insert(key);
             tp->set_error(0);
+            tp->set_lattice_type(tuple.lattice_type());
           }
         } else {
           log->error("Unknown request type {} in user request handler.",
@@ -110,6 +112,7 @@ void user_request_handler(
 
         if (tuple.has_address_cache_size() && tuple.address_cache_size() > 0 &&
             tuple.address_cache_size() != threads.size()) {
+          log->error("Invalidating address for key {}", key);
           tp->set_invalidate(true);
         }
 

@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
 import os
 import random
 import socket
@@ -52,7 +53,6 @@ class AnnaClient():
 
         self.rid = 0
 
-
     def get(self, key):
         worker_address = self._get_worker_address(key)
 
@@ -76,6 +76,8 @@ class AnnaClient():
 
         if tup.error == 0:
             return self._deserialize(tup)
+        elif tup.error == 1:
+            return None # key does not exist
         else:
             return None # key does not exist
 
@@ -193,6 +195,10 @@ class AnnaClient():
                 result.add(k)
 
             return SetLattice(result)
+        elif tup.lattice_type == CROSSCAUSAL:
+            res = CrossCausalValue()
+            res.ParseFromString(tup.payload)
+            return res
 
     def _serialize(self, val):
         if isinstance(val, LWWPairLattice):
@@ -204,8 +210,9 @@ class AnnaClient():
             s = SetValue()
             for o in val.reveal():
                 s.values.append(o)
-
             return s.SerializeToString(), SET
+        elif type(val).__name__ == 'CrossCausalValue':
+            return val.SerializeToString(), CROSSCAUSAL
 
     def _prepare_data_request(self, key):
         req = KeyRequest()
