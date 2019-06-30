@@ -38,9 +38,11 @@ class IpcAnnaClient:
         self.put_request_socket.connect(PUT_REQUEST_ADDR)
 
         self.get_response_socket = self.context.socket(zmq.PULL)
+        self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.get_response_socket.bind(self.get_response_address)
 
         self.put_response_socket = self.context.socket(zmq.PULL)
+        self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.put_response_socket.bind(self.put_response_address)
 
     def get(self, keys):
@@ -161,13 +163,6 @@ class IpcAnnaClient:
 
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)
-
-                # this code add transitive dependency
-                #for dep in val.deps:
-                #    if dep.key in dependencies:
-                #        dependencies[dep.key] = self._vc_merge(dependencies[dep.key], dep.vector_clock)
-                #    else:
-                #        dependencies[dep.key] = dep.vector_clock
 
                 # for now, we just take the first value in the setlattice
                 kv_pairs[tp.key] = (val.vector_clock, val.values[0])

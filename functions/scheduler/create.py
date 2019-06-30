@@ -18,9 +18,9 @@ import sys
 import time
 import zmq
 
+from anna.kvs_pb2 import *
 from anna.lattices import *
 from include.functions_pb2 import *
-from anna.kvs_pb2 import *
 import include.server_utils as sutils
 from include.shared import *
 from . import utils

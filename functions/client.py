@@ -71,8 +71,8 @@ class FluentConnection():
 
     def get(self, name):
         if name not in self._get_func_list():
-            logging.info("No function found with name %s. % name")
-            logging.info("To view all functions, use the `list` method.")
+            print("No function found with name '" + name + "'.")
+            print("To view all functions, use the `list` method.")
             return None
 
         return FluentFunction(name, self, self.kvs_client)
