@@ -123,8 +123,8 @@ class FluentConnection():
         for fname in functions:
             if fname not in flist.names:
                 logging.info(
-                    'Function %s not registered. Please register before including it in a DAG.' %
-                    (fname))
+                    'Function %s not registered. Please register before \
+                    including it in a DAG.' % (fname))
                 return False, None
 
         dag = Dag()
