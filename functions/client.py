@@ -122,7 +122,9 @@ class FluentConnection():
         flist = self._get_func_list()
         for fname in functions:
             if fname not in flist.names:
-                logging.info('Function %s not registered. Please register before including it in a DAG.' % (fname))
+                logging.info(
+                    'Function %s not registered. Please register before including it in a DAG.' %
+                    (fname))
                 return False, None
 
         dag = Dag()
@@ -140,7 +142,14 @@ class FluentConnection():
 
         return r.success, r.error
 
-    def call_dag(self, dname, arg_map, direct_response=False, consistency=NORMAL, output_key=None, client_id=None):
+    def call_dag(
+            self,
+            dname,
+            arg_map,
+            direct_response=False,
+            consistency=NORMAL,
+            output_key=None,
+            client_id=None):
         dc = DagCall()
         dc.name = dname
         dc.consistency = consistency
