@@ -89,7 +89,6 @@ def get_pod_ips(client, selector, is_running=False):
     while None in pod_ips or not running:
         pod_list = client.list_namespaced_pod(namespace=NAMESPACE,
                                               label_selector=selector).items
-
         pod_ips = list(map(lambda pod: pod.status.pod_ip, pod_list))
 
         if is_running:

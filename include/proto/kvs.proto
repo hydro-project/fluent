@@ -44,7 +44,7 @@ message SetValue {
 
 message CausalValue {
   map<string, uint32> vector_clock = 1;
-  repeated string values = 2;
+  repeated bytes values = 2;
 }
 
 message Dependency {
@@ -55,7 +55,7 @@ message Dependency {
 message CrossCausalValue {
   map<string, uint32> vector_clock = 1;
   repeated Dependency deps = 2;
-  repeated string values = 3;
+  repeated bytes values = 3;
 }
 
 message KeyTuple {

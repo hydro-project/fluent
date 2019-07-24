@@ -112,11 +112,13 @@ class IpcAnnaClient:
             return kv_pairs
 
     def causal_get(self, keys, future_read_set,
-                   versioned_key_locations, consistency, client_id):
+                   versioned_key_locations, consistency, client_id, dependencies={}):
         if type(keys) != list:
             keys = list(keys)
 
         request = CausalRequest()
+
+        kv_pairs = {}
 
         if consistency == SINGLE:
             request.consistency = SINGLE
@@ -124,7 +126,9 @@ class IpcAnnaClient:
             request.consistency = CROSS
         else:
             logging.error("Error: non causal consistency in causal mode!")
-            return None
+            for key in keys:
+                kv_pairs[key] = None
+            return (None, kv_pairs)
 
         request.id = str(client_id)
 
@@ -132,15 +136,16 @@ class IpcAnnaClient:
             request.versioned_key_locations[addr].versioned_keys.extend(
                                 versioned_key_locations[addr].versioned_keys)
 
-        for keys in keys:
+        for key in keys:
             tp = request.tuples.add()
             tp.key = key
 
         request.response_address = self.get_response_address
 
-        (request.future_read_set.add(k) for k in future_read_set)
+        request.future_read_set.extend(future_read_set)
 
         self.get_request_socket.send(request.SerializeToString())
+
 
         try:
             msg = self.get_response_socket.recv()
@@ -149,13 +154,9 @@ class IpcAnnaClient:
                 logging.error("Request for %s timed out!" % (str(keys)))
             else:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
-
-            resp = {}
             for key in keys:
-                resp[key] = None
-
-            return resp
-
+                kv_pairs[key] = None
+            return (None, kv_pairs)
         else:
             kv_pairs = {}
             resp = CausalResponse()
@@ -164,7 +165,9 @@ class IpcAnnaClient:
             for tp in resp.tuples:
                 if tp.error == 1:
                     logging.info('Key %s does not exist!' % (key))
-                    return None
+                    for key in keys:
+                        kv_pairs[key] = None
+                    return (None, kv_pairs)
 
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)
@@ -231,20 +234,20 @@ class IpcAnnaClient:
     def causal_put(self, key, vector_clock, dependency, value, client_id):
         request = CausalRequest()
         request.consistency = CROSS
-        request.id = client_id
+        request.id = str(client_id)
 
         tp = request.tuples.add()
         tp.key = key
 
         cross_causal_value = CrossCausalValue()
-        cross_causal_value.vector_clock = vector_clock
+        cross_causal_value.vector_clock.update(vector_clock)
 
         for key in dependency:
             dep = cross_causal_value.deps.add()
             dep.key = key
-            dep.vector_clock = dependency[key]
+            dep.vector_clock.update(dependency[key])
 
-        cross_causal_value.values.add(value)
+        cross_causal_value.values.extend([value])
 
         tp.payload = cross_causal_value.SerializeToString()
 
@@ -263,3 +266,12 @@ class IpcAnnaClient:
             return False
         else:
             return True
+
+    def _vc_merge(self, lhs, rhs):
+        result = lhs
+        for cid in rhs:
+            if cid not in result:
+                result[cid] = rhs[cid]
+            else:
+                result[cid] = max(result[cid], rhs[cid])
+        return result

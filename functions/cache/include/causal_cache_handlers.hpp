@@ -35,7 +35,7 @@ void put_request_handler(const string& serialized, StoreType& unmerged_store,
                          StoreType& causal_cut_store,
                          VersionStoreType& version_store,
                          map<string, Address>& request_id_to_address_map,
-                         KvsAsyncClientInterface* client);
+                         KvsAsyncClientInterface* client, logger log);
 
 void versioned_key_request_handler(const string& serialized,
                                    VersionStoreType& version_store,
@@ -48,7 +48,7 @@ void versioned_key_response_handler(
     map<Address, PendingClientMetadata>& pending_cross_metadata,
     map<string, set<Address>>& client_id_to_address_map,
     const CausalCacheThread& cct, SocketCache& pushers,
-    ZmqUtilInterface* kZmqUtil);
+    ZmqUtilInterface* kZmqUtil, logger log);
 
 void kvs_response_handler(
     const KeyResponse& response, StoreType& unmerged_store,
@@ -74,6 +74,6 @@ void periodic_migration_handler(
         cover_map,
     SocketCache& pushers, KvsAsyncClientInterface* client,
     const CausalCacheThread& cct,
-    map<string, set<Address>>& client_id_to_address_map);
+    map<string, set<Address>>& client_id_to_address_map, logger log);
 
 #endif  // FUNCTIONS_CACHE_INCLUDE_CAUSAL_CACHE_HANDLERS_HPP_

@@ -110,7 +110,8 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
     if (pollitems[1].revents & ZMQ_POLLIN) {
       string serialized = kZmqUtil->recv_string(&put_puller);
       put_request_handler(serialized, unmerged_store, causal_cut_store,
-                          version_store, request_id_to_address_map, client);
+                          version_store, request_id_to_address_map, client,
+                          log);
     }
 
     // handle updates received from the KVS
@@ -121,7 +122,6 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
 
       for (const KeyTuple& tuple : updates.tuples()) {
         Key key = tuple.key();
-
         // if we are no longer caching this key, then we simply ignore updates
         // for it because we received the update based on outdated information
         if (key_set.find(key) == key_set.end()) {
@@ -158,7 +158,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       string serialized = kZmqUtil->recv_string(&versioned_key_response_puller);
       versioned_key_response_handler(
           serialized, causal_cut_store, version_store, pending_cross_metadata,
-          client_id_to_address_map, cct, pushers, kZmqUtil);
+          client_id_to_address_map, cct, pushers, kZmqUtil, log);
     }
 
     vector<KeyResponse> responses = client->receive_async(kZmqUtil);
@@ -206,7 +206,7 @@ void run(KvsAsyncClientInterface* client, Address ip, unsigned thread_id) {
       periodic_migration_handler(
           unmerged_store, in_preparation, causal_cut_store, version_store,
           pending_cross_metadata, to_fetch_map, cover_map, pushers, client, cct,
-          client_id_to_address_map);
+          client_id_to_address_map, log);
       migrate_start = std::chrono::system_clock::now();
     }
 

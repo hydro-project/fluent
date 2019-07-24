@@ -53,6 +53,7 @@ void get_request_handler(
           PendingClientMetadata(request.id(), read_set, to_cover);
     } else {
       CausalResponse response;
+
       for (const Key& key : read_set) {
         CausalTuple* tp = response.add_tuples();
         tp->set_key(key);
@@ -132,12 +133,13 @@ void get_request_handler(
             in_preparation[key].second[key] = lattice;
             recursive_dependency_check(key, lattice, in_preparation,
                                        causal_cut_store, unmerged_store,
-                                       to_fetch_map, cover_map, client);
+                                       to_fetch_map, cover_map, client, log);
             if (to_fetch_map[key].size() == 0) {
               // all dependency met
               merge_into_causal_cut(key, causal_cut_store, in_preparation,
                                     version_store, pending_cross_metadata,
-                                    pushers, cct, client_id_to_address_map);
+                                    pushers, cct, client_id_to_address_map, log,
+                                    unmerged_store);
               to_fetch_map.erase(key);
             } else {
               in_preparation[key].first.insert(request.response_address());
@@ -148,12 +150,13 @@ void get_request_handler(
             in_preparation[key].second[key] = unmerged_store[key];
             recursive_dependency_check(key, unmerged_store[key], in_preparation,
                                        causal_cut_store, unmerged_store,
-                                       to_fetch_map, cover_map, client);
+                                       to_fetch_map, cover_map, client, log);
             if (to_fetch_map[key].size() == 0) {
               // all dependency met
               merge_into_causal_cut(key, causal_cut_store, in_preparation,
                                     version_store, pending_cross_metadata,
-                                    pushers, cct, client_id_to_address_map);
+                                    pushers, cct, client_id_to_address_map, log,
+                                    unmerged_store);
               to_fetch_map.erase(key);
             } else {
               in_preparation[key].first.insert(request.response_address());
@@ -178,10 +181,11 @@ void get_request_handler(
       // decide local and remote read set
       if (!fire_remote_read_requests(
               pending_cross_metadata[request.response_address()], version_store,
-              causal_cut_store, pushers, cct)) {
+              causal_cut_store, pushers, cct, log)) {
         // all local
         respond_to_client(pending_cross_metadata, request.response_address(),
-                          causal_cut_store, version_store, pushers, cct);
+                          causal_cut_store, version_store, pushers, cct,
+                          unmerged_store);
       } else {
         client_id_to_address_map[request.id()].insert(
             request.response_address());

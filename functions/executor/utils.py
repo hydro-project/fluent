@@ -24,16 +24,22 @@ UTILIZATION_REPORT_PORT = 7003
 EXECUTOR_DEPART_PORT = 7005
 
 
-def _retrieve_function(name, kvs):
+def _retrieve_function(name, kvs, consistency=NORMAL):
     kvs_name = server_utils._get_func_kvs_name(name)
-    result = kvs.get(kvs_name)
 
-    while not result:
-        logging.info("retrying get for function %s" % kvs_name)
+    if consistency == NORMAL:
         result = kvs.get(kvs_name)
-    latt = result[kvs_name]
-
-    return serializer.function_ser.load(latt.reveal()[1])
+        if result:
+            latt = result[kvs_name]
+            return serializer.function_ser.load(latt.reveal()[1])
+        else:
+            return None
+    else:
+        result = kvs.causal_get([kvs_name], set(), {}, SINGLE, 0)
+        if result:
+            return serializer.function_ser.load(result[1][kvs_name][1])
+        else:
+            return None
 
 
 def _push_status(schedulers, pusher_cache, status):
