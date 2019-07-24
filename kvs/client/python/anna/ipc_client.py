@@ -118,13 +118,17 @@ class IpcAnnaClient:
 
         request = CausalRequest()
 
+        kv_pairs = {}
+
         if consistency == SINGLE:
             request.consistency = SINGLE
         elif consistency == CROSS:
             request.consistency = CROSS
         else:
             logging.error("Error: non causal consistency in causal mode!")
-            return None
+            for key in keys:
+                kv_pairs[key] = None
+            return (None, kv_pairs)
 
         request.id = str(client_id)
 
@@ -150,7 +154,9 @@ class IpcAnnaClient:
                 logging.error("Request for %s timed out!" % (str(keys)))
             else:
                 logging.error("Unexpected ZMQ error: %s." % (str(e)))
-            return None
+            for key in keys:
+                kv_pairs[key] = None
+            return (None, kv_pairs)
         else:
             kv_pairs = {}
             resp = CausalResponse()
@@ -159,7 +165,9 @@ class IpcAnnaClient:
             for tp in resp.tuples:
                 if tp.error == 1:
                     logging.info('Key %s does not exist!' % (key))
-                    return None
+                    for key in keys:
+                        kv_pairs[key] = None
+                    return (None, kv_pairs)
 
                 val = CrossCausalValue()
                 val.ParseFromString(tp.payload)

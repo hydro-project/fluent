@@ -195,6 +195,7 @@ def _resolve_ref_normal(refs, kvs):
     num_nulls = len(list(filter(lambda a: not a, kv_pairs.values())))
     while num_nulls > 0:
         kv_pairs = kvs.get(keys)
+        num_nulls = len(list(filter(lambda a: not a, kv_pairs.values())))
 
     for ref in refs:
         if ref.deserialize and isinstance(kv_pairs[ref.key], LWWPairLattice):
@@ -331,14 +332,17 @@ def _exec_func_causal(kvs, func, args, kv_pairs,
 def _resolve_ref_causal(refs, kvs, kv_pairs, schedule, versioned_key_locations, dependencies):
     future_read_set = _compute_children_read_set(schedule)
     keys = [ref.key for ref in refs]
-    result = kvs.causal_get(keys, set(),
+    result = kvs.causal_get(keys, future_read_set,
                             versioned_key_locations,
                             schedule.consistency, schedule.client_id, dependencies)
 
-    while not result:
+    num_nulls = len(list(filter(lambda a: not a, result[1].values())))
+
+    while num_nulls > 0:
         result = kvs.causal_get(keys, future_read_set,
                                 versioned_key_locations,
                                 schedule.consistency, schedule.client_id, dependencies)
+        num_nulls = len(list(filter(lambda a: not a, result[1].values())))
 
     if result[0] is not None:
         versioned_key_locations[result[0][0]].versioned_keys.extend(result[0][1])
