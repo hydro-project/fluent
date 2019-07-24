@@ -151,23 +151,19 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
-        if schedule.HasField('output_key'):
-            logging.info('DAG %s (ID %s) completed; result at %s.' %
-                         (schedule.dag.name, trigger.id, schedule.output_key))
-        else:
-            logging.info('DAG %s (ID %s) completed; result at %s.' %
-                         (schedule.dag.name, trigger.id, schedule.id))
-
         result = serialize_val(result)
         if schedule.HasField('response_address'):
             sckt = pusher_cache.get(schedule.response_address)
+            logging.info('DAG %s (ID %s) completed; result sent back to the requester.' %
+                             (schedule.dag.name, trigger.id))
             sckt.send(result)
+
         else:
             lattice = LWWPairLattice(generate_timestamp(0), result)
-            if schedule.HasField('output_key'):
-                kvs.put(schedule.output_key, lattice)
-            else:
-                kvs.put(schedule.id, lattice)
+            output_key = schedule.output_key if schedule.HasField('output_key') else schedule.id
+            logging.info('DAG %s (ID %s) completed; result at %s.' %
+                             (schedule.dag.name, trigger.id, output_key))
+            kvs.put(output_key, lattice)
 
 
 def _exec_func_normal(kvs, func, args, user_lib):
