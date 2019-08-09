@@ -1,7 +1,9 @@
+***NOTE***: The Fluent project has been renamed to Hydro, and the project has been broken up into multiple repositories. You can find all of them in the [Hydro Project](https://github.com/hydro-project) organization on Github. This repository has been archived and will be deleted eventually.
+
 # Fluent
 
-[![Build Status](https://travis-ci.com/fluent-project/fluent.svg?branch=master)](https://travis-ci.com/fluent-project/fluent)
-[![codecov](https://codecov.io/gh/fluent-project/fluent/branch/master/graph/badge.svg)](https://codecov.io/gh/fluent-project/fluent)
+[![Build Status](https://travis-ci.com/hydro-project/fluent.svg?branch=master)](https://travis-ci.com/hydro-project/fluent)
+[![codecov](https://codecov.io/gh/hydro-project/fluent/branch/master/graph/badge.svg)](https://codecov.io/gh/hydro-project/fluent)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 
